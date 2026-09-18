@@ -244,7 +244,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); box-sha
 .content { padding: 24px 28px 56px; }
 .view { display: none; }
 .view.active { display: block; }
-.view.view-entering { animation: view-enter 160ms ease both; }
+.view.view-entering {  }
 .view.data-refreshing { position: relative; }
 .view.data-refreshing::after {
   content: "";
@@ -431,7 +431,7 @@ button.metric-card { color: inherit; }
 }
 @keyframes motion-spin { to { transform: rotate(360deg); } }
 @keyframes point-pulse { from { opacity: .8; transform: scale(1); } to { opacity: 0; transform: scale(3.2); } }
-@keyframes view-enter { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+ }
 @keyframes refresh-pulse { 50% { opacity: .22; } }
 .chart-empty { display: grid; place-items: center; min-height: 220px; padding: 24px; color: var(--muted); text-align: center; font-size: 12px; }
 .chart-empty strong { color: var(--text); font-size: 15px; }
