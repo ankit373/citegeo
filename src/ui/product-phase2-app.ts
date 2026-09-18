@@ -7,6 +7,7 @@ export function renderProductPhase2AppHtml(): string {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
+  <link rel="icon" type="image/svg+xml" href="/assets/brand/citegeo-emblem.svg"><link rel="apple-touch-icon" href="/assets/brand/citegeo-emblem.svg">
   <title>${PRODUCT_TITLE}</title>
   <style>
     :root { --bg:#14120F; --sidebar:#0E0C0A; --panel:#1C1914; --panel-hover:#24201A; --line:#332C22; --line-strong:#4A4030; --text:#F2EEE4; --muted:#A89C87; --weak:#6E6455; --confirmed:#7FA06E; --confirmed-text:#9DBC8E; --unknown:#C9973E; --unknown-text:#DBB05F; --failed:#B2503B; --failed-text:#CC7157; --motion-fast:120ms; --motion-normal:220ms; --motion-slow:420ms; --ease-standard:cubic-bezier(.22,1,.36,1); --ease-press:cubic-bezier(.2,.8,.2,1); }
@@ -45,7 +46,9 @@ export function renderProductPhase2AppHtml(): string {
     .button:hover,.button:focus-visible { background:var(--panel-hover); border-color:#555; }
     .button.primary { background:var(--text); border-color:var(--text); color:var(--bg); }
     .button.primary:hover,.button.primary:focus-visible { background:var(--muted); border-color:var(--muted); }
-    .button.danger { color:var(--failed-text); border-color:#4A2620; }
+    /* The failed colour reports an evidence state; chrome must not borrow it. */
+    .button.danger { color:var(--text); border-color:var(--line-strong); }
+    .button.danger:hover { border-color:var(--text); }
     .button[data-action-state="loading"] { color:var(--muted); }
     .button[data-action-state="loading"]::before { content:""; display:inline-block; width:12px; height:12px; margin-right:7px; vertical-align:-1px; border:2px solid currentColor; border-right-color:transparent; border-radius:50%; animation:spin 700ms linear infinite; }
     .button[data-action-state="success"] { color:var(--confirmed-text); border-color:#2E3A26; }
@@ -78,7 +81,7 @@ export function renderProductPhase2AppHtml(): string {
     .tag.warning { color:var(--unknown-text); border-color:#4A3A1E; }
     .card-action { min-height:32px; border:1px solid var(--line-strong); border-radius:6px; background:var(--sidebar); color:var(--muted); padding:0 9px; font-size:12px; font-weight:700; transition:transform var(--motion-fast) var(--ease-press),background-color var(--motion-fast) var(--ease-standard),border-color var(--motion-fast) var(--ease-standard); }
     .card-action:hover,.card-action:focus-visible { background:var(--panel-hover); border-color:#555; color:var(--text); }
-    .card-action.danger { color:var(--failed-text); border-color:#4A2620; }
+    .card-action.danger { color:var(--text); border-color:var(--line-strong); }
     .empty { border:1px dashed var(--line-strong); min-height:230px; display:grid; place-items:center; text-align:center; padding:30px; border-radius:8px; }
     .empty-copy { max-width:500px; }
     .empty .button { margin-top:15px; }
@@ -141,9 +144,11 @@ export function renderProductPhase2AppHtml(): string {
     .model-run-card.running { border-color:var(--line-strong); }
     .model-run-card.completed,.model-run-card.unknown { border-color:#2E3A26; }
     .model-run-card.failed,.model-run-card.unsupported { border-color:#4A2620; }
-    .recognition-summary { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:9px; }
-    .recognition-summary > div { border:1px solid var(--line); background:var(--sidebar); border-radius:7px; padding:10px; display:grid; gap:4px; }
-    .recognition-summary span { color:var(--weak); font-size:12px; }
+    /* The data is a matrix, so it reads as rows with rule lines. No card-in-card. */
+    .recognition-summary { display:grid; grid-template-columns:minmax(140px,210px) minmax(0,1fr); border-top:1px solid var(--line); margin-top:14px; }
+    .recognition-summary > div { display:contents; }
+    .recognition-summary span { padding:10px 16px 10px 0; border-bottom:1px solid var(--line); color:var(--muted); font-size:12px; }
+    .recognition-summary strong { padding:10px 0; border-bottom:1px solid var(--line); overflow-wrap:anywhere; font-weight:600; }
     .evidence-details { border:1px solid var(--line); border-radius:7px; padding:12px; background:var(--sidebar); }
     .evidence-details summary { cursor:pointer; font-weight:700; }
     .evidence-details[open] summary { margin-bottom:12px; }
