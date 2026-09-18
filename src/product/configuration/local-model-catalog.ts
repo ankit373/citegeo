@@ -1,4 +1,4 @@
-import { openAICompatibleBaseUrl } from "../../config/env.js";
+import { azureOpenAIDeployments, openAICompatibleBaseUrl } from "../../config/env.js";
 import type { ProductModelCatalog, ProviderModelCatalogItem } from "./model-selection-schema.js";
 
 // Lists whatever an OpenAI-compatible endpoint advertises at /v1/models. That is
@@ -52,5 +52,25 @@ export class CompositeProductModelCatalog implements ProductModelCatalog {
       }
     }));
     return results.flat();
+  }
+}
+
+// Azure has no data-plane deployment listing, so the deployments in use are
+// declared through AZURE_OPENAI_DEPLOYMENTS rather than discovered.
+export class AzureOpenAiProductModelCatalog implements ProductModelCatalog {
+  async list(): Promise<ProviderModelCatalogItem[]> {
+    const checkedAt = new Date().toISOString();
+    return azureOpenAIDeployments().map((deployment) => ({
+      providerId: "azure-openai" as const,
+      modelId: deployment,
+      displayName: `${deployment} (Azure deployment)`,
+      vendor: "azure",
+      releasedAt: null,
+      available: true,
+      unavailableReason: null,
+      nativeWebSearchSupported: false,
+      checkedAt,
+      source: "local_capability_registry" as const,
+    }));
   }
 }

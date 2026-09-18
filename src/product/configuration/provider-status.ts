@@ -1,4 +1,4 @@
-import { hasProviderKey, openAICompatibleBaseUrl, providerEnvKeys } from "../../config/env.js";
+import { azureOpenAIEndpoint, hasProviderKey, openAICompatibleBaseUrl, providerEnvKeys } from "../../config/env.js";
 import type { ProductModelCatalog } from "./model-selection-schema.js";
 import type { ProductProviderId } from "./provider-id.js";
 
@@ -26,13 +26,15 @@ export async function providerStatuses(catalog: ProductModelCatalog): Promise<Pr
   const count = (id: ProductProviderId) => models.filter((item) => item.providerId === id);
 
   const rows: ProviderStatus[] = [];
-  for (const providerId of ["openrouter", "openai-compatible"] as ProductProviderId[]) {
+  for (const providerId of ["openrouter", "openai-compatible", "azure-openai"] as ProductProviderId[]) {
     const mine = count(providerId);
     const configured = hasProviderKey(providerId);
-    const endpoint = providerId === "openai-compatible" ? openAICompatibleBaseUrl() || null : "https://openrouter.ai/api/v1";
+    const endpoint = providerId === "openai-compatible" ? openAICompatibleBaseUrl() || null
+      : providerId === "azure-openai" ? azureOpenAIEndpoint() || null
+      : "https://openrouter.ai/api/v1";
     rows.push({
       providerId,
-      label: providerId === "openrouter" ? "OpenRouter" : "Local gateway",
+      label: providerId === "openrouter" ? "OpenRouter" : providerId === "azure-openai" ? "Azure OpenAI" : "Local gateway",
       configured,
       envKeys: providerEnvKeys(providerId),
       endpoint,
@@ -46,6 +48,11 @@ export async function providerStatuses(catalog: ProductModelCatalog): Promise<Pr
 }
 
 function detailFor(providerId: ProductProviderId, configured: boolean, models: number): string {
+  if (providerId === "azure-openai") {
+    if (!configured) return "No Azure key set. Add AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_DEPLOYMENTS to .env.";
+    if (!models) return "Key set, but no deployments declared. List them in AZURE_OPENAI_DEPLOYMENTS.";
+    return "Your Azure deployments. Billed to your Azure subscription. No provider-native web search.";
+  }
   if (!configured) {
     return providerId === "openrouter"
       ? "No API key set. Add OPENROUTER_API_KEY to .env to use hosted models."

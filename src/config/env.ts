@@ -61,6 +61,9 @@ export function resolveProviderKey(providerId: string, explicitKey?: string): st
 }
 
 export function hasProviderKey(providerId: string): boolean {
+  if (providerId === "azure-openai") {
+    return Boolean(azureOpenAIEndpoint()) && providerEnvKeys(providerId).some((key) => Boolean(envSecretValue(key)));
+  }
   if (providerId === "openai-compatible") {
     return Boolean(openAICompatibleBaseUrl()) && providerEnvKeys(providerId).some((key) => Boolean(envSecretValue(key)));
   }
@@ -81,4 +84,19 @@ export function monitoringDataDir(): string {
  */
 export function productDataDir(): string {
   return process.env.PRODUCT_DATA_DIR || join(monitoringDataDir(), "product-v2");
+}
+
+export function azureOpenAIEndpoint(): string | undefined {
+  return envSecretValue("AZURE_OPENAI_ENDPOINT") || undefined;
+}
+
+export function azureOpenAIApiVersion(): string {
+  return envSecretValue("AZURE_OPENAI_API_VERSION") || "2024-10-21";
+}
+
+// Azure exposes no data-plane deployment listing, so the deployments in use are
+// declared rather than discovered.
+export function azureOpenAIDeployments(): string[] {
+  const raw = envSecretValue("AZURE_OPENAI_DEPLOYMENTS") || "";
+  return raw.split(",").map((value) => value.trim()).filter(Boolean);
 }

@@ -1,8 +1,9 @@
 import type { AnswerProvider, ProviderDefinition } from "../core/types.js";
-import { openAICompatibleBaseUrl } from "../config/env.js";
+import { azureOpenAIApiVersion, azureOpenAIEndpoint, openAICompatibleBaseUrl } from "../config/env.js";
 import { AnthropicProvider } from "./anthropic.js";
 import { GeminiProvider } from "./gemini.js";
 import { dedupeCitations, extractAnnotationCitations, extractPerplexityCitations } from "./citation-extractors.js";
+import { AzureOpenAIProvider } from "./azure-openai.js";
 import { OpenAICompatibleGatewayProvider } from "./openai-compatible-gateway.js";
 import { OpenAICompatibleProvider, perplexityCitationExtractor } from "./openai-compatible.js";
 import { openRouterNativeWebSearch } from "./openrouter-native-search.js";
@@ -120,6 +121,18 @@ export const PROVIDER_DEFINITIONS: ProviderDefinition[] = [
     resultCaveat: API_CAVEAT,
   },
   {
+    id: "azure-openai",
+    label: "Azure OpenAI",
+    sourceType: "api",
+    envKeys: ["AZURE_OPENAI_API_KEY"],
+    defaultModels: [],
+    supportsAnyModel: true,
+    supportsJsonSchema: true,
+    supportsNativeCitations: false,
+    supportsWebSearch: false,
+    resultCaveat: API_CAVEAT,
+  },
+  {
     id: "openai-compatible",
     label: "OpenAI-compatible",
     sourceType: "api",
@@ -215,6 +228,11 @@ export class ProviderCatalog {
       }),
     );
 
+    this.providers.set(
+      "azure-openai",
+      new AzureOpenAIProvider(definition("azure-openai"), azureOpenAIEndpoint() || "", azureOpenAIApiVersion()),
+    );
+
     const compatibleBaseUrl = openAICompatibleBaseUrl();
     this.providers.set(
       "openai-compatible",
@@ -227,6 +245,9 @@ export class ProviderCatalog {
   }
 
   get(providerId: string): AnswerProvider {
+    if (providerId === "azure-openai" && !azureOpenAIEndpoint()) {
+      throw new Error("Missing AZURE_OPENAI_ENDPOINT for provider \"azure-openai\".");
+    }
     if (providerId === "openai-compatible" && !openAICompatibleBaseUrl()) {
       throw new Error("Missing OPENAI_COMPATIBLE_BASE_URL for provider \"openai-compatible\".");
     }

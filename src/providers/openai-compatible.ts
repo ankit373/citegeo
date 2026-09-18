@@ -39,6 +39,8 @@ export interface OpenAICompatibleNativeWebSearchResolver {
 }
 
 interface OpenAICompatibleOptions {
+  /** Header carrying the key; "bearer" sends Authorization: Bearer. */
+  authHeader?: string | undefined;
   definition: ProviderDefinition;
   endpoint: string;
   endpointKind?: ProviderEndpointKind | undefined;
@@ -142,6 +144,7 @@ export class OpenAICompatibleProvider implements AnswerProvider {
   private readonly endpointKind: ProviderEndpointKind;
   private readonly endpointProtocol: ProviderEndpointProtocol;
   private readonly extraHeaders: Record<string, string>;
+  private readonly authHeader: string;
   private readonly extraBody: Record<string, unknown>;
   private readonly citationExtractor: (raw: unknown) => Citation[];
   private readonly costExtractor: (raw: unknown) => number | undefined;
@@ -153,6 +156,7 @@ export class OpenAICompatibleProvider implements AnswerProvider {
     this.endpointKind = options.endpointKind || "official_api";
     this.endpointProtocol = options.endpointProtocol || "chat_completions";
     this.extraHeaders = options.extraHeaders || {};
+    this.authHeader = options.authHeader || "bearer";
     this.extraBody = options.extraBody || {};
     this.citationExtractor = options.citationExtractor || extractAnnotationCitations;
     this.costExtractor = options.costExtractor || defaultCostExtractor;
@@ -193,7 +197,9 @@ export class OpenAICompatibleProvider implements AnswerProvider {
     const response = await postJsonWithRetry(this.endpoint, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${input.apiKey}`,
+        ...(this.authHeader === "bearer"
+          ? { Authorization: `Bearer ${input.apiKey}` }
+          : { [this.authHeader]: input.apiKey }),
         "Content-Type": "application/json",
         ...this.extraHeaders,
       },

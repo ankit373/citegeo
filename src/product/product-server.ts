@@ -8,7 +8,7 @@ import { PROVIDER_MODEL_CAPABILITIES } from "../providers/catalog.js";
 import { ProductConfigurationFileStore } from "./configuration/configuration-store.js";
 import { handleProductConfigurationApi } from "./configuration/configuration-http.js";
 import { OpenRouterProductModelCatalog } from "./configuration/model-catalog.js";
-import { CompositeProductModelCatalog, OpenAiCompatibleProductModelCatalog } from "./configuration/local-model-catalog.js";
+import { AzureOpenAiProductModelCatalog, CompositeProductModelCatalog, OpenAiCompatibleProductModelCatalog } from "./configuration/local-model-catalog.js";
 import { providerStatuses } from "./configuration/provider-status.js";
 import { hasProviderKey } from "../config/env.js";
 import { ProductModelSelectionService } from "./configuration/model-selection-service.js";
@@ -79,6 +79,7 @@ function defaultProductCatalog(): ProductModelCatalog {
   const catalogs: ProductModelCatalog[] = [];
   if (hasProviderKey("openrouter")) catalogs.push(new OpenRouterProductModelCatalog(PROVIDER_MODEL_CAPABILITIES));
   if (hasProviderKey("openai-compatible")) catalogs.push(new OpenAiCompatibleProductModelCatalog());
+  if (hasProviderKey("azure-openai")) catalogs.push(new AzureOpenAiProductModelCatalog());
   if (!catalogs.length) catalogs.push(new OpenRouterProductModelCatalog(PROVIDER_MODEL_CAPABILITIES));
   return new CompositeProductModelCatalog(catalogs);
 }
