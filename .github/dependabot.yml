@@ -9,6 +9,16 @@ updates:
       # One PR for routine bumps; majors still arrive separately.
       minor-and-patch:
         update-types: [minor, patch]
+    ignore:
+      # TypeScript 7 is the native port. Its root export is the version string
+      # and the compiler API moved behind ./unstable/*, which the regular
+      # expression ban in test/architecture-constraints.test.ts relies on.
+      - dependency-name: typescript
+        versions: ["7.x"]
+      # @types/node tracks the runtime major. Raise this with the Dockerfile,
+      # never ahead of it, or code typechecks against APIs that are not there.
+      - dependency-name: "@types/node"
+        update-types: [version-update:semver-major]
 
   - package-ecosystem: github-actions
     directory: /
@@ -19,3 +29,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    ignore:
+      # Odd Node majors are never LTS. 25 reached end of life on 2026-06-01.
+      # Move between LTS lines by hand: 24 is supported until 2028-04-30.
+      - dependency-name: node
+        versions: ["25.x", "27.x"]

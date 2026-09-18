@@ -61,8 +61,9 @@ the two drift. Regenerate rather than editing it:
 helm template citegeo deploy/helm/citegeo --namespace citegeo
 ```
 
-Helm 3 and 4 differ on blank lines between documents, so the CI comparison
-ignores them and looks at content.
+CI renders with Helm 4.2.2, the version that generated the committed file.
+Helm 3 emits different blank lines between documents, so the comparison
+ignores blank lines and looks at content.
 
 ## Verifying a render
 
@@ -70,4 +71,12 @@ ignores them and looks at content.
 helm lint deploy/helm/citegeo
 helm template citegeo deploy/helm/citegeo --set worker.enabled=true \
   | kubectl apply --dry-run=client -f -
+```
+
+CI validates the render with kubeconform in strict mode, which rejects unknown
+fields. To reproduce that without a cluster:
+
+```bash
+helm template citegeo deploy/helm/citegeo --set worker.enabled=true \
+  | kubeconform -strict -summary -kubernetes-version 1.30.0 -
 ```
