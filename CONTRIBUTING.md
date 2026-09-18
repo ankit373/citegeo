@@ -37,6 +37,17 @@ These are not style preferences. Breaking one of them makes the tool dishonest.
 - Failures stay on the record rather than disappearing from the run.
 - Internal scaffolding (raw JSON, token cost, latency, prompt and run IDs) belongs in evidence views, not in the main report.
 
+## Signing the CLA
+
+Your first pull request needs a signed [Contributor License Agreement](CLA.md).
+A bot comments on the pull request with the one sentence to reply with, and that
+covers every pull request you open afterwards.
+
+You keep the copyright on your work. The agreement lets the project keep
+distributing it under the MIT licence without tracking down each author again.
+Signatures live in this repository on the `cla-signatures` branch, so there is no
+external service involved.
+
 ## Before opening a pull request
 
 ```bash

@@ -22,3 +22,4 @@
 - [ ] No evidence-state colour used on chrome, per `DESIGN.md`
 - [ ] A result with missing evidence still reads as uncertain, not rounded up
 - [ ] No secrets, generated reports, private domains or run data committed
+- [ ] [CLA](../CLA.md) signed (first pull request only; the bot will ask)
