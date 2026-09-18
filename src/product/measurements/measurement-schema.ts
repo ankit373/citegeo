@@ -1,3 +1,4 @@
+import type { ProductProviderId } from "../configuration/provider-id.js";
 import type { ProductModelSnapshot } from "../configuration/baseline-schema.js";
 import type { AnswerEvidenceLocation, ProviderCitation, AnswerMentionedUrl } from "../recognition/recognition-schema.js";
 
@@ -169,7 +170,7 @@ export interface ProbeAttempt {
   requestParameters: ProbeRequestParameters;
   rawProviderResponse?: unknown;
   rawAnswer?: string | undefined;
-  providerId: "openrouter";
+  providerId: ProductProviderId;
   providerModel?: string | undefined;
   providerModelVersion?: string | undefined;
   providerSearch?: unknown;

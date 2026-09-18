@@ -1,9 +1,10 @@
+import type { ProductProviderId } from "./provider-id.js";
 export type ProductWebSearchMode = "off" | "provider_native";
 
 export interface ProductModelSelection {
   id: string;
   projectId: string;
-  providerId: "openrouter";
+  providerId: ProductProviderId;
   modelId: string;
   displayName: string;
   webSearchMode: ProductWebSearchMode;
@@ -20,7 +21,7 @@ export interface ProductModelSelectionInput {
 }
 
 export interface ProviderModelCatalogItem {
-  providerId: "openrouter";
+  providerId: ProductProviderId;
   modelId: string;
   displayName: string;
   vendor?: string | undefined;

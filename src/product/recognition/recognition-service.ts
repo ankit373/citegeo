@@ -82,10 +82,11 @@ export class OpenRouterRecognitionAnswerExecutor implements RecognitionAnswerExe
       description: DOMAIN_RECOGNITION_TOOL_DESCRIPTION,
       schema: domainRecognitionResponseSchema,
     };
-    return this.providers.get("openrouter").run({
+    const providerId = input.modelSnapshot.providerId;
+    return this.providers.get(providerId).run({
       prompt: input.prompt,
       model: input.modelSnapshot.modelId,
-      apiKey: resolveProviderKey("openrouter"),
+      apiKey: resolveProviderKey(providerId),
       maxTokens: input.requestParameters.maxTokens,
       temperature: input.requestParameters.temperature,
       webSearchEnabled: input.requestParameters.webSearchEnabled,
@@ -698,7 +699,7 @@ export class ProductRecognitionRunService {
       status: "running",
       promptHash: sha256(prompt),
       requestParameters: parameters,
-      providerId: "openrouter",
+      providerId: previous.modelSnapshot.providerId,
       costUsd: null,
       createdAt: nowIso(),
       startedAt: nowIso(),
@@ -786,7 +787,7 @@ export class ProductRecognitionRunService {
             status: "running",
             promptHash: sha256(prompt),
             requestParameters: retryParams,
-            providerId: "openrouter",
+            providerId: modelRun.modelSnapshot.providerId,
             costUsd: null,
             createdAt: nowIso(),
             startedAt: nowIso(),

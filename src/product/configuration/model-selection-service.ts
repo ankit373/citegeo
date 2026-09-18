@@ -54,7 +54,7 @@ export class ProductModelSelectionService {
       selections.push({
         id: existing?.id || randomUUID(),
         projectId,
-        providerId: "openrouter",
+        providerId: model.providerId,
         modelId,
         displayName: model.displayName,
         webSearchMode: input.webSearchMode,

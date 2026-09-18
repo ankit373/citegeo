@@ -8,6 +8,8 @@ import { PROVIDER_MODEL_CAPABILITIES } from "../providers/catalog.js";
 import { ProductConfigurationFileStore } from "./configuration/configuration-store.js";
 import { handleProductConfigurationApi } from "./configuration/configuration-http.js";
 import { OpenRouterProductModelCatalog } from "./configuration/model-catalog.js";
+import { CompositeProductModelCatalog, OpenAiCompatibleProductModelCatalog } from "./configuration/local-model-catalog.js";
+import { hasProviderKey } from "../config/env.js";
 import { ProductModelSelectionService } from "./configuration/model-selection-service.js";
 import type { ProductModelCatalog } from "./configuration/model-selection-schema.js";
 import { ProductBaselineService } from "./configuration/baseline-service.js";
@@ -69,6 +71,17 @@ async function readJson(req: IncomingMessage): Promise<Record<string, unknown>> 
   return JSON.parse(Buffer.concat(chunks).toString("utf8")) as Record<string, unknown>;
 }
 
+// OpenRouter needs a funded key; the local gateway needs only a base URL. Offer
+// whichever is actually configured so a machine with neither is not shown models
+// it cannot call.
+function defaultProductCatalog(): ProductModelCatalog {
+  const catalogs: ProductModelCatalog[] = [];
+  if (hasProviderKey("openrouter")) catalogs.push(new OpenRouterProductModelCatalog(PROVIDER_MODEL_CAPABILITIES));
+  if (hasProviderKey("openai-compatible")) catalogs.push(new OpenAiCompatibleProductModelCatalog());
+  if (!catalogs.length) catalogs.push(new OpenRouterProductModelCatalog(PROVIDER_MODEL_CAPABILITIES));
+  return new CompositeProductModelCatalog(catalogs);
+}
+
 async function handle(req: IncomingMessage, res: ServerResponse, dependencies: ProductServerDependencies): Promise<void> {
   const method = req.method || "GET";
   const url = new URL(req.url || "/", "http://localhost");
@@ -76,7 +89,7 @@ async function handle(req: IncomingMessage, res: ServerResponse, dependencies: P
   const projectStore = new ProductProjectFileStore(productDataDir());
   const projects = new ProductProjectService(projectStore);
   const configurationStore = new ProductConfigurationFileStore(projectStore);
-  const catalog = dependencies.modelCatalog || new OpenRouterProductModelCatalog(PROVIDER_MODEL_CAPABILITIES);
+  const catalog = dependencies.modelCatalog || defaultProductCatalog();
   const selections = new ProductModelSelectionService(projects, configurationStore, catalog);
   const baselines = new ProductBaselineService(projects, selections, configurationStore);
   const recognitionStore = new ProductRecognitionFileStore(projectStore);

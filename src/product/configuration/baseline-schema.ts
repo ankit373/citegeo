@@ -1,9 +1,10 @@
+import type { ProductProviderId } from "./provider-id.js";
 import type { ProductWebSearchMode } from "./model-selection-schema.js";
 import type { RecognitionProtocolSnapshot } from "./recognition-protocol.js";
 
 export interface ProductModelSnapshot {
   selectionId: string;
-  providerId: "openrouter";
+  providerId: ProductProviderId;
   modelId: string;
   displayName: string;
   webSearchMode: ProductWebSearchMode;

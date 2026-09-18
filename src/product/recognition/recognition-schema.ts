@@ -1,3 +1,4 @@
+import type { ProductProviderId } from "../configuration/provider-id.js";
 import type { ProductModelSnapshot } from "../configuration/baseline-schema.js";
 
 export type RecognitionMode = "unaided_domain_recognition" | "native_web_domain_discovery";
@@ -135,7 +136,7 @@ export interface RecognitionModelRunAttempt {
   requestParameters: RecognitionRequestParameters;
   rawProviderResponse?: unknown;
   rawAnswer?: string | undefined;
-  providerId: "openrouter";
+  providerId: ProductProviderId;
   providerModel?: string | undefined;
   providerModelVersion?: string | undefined;
   providerSearch?: unknown;

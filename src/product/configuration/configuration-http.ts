@@ -49,7 +49,11 @@ export async function handleProductConfigurationApi(input: {
   const { method, route, readJson, send, projects, selections, baselines, catalog } = input;
   try {
     if (route.length === 2 && route[0] === "api" && route[1] === "provider-models" && method === "GET") {
-      return send(200, { providerId: "openrouter", models: await catalog.list() }), true;
+      {
+        const models = await catalog.list();
+        // Kept for older clients that read a single id; the list is now mixed.
+        return send(200, { providerId: models[0]?.providerId || "openrouter", models }), true;
+      }
     }
     if (route.length < 4 || route[0] !== "api" || route[1] !== "projects") return false;
     const projectId = route[2];
