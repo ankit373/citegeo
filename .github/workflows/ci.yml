@@ -16,12 +16,12 @@ concurrency:
 jobs:
   test:
     name: Build and test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -41,14 +41,14 @@ jobs:
 
   chart:
     name: Helm chart
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: azure/setup-helm@v4
+      - uses: azure/setup-helm@v5
         with:
-          version: v3.16.2
+          version: v4.2.2
 
       - run: helm lint deploy/helm/citegeo
 
@@ -65,33 +65,40 @@ jobs:
             > /tmp/render.yaml
           test -s /tmp/render.yaml
 
+      # kubeval is deprecated and its action unmaintained since 2020; kubeconform
+      # replaces it, pinned by checksum and allowed to fail the job.
       - name: Validate the rendered manifests
-        uses: instrumenta/kubeval-action@master
-        continue-on-error: true
-        with:
-          files: /tmp/render.yaml
+        env:
+          KUBECONFORM_VERSION: v0.8.0
+          KUBECONFORM_SHA256: 9bc2bffbf71f261128533edaf912153948b7ff238f9a531ae6d34466ec287883
+        run: |
+          curl -fsSL -o kubeconform.tar.gz \
+            "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz"
+          echo "${KUBECONFORM_SHA256}  kubeconform.tar.gz" | sha256sum -c -
+          tar xzf kubeconform.tar.gz kubeconform
+          ./kubeconform -strict -summary -kubernetes-version 1.30.0 /tmp/render.yaml
 
       - name: The checked-in manifests match the chart
         run: |
           helm template citegeo deploy/helm/citegeo --namespace citegeo > /tmp/fresh.yaml
           # Skip the hand-written header; compare from the first document marker.
           awk '/^---$/{found=1} found' deploy/kubernetes/citegeo.yaml > /tmp/committed.yaml
-          # Helm 3 and 4 differ on blank lines between documents, so compare
-          # content rather than byte-for-byte across versions.
+          # CI pins the Helm major that generated the committed file, but a
+          # contributor on Helm 3 emits different blank lines between documents.
           diff -u -B /tmp/committed.yaml /tmp/fresh.yaml \
             || { echo "deploy/kubernetes/citegeo.yaml is stale; regenerate with: helm template citegeo deploy/helm/citegeo --namespace citegeo"; exit 1; }
 
   docker:
     name: Docker image builds
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
 
       # Catches a Dockerfile that copies files which no longer exist.
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           context: .
           push: false
