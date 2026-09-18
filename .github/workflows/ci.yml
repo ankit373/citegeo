@@ -76,8 +76,10 @@ jobs:
           helm template citegeo deploy/helm/citegeo --namespace citegeo > /tmp/fresh.yaml
           # Skip the hand-written header; compare from the first document marker.
           awk '/^---$/{found=1} found' deploy/kubernetes/citegeo.yaml > /tmp/committed.yaml
-          diff -u /tmp/committed.yaml /tmp/fresh.yaml \
-            || { echo "deploy/kubernetes/citegeo.yaml is stale; regenerate it from the chart"; exit 1; }
+          # Helm 3 and 4 differ on blank lines between documents, so compare
+          # content rather than byte-for-byte across versions.
+          diff -u -B /tmp/committed.yaml /tmp/fresh.yaml \
+            || { echo "deploy/kubernetes/citegeo.yaml is stale; regenerate with: helm template citegeo deploy/helm/citegeo --namespace citegeo"; exit 1; }
 
   docker:
     name: Docker image builds

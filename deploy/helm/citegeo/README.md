@@ -52,6 +52,18 @@ the same volume. With `ReadWriteOnce` both pods must land on the same node; with
 | `config.AZURE_OPENAI_DEPLOYMENTS` | `""` | Comma-separated deployment names; Azure exposes no listing |
 | `resources.limits.memory` | `1Gi` | Reports are built in memory from stored runs |
 
+## The plain manifests
+
+`deploy/kubernetes/citegeo.yaml` is generated from this chart, and CI fails if
+the two drift. Regenerate rather than editing it:
+
+```bash
+helm template citegeo deploy/helm/citegeo --namespace citegeo
+```
+
+Helm 3 and 4 differ on blank lines between documents, so the CI comparison
+ignores them and looks at content.
+
 ## Verifying a render
 
 ```bash
