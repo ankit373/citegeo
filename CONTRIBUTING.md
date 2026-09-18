@@ -37,6 +37,31 @@ These are not style preferences. Breaking one of them makes the tool dishonest.
 - Failures stay on the record rather than disappearing from the run.
 - Internal scaffolding (raw JSON, token cost, latency, prompt and run IDs) belongs in evidence views, not in the main report.
 
+## Signing off your commits
+
+Every commit in a pull request needs a `Signed-off-by` line matching its author.
+That line certifies the [Developer Certificate of Origin](DCO): you are saying
+you wrote the change, or you have the right to contribute it.
+
+Git adds the line for you:
+
+```bash
+git commit -s -m "your message"
+```
+
+If you already pushed commits without it:
+
+```bash
+git rebase --signoff origin/main
+git push --force-with-lease
+```
+
+Run the same check the CI runs before you push:
+
+```bash
+node scripts/check-dco.mjs origin/main HEAD
+```
+
 ## Signing the CLA
 
 Your first pull request needs a signed [Contributor License Agreement](CLA.md).

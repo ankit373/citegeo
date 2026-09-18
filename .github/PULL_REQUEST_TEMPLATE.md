@@ -22,4 +22,5 @@
 - [ ] No evidence-state colour used on chrome, per `DESIGN.md`
 - [ ] A result with missing evidence still reads as uncertain, not rounded up
 - [ ] No secrets, generated reports, private domains or run data committed
+- [ ] Every commit signed off with `git commit -s` (see [DCO](../DCO))
 - [ ] [CLA](../CLA.md) signed (first pull request only; the bot will ask)

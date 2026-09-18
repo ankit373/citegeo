@@ -1,0 +1,25 @@
+name: DCO
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  dco:
+    name: Commits are signed off
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      # The whole range has to be present to read each commit message.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Every commit carries a matching Signed-off-by
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/check-dco.mjs "$BASE_SHA" "$HEAD_SHA"
