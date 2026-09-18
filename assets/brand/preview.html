@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>citegeo logo preview</title>
+  <style>
+    :root {
+      --bg: #F5F1E8;
+      --panel: #FFFFFF;
+      --border: #DDD4C2;
+      --text: #1C1914;
+      --muted: #6E6455;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "General Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+      letter-spacing: 0;
+    }
+    main {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 32px 20px;
+    }
+    h1 { margin: 0 0 8px; font-family: "Cabinet Grotesk", ui-sans-serif, system-ui, sans-serif; font-size: 28px; letter-spacing: -0.01em; }
+    p { margin: 0 0 24px; color: var(--muted); }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+    .panel {
+      padding: 22px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--panel);
+    }
+    .panel.dark {
+      border-color: #332C22;
+      background: #14120F;
+      color: #F2EEE4;
+    }
+    .panel.dark p { color: #A89C87; }
+    img { display: block; max-width: 100%; height: auto; }
+    .mark-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .mark-row img { width: 72px; }
+    @media (max-width: 720px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>citegeo logo preview</h1>
+    <p>Vector assets for the open-source AI visibility monitor.</p>
+    <div class="grid">
+      <section class="panel">
+        <p>Lockup, light theme</p>
+        <img src="./citegeo-lockup-light.svg" alt="citegeo lockup on a light surface">
+      </section>
+      <section class="panel dark">
+        <p>Lockup, dark theme</p>
+        <img src="./citegeo-lockup.svg" alt="citegeo lockup on a dark surface">
+      </section>
+      <section class="panel">
+        <p>Emblem, light theme</p>
+        <div class="mark-row">
+          <img src="./citegeo-emblem-light.svg" alt="citegeo emblem">
+          <strong>citegeo</strong>
+        </div>
+      </section>
+      <section class="panel dark">
+        <p>Emblem, dark theme</p>
+        <div class="mark-row">
+          <img src="./citegeo-emblem.svg" alt="citegeo emblem on a dark surface">
+          <strong>citegeo</strong>
+        </div>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

@@ -1,0 +1,27 @@
+services:
+  citegeo:
+    build: .
+    ports:
+      - "127.0.0.1:${PORT:-8787}:8787"
+    environment:
+      PORT: "8787"
+      PRODUCT_DATA_DIR: /app/data/product-v2
+      MONITORING_DATA_DIR: /app/data
+      OPENROUTER_API_KEY: "${OPENROUTER_API_KEY:-}"
+      OPENROUTER_KEY: "${OPENROUTER_KEY:-}"
+    volumes:
+      - ./data:/app/data
+
+  citegeo-worker:
+    build: .
+    profiles: [monitoring]
+    command: ["node", "dist/src/product/scheduling/schedule-worker.js", "60"]
+    healthcheck:
+      disable: true
+    environment:
+      PRODUCT_DATA_DIR: /app/data/product-v2
+      MONITORING_DATA_DIR: /app/data
+      OPENROUTER_API_KEY: "${OPENROUTER_API_KEY:-}"
+      OPENROUTER_KEY: "${OPENROUTER_KEY:-}"
+    volumes:
+      - ./data:/app/data
