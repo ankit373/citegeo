@@ -10,6 +10,7 @@ const PROVIDER_ENV_KEYS: Record<string, string[]> = {
   perplexity: ["PERPLEXITY_API_KEY"],
   deepseek: ["DEEPSEEK_API_KEY"],
   "openai-compatible": ["OPENAI_COMPATIBLE_API_KEY"],
+  "azure-openai": ["AZURE_OPENAI_API_KEY"],
 };
 
 export function loadDotEnv(cwd = process.cwd()): void {

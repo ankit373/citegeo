@@ -245,17 +245,30 @@ export function renderProductPhase2AppHtml(): string {
         return '<section class="view"><div class="heading"><div><h1>Setup</h1><p class="subtle">Which providers this machine can actually run.</p></div></div><div class="empty"><div class="empty-copy"><h2>' + (state.providersState === "error" ? "Could not read provider status" : "Checking providers") + '</h2></div></div></section>';
       }
       const rows = state.providers.map((provider) => {
-        const mark = !provider.configured ? "Not configured" : provider.reachable ? "Ready" : "Unreachable";
-        const mode = provider.configured && provider.reachable ? "done" : provider.configured ? "warn" : "todo";
+        const paidBlocked = Boolean(provider.balance && !provider.balance.paidModelsRunnable);
+        const mark = !provider.configured ? "Not configured"
+          : !provider.reachable ? "Unreachable"
+          : paidBlocked && provider.freeModels ? "Free models only"
+          : !provider.runnableNow ? "Out of credit"
+          : "Ready";
+        const mode = provider.runnableNow ? "done" : provider.configured ? "warn" : "todo";
+        const counts = provider.modelCount + ' models'
+          + (provider.freeModels ? ' \\u00b7 ' + provider.freeModels + ' free to run' : '')
+          + (provider.nativeWebSearchModels ? ' \\u00b7 ' + provider.nativeWebSearchModels + ' with web search' : '');
         return '<li class="step" data-state="' + mode + '">'
-          + '<span class="step-index">' + (provider.reachable ? "\\u2022" : "\\u00b7") + '</span>'
+          + '<span class="step-index">' + (provider.runnableNow ? "\\u2022" : "\\u00b7") + '</span>'
           + '<span class="step-label">' + html(provider.label) + '<br><span class="step-note">' + html(provider.detail) + '</span></span>'
           + '<span class="step-note mono">' + html(provider.endpoint || "not set") + '</span>'
-          + '<span class="step-note">' + provider.modelCount + ' models' + (provider.nativeWebSearchModels ? ' \\u00b7 ' + provider.nativeWebSearchModels + ' with web search' : '') + '</span>'
+          + '<span class="step-note">' + counts + '</span>'
           + '<span class="step-mark">' + html(mark) + '</span></li>';
       }).join("");
+      const runnable = state.providers.filter((provider) => provider.runnableNow);
+      const banner = runnable.length
+        ? ''
+        : '<div class="warning-box">Nothing can run right now. Every configured provider is either out of credit, unreachable or has no models. A run started now would fail once per selected model.</div>';
       const envRows = state.providers.map((provider) => '<li>' + html(provider.label) + ': <span class="mono">' + html(provider.envKeys.join(", ")) + '</span></li>').join("");
       return '<section class="view"><div class="heading"><div><h1>Setup</h1><p class="subtle">Which providers this machine can actually run, and what each one costs you.</p></div><div class="inline-actions"><button type="button" class="button" data-reload-providers>Re-check</button></div></div>'
+        + banner
         + '<section class="section-card"><div class="section-head"><div><h2>Providers</h2><p class="subtle">A provider appears in the model picker only when it is configured and answering.</p></div></div><ol class="steps">' + rows + '</ol></section>'
         + '<section class="section-card"><div class="section-head"><div><h2>Where these come from</h2><p class="subtle">Set in .env at the repository root, then restart the server.</p></div></div><ul class="protocol-list">' + envRows + '<li>Local gateway endpoint: <span class="mono">OPENAI_COMPATIBLE_BASE_URL</span></li></ul></section></section>';
     }
