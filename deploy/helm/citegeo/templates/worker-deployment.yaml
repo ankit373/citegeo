@@ -1,0 +1,51 @@
+{{- if .Values.worker.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "citegeo.fullname" . }}-worker
+  labels:
+    {{- include "citegeo.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "citegeo.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: worker
+  template:
+    metadata:
+      labels:
+        {{- include "citegeo.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: worker
+    spec:
+      serviceAccountName: {{ include "citegeo.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: worker
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          command: ["node", "dist/src/product/scheduling/schedule-worker.js", {{ .Values.worker.intervalSeconds | quote }}]
+          {{- include "citegeo.env" . | nindent 10 }}
+          resources:
+            {{- toYaml .Values.worker.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: data
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "citegeo.pvcName" . }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: tmp
+          emptyDir: {}
+{{- end }}

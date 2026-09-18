@@ -40,7 +40,10 @@
     "freeze:phase2": "tsx scripts/freeze-phase2.ts freeze",
     "verify:phase2-freeze": "tsx scripts/freeze-phase2.ts verify",
     "verify:real": "tsx src/cli.ts verify-real --provider openrouter --model openai/gpt-4o-mini",
-    "test": "npm run self-check"
+    "test": "npm run self-check",
+    "check:scripts": "node scripts/check-emitted-scripts.mjs",
+    "check:docs": "node scripts/check-doc-links.mjs",
+    "check:all": "npm run self-check && npm run check:scripts && npm run check:docs"
   },
   "dependencies": {
     "cheerio": "^1.2.0",

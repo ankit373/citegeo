@@ -1,0 +1,29 @@
+CiteGEO {{ .Chart.AppVersion }} is installed as {{ include "citegeo.fullname" . }}.
+
+Reach it:
+{{- if .Values.ingress.enabled }}
+{{- range $host := .Values.ingress.hosts }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $host.host }}
+{{- end }}
+{{- else }}
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "citegeo.fullname" . }} 8787:{{ .Values.service.port }}
+  then open http://localhost:8787
+{{- end }}
+
+Before you expose this:
+
+  CiteGEO has no authentication. Anyone who reaches the port can read every
+  stored project, run and raw model answer, and can spend your provider
+  credit. Put an authenticating proxy in front of it, and consider
+  networkPolicy.enabled=true with an explicit ingressFrom.
+
+{{- if not .Values.persistence.enabled }}
+
+  persistence.enabled is false, so projects, runs and evidence live in an
+  emptyDir and are lost when the pod restarts.
+{{- end }}
+{{- if and (not .Values.secrets.existingSecret) (not .Values.secrets.create) }}
+
+  No provider credentials are configured, so no model can be called. Set
+  secrets.existingSecret to a secret holding your provider keys.
+{{- end }}

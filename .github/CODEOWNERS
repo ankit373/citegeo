@@ -1,0 +1,9 @@
+# Every change needs a maintainer review by default.
+*                       @ankit373
+
+# Areas where a mistake is silent rather than loud.
+/src/providers/         @ankit373
+/src/ui/                @ankit373
+/deploy/                @ankit373
+/.github/workflows/     @ankit373
+/DESIGN.md              @ankit373

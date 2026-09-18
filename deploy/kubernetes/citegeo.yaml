@@ -1,0 +1,177 @@
+# Plain manifests for a cluster without Helm, generated from the chart:
+#
+#   helm template citegeo deploy/helm/citegeo --namespace citegeo
+#
+# The chart is the source of truth. Regenerate rather than editing by hand.
+#
+# Before applying: CiteGEO has no authentication. Anyone who reaches the port
+# can read every stored answer and spend your provider credit. Create the
+# provider secret first and keep the service internal.
+#
+#   kubectl create namespace citegeo
+#   kubectl -n citegeo create secret generic citegeo-providers \
+#     --from-literal=OPENROUTER_API_KEY=...
+#
+---
+# Source: citegeo/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: citegeo
+  labels:
+    helm.sh/chart: citegeo-0.1.0
+    app.kubernetes.io/name: citegeo
+    app.kubernetes.io/instance: citegeo
+    app.kubernetes.io/version: "0.2.0"
+    app.kubernetes.io/managed-by: Helm
+
+---
+# Source: citegeo/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: citegeo
+  labels:
+    helm.sh/chart: citegeo-0.1.0
+    app.kubernetes.io/name: citegeo
+    app.kubernetes.io/instance: citegeo
+    app.kubernetes.io/version: "0.2.0"
+    app.kubernetes.io/managed-by: Helm
+data:
+  AZURE_OPENAI_API_VERSION: "2024-10-21"
+  MONITORING_DATA_DIR: "/app/data"
+  PORT: "8787"
+  PRODUCT_DATA_DIR: "/app/data/product-v2"
+  RUNS_DIR: "/app/data/runs"
+
+---
+# Source: citegeo/templates/pvc.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: citegeo-data
+  labels:
+    helm.sh/chart: citegeo-0.1.0
+    app.kubernetes.io/name: citegeo
+    app.kubernetes.io/instance: citegeo
+    app.kubernetes.io/version: "0.2.0"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+
+---
+# Source: citegeo/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: citegeo
+  labels:
+    helm.sh/chart: citegeo-0.1.0
+    app.kubernetes.io/name: citegeo
+    app.kubernetes.io/instance: citegeo
+    app.kubernetes.io/version: "0.2.0"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8787
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app.kubernetes.io/name: citegeo
+    app.kubernetes.io/instance: citegeo
+    app.kubernetes.io/component: server
+
+---
+# Source: citegeo/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: citegeo
+  labels:
+    helm.sh/chart: citegeo-0.1.0
+    app.kubernetes.io/name: citegeo
+    app.kubernetes.io/instance: citegeo
+    app.kubernetes.io/version: "0.2.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: server
+spec:
+  replicas: 1
+  # One writer against one volume: a rolling update would run two.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: citegeo
+      app.kubernetes.io/instance: citegeo
+      app.kubernetes.io/component: server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: citegeo
+        app.kubernetes.io/instance: citegeo
+        app.kubernetes.io/component: server
+      annotations:
+        checksum/config: a4d8b06fa43bb42f52e0212952029a7836d99223b89cb5f24ac8af3015eae715
+    spec:
+      serviceAccountName: citegeo
+      securityContext:
+        fsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: server
+          image: "ghcr.io/ankit373/citegeo:0.2.0"
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            readOnlyRootFilesystem: true
+          ports:
+            - name: http
+              containerPort: 8787
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: citegeo
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+          resources:
+            limits:
+              memory: 1Gi
+            requests:
+              cpu: 100m
+              memory: 256Mi
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+            # readOnlyRootFilesystem is on, so anything written needs a mount.
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: citegeo-data
+        - name: tmp
+          emptyDir: {}

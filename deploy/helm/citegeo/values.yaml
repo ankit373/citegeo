@@ -1,0 +1,111 @@
+# CiteGEO stores every project, run and raw model answer on disk, so the server
+# is a single writer against one volume. It is not horizontally scalable.
+replicaCount: 1
+
+image:
+  repository: ghcr.io/ankit373/citegeo
+  tag: ""            # defaults to .Chart.AppVersion
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+service:
+  type: ClusterIP
+  port: 8787
+
+# The application has no authentication of any kind. Anyone who reaches the
+# port can read every stored answer and spend your provider credit, so the
+# ingress is off by default and should sit behind an authenticating proxy.
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: citegeo.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+persistence:
+  enabled: true
+  storageClass: ""
+  accessMode: ReadWriteOnce
+  size: 10Gi
+  existingClaim: ""
+
+# Provider credentials. Prefer existingSecret so keys never sit in values.
+secrets:
+  existingSecret: ""
+  create: false
+  data:
+    OPENROUTER_API_KEY: ""
+    OPENAI_API_KEY: ""
+    ANTHROPIC_API_KEY: ""
+    GEMINI_API_KEY: ""
+    PERPLEXITY_API_KEY: ""
+    DEEPSEEK_API_KEY: ""
+    AZURE_OPENAI_API_KEY: ""
+
+# Non-secret configuration.
+config:
+  PORT: "8787"
+  PRODUCT_DATA_DIR: /app/data/product-v2
+  MONITORING_DATA_DIR: /app/data
+  RUNS_DIR: /app/data/runs
+  AZURE_OPENAI_ENDPOINT: ""
+  AZURE_OPENAI_API_VERSION: "2024-10-21"
+  AZURE_OPENAI_DEPLOYMENTS: ""
+  OPENAI_COMPATIBLE_BASE_URL: ""
+
+extraEnv: []
+
+# The scheduling worker shares the same volume, so it only runs where the
+# access mode allows a second writer, or on the same node with RWO.
+worker:
+  enabled: false
+  intervalSeconds: 60
+  resources: {}
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 1Gi
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: [ALL]
+
+# Denies everything except the ingress controller and outbound provider calls.
+networkPolicy:
+  enabled: false
+  ingressFrom: []
+
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

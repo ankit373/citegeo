@@ -1,0 +1,110 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Build and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck and unit tests
+        run: npm run self-check
+
+      # The unit suite asserts on HTML strings and never executes the page, so a
+      # broken inline script passes it. Parse what the server actually serves.
+      - name: Parse every inline script the server emits
+        run: node scripts/check-emitted-scripts.mjs
+
+      - name: Check documentation links resolve
+        run: node scripts/check-doc-links.mjs
+
+  chart:
+    name: Helm chart
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.16.2
+
+      - run: helm lint deploy/helm/citegeo
+
+      # Render every optional piece, not just the defaults.
+      - name: Render with all features enabled
+        run: |
+          helm template citegeo deploy/helm/citegeo \
+            --set ingress.enabled=true \
+            --set worker.enabled=true \
+            --set networkPolicy.enabled=true \
+            --set podDisruptionBudget.enabled=true \
+            --set secrets.create=true \
+            --set secrets.data.OPENROUTER_API_KEY=placeholder \
+            > /tmp/render.yaml
+          test -s /tmp/render.yaml
+
+      - name: Validate the rendered manifests
+        uses: instrumenta/kubeval-action@master
+        continue-on-error: true
+        with:
+          files: /tmp/render.yaml
+
+      - name: The checked-in manifests match the chart
+        run: |
+          helm template citegeo deploy/helm/citegeo --namespace citegeo > /tmp/fresh.yaml
+          # Skip the hand-written header; compare from the first document marker.
+          awk '/^---$/{found=1} found' deploy/kubernetes/citegeo.yaml > /tmp/committed.yaml
+          diff -u /tmp/committed.yaml /tmp/fresh.yaml \
+            || { echo "deploy/kubernetes/citegeo.yaml is stale; regenerate it from the chart"; exit 1; }
+
+  docker:
+    name: Docker image builds
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      # Catches a Dockerfile that copies files which no longer exist.
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          load: true
+          tags: citegeo:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: The container serves health and its brand assets
+        run: |
+          docker run -d --name citegeo -p 8787:8787 citegeo:ci
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:8787/health >/dev/null 2>&1 && break
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:8787/health
+          curl -fsS -o /dev/null http://127.0.0.1:8787/assets/brand/citegeo-lockup.svg
+          docker rm -f citegeo

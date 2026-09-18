@@ -1,0 +1,17 @@
+apiVersion: v2
+name: citegeo
+description: Self-hosted tracking of how AI models describe your brand, who they name instead, and which sources they cite
+type: application
+version: 0.1.0
+appVersion: "0.2.0"
+home: https://github.com/ankit373/citegeo
+sources:
+  - https://github.com/ankit373/citegeo
+keywords:
+  - ai
+  - llm
+  - brand-visibility
+  - geo
+maintainers:
+  - name: ankit373
+    url: https://github.com/ankit373

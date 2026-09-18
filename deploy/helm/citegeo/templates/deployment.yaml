@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "citegeo.fullname" . }}
+  labels:
+    {{- include "citegeo.labels" . | nindent 4 }}
+    app.kubernetes.io/component: server
+spec:
+  replicas: {{ .Values.replicaCount }}
+  # One writer against one volume: a rolling update would run two.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "citegeo.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: server
+  template:
+    metadata:
+      labels:
+        {{- include "citegeo.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: server
+        {{- with .Values.podLabels }}{{- toYaml . | nindent 8 }}{{- end }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}{{- toYaml . | nindent 8 }}{{- end }}
+    spec:
+      serviceAccountName: {{ include "citegeo.serviceAccountName" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: server
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: 8787
+              protocol: TCP
+          {{- include "citegeo.env" . | nindent 10 }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+            # readOnlyRootFilesystem is on, so anything written needs a mount.
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: data
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "citegeo.pvcName" . }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: tmp
+          emptyDir: {}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
