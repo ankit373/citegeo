@@ -9,6 +9,7 @@ import { ProductConfigurationFileStore } from "./configuration/configuration-sto
 import { handleProductConfigurationApi } from "./configuration/configuration-http.js";
 import { OpenRouterProductModelCatalog } from "./configuration/model-catalog.js";
 import { CompositeProductModelCatalog, OpenAiCompatibleProductModelCatalog } from "./configuration/local-model-catalog.js";
+import { providerStatuses } from "./configuration/provider-status.js";
 import { hasProviderKey } from "../config/env.js";
 import { ProductModelSelectionService } from "./configuration/model-selection-service.js";
 import type { ProductModelCatalog } from "./configuration/model-selection-schema.js";
@@ -107,6 +108,10 @@ async function handle(req: IncomingMessage, res: ServerResponse, dependencies: P
     return send(res, 200, measurementView ? renderProductPhase5AppHtml() : renderProductPhase4AppHtml(), "text/html; charset=utf-8");
   }
   if (method === "GET" && url.pathname === "/health") return send(res, 200, { ok: true });
+  if (method === "GET" && url.pathname === "/api/providers") {
+    return send(res, 200, { providers: await providerStatuses(catalog) });
+  }
+
   if (method === "GET" && route[0] === "assets" && route.length > 1) {
     const root = resolve("assets");
     const path = resolve(root, route.slice(1).join("/"));
