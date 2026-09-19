@@ -12,6 +12,10 @@ jobs:
     name: Commits are signed off
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    # The DCO exists so an outside contributor certifies the origin of their
+    # work. The repository owner is the party being certified to, so their own
+    # pull requests are not asked to sign, matching the CLA allowlist.
+    if: ${{ !contains(fromJSON('["ankit373"]'), github.event.pull_request.user.login) }}
     steps:
       # The whole range has to be present to read each commit message.
       - uses: actions/checkout@v7
