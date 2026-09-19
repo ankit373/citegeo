@@ -1,4 +1,4 @@
-import { providerEnvKeys } from "../../config/env.js";
+import { credentialEnvKeys, integration } from "./integrations.js";
 import { CredentialFileStore, credentialKey, decryptSecret, encryptSecret } from "./credential-store.js";
 
 // The rules live here rather than in the HTTP layer, so a future caller cannot
@@ -8,6 +8,11 @@ export type CredentialSource = "environment" | "stored" | "none";
 
 export interface CredentialStatus {
   providerId: string;
+  label: string;
+  kind: string;
+  purpose: string;
+  help: string;
+  settings: Array<{ key: string; label: string; envKey: string; value: string | null }>;
   source: CredentialSource;
   /** Enough to recognise the key, never enough to use it. */
   last4: string | null;
@@ -30,7 +35,7 @@ export interface CredentialWriteResult {
 }
 
 function envValue(providerId: string): string | null {
-  for (const key of providerEnvKeys(providerId)) {
+  for (const key of credentialEnvKeys(providerId)) {
     const value = process.env[key]?.trim();
     if (value) return value;
   }
@@ -49,23 +54,31 @@ export class CredentialService {
     return providerIds.map((providerId) => {
       const fromEnv = envValue(providerId);
       const stored = file[providerId];
+      const definition = integration(providerId);
+      // Settings are not secrets, so their values are shown: a wrong endpoint
+      // is a thing you have to see to fix.
+      const settings = (definition?.settings || []).map((setting) => ({
+        ...setting,
+        value: process.env[setting.envKey]?.trim() || null,
+      }));
+      const shared = {
+        providerId,
+        label: definition?.label || providerId,
+        kind: definition?.kind || "integration",
+        purpose: definition?.purpose || "",
+        help: definition?.help || "",
+        settings,
+        envKeys: credentialEnvKeys(providerId),
+      };
       if (fromEnv) {
-        return {
-          providerId,
-          source: "environment" as const,
-          last4: fromEnv.slice(-4),
-          updatedAt: null,
-          editable: false,
-          envKeys: providerEnvKeys(providerId),
-        };
+        return { ...shared, source: "environment" as const, last4: fromEnv.slice(-4), updatedAt: null, editable: false };
       }
       return {
-        providerId,
+        ...shared,
         source: stored ? ("stored" as const) : ("none" as const),
         last4: stored?.last4 ?? null,
         updatedAt: stored?.updatedAt ?? null,
         editable: true,
-        envKeys: providerEnvKeys(providerId),
       };
     });
   }
@@ -91,7 +104,7 @@ export class CredentialService {
     if (envValue(providerId)) {
       return {
         outcome: "owned_by_environment",
-        detail: `This key comes from ${providerEnvKeys(providerId).join(" or ")}. Remove it from the environment before setting one here, or the stored value would be ignored.`,
+        detail: `This key comes from ${credentialEnvKeys(providerId).join(" or ")}. Remove it from the environment before setting one here, or the stored value would be ignored.`,
       };
     }
     if (typeof secret !== "string" || secret.trim().length < 8) {

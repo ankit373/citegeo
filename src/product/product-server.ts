@@ -35,6 +35,7 @@ import { clearedCookie, issueSession, sessionCookie } from "./auth/session.js";
 import { renderLoginPageHtml } from "../ui/login-page.js";
 import { CredentialFileStore } from "./auth/credential-store.js";
 import { CredentialService } from "./auth/credential-service.js";
+import { integrationIds } from "./auth/integrations.js";
 import type { CsvTable } from "./insights/csv.js";
 import { renderProductPhase4AppHtml } from "../ui/product-phase4-app.js";
 import { ProductMeasurementFileStore } from "./measurements/measurement-store.js";
@@ -57,7 +58,7 @@ export interface ProductServerDependencies {
 
 const AUTH = authConfig();
 const CREDENTIALS = new CredentialService(new CredentialFileStore(productDataDir()));
-const CREDENTIAL_PROVIDERS = ["openrouter", "openai-compatible", "azure-openai"];
+const CREDENTIAL_PROVIDERS = integrationIds();
 
 function httpsRequest(req: IncomingMessage): boolean {
   const forwarded = req.headers["x-forwarded-proto"];
