@@ -110,6 +110,9 @@ rounded:
 
 ## Decisions Log
 
+- 2026-09-19: Adopted the information architecture of Profound's **product**, not its marketing site: a dashboard-first landing so the first thing seen is a number rather than a form, one chart area with a metric switcher, a trend shown beside a ranked table rather than instead of it, and a filter bar whose state persists between sessions. Their marketing site is a card grid with generous whitespace, which is the pattern this document already rejects for the workbench; their app is described in every review as dense and data-heavy, which is what this document asks for. So the density, the tables and the semantic colour system here are unchanged, and only the arrangement is borrowed.
+- 2026-09-19: A chart never plots an absence as a zero. A run that parsed no answer leaves a gap in the line, and a percentage axis is fixed to 0-100 rather than scaled to the data, so a run of zeros cannot produce an axis that implies movement.
+
 - 2026-09-11: Replaced the prior black-background/white-geometric-mark identity (structurally identical to Profound's near-black-plus-one-accent formula) with a semantic, functional color system and a warm-charcoal base, after direct CSS/font research on Profound, Peec, and Otterly confirmed the category has converged on one look.
 - 2026-09-11: Chose Cabinet Grotesk + General Sans + JetBrains Mono over Inter/Geist, both banned as a display voice per the anti-convergence research, and both already the choice of at least one direct competitor.
 - 2026-09-11: Settled the name as CiteGEO and adopted a quotation-mark glyph as the mark.

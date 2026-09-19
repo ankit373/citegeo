@@ -97,6 +97,15 @@ export function claimsFromArchive(input: {
   };
 }
 
+export interface TrendPoint {
+  runId: string;
+  at: string;
+  answered: number;
+  recognized: number;
+  /** null when a run produced no parsable answer, so a failed run is not 0%. */
+  score: number | null;
+}
+
 export interface ProjectInsights {
   projectId: string;
   domain: string;
@@ -105,6 +114,8 @@ export interface ProjectInsights {
   citationGap: CitationGapEntry[];
   claimAudit: ClaimAudit;
   fanout: FanoutAnalysis;
+  /** Visibility per run, oldest first, so movement can be drawn. */
+  trend: TrendPoint[];
   /** Own-domain paths any answer cited, for correlating against crawler logs. */
   citedPaths: string[];
 }
@@ -141,9 +152,12 @@ export class ProductInsightsService {
     const claims: AnswerClaims[] = [];
     const rawResponses: Array<{ modelId: string; raw: unknown }> = [];
     const citedUrls: string[] = [];
+    const trend: TrendPoint[] = [];
 
     for (const run of considered) {
       const detail = await this.recognition.get(projectId, run.id);
+      let runAnswered = 0;
+      let runRecognized = 0;
       for (const modelRun of detail.modelRuns) {
         const modelDetail = await this.recognition.getModelRun(projectId, run.id, modelRun.id);
         if (!modelDetail.archive) continue;
@@ -151,7 +165,12 @@ export class ProductInsightsService {
           modelId: modelRun.modelSnapshot.modelId,
           displayName: modelRun.modelSnapshot.displayName,
         };
-        answers.push(answerFromArchive({ archive: modelDetail.archive, ...identity }));
+        const answer = answerFromArchive({ archive: modelDetail.archive, ...identity });
+        if (answer.answered) {
+          runAnswered += 1;
+          if (answer.recognized) runRecognized += 1;
+        }
+        answers.push(answer);
         claims.push(claimsFromArchive({ archive: modelDetail.archive, ...identity }));
         for (const citation of modelDetail.archive.providerCitations) citedUrls.push(citation.url);
         for (const mentioned of modelDetail.archive.answerMentionedUrls) citedUrls.push(mentioned.url);
@@ -161,7 +180,17 @@ export class ProductInsightsService {
           }
         }
       }
+      trend.push({
+        runId: run.id,
+        // A run with no timestamp still counts; it just cannot be placed in
+        // time, and one missing field must not fail the whole build.
+        at: run.createdAt || "",
+        answered: runAnswered,
+        recognized: runRecognized,
+        score: runAnswered ? runRecognized / runAnswered : null,
+      });
     }
+    trend.sort((left, right) => (left.at || "").localeCompare(right.at || ""));
 
     const value: ProjectInsights = {
       projectId,
@@ -171,6 +200,7 @@ export class ProductInsightsService {
       citationGap: buildCitationGap({ target: project.normalizedDomain, answers }),
       claimAudit: buildClaimAudit({ answers: claims }),
       fanout: buildFanoutAnalysis({ answers: rawResponses }),
+      trend,
       citedPaths: citedPathsForDomain(citedUrls, project.normalizedDomain),
     };
     this.cached = { key, value };
