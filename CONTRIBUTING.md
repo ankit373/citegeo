@@ -17,6 +17,10 @@ You need at least one real provider key before you can run anything meaningful. 
 
 ## Good places to start
 
+[ROADMAP.md](ROADMAP.md) lists what the project intends to build next, what it
+has decided not to build, and why. It is the best place to find work that is
+wanted rather than work that is merely possible.
+
 - Provider adapters for models not yet covered
 - Prompt generation, particularly for keyword tests that must not leak the brand name
 - Competitor entity resolution and confirmation

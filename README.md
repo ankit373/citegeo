@@ -97,6 +97,7 @@ A handful of runs over a few minutes is not a trend. Treat it as a baseline.
 - [Known issues](docs/known-issues.md) · [Limitations](docs/limitations.md)
 - [Design system](DESIGN.md) · [Brand](docs/brand.md)
 - [Contributing](CONTRIBUTING.md) · [Security policy](SECURITY.md)
+- [Roadmap](ROADMAP.md), including what this deliberately will not build
 
 ## Licence
 
