@@ -33,6 +33,8 @@ import { toCsv } from "./insights/csv.js";
 import { authConfig, authorise, passwordMatches } from "./auth/auth-guard.js";
 import { clearedCookie, issueSession, sessionCookie } from "./auth/session.js";
 import { renderLoginPageHtml } from "../ui/login-page.js";
+import { CredentialFileStore } from "./auth/credential-store.js";
+import { CredentialService } from "./auth/credential-service.js";
 import type { CsvTable } from "./insights/csv.js";
 import { renderProductPhase4AppHtml } from "../ui/product-phase4-app.js";
 import { ProductMeasurementFileStore } from "./measurements/measurement-store.js";
@@ -54,6 +56,8 @@ export interface ProductServerDependencies {
 }
 
 const AUTH = authConfig();
+const CREDENTIALS = new CredentialService(new CredentialFileStore(productDataDir()));
+const CREDENTIAL_PROVIDERS = ["openrouter", "openai-compatible", "azure-openai"];
 
 function httpsRequest(req: IncomingMessage): boolean {
   const forwarded = req.headers["x-forwarded-proto"];
@@ -192,6 +196,33 @@ async function handle(req: IncomingMessage, res: ServerResponse, dependencies: P
     if (path === root || !path.startsWith(root + sep) || !existsSync(path)) return send(res, 404, { error: "asset not found" });
     if (!(await stat(path)).isFile()) return send(res, 404, { error: "asset not found" });
     return sendAsset(res, path);
+  }
+
+  if (route[0] === "api" && route[1] === "credentials") {
+    // Without a password anyone reaching the port could store a key and spend
+    // through it, so this stays closed rather than relying on the network.
+    if (!AUTH.enabled) {
+      return send(res, 403, {
+        error: "Set AUTH_PASSWORD before managing keys here. Without a password this endpoint would be open to anyone who reaches the port.",
+      });
+    }
+    if (method === "GET" && route.length === 2) {
+      return send(res, 200, {
+        storageEnabled: CREDENTIALS.storageEnabled(),
+        credentials: await CREDENTIALS.status(CREDENTIAL_PROVIDERS),
+      });
+    }
+    const providerId = route[2] || "";
+    if (!CREDENTIAL_PROVIDERS.includes(providerId)) return send(res, 404, { error: `Unknown provider "${providerId}".` });
+    if (method === "PUT" && route.length === 3) {
+      const body = await readJson(req) as { secret?: unknown };
+      const result = await CREDENTIALS.save(providerId, body.secret);
+      // The key never comes back, whatever happened to it.
+      return send(res, result.outcome === "saved" ? 200 : 400, result);
+    }
+    if (method === "DELETE" && route.length === 3) {
+      return send(res, 200, await CREDENTIALS.clear(providerId));
+    }
   }
 
   if (method === "GET" && route.length === 5 && route[0] === "api" && route[1] === "projects" && route[3] === "export") {
