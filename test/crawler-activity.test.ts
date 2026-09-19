@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { identifyCrawler } from "../src/product/crawlers/crawler-identity.js";
 import { parseAccessLog, parseAccessLogLine, parseLogTimestamp } from "../src/product/crawlers/access-log.js";
 import { buildCrawlerActivity } from "../src/product/crawlers/crawler-activity.js";
+import { citedPathsForDomain } from "../src/product/insights/insights-service.js";
 
 const line = (path: string, ua: string, status = 200, when = "19/Sep/2026:12:00:00 +0000") =>
   `1.2.3.4 - - [${when}] "GET ${path} HTTP/1.1" ${status} 512 "-" "${ua}"`;
@@ -109,4 +110,18 @@ test("the window spans the first and last fetch seen", () => {
 
 test("timestamp parsing rejects a bad month instead of inventing one", () => {
   assert.equal(parseLogTimestamp("19/Xxx/2026:12:00:00 +0000"), null);
+});
+
+test("only the project's own URLs become correlatable paths", () => {
+  const paths = citedPathsForDomain([
+    "https://example.com/pricing/",
+    "https://www.example.com/about",
+    "https://other.com/review",
+    "not a url",
+  ], "example.com");
+  assert.deepEqual(paths, ["/about", "/pricing"]);
+});
+
+test("the bare homepage keeps its single slash", () => {
+  assert.deepEqual(citedPathsForDomain(["https://example.com/"], "www.example.com"), ["/"]);
 });

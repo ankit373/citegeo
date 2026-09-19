@@ -3,6 +3,8 @@ import type { ProductRecognitionRunService } from "../recognition/recognition-se
 import type { RecognitionArchive } from "../recognition/recognition-schema.js";
 import { buildBrandInsights, buildCitationGap } from "./brand-insights.js";
 import { buildClaimAudit } from "./claim-audit.js";
+import { buildFanoutAnalysis } from "./query-fanout.js";
+import type { FanoutAnalysis } from "./query-fanout.js";
 import type { AnswerClaims, ClaimAudit, ClaimField } from "./claim-audit.js";
 import type { BrandInsights, CitationGapEntry, InsightAnswer } from "./brand-insights.js";
 
@@ -12,6 +14,28 @@ function hostOf(url: string): string {
   } catch {
     return "";
   }
+}
+
+function sameDomain(host: string, domain: string): boolean {
+  const left = host.toLocaleLowerCase().startsWith("www.") ? host.slice(4).toLocaleLowerCase() : host.toLocaleLowerCase();
+  const right = domain.toLocaleLowerCase().startsWith("www.") ? domain.slice(4).toLocaleLowerCase() : domain.toLocaleLowerCase();
+  return left === right;
+}
+
+/** Paths of cited URLs that belong to the project's own domain. */
+export function citedPathsForDomain(urls: string[], domain: string): string[] {
+  const paths = new Set<string>();
+  for (const url of urls) {
+    try {
+      const parsed = new URL(url);
+      if (!sameDomain(parsed.hostname, domain)) continue;
+      const path = parsed.pathname || "/";
+      paths.add(path.length > 1 && path.endsWith("/") ? path.slice(0, -1) : path);
+    } catch {
+      continue;
+    }
+  }
+  return [...paths].sort();
 }
 
 /** Flattens one stored archive into the narrow shape the analytics read. */
@@ -80,6 +104,9 @@ export interface ProjectInsights {
   insights: BrandInsights;
   citationGap: CitationGapEntry[];
   claimAudit: ClaimAudit;
+  fanout: FanoutAnalysis;
+  /** Own-domain paths any answer cited, for correlating against crawler logs. */
+  citedPaths: string[];
 }
 
 export class ProductInsightsService {
@@ -98,6 +125,8 @@ export class ProductInsightsService {
     const considered = options.runLimit ? runs.slice(0, options.runLimit) : runs;
     const answers: InsightAnswer[] = [];
     const claims: AnswerClaims[] = [];
+    const rawResponses: Array<{ modelId: string; raw: unknown }> = [];
+    const citedUrls: string[] = [];
 
     for (const run of considered) {
       const detail = await this.recognition.get(projectId, run.id);
@@ -110,6 +139,13 @@ export class ProductInsightsService {
         };
         answers.push(answerFromArchive({ archive: modelDetail.archive, ...identity }));
         claims.push(claimsFromArchive({ archive: modelDetail.archive, ...identity }));
+        for (const citation of modelDetail.archive.providerCitations) citedUrls.push(citation.url);
+        for (const mentioned of modelDetail.archive.answerMentionedUrls) citedUrls.push(mentioned.url);
+        for (const attempt of modelDetail.attempts) {
+          if (attempt.rawProviderResponse !== undefined) {
+            rawResponses.push({ modelId: identity.modelId, raw: attempt.rawProviderResponse });
+          }
+        }
       }
     }
 
@@ -120,6 +156,8 @@ export class ProductInsightsService {
       insights: buildBrandInsights({ target: project.normalizedDomain, brandNames: [project.name], answers }),
       citationGap: buildCitationGap({ target: project.normalizedDomain, answers }),
       claimAudit: buildClaimAudit({ answers: claims }),
+      fanout: buildFanoutAnalysis({ answers: rawResponses }),
+      citedPaths: citedPathsForDomain(citedUrls, project.normalizedDomain),
     };
   }
 }
