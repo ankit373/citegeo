@@ -24,6 +24,7 @@ import { ProductRecognitionFileStore } from "./recognition/recognition-store.js"
 import { RecognitionReportFileStore } from "./reports/report-store.js";
 import { RecognitionReportService } from "./reports/report-service.js";
 import { handleRecognitionReportApi } from "./reports/report-http.js";
+import { ProductInsightsService } from "./insights/insights-service.js";
 import { renderProductPhase4AppHtml } from "../ui/product-phase4-app.js";
 import { ProductMeasurementFileStore } from "./measurements/measurement-store.js";
 import { ProductWatchSetService } from "./measurements/watchset-service.js";
@@ -98,6 +99,7 @@ async function handle(req: IncomingMessage, res: ServerResponse, dependencies: P
   const recognition = new ProductRecognitionRunService(projects, baselines, recognitionStore, dependencies.recognitionExecutor);
   const reportStore = new RecognitionReportFileStore(projectStore);
   const reports = new RecognitionReportService(projects, baselines, recognitionStore, reportStore);
+  const insights = new ProductInsightsService(projects, recognition);
   const measurementStore = new ProductMeasurementFileStore(projectStore);
   const watchSets = new ProductWatchSetService(projects, baselines, measurementStore, recognitionStore, reportStore);
   const measurements = new ProductMeasurementRunService(projects, baselines, watchSets, measurementStore, dependencies.measurementExecutor || dependencies.recognitionExecutor);
@@ -119,6 +121,14 @@ async function handle(req: IncomingMessage, res: ServerResponse, dependencies: P
     if (path === root || !path.startsWith(root + sep) || !existsSync(path)) return send(res, 404, { error: "asset not found" });
     if (!(await stat(path)).isFile()) return send(res, 404, { error: "asset not found" });
     return sendAsset(res, path);
+  }
+
+  if (method === "GET" && route.length === 4 && route[0] === "api" && route[1] === "projects" && route[3] === "insights") {
+    try {
+      return send(res, 200, await insights.build(route[2] || ""));
+    } catch (error) {
+      return send(res, 404, { error: error instanceof Error ? error.message : String(error) });
+    }
   }
 
   if (await handleProductConfigurationApi({ method, route, projects, selections, baselines, catalog, readJson: () => readJson(req), send: (status, body) => send(res, status, body) })) return;
