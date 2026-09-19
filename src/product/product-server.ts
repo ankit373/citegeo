@@ -1,181 +1,33 @@
-import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
-import { readFile, stat } from "node:fs/promises";
+import type { IncomingMessage, ServerResponse } from "node:http";
+import { formOrJsonBody, httpsRequest, readJson, send, sendAsset } from "./http-io.js";
+import { createServer } from "node:http";
+import { stat } from "node:fs/promises";
 import { existsSync } from "node:fs";
-import { extname, resolve, sep } from "node:path";
+import { resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
-import { loadDotEnv, productDataDir } from "../config/env.js";
-import { PROVIDER_MODEL_CAPABILITIES } from "../providers/catalog.js";
-import { ProductConfigurationFileStore } from "./configuration/configuration-store.js";
+import { loadDotEnv } from "../config/env.js";
 import { handleProductConfigurationApi } from "./configuration/configuration-http.js";
-import { OpenRouterProductModelCatalog } from "./configuration/model-catalog.js";
-import { AzureOpenAiProductModelCatalog, CompositeProductModelCatalog, OpenAiCompatibleProductModelCatalog } from "./configuration/local-model-catalog.js";
-import { providerStatuses } from "./configuration/provider-status.js";
-import { hasProviderKey, serverHost } from "../config/env.js";
-import { ProductModelSelectionService } from "./configuration/model-selection-service.js";
-import type { ProductModelCatalog } from "./configuration/model-selection-schema.js";
-import { ProductBaselineService } from "./configuration/baseline-service.js";
+import { serverHost } from "../config/env.js";
 import { handleProductProjectApi } from "./projects/project-http.js";
-import { ProductProjectService } from "./projects/project-service.js";
-import { ProductProjectFileStore } from "./projects/project-store.js";
 import { handleProductRecognitionApi, handleProductRecognitionRetryApi } from "./recognition/recognition-http.js";
-import type { RecognitionAnswerExecutor } from "./recognition/recognition-service.js";
-import { ProductRecognitionRunService } from "./recognition/recognition-service.js";
-import { ProductRecognitionFileStore } from "./recognition/recognition-store.js";
-import { RecognitionReportFileStore } from "./reports/report-store.js";
-import { RecognitionReportService } from "./reports/report-service.js";
 import { handleRecognitionReportApi } from "./reports/report-http.js";
-import { ProductInsightsService } from "./insights/insights-service.js";
-import { CrawlerLogIngestService, CrawlerLogStateStore } from "./crawlers/crawler-ingest.js";
-import { SiteSignalProbeService } from "./actions/signal-probe.js";
-import { SiteSignalFileStore } from "./actions/signal-store.js";
-import { buildActionPlan } from "./actions/action-plan.js";
-import { toCsv } from "./insights/csv.js";
-import { authConfig, authorise, passwordMatches } from "./auth/auth-guard.js";
+import { handleActionApi } from "./actions/action-http.js";
+import { handleInsightsApi } from "./insights/insights-http.js";
+import { handleCrawlerApi } from "./crawlers/crawler-http.js";
+import { handleCredentialApi } from "./auth/credential-http.js";
+import { handleProviderStatusApi } from "./configuration/provider-http.js";
+import { authorise, passwordMatches } from "./auth/auth-guard.js";
 import { clearedCookie, issueSession, sessionCookie } from "./auth/session.js";
 import { renderLoginPageHtml } from "../ui/login-page.js";
-import { CredentialFileStore } from "./auth/credential-store.js";
-import { CredentialService } from "./auth/credential-service.js";
-import { integrationIds } from "./auth/integrations.js";
-import type { CsvTable } from "./insights/csv.js";
 import { renderProductPhase4AppHtml } from "../ui/product-phase4-app.js";
-import { ProductMeasurementFileStore } from "./measurements/measurement-store.js";
-import { ProductWatchSetService } from "./measurements/watchset-service.js";
-import { ProductMeasurementRunService } from "./measurements/measurement-service.js";
-import { ProductMeasurementStatsService } from "./measurements/measurement-stats.js";
 import { handleMeasurementApi } from "./measurements/measurement-http.js";
-import { ProductScheduleFileStore } from "./scheduling/schedule-store.js";
-import { ProductScheduleService } from "./scheduling/schedule-service.js";
 import { handleScheduleApi } from "./scheduling/schedule-http.js";
 import { renderProductPhase5AppHtml } from "../ui/product-phase5-app.js";
+import { createProductServices } from "./product-services.js";
+import type { ProductServerDependencies, ProductServices } from "./product-services.js";
 
 loadDotEnv();
 
-export interface ProductServerDependencies {
-  modelCatalog?: ProductModelCatalog | undefined;
-  recognitionExecutor?: RecognitionAnswerExecutor | undefined;
-  measurementExecutor?: RecognitionAnswerExecutor | undefined;
-}
-
-const CREDENTIAL_PROVIDERS = integrationIds();
-
-function httpsRequest(req: IncomingMessage): boolean {
-  const forwarded = req.headers["x-forwarded-proto"];
-  const value = Array.isArray(forwarded) ? forwarded[0] : forwarded;
-  return (value || "").split(",")[0]?.trim() === "https";
-}
-
-async function formOrJsonBody(req: IncomingMessage): Promise<Record<string, string>> {
-  const chunks: Buffer[] = [];
-  for await (const chunk of req) chunks.push(chunk as Buffer);
-  const raw = Buffer.concat(chunks).toString("utf8");
-  const type = String(req.headers["content-type"] || "");
-  if (type.includes("application/json")) {
-    try {
-      const parsed = JSON.parse(raw) as Record<string, unknown>;
-      const out: Record<string, string> = {};
-      for (const [key, value] of Object.entries(parsed)) if (typeof value === "string") out[key] = value;
-      return out;
-    } catch {
-      return {};
-    }
-  }
-  const params = new URLSearchParams(raw);
-  const out: Record<string, string> = {};
-  for (const [key, value] of params) out[key] = value;
-  return out;
-}
-
-function send(res: ServerResponse, status: number, body: unknown, contentType = "application/json"): void {
-  res.writeHead(status, { "Content-Type": contentType });
-  res.end(contentType === "application/json" ? JSON.stringify(body, null, 2) : String(body));
-}
-
-function assetContentType(path: string): string {
-  const ext = extname(path).toLowerCase();
-  if (ext === ".svg") return "image/svg+xml; charset=utf-8";
-  if (ext === ".html") return "text/html; charset=utf-8";
-  if (ext === ".png") return "image/png";
-  if (ext === ".ico") return "image/x-icon";
-  return "application/octet-stream";
-}
-
-async function sendAsset(res: ServerResponse, path: string): Promise<void> {
-  res.writeHead(200, {
-    "Content-Type": assetContentType(path),
-    "Cache-Control": "public, max-age=3600",
-  });
-  res.end(await readFile(path));
-}
-
-async function readJson(req: IncomingMessage): Promise<Record<string, unknown>> {
-  const chunks: Buffer[] = [];
-  for await (const chunk of req) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-  if (chunks.length === 0) return {};
-  return JSON.parse(Buffer.concat(chunks).toString("utf8")) as Record<string, unknown>;
-}
-
-// OpenRouter needs a funded key; the local gateway needs only a base URL. Offer
-// whichever is actually configured so a machine with neither is not shown models
-// it cannot call.
-function defaultProductCatalog(): ProductModelCatalog {
-  const catalogs: ProductModelCatalog[] = [];
-  if (hasProviderKey("openrouter")) catalogs.push(new OpenRouterProductModelCatalog(PROVIDER_MODEL_CAPABILITIES));
-  if (hasProviderKey("openai-compatible")) catalogs.push(new OpenAiCompatibleProductModelCatalog());
-  if (hasProviderKey("azure-openai")) catalogs.push(new AzureOpenAiProductModelCatalog());
-  if (!catalogs.length) catalogs.push(new OpenRouterProductModelCatalog(PROVIDER_MODEL_CAPABILITIES));
-  return new CompositeProductModelCatalog(catalogs);
-}
-
-export interface ProductServices {
-  projects: ProductProjectService;
-  catalog: ProductModelCatalog;
-  selections: ProductModelSelectionService;
-  baselines: ProductBaselineService;
-  recognition: ProductRecognitionRunService;
-  reports: RecognitionReportService;
-  insights: ProductInsightsService;
-  signals: SiteSignalProbeService;
-  crawlerLog: CrawlerLogIngestService;
-  watchSets: ProductWatchSetService;
-  measurements: ProductMeasurementRunService;
-  stats: ProductMeasurementStatsService;
-  schedules: ProductScheduleService;
-  credentials: CredentialService;
-  auth: ReturnType<typeof authConfig>;
-}
-
-/**
- * Builds the service graph once per server. It used to be rebuilt on every
- * request, which quietly discarded anything a service held between calls: the
- * insights cache never survived a request, so it cached nothing.
- */
-export function createProductServices(dependencies: ProductServerDependencies = {}): ProductServices {
-  const projectStore = new ProductProjectFileStore(productDataDir());
-  const projects = new ProductProjectService(projectStore);
-  const configurationStore = new ProductConfigurationFileStore(projectStore);
-  const catalog = dependencies.modelCatalog || defaultProductCatalog();
-  const selections = new ProductModelSelectionService(projects, configurationStore, catalog);
-  const baselines = new ProductBaselineService(projects, selections, configurationStore);
-  const recognitionStore = new ProductRecognitionFileStore(projectStore);
-  const recognition = new ProductRecognitionRunService(projects, baselines, recognitionStore, dependencies.recognitionExecutor);
-  const reportStore = new RecognitionReportFileStore(projectStore);
-  const reports = new RecognitionReportService(projects, baselines, recognitionStore, reportStore);
-  const insights = new ProductInsightsService(projects, recognition);
-  const signals = new SiteSignalProbeService(projects, new SiteSignalFileStore(projectStore));
-  const crawlerLog = new CrawlerLogIngestService(new CrawlerLogStateStore(productDataDir()));
-  const measurementStore = new ProductMeasurementFileStore(projectStore);
-  const watchSets = new ProductWatchSetService(projects, baselines, measurementStore, recognitionStore, reportStore);
-  const measurements = new ProductMeasurementRunService(projects, baselines, watchSets, measurementStore, dependencies.measurementExecutor || dependencies.recognitionExecutor);
-  const stats = new ProductMeasurementStatsService(projects, measurementStore);
-  const schedules = new ProductScheduleService(projects, baselines, watchSets, measurements, new ProductScheduleFileStore(projectStore));
-
-  return {
-    projects, catalog, selections, baselines, recognition, reports, insights,
-    signals, crawlerLog, watchSets, measurements, stats, schedules,
-    credentials: new CredentialService(new CredentialFileStore(productDataDir())),
-    auth: authConfig(),
-  };
-}
 
 async function handle(req: IncomingMessage, res: ServerResponse, services: ProductServices): Promise<void> {
   const method = req.method || "GET";
@@ -218,10 +70,6 @@ async function handle(req: IncomingMessage, res: ServerResponse, services: Produ
     return send(res, 200, measurementView ? renderProductPhase5AppHtml() : renderProductPhase4AppHtml(), "text/html; charset=utf-8");
   }
   if (method === "GET" && url.pathname === "/health") return send(res, 200, { ok: true });
-  if (method === "GET" && url.pathname === "/api/providers") {
-    return send(res, 200, { providers: await providerStatuses(catalog) });
-  }
-
   if (method === "GET" && route[0] === "assets" && route.length > 1) {
     const root = resolve("assets");
     const path = resolve(root, route.slice(1).join("/"));
@@ -230,127 +78,14 @@ async function handle(req: IncomingMessage, res: ServerResponse, services: Produ
     return sendAsset(res, path);
   }
 
-  if (route[0] === "api" && route[1] === "credentials") {
-    // Without a password anyone reaching the port could store a key and spend
-    // through it, so this stays closed rather than relying on the network.
-    if (!services.auth.enabled) {
-      return send(res, 403, {
-        error: "Set AUTH_PASSWORD before managing keys here. Without a password this endpoint would be open to anyone who reaches the port.",
-      });
-    }
-    if (method === "GET" && route.length === 2) {
-      return send(res, 200, {
-        storageEnabled: services.credentials.storageEnabled(),
-        credentials: await services.credentials.status(CREDENTIAL_PROVIDERS),
-      });
-    }
-    const providerId = route[2] || "";
-    if (!CREDENTIAL_PROVIDERS.includes(providerId)) return send(res, 404, { error: `Unknown provider "${providerId}".` });
-    if (method === "PUT" && route.length === 3) {
-      const body = await readJson(req) as { secret?: unknown };
-      const result = await services.credentials.save(providerId, body.secret);
-      // The key never comes back, whatever happened to it.
-      return send(res, result.outcome === "saved" ? 200 : 400, result);
-    }
-    if (method === "DELETE" && route.length === 3) {
-      return send(res, 200, await services.credentials.clear(providerId));
-    }
-  }
+  const json = (status: number, body: unknown, contentType?: string) => send(res, status, body, contentType);
+  const body = () => readJson(req);
 
-  if (method === "GET" && route.length === 5 && route[0] === "api" && route[1] === "projects" && route[3] === "export") {
-    const projectId = route[2] || "";
-    const table = (route[4] || "").endsWith(".csv") ? (route[4] || "").slice(0, -4) : route[4] || "";
-    try {
-      const built = await insights.build(projectId);
-      const core = built.insights;
-      const tables: Record<string, CsvTable> = {
-        visibility: {
-          columns: ["model", "modelId", "answered", "recognized", "visibility"],
-          rows: core.visibility.byModel.map((row) => [row.displayName, row.modelId, row.answered, row.recognized, row.score]),
-        },
-        voice: {
-          columns: ["brand", "domain", "mentions", "share", "isTarget"],
-          rows: [[core.shareOfVoice.target.name, core.shareOfVoice.target.domain, core.shareOfVoice.target.mentions, core.shareOfVoice.target.share, true]]
-            .concat(core.shareOfVoice.competitors.map((row) => [row.name, row.domain, row.mentions, row.share, false])),
-        },
-        citations: {
-          columns: ["domain", "answers", "isTarget", "models"],
-          rows: core.citations.domains.map((row) => [row.domain, row.answers, row.isTarget, row.models]),
-        },
-        gap: {
-          columns: ["domain", "answers", "competitors", "models"],
-          rows: built.citationGap.map((row) => [row.domain, row.answers, row.competitors, row.models]),
-        },
-        fanout: {
-          columns: ["query", "answers", "models"],
-          rows: built.fanout.queries.map((row) => [row.query, row.answers, row.models]),
-        },
-        categories: {
-          columns: ["category", "count"],
-          rows: core.categories.map((row) => [row.value, row.count]),
-        },
-      };
-      const chosen = tables[table];
-      if (!chosen) return send(res, 404, { error: `Unknown export "${table}". Available: ${Object.keys(tables).join(", ")}.` });
-      return send(res, 200, toCsv(chosen), "text/csv; charset=utf-8");
-    } catch (error) {
-      return send(res, 404, { error: error instanceof Error ? error.message : String(error) });
-    }
-  }
-
-  if (route.length === 4 && route[0] === "api" && route[1] === "projects" && route[3] === "signals") {
-    try {
-      if (method === "GET") return send(res, 200, { snapshots: await signals.history(route[2] || "") });
-      if (method === "POST") return send(res, 201, { snapshot: await signals.capture(route[2] || "") });
-    } catch (error) {
-      return send(res, 404, { error: error instanceof Error ? error.message : String(error) });
-    }
-  }
-
-  if (method === "GET" && route.length === 4 && route[0] === "api" && route[1] === "projects" && route[3] === "action-plan") {
-    try {
-      const projectId = route[2] || "";
-      const snapshot = await signals.history(projectId).then((rows) => rows[0] || null);
-      if (!snapshot) {
-        return send(res, 200, { probed: false, detail: "No site probe yet. POST to /signals or let the worker run one.", actions: [] });
-      }
-      const built = await insights.build(projectId);
-      const competitors = built.insights.shareOfVoice.competitors.map((row) => row.name);
-      return send(res, 200, {
-        probed: true,
-        capturedAt: snapshot.capturedAt,
-        changes: snapshot.changes,
-        actions: buildActionPlan({
-          signals: snapshot.signals,
-          recognition: {
-            answered: built.insights.visibility.answered,
-            recognized: built.insights.visibility.recognized,
-            competitors,
-          },
-        }),
-      });
-    } catch (error) {
-      return send(res, 404, { error: error instanceof Error ? error.message : String(error) });
-    }
-  }
-
-  if (method === "GET" && route.length === 4 && route[0] === "api" && route[1] === "projects" && route[3] === "crawlers") {
-    try {
-      const built = await insights.build(route[2] || "");
-      // Incremental, so this reads only what was appended since the last pass.
-      return send(res, 200, await crawlerLog.ingest({ citedPaths: built.citedPaths }));
-    } catch (error) {
-      return send(res, 404, { error: error instanceof Error ? error.message : String(error) });
-    }
-  }
-
-  if (method === "GET" && route.length === 4 && route[0] === "api" && route[1] === "projects" && route[3] === "insights") {
-    try {
-      return send(res, 200, await insights.build(route[2] || ""));
-    } catch (error) {
-      return send(res, 404, { error: error instanceof Error ? error.message : String(error) });
-    }
-  }
+  if (await handleProviderStatusApi({ method, route, send: json, catalog })) return;
+  if (await handleCredentialApi({ method, route, send: json, service: services.credentials, authEnabled: services.auth.enabled, readJson: body })) return;
+  if (await handleInsightsApi({ method, route, send: json, service: insights })) return;
+  if (await handleCrawlerApi({ method, route, send: json, crawlerLog, insights })) return;
+  if (await handleActionApi({ method, route, send: json, signals, insights })) return;
 
   if (await handleProductConfigurationApi({ method, route, projects, selections, baselines, catalog, readJson: () => readJson(req), send: (status, body) => send(res, status, body) })) return;
   if (await handleMeasurementApi({ method, route, readJson: () => readJson(req), send: (status, body) => send(res, status, body), projects, watchSets, measurements, stats })) return;
