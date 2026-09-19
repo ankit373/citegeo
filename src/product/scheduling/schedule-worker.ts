@@ -17,6 +17,11 @@ import { ProductWatchSetService } from "../measurements/watchset-service.js";
 import { SiteSignalProbeService } from "../actions/signal-probe.js";
 import { SiteSignalFileStore } from "../actions/signal-store.js";
 import { CrawlerLogIngestService, CrawlerLogStateStore } from "../crawlers/crawler-ingest.js";
+import { ProductInsightsService } from "../insights/insights-service.js";
+import { ProductRecognitionRunService } from "../recognition/recognition-service.js";
+import { DigestBaselineStore } from "../reporting/delivery.js";
+import { runDigests } from "../reporting/digest-run.js";
+import { reportWebhookUrl } from "../reporting/delivery.js";
 
 export function productScheduleService(): ProductScheduleService {
   const projectStore = new ProductProjectFileStore(productDataDir());
@@ -41,6 +46,29 @@ export function crawlerLogIngestService(): CrawlerLogIngestService {
   return new CrawlerLogIngestService(new CrawlerLogStateStore(productDataDir()));
 }
 
+export interface DigestDependencies {
+  projects: ProductProjectService;
+  insights: ProductInsightsService;
+  signals: SiteSignalProbeService;
+  store: DigestBaselineStore;
+}
+
+export function digestDependencies(): DigestDependencies {
+  const projectStore = new ProductProjectFileStore(productDataDir());
+  const projects = new ProductProjectService(projectStore);
+  const configurationStore = new ProductConfigurationFileStore(projectStore);
+  const selections = new ProductModelSelectionService(projects, configurationStore, new OpenRouterProductModelCatalog(PROVIDER_MODEL_CAPABILITIES));
+  const baselines = new ProductBaselineService(projects, selections, configurationStore);
+  const recognitionStore = new ProductRecognitionFileStore(projectStore);
+  const recognition = new ProductRecognitionRunService(projects, baselines, recognitionStore);
+  return {
+    projects,
+    insights: new ProductInsightsService(projects, recognition),
+    signals: new SiteSignalProbeService(projects, new SiteSignalFileStore(projectStore)),
+    store: new DigestBaselineStore(productDataDir()),
+  };
+}
+
 export async function runProductScheduleDue(): Promise<Awaited<ReturnType<ProductScheduleService["runDue"]>>> {
   return productScheduleService().runDue();
 }
@@ -54,6 +82,7 @@ export async function runProductScheduleWorker(pollSeconds = 60): Promise<void> 
   process.once("SIGTERM", stop);
   const probe = siteSignalProbeService();
   const crawlerLog = crawlerLogIngestService();
+  const digests = digestDependencies();
   while (!stopped) {
     const occurrences = await service.runDue();
     if (occurrences.length) console.log(JSON.stringify({ type: "product_schedule_due", occurrenceCount: occurrences.length, occurrenceIds: occurrences.map((item) => item.id) }));
@@ -79,6 +108,25 @@ export async function runProductScheduleWorker(pollSeconds = 60): Promise<void> 
       }
     } catch (error) {
       console.error(JSON.stringify({ type: "crawler_log_ingest_failed", detail: error instanceof Error ? error.message : String(error) }));
+    }
+    // Delivered last, so a digest describes the probe and ingestion that just
+    // ran rather than the previous pass's picture.
+    if (reportWebhookUrl()) {
+      try {
+        for (const outcome of await runDigests(digests)) {
+          if (outcome.result.outcome === "no_news") continue;
+          const level = outcome.result.outcome === "failed" ? console.error : console.log;
+          level(JSON.stringify({
+            type: "digest_" + outcome.result.outcome,
+            projectId: outcome.projectId,
+            domain: outcome.domain,
+            detail: outcome.result.detail,
+            reasons: outcome.reasons,
+          }));
+        }
+      } catch (error) {
+        console.error(JSON.stringify({ type: "digest_run_failed", detail: error instanceof Error ? error.message : String(error) }));
+      }
     }
     await new Promise<void>((resolve) => setTimeout(resolve, pollSeconds * 1000));
   }
