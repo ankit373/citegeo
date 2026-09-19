@@ -26,6 +26,9 @@ import { RecognitionReportService } from "./reports/report-service.js";
 import { handleRecognitionReportApi } from "./reports/report-http.js";
 import { ProductInsightsService } from "./insights/insights-service.js";
 import { readCrawlerReport } from "./crawlers/crawler-service.js";
+import { SiteSignalProbeService } from "./actions/signal-probe.js";
+import { SiteSignalFileStore } from "./actions/signal-store.js";
+import { buildActionPlan } from "./actions/action-plan.js";
 import { renderProductPhase4AppHtml } from "../ui/product-phase4-app.js";
 import { ProductMeasurementFileStore } from "./measurements/measurement-store.js";
 import { ProductWatchSetService } from "./measurements/watchset-service.js";
@@ -101,6 +104,7 @@ async function handle(req: IncomingMessage, res: ServerResponse, dependencies: P
   const reportStore = new RecognitionReportFileStore(projectStore);
   const reports = new RecognitionReportService(projects, baselines, recognitionStore, reportStore);
   const insights = new ProductInsightsService(projects, recognition);
+  const signals = new SiteSignalProbeService(projects, new SiteSignalFileStore(projectStore));
   const measurementStore = new ProductMeasurementFileStore(projectStore);
   const watchSets = new ProductWatchSetService(projects, baselines, measurementStore, recognitionStore, reportStore);
   const measurements = new ProductMeasurementRunService(projects, baselines, watchSets, measurementStore, dependencies.measurementExecutor || dependencies.recognitionExecutor);
@@ -122,6 +126,42 @@ async function handle(req: IncomingMessage, res: ServerResponse, dependencies: P
     if (path === root || !path.startsWith(root + sep) || !existsSync(path)) return send(res, 404, { error: "asset not found" });
     if (!(await stat(path)).isFile()) return send(res, 404, { error: "asset not found" });
     return sendAsset(res, path);
+  }
+
+  if (route.length === 4 && route[0] === "api" && route[1] === "projects" && route[3] === "signals") {
+    try {
+      if (method === "GET") return send(res, 200, { snapshots: await signals.history(route[2] || "") });
+      if (method === "POST") return send(res, 201, { snapshot: await signals.capture(route[2] || "") });
+    } catch (error) {
+      return send(res, 404, { error: error instanceof Error ? error.message : String(error) });
+    }
+  }
+
+  if (method === "GET" && route.length === 4 && route[0] === "api" && route[1] === "projects" && route[3] === "action-plan") {
+    try {
+      const projectId = route[2] || "";
+      const snapshot = await signals.history(projectId).then((rows) => rows[0] || null);
+      if (!snapshot) {
+        return send(res, 200, { probed: false, detail: "No site probe yet. POST to /signals or let the worker run one.", actions: [] });
+      }
+      const built = await insights.build(projectId);
+      const competitors = built.insights.shareOfVoice.competitors.map((row) => row.name);
+      return send(res, 200, {
+        probed: true,
+        capturedAt: snapshot.capturedAt,
+        changes: snapshot.changes,
+        actions: buildActionPlan({
+          signals: snapshot.signals,
+          recognition: {
+            answered: built.insights.visibility.answered,
+            recognized: built.insights.visibility.recognized,
+            competitors,
+          },
+        }),
+      });
+    } catch (error) {
+      return send(res, 404, { error: error instanceof Error ? error.message : String(error) });
+    }
   }
 
   if (method === "GET" && route.length === 4 && route[0] === "api" && route[1] === "projects" && route[3] === "crawlers") {

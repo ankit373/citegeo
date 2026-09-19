@@ -14,6 +14,8 @@ import { RecognitionReportFileStore } from "../reports/report-store.js";
 import { ProductScheduleService } from "./schedule-service.js";
 import { ProductScheduleFileStore } from "./schedule-store.js";
 import { ProductWatchSetService } from "../measurements/watchset-service.js";
+import { SiteSignalProbeService } from "../actions/signal-probe.js";
+import { SiteSignalFileStore } from "../actions/signal-store.js";
 
 export function productScheduleService(): ProductScheduleService {
   const projectStore = new ProductProjectFileStore(productDataDir());
@@ -29,6 +31,11 @@ export function productScheduleService(): ProductScheduleService {
   return new ProductScheduleService(projects, baselines, watchSets, measurements, new ProductScheduleFileStore(projectStore));
 }
 
+export function siteSignalProbeService(): SiteSignalProbeService {
+  const projectStore = new ProductProjectFileStore(productDataDir());
+  return new SiteSignalProbeService(new ProductProjectService(projectStore), new SiteSignalFileStore(projectStore));
+}
+
 export async function runProductScheduleDue(): Promise<Awaited<ReturnType<ProductScheduleService["runDue"]>>> {
   return productScheduleService().runDue();
 }
@@ -40,9 +47,25 @@ export async function runProductScheduleWorker(pollSeconds = 60): Promise<void> 
   const stop = () => { stopped = true; };
   process.once("SIGINT", stop);
   process.once("SIGTERM", stop);
+  const probe = siteSignalProbeService();
   while (!stopped) {
     const occurrences = await service.runDue();
     if (occurrences.length) console.log(JSON.stringify({ type: "product_schedule_due", occurrenceCount: occurrences.length, occurrenceIds: occurrences.map((item) => item.id) }));
+    // Probes share this process so file storage keeps one writer. A failing
+    // probe must never stop scheduled runs, which are the product's job.
+    try {
+      const probed = (await probe.probeDue()).filter((outcome) => outcome.captured);
+      for (const outcome of probed) {
+        if (!outcome.snapshot.changes.length) continue;
+        console.log(JSON.stringify({
+          type: "site_signal_changed",
+          projectId: outcome.projectId,
+          changes: outcome.snapshot.changes.map((change) => ({ field: change.field, direction: change.direction, detail: change.detail })),
+        }));
+      }
+    } catch (error) {
+      console.error(JSON.stringify({ type: "site_signal_probe_failed", detail: error instanceof Error ? error.message : String(error) }));
+    }
     await new Promise<void>((resolve) => setTimeout(resolve, pollSeconds * 1000));
   }
 }
