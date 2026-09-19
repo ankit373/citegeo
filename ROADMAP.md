@@ -16,36 +16,25 @@ Three rules decide what belongs here:
 3. **Own the gap the category ignores.** Every competitor sells a score.
    This one sells the receipt behind it.
 
-## Now: the loop from finding to fix
+## Outstanding
 
-| # | Feature | Taken from | Why it matters | Depends on |
+| # | Feature | Taken from | Why it matters | Blocked on |
 | :-- | :--- | :--- | :--- | :--- |
-| 1 | **Citation gap** — rank the domains cited when a model names a competitor, and mark the ones that never cite you | Profound, Citation Intelligence | The single most actionable output in the category. It converts "you are invisible" into a named outreach list. The data model already stores citations. | Web-search runs, so OpenRouter credit |
-| 2 | **Crawler log analytics** — which AI bots actually fetched which pages, from CDN logs rather than a JS tag | Profound, Agent Analytics | robots.txt says a crawler *may* fetch you. Logs say whether it *did*. That is causally upstream of every citation and nothing else reveals it. | Cloudflare (or other CDN) log access |
-| 3 | **Fix as a pull request** — generate the schema, `llms.txt` and robots patch and open a PR against the site repo | Okara, Coding Agent | Closes the loop the action plan opens. This project is already git-native, so the fix belongs as a diff a human reviews, not as advice in a dashboard. | Repo write access |
-| 4 | **Share of voice** — your mentions against named competitors, per model | Profound, Competitive Benchmarking | Already half-built in the measurement view. Makes "not recognised" comparative instead of absolute. | none |
-| 5 | **Brand accuracy check** — diff what a model asserts about you against your own `llms.txt` and about page, and flag contradictions | Profound, FactCheck | A model stating something false about your pricing or coverage is a live commercial risk, and today nothing surfaces it. | none |
+| 1 | **Fix as a pull request** — generate the schema, `llms.txt` and robots patch and open a PR against the site repo | Okara, Coding Agent | Closes the loop the action plan opens. This project is already git-native, so the fix belongs as a diff a human reviews, not as advice in a dashboard. | Write access to the site repo |
+| 2 | **Sentiment and narrative themes** — classify how a model describes you, not just whether it knows you | Profound, Response Analysis | Recognition is binary and hides tone. Runs on local models at no cost. | nothing |
+| 3 | **Search Console integration** — real query and impression data as the honest substitute for panel demand data | Okara, GA/GSC connection | The nearest legitimate replacement for Prompt Volumes, and free. | Google OAuth |
+| 4 | **Engines with no API** — Google AI Overviews, AI Mode, Copilot through a driven browser | Profound, engine coverage | The API answer and the rendered answer differ. This is the fidelity gap. Playwright is already a dependency. | Browser automation, ongoing maintenance |
+| 5 | **Scheduled report delivery** — send the findings somewhere rather than waiting to be asked | Profound, reporting | The scheduler and the CSV writer both exist; nothing delivers. | A destination, email or webhook |
+| 6 | **Credential entry in the portal** | every hosted tool | Needed before anyone who will not edit `.env` can use this. | Authentication, see `SECURITY.md` |
 
-## Next: needs a dependency first
+## Built, waiting on data rather than code
 
-| # | Feature | Taken from | Why it matters | Depends on |
-| :-- | :--- | :--- | :--- | :--- |
-| 6 | **Query fanout capture** — record the sub-queries an engine actually ran behind one prompt | Profound, Query Fanouts | Shows the queries to target rather than the ones you guessed. Some providers already return `search_queries`; it is thrown away today. | Web-search runs |
-| 7 | **Sentiment and narrative themes** — classify how a model describes you, not just whether it knows you | Profound, Response Analysis | Recognition is binary and hides tone. Can run on local models at zero cost. | Local gateway |
-| 8 | **Search Console integration** — real query and impression data as the honest substitute for panel demand data | Okara, GA/GSC connection | The nearest legitimate replacement for Prompt Volumes, and free. | Google OAuth |
-| 9 | **Engines with no API** — Google AI Overviews, AI Mode, Copilot via a driven browser | Profound, engine coverage | The API answer and the rendered answer differ. This is the fidelity gap. Playwright is already a dependency. | Browser automation, ongoing maintenance |
-| 10 | **Scheduled reports and CSV export** | Profound, data export | The scheduler exists; nothing formats or delivers a result. | none |
-| 11 | **Credential entry in the portal** | every hosted tool | Needed before this is usable by anyone who will not edit `.env`. | Authentication, see `SECURITY.md` |
-
-## Deliberately not doing
-
-| Feature | Seen in | Why not |
-| :--- | :--- | :--- |
-| **Prompt Volumes** | Profound | Needs an opt-in consumer panel. There is no honest way to synthesise it, and estimating it would be exactly the invented number this project exists to avoid. Item 8 is the substitute. |
-| **Reddit, influencer and UGC posting agents** | Okara | Auto-drafted community replies are spam whatever the intent, and this is an inspection tool, not a distribution channel. |
-| **Blog generation at volume** | Okara, SEO Agent | Writing pages to rank is the thing that made AI search necessary. Item 3 fixes what is already there instead. |
-| **Shopping / SKU visibility** | Profound | A separate product for a category this does not serve. |
-| **SOC 2, SSO, RBAC, command centre** | Profound | Only meaningful once more than one person can log in, which needs authentication first. |
+| Feature | State |
+| :--- | :--- |
+| **Citation gap** | Built and returning empty. It needs answers that name competitors, which needs web search enabled, which needs OpenRouter credit. |
+| **Query fanout** | Built across six provider shapes and returning empty for the same reason: every run so far was offline. |
+| **Share of voice** | Built. Reports mentions but a null share, because no competitor has been named yet. |
+| **Crawler analytics** | Built and verified against a synthetic log. Needs `ACCESS_LOG_PATH` pointed at a real one. |
 
 ## Already shipped
 
