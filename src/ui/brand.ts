@@ -1,4 +1,6 @@
 export const PRODUCT_NAME = "citegeo";
+/** The name as written in a sentence. The wordmark above is set lowercase. */
+export const PRODUCT_PROSE_NAME = "CiteGEO";
 export const PRODUCT_TITLE = "citegeo";
 export const CITEGEO_LOCKUP_ASSET = "/assets/brand/citegeo-lockup.svg";
 

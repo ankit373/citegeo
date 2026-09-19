@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" width="160" height="160" role="img" aria-label="CiteGEO">
+  <title>CiteGEO</title>
+  <desc>CiteGEO emblem: two angled bars forming a quotation mark</desc>
+  <g fill="#F2EEE4">
+    <rect x="39" y="43" width="34" height="74" rx="8" transform="rotate(-14 56 80)"/>
+    <rect x="87" y="43" width="34" height="74" rx="8" transform="rotate(-14 104 80)"/>
+  </g>
+</svg>

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 160" width="640" height="160" role="img" aria-label="CiteGEO">
+  <title>CiteGEO</title>
+  <desc>CiteGEO lockup: a quotation-mark emblem beside the wordmark</desc>
+  <g fill="#F2EEE4">
+    <rect x="24" y="38" width="30" height="64" rx="6" transform="rotate(-14 39 70)"/>
+    <rect x="66" y="38" width="30" height="64" rx="6" transform="rotate(-14 81 70)"/>
+  </g>
+  <text x="130" y="103" font-family="Cabinet Grotesk, Arial, Helvetica, sans-serif" font-weight="700" font-size="64" letter-spacing="-1" fill="#F2EEE4">citegeo</text>
+</svg>

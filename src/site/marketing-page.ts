@@ -1,0 +1,186 @@
+import { PRODUCT_NAME, PRODUCT_PROSE_NAME } from "../ui/brand.js";
+
+// The marketing surface. Same tokens as the workbench, deliberately different
+// density: DESIGN.md reserves generous whitespace for this surface and keeps
+// the product itself tight, because one is read once and the other is worked in
+// for hours.
+//
+// It is a single static page with no script, so it can be served from anywhere
+// and cannot break in a way the product would notice.
+
+interface Capability {
+  title: string;
+  body: string;
+}
+
+const CAPABILITIES: Capability[] = [
+  {
+    title: "Ask the models directly",
+    body: "Put your domain to as many models as you want and keep every answer. The raw provider response is archived beside the parsed result, so a claim can always be traced back to the text that produced it.",
+  },
+  {
+    title: "Find who is cited instead of you",
+    body: "When a model names a competitor it usually cites a source. The citation gap lists the domains cited alongside your competitors that never appear in an answer naming you. That is a short, concrete list of places to get into.",
+  },
+  {
+    title: "Prove the crawlers arrived",
+    body: "robots.txt says a crawler may fetch you. Your access log says whether it did. Reading both separates a permission problem from an obscurity problem, which look identical from the outside.",
+  },
+  {
+    title: "Get a plan, not a score",
+    body: "Findings are ordered by what decides whether a model can cite you at all, each one naming the observation behind it. Where the fix is a file, it can be opened as a pull request against your own repository.",
+  },
+];
+
+const REFUSALS: Capability[] = [
+  {
+    title: "It will not invent a number",
+    body: "Visibility with nothing parsed reads as not measurable, never 0%. A share of voice with no competitor named reads as not comparable, never 100%. An absence is reported as an absence.",
+  },
+  {
+    title: "It will not guess at a fix",
+    body: "A robots.txt or llms.txt can be generated correctly, so it is. A schema change lives in a template that differs per site, so it is described rather than patched. A wrong diff that looks authoritative is worse than no diff.",
+  },
+  {
+    title: "It will not sell you demand data it does not have",
+    body: "Knowing what people actually ask an assistant needs a consumer panel. This project does not have one and will not estimate it. It reads your Search Console instead and says so.",
+  },
+];
+
+function capabilityList(items: Capability[]): string {
+  return items
+    .map((item) => `<article><h3>${item.title}</h3><p>${item.body}</p></article>`)
+    .join("");
+}
+
+export function renderMarketingHtml(): string {
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<title>${PRODUCT_PROSE_NAME}: see what AI says about your brand, and the evidence behind it</title>
+<meta name="description" content="Self-hosted, open source tracking of how AI models describe your brand, which competitors they name and which sources they cite. Every claim traceable to the raw model answer.">
+<link rel="icon" type="image/svg+xml" href="/assets/brand/citegeo-emblem.svg">
+<meta property="og:title" content="${PRODUCT_PROSE_NAME}">
+<meta property="og:description" content="See what AI says about your brand, and the evidence behind it. Self-hosted and open source.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --bg:#14120F; --panel:#1C1914; --line:#332C22; --line-strong:#4A4030;
+    --text:#F2EEE4; --muted:#A89C87; --weak:#6E6455;
+    --confirmed-text:#9DBC8E; --unknown-text:#DBB05F; --failed-text:#CC7157;
+    /* The workbench is tight on purpose. This surface is not. */
+    --measure:64ch; --gap:clamp(56px, 8vw, 104px);
+  }
+  * { box-sizing:border-box; }
+  html { scroll-behavior:smooth; }
+  body {
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:"General Sans",ui-sans-serif,system-ui,-apple-system,sans-serif;
+    font-size:17px; line-height:1.6; font-variant-numeric:tabular-nums;
+  }
+  h1,h2,h3 { font-family:"Cabinet Grotesk",ui-sans-serif,system-ui,sans-serif; letter-spacing:-0.02em; line-height:1.1; margin:0; }
+  h1 { font-size:clamp(40px, 6vw, 68px); font-weight:800; }
+  h2 { font-size:clamp(26px, 3.4vw, 38px); font-weight:700; }
+  h3 { font-size:19px; font-weight:700; }
+  p { margin:0; }
+  a { color:var(--text); }
+  code, .mono { font-family:"JetBrains Mono",ui-monospace,monospace; font-size:0.9em; }
+  .wrap { width:min(1080px, calc(100% - 48px)); margin:0 auto; }
+  header.top { display:flex; align-items:center; justify-content:space-between; gap:24px; padding:26px 0; }
+  .brand { display:flex; align-items:center; gap:10px; font-weight:700; letter-spacing:-0.01em; }
+  .brand img { width:26px; height:26px; display:block; }
+  nav { display:flex; gap:22px; color:var(--muted); font-size:15px; }
+  nav a { color:var(--muted); text-decoration:none; }
+  nav a:hover { color:var(--text); }
+  .hero { padding:var(--gap) 0 calc(var(--gap) * 0.7); }
+  .hero p.lede { max-width:var(--measure); margin-top:26px; color:var(--muted); font-size:clamp(18px, 2vw, 21px); }
+  .actions { display:flex; flex-wrap:wrap; gap:12px; margin-top:34px; }
+  .button { display:inline-block; padding:13px 20px; border-radius:7px; border:1px solid var(--line-strong); color:var(--text); text-decoration:none; font-weight:600; }
+  .button.primary { background:var(--text); border-color:var(--text); color:var(--bg); }
+  section { padding:var(--gap) 0; border-top:1px solid var(--line); }
+  section > .wrap > p.intro { max-width:var(--measure); margin-top:18px; color:var(--muted); }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(290px, 1fr)); gap:34px 44px; margin-top:52px; }
+  .grid article h3 { margin-bottom:10px; }
+  .grid article p { color:var(--muted); }
+  .terminal { margin-top:44px; border:1px solid var(--line); border-radius:9px; background:#0E0C0A; padding:22px 24px; overflow-x:auto; }
+  .terminal pre { margin:0; font-family:"JetBrains Mono",ui-monospace,monospace; font-size:14px; line-height:1.75; color:var(--muted); }
+  .terminal .prompt { color:var(--weak); }
+  .terminal .ok { color:var(--confirmed-text); }
+  .terminal .flag { color:var(--unknown-text); }
+  .terminal .bad { color:var(--failed-text); }
+  footer { padding:var(--gap) 0 72px; border-top:1px solid var(--line); color:var(--weak); font-size:15px; }
+  footer a { color:var(--muted); }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior:auto; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <span class="brand"><img src="/assets/brand/citegeo-emblem.svg" alt=""> ${PRODUCT_NAME}</span>
+    <nav>
+      <a href="#what">What it does</a>
+      <a href="#refuses">What it refuses</a>
+      <a href="#start">Run it</a>
+      <a href="https://github.com/ankit373/citegeo">GitHub</a>
+    </nav>
+  </header>
+</div>
+
+<div class="wrap hero">
+  <h1>See what AI says<br>about your brand.</h1>
+  <p class="lede">Models describe your company to buyers every day, name competitors instead of you, and cite sources you have never heard of. ${PRODUCT_PROSE_NAME} asks them directly, keeps every answer, and shows the evidence behind every claim it makes.</p>
+  <div class="actions">
+    <a class="button primary" href="#start">Run it yourself</a>
+    <a class="button" href="https://github.com/ankit373/citegeo">Read the source</a>
+  </div>
+</div>
+
+<section id="what">
+  <div class="wrap">
+    <h2>Evidence, not a score</h2>
+    <p class="intro">Every competitor in this category sells you a number. A number you cannot check is a number you cannot act on.</p>
+    <div class="grid">${capabilityList(CAPABILITIES)}</div>
+  </div>
+</section>
+
+<section id="refuses">
+  <div class="wrap">
+    <h2>What it refuses to do</h2>
+    <p class="intro">The limits are the product. Anything here that guessed would make the rest untrustworthy.</p>
+    <div class="grid">${capabilityList(REFUSALS)}</div>
+  </div>
+</section>
+
+<section id="start">
+  <div class="wrap">
+    <h2>Run it on your own machine</h2>
+    <p class="intro">Self-hosted, MIT licensed, and your provider keys never leave it. Local models cost nothing to run, so you can try the whole flow before spending anything.</p>
+    <div class="terminal"><pre><span class="prompt">$</span> git clone https://github.com/ankit373/citegeo
+<span class="prompt">$</span> cp .env.example .env   <span class="prompt"># add a provider key</span>
+<span class="prompt">$</span> npm ci &amp;&amp; npm run server
+
+citegeo listening on http://127.0.0.1:8787
+
+<span class="prompt">#</span> what it tells you about a domain that no model knows yet
+<span class="bad">critical</span>  No model recognised this domain (0 of 12)
+<span class="flag">high</span>      Every sameAs link points at a profile the brand controls
+<span class="flag">high</span>      No Wikidata entity
+<span class="ok">ok</span>        AI crawlers can read the site      11 of 11 allowed
+<span class="ok">ok</span>        llms.txt is published              875,431 bytes</pre></div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p>${PRODUCT_PROSE_NAME} is open source under the MIT licence. It sends nothing anywhere except to the model APIs you configure.</p>
+    <p style="margin-top:12px"><a href="https://github.com/ankit373/citegeo">Source</a> &middot; <a href="https://github.com/ankit373/citegeo/blob/main/ROADMAP.md">Roadmap</a> &middot; <a href="https://github.com/ankit373/citegeo/blob/main/SECURITY.md">Security</a></p>
+  </div>
+</footer>
+
+</body>
+</html>`;
+}
