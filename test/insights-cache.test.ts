@@ -5,7 +5,7 @@ import { ProductInsightsService } from "../src/product/insights/insights-service
 // The cache is keyed on the run set, so it has to recompute the moment a run
 // is added or one still in flight changes, and never otherwise.
 
-function harness(runs: Array<{ id: string; status: string; successfulModelRunCount: number; failedModelRunCount: number }>) {
+function harness(runs: Array<{ id: string; status: string; successfulModelRunCount: number; failedModelRunCount: number; createdAt?: string }>) {
   let listCalls = 0;
   let modelRunReads = 0;
   const projects = { get: async () => ({ id: "p", name: "Example", normalizedDomain: "example.com" }) };
