@@ -18,16 +18,16 @@ Three rules decide what belongs here:
 
 ## Outstanding
 
-| # | Feature | Taken from | Why it matters | Blocked on |
-| :-- | :--- | :--- | :--- | :--- |
-| 1 | **Fix as a pull request** — generate the schema, `llms.txt` and robots patch and open a PR against the site repo | Okara, Coding Agent | Closes the loop the action plan opens. This project is already git-native, so the fix belongs as a diff a human reviews, not as advice in a dashboard. | Write access to the site repo |
-| 2 | **Sentiment and narrative themes** — classify how a model describes you, not just whether it knows you | Profound, Response Analysis | Recognition is binary and hides tone. Runs on local models at no cost. | nothing |
-| 3 | **Search Console integration** — real query and impression data as the honest substitute for panel demand data | Okara, GA/GSC connection | The nearest legitimate replacement for Prompt Volumes, and free. | Google OAuth |
-| 4 | **Engines with no API** — Google AI Overviews, AI Mode, Copilot through a driven browser | Profound, engine coverage | The API answer and the rendered answer differ. This is the fidelity gap. Playwright is already a dependency. | Browser automation, ongoing maintenance |
-| 5 | **Scheduled report delivery** — send the findings somewhere rather than waiting to be asked | Profound, reporting | The scheduler and the CSV writer both exist; nothing delivers. | A destination, email or webhook |
-| 6 | **Credential entry in the portal** | every hosted tool | Needed before anyone who will not edit `.env` can use this. | Authentication, see `SECURITY.md` |
+Everything below needs something this project cannot provide for itself.
+
+| # | Feature | Taken from | Blocked on |
+| :-- | :--- | :--- | :--- |
+| 1 | **Fix as a pull request** — generate the schema, `llms.txt` and robots patch and open a PR against the site repo | Okara, Coding Agent | Write access to the site's own repository |
+| 2 | **Search Console integration** — real query and impression data, the honest substitute for panel demand data | Okara, GA/GSC connection | Google OAuth credentials |
+| 3 | **Engines with no API** — Google AI Overviews, AI Mode, Copilot through a driven browser | Profound, engine coverage | Browser automation and the maintenance it carries |
 
 ## Built, waiting on data rather than code
+
 
 | Feature | State |
 | :--- | :--- |
@@ -52,3 +52,9 @@ Three rules decide what belongs here:
 - **Site signal probe** on a worker cadence, with stored history and a diff between probes
 - **Next-actions plan** built from the stored probe and the real recognition evidence
 - **CSV export** for visibility, share of voice, citations, the gap, fanout and categories
+- **Narrative and sentiment**, bounded so a classifier outage reads as unknown, never neutral
+- **Digests** that report only when something moved, delivered from the worker, with the
+  baseline advancing only on a send that succeeded
+- **Optional password authentication**, off unless `AUTH_PASSWORD` is set
+- **Provider keys entered in the portal**, encrypted at rest, never returned by any read,
+  and refused entirely when the server has no password
