@@ -8,10 +8,13 @@ import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 
 const shells = [
-  ['product-phase4-app.js', 'renderProductPhase4AppHtml'],
-  ['product-phase5-app.js', 'renderProductPhase5AppHtml'],
-  ['product-project-app.js', 'renderProductProjectAppHtml'],
-  ['app-html.js', 'renderAppHtml'],
+  ['ui/product-phase4-app.js', 'renderProductPhase4AppHtml'],
+  ['ui/product-phase5-app.js', 'renderProductPhase5AppHtml'],
+  ['ui/product-project-app.js', 'renderProductProjectAppHtml'],
+  ['ui/app-html.js', 'renderAppHtml'],
+  // The marketing page carries no script, but its stylesheet is checked for
+  // the stray-brace class of bug that silently disables a rule.
+  ['site/marketing-page.js', 'renderMarketingHtml'],
 ];
 
 const blocksOf = (html, tag) => {
@@ -99,7 +102,7 @@ try {
   for (const [file, exportName] of shells) {
     let module;
     try {
-      module = await import(`../dist/src/ui/${file}`);
+      module = await import(`../dist/src/${file}`);
     } catch (error) {
       failures.push(`${file}: could not import (${error.message})`);
       continue;

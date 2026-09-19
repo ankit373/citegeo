@@ -45,6 +45,14 @@ jobs:
       - name: Check documentation links resolve
         run: node scripts/check-doc-links.mjs
 
+      # site/ is generated and committed so a static host can serve it. If the
+      # source changed and it was not rebuilt, the published page is stale.
+      - name: The committed marketing site matches its source
+        run: |
+          node scripts/build-site.mjs
+          git diff --exit-code -- site \
+            || { echo "site/ is stale; regenerate with: npm run build && node scripts/build-site.mjs"; exit 1; }
+
   chart:
     name: Helm chart
     runs-on: ubuntu-24.04

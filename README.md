@@ -98,6 +98,7 @@ A handful of runs over a few minutes is not a trend. Treat it as a baseline.
 - [Design system](DESIGN.md) · [Brand](docs/brand.md)
 - [Contributing](CONTRIBUTING.md) · [Security policy](SECURITY.md)
 - [Roadmap](ROADMAP.md), including what this deliberately will not build
+- [Marketing page source](src/site/marketing-page.ts), built to `site/` with `npm run build:site`
 
 ## Licence
 
