@@ -56,8 +56,6 @@ export interface ProductServerDependencies {
   measurementExecutor?: RecognitionAnswerExecutor | undefined;
 }
 
-const AUTH = authConfig();
-const CREDENTIALS = new CredentialService(new CredentialFileStore(productDataDir()));
 const CREDENTIAL_PROVIDERS = integrationIds();
 
 function httpsRequest(req: IncomingMessage): boolean {
@@ -128,41 +126,30 @@ function defaultProductCatalog(): ProductModelCatalog {
   return new CompositeProductModelCatalog(catalogs);
 }
 
-async function handle(req: IncomingMessage, res: ServerResponse, dependencies: ProductServerDependencies): Promise<void> {
-  const method = req.method || "GET";
-  const url = new URL(req.url || "/", "http://localhost");
-  const route = url.pathname.split("/").filter(Boolean).map((part) => decodeURIComponent(part));
+export interface ProductServices {
+  projects: ProductProjectService;
+  catalog: ProductModelCatalog;
+  selections: ProductModelSelectionService;
+  baselines: ProductBaselineService;
+  recognition: ProductRecognitionRunService;
+  reports: RecognitionReportService;
+  insights: ProductInsightsService;
+  signals: SiteSignalProbeService;
+  crawlerLog: CrawlerLogIngestService;
+  watchSets: ProductWatchSetService;
+  measurements: ProductMeasurementRunService;
+  stats: ProductMeasurementStatsService;
+  schedules: ProductScheduleService;
+  credentials: CredentialService;
+  auth: ReturnType<typeof authConfig>;
+}
 
-  if (AUTH.enabled) {
-    const secure = httpsRequest(req);
-    if (method === "POST" && url.pathname === "/api/login") {
-      const body = await formOrJsonBody(req);
-      if (!passwordMatches(AUTH, body.password)) {
-        // Same shape and timing for a wrong password as for a missing one.
-        return send(res, 401, renderLoginPageHtml(true), "text/html; charset=utf-8");
-      }
-      res.writeHead(303, {
-        Location: "/",
-        "Set-Cookie": sessionCookie(issueSession(AUTH.secret, AUTH.lifetimeMs), AUTH.lifetimeMs, secure),
-      });
-      res.end();
-      return;
-    }
-    if (method === "POST" && url.pathname === "/api/logout") {
-      res.writeHead(303, { Location: "/login", "Set-Cookie": clearedCookie(secure) });
-      res.end();
-      return;
-    }
-    if (method === "GET" && url.pathname === "/login") {
-      return send(res, 200, renderLoginPageHtml(false), "text/html; charset=utf-8");
-    }
-    const decision = authorise({ config: AUTH, pathname: url.pathname, cookieHeader: req.headers.cookie });
-    if (!decision.allowed) {
-      // An API caller wants a status it can act on; a browser wants the form.
-      if (url.pathname.startsWith("/api/")) return send(res, 401, { error: "Authentication required." });
-      return send(res, 401, renderLoginPageHtml(false), "text/html; charset=utf-8");
-    }
-  }
+/**
+ * Builds the service graph once per server. It used to be rebuilt on every
+ * request, which quietly discarded anything a service held between calls: the
+ * insights cache never survived a request, so it cached nothing.
+ */
+export function createProductServices(dependencies: ProductServerDependencies = {}): ProductServices {
   const projectStore = new ProductProjectFileStore(productDataDir());
   const projects = new ProductProjectService(projectStore);
   const configurationStore = new ProductConfigurationFileStore(projectStore);
@@ -182,6 +169,50 @@ async function handle(req: IncomingMessage, res: ServerResponse, dependencies: P
   const stats = new ProductMeasurementStatsService(projects, measurementStore);
   const schedules = new ProductScheduleService(projects, baselines, watchSets, measurements, new ProductScheduleFileStore(projectStore));
 
+  return {
+    projects, catalog, selections, baselines, recognition, reports, insights,
+    signals, crawlerLog, watchSets, measurements, stats, schedules,
+    credentials: new CredentialService(new CredentialFileStore(productDataDir())),
+    auth: authConfig(),
+  };
+}
+
+async function handle(req: IncomingMessage, res: ServerResponse, services: ProductServices): Promise<void> {
+  const method = req.method || "GET";
+  const url = new URL(req.url || "/", "http://localhost");
+  const route = url.pathname.split("/").filter(Boolean).map((part) => decodeURIComponent(part));
+  const { projects, catalog, selections, baselines, recognition, reports, insights, signals, crawlerLog, watchSets, measurements, stats, schedules } = services;
+
+  if (services.auth.enabled) {
+    const secure = httpsRequest(req);
+    if (method === "POST" && url.pathname === "/api/login") {
+      const body = await formOrJsonBody(req);
+      if (!passwordMatches(services.auth, body.password)) {
+        // Same shape and timing for a wrong password as for a missing one.
+        return send(res, 401, renderLoginPageHtml(true), "text/html; charset=utf-8");
+      }
+      res.writeHead(303, {
+        Location: "/",
+        "Set-Cookie": sessionCookie(issueSession(services.auth.secret, services.auth.lifetimeMs), services.auth.lifetimeMs, secure),
+      });
+      res.end();
+      return;
+    }
+    if (method === "POST" && url.pathname === "/api/logout") {
+      res.writeHead(303, { Location: "/login", "Set-Cookie": clearedCookie(secure) });
+      res.end();
+      return;
+    }
+    if (method === "GET" && url.pathname === "/login") {
+      return send(res, 200, renderLoginPageHtml(false), "text/html; charset=utf-8");
+    }
+    const decision = authorise({ config: services.auth, pathname: url.pathname, cookieHeader: req.headers.cookie });
+    if (!decision.allowed) {
+      // An API caller wants a status it can act on; a browser wants the form.
+      if (url.pathname.startsWith("/api/")) return send(res, 401, { error: "Authentication required." });
+      return send(res, 401, renderLoginPageHtml(false), "text/html; charset=utf-8");
+    }
+  }
   if (method === "GET" && url.pathname === "/") {
     const measurementView = url.searchParams.get("view") === "measurements";
     return send(res, 200, measurementView ? renderProductPhase5AppHtml() : renderProductPhase4AppHtml(), "text/html; charset=utf-8");
@@ -202,27 +233,27 @@ async function handle(req: IncomingMessage, res: ServerResponse, dependencies: P
   if (route[0] === "api" && route[1] === "credentials") {
     // Without a password anyone reaching the port could store a key and spend
     // through it, so this stays closed rather than relying on the network.
-    if (!AUTH.enabled) {
+    if (!services.auth.enabled) {
       return send(res, 403, {
         error: "Set AUTH_PASSWORD before managing keys here. Without a password this endpoint would be open to anyone who reaches the port.",
       });
     }
     if (method === "GET" && route.length === 2) {
       return send(res, 200, {
-        storageEnabled: CREDENTIALS.storageEnabled(),
-        credentials: await CREDENTIALS.status(CREDENTIAL_PROVIDERS),
+        storageEnabled: services.credentials.storageEnabled(),
+        credentials: await services.credentials.status(CREDENTIAL_PROVIDERS),
       });
     }
     const providerId = route[2] || "";
     if (!CREDENTIAL_PROVIDERS.includes(providerId)) return send(res, 404, { error: `Unknown provider "${providerId}".` });
     if (method === "PUT" && route.length === 3) {
       const body = await readJson(req) as { secret?: unknown };
-      const result = await CREDENTIALS.save(providerId, body.secret);
+      const result = await services.credentials.save(providerId, body.secret);
       // The key never comes back, whatever happened to it.
       return send(res, result.outcome === "saved" ? 200 : 400, result);
     }
     if (method === "DELETE" && route.length === 3) {
-      return send(res, 200, await CREDENTIALS.clear(providerId));
+      return send(res, 200, await services.credentials.clear(providerId));
     }
   }
 
@@ -332,8 +363,9 @@ async function handle(req: IncomingMessage, res: ServerResponse, dependencies: P
 }
 
 export function createProductServer(dependencies: ProductServerDependencies = {}) {
+  const services = createProductServices(dependencies);
   return createServer((req, res) => {
-    handle(req, res, dependencies).catch((error) => send(res, 500, { error: error instanceof Error ? error.message : String(error) }));
+    handle(req, res, services).catch((error) => send(res, 500, { error: error instanceof Error ? error.message : String(error) }));
   });
 }
 
