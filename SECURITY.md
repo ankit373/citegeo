@@ -37,7 +37,11 @@ A result routed through OpenRouter stays labelled as an OpenRouter result, which
 
 The server binds `127.0.0.1` unless `HOST` says otherwise, so a fresh start is not reachable from another machine. The Docker image and the Helm chart set `HOST=0.0.0.0`, because a container has to listen on its own interfaces for the published port or the Service to reach it; the Compose file still publishes to `127.0.0.1` on the host side.
 
-There is no authentication anywhere in the app. Anyone who reaches the port can read every stored project, run and raw answer, and can spend your provider credit. So setting `HOST=0.0.0.0` outside a container, or exposing the Service through an Ingress, means putting an authenticating proxy in front of it first. The chart leaves `ingress.enabled=false` and offers a NetworkPolicy that denies everything until you name the sources allowed in.
+Authentication is off unless `AUTH_PASSWORD` is set, because turning it on by default would lock out every existing install on upgrade. While it is off, anyone who reaches the port can read every stored project, run and raw answer, and can spend your provider credit.
+
+With `AUTH_PASSWORD` set, every route is closed except `/health`, the login form and the brand assets the form references. Sessions are a signed cookie carrying an expiry and nothing else: `HttpOnly`, `SameSite=Strict`, `Secure` when the request arrived over HTTPS, and valid for twelve hours. `AUTH_SECRET` signs them, and is regenerated each boot when unset, so a restart signs everyone out.
+
+This is one shared password, not accounts. It keeps strangers out of an exposed instance. It is not a substitute for an authenticating proxy if you need per-person access, audit trails or revocation. The chart leaves `ingress.enabled=false` and offers a NetworkPolicy that denies everything until you name the sources allowed in.
 
 ## Credentials
 
