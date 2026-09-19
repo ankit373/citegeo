@@ -110,10 +110,22 @@ export interface ProjectInsights {
 }
 
 export class ProductInsightsService {
+  // Derived entirely from stored evidence, so the result cannot change while
+  // the run set does not. The Visibility page asks twice per visit, once for
+  // the analytics and once for the crawler correlation, and reading every
+  // archive again for the second answer is pure waste.
+  private cached: { key: string; value: ProjectInsights } | null = null;
+
   constructor(
     private readonly projects: ProductProjectService,
     private readonly recognition: ProductRecognitionRunService,
   ) {}
+
+  /** Changes whenever a run is added or one still in flight moves on. */
+  private signature(projectId: string, runs: Array<{ id: string; status: string; successfulModelRunCount: number; failedModelRunCount: number }>): string {
+    const parts = runs.map((run) => `${run.id}:${run.status}:${run.successfulModelRunCount}:${run.failedModelRunCount}`);
+    return `${projectId}|${runs.length}|${parts.join(",")}`;
+  }
 
   /**
    * Reads every archived answer for a project. Runs are independent evidence,
@@ -122,6 +134,8 @@ export class ProductInsightsService {
   async build(projectId: string, options: { runLimit?: number } = {}): Promise<ProjectInsights> {
     const project = await this.projects.get(projectId);
     const runs = await this.recognition.list(projectId);
+    const key = `${this.signature(projectId, runs)}|${options.runLimit ?? "all"}`;
+    if (this.cached && this.cached.key === key) return this.cached.value;
     const considered = options.runLimit ? runs.slice(0, options.runLimit) : runs;
     const answers: InsightAnswer[] = [];
     const claims: AnswerClaims[] = [];
@@ -149,7 +163,7 @@ export class ProductInsightsService {
       }
     }
 
-    return {
+    const value: ProjectInsights = {
       projectId,
       domain: project.normalizedDomain,
       runsConsidered: considered.length,
@@ -159,5 +173,7 @@ export class ProductInsightsService {
       fanout: buildFanoutAnalysis({ answers: rawResponses }),
       citedPaths: citedPathsForDomain(citedUrls, project.normalizedDomain),
     };
+    this.cached = { key, value };
+    return value;
   }
 }
