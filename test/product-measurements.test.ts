@@ -52,7 +52,9 @@ async function withFixture(action: (fixture: Fixture) => Promise<void>): Promise
   const stats = new ProductMeasurementStatsService(projects, store);
   const schedules = new ProductScheduleService(projects, baselines, watchSets, measurements, new ProductScheduleFileStore(projectStore));
   try { await action({ root, projects, selections, baselines, store, watchSets, measurements, stats, schedules, executor }); }
-  finally { await rm(root, { recursive: true, force: true }); }
+  // Runs keep writing after the assertions finish, so removing the root here
+  // without waiting raced them and failed with ENOENT or ENOTEMPTY.
+  finally { await measurements.whenIdle(); await rm(root, { recursive: true, force: true }); }
 }
 
 async function ready(fixture: Fixture, domain: string, models: Array<{ modelId: string; webSearchMode: "off" | "provider_native" }>) {

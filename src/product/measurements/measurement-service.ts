@@ -158,6 +158,7 @@ function failureStatus(code: string): ProbeAttempt["status"] { return code === "
 
 export class ProductMeasurementRunService {
   private readonly locks = new Map<string, Promise<void>>();
+  private readonly inFlight = new Set<Promise<void>>();
 
   constructor(
     private readonly projects: ProductProjectService,
@@ -195,7 +196,7 @@ export class ProductMeasurementRunService {
       await this.store.saveRun(run);
       const modelRuns = models.map((modelSnapshot) => ({ id: randomUUID(), projectId, runId: run.id, baselineId: baseline.id, modelSnapshot, probeRunIds: [], status: "queued" as const, createdAt: now() }));
       await Promise.all(modelRuns.map((row) => this.store.saveModelRun(row)));
-      void this.execute(run, baseline, watchSet, modelRuns);
+      this.track(this.execute(run, baseline, watchSet, modelRuns));
       return run;
     });
   }
@@ -255,6 +256,20 @@ export class ProductMeasurementRunService {
     await previous;
     try { return await operation(); }
     finally { release?.(); if (this.locks.get(projectId) === queue) this.locks.delete(projectId); }
+  }
+
+  // A run keeps writing after start() resolves. Without a way to wait for that,
+  // a caller that tears down storage races those writes.
+  private track(task: Promise<void>): void {
+    const pending: Promise<void> = task.catch(() => undefined).then(() => {
+      this.inFlight.delete(pending);
+    });
+    this.inFlight.add(pending);
+  }
+
+  /** Resolves once no measurement work started by this service is still running. */
+  async whenIdle(): Promise<void> {
+    while (this.inFlight.size > 0) await Promise.all([...this.inFlight]);
   }
 
   private async execute(run: MeasurementRun, baseline: ProductBaseline, watchSet: WatchSet, modelRuns: MeasurementModelRun[]): Promise<void> {
