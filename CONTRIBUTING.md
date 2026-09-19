@@ -15,6 +15,13 @@ npm run server
 
 You need at least one real provider key before you can run anything meaningful. A missing key must surface as a failure, never as a plausible-looking result.
 
+## Conventions
+
+[CLAUDE.md](CLAUDE.md) records the conventions this repository actually runs on,
+including the ones that exist because breaking them has already cost something:
+the no-regex rule, the escaping difference between the emitted shells, and why
+an absence is never reported as a zero. Read it before a first change.
+
 ## Good places to start
 
 [ROADMAP.md](ROADMAP.md) lists what the project intends to build next, what it
