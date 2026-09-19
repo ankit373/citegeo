@@ -52,4 +52,14 @@ Three rules decide what belongs here:
 - Recognition runs across OpenRouter, an OpenAI-compatible local gateway and Azure OpenAI
 - Evidence archive: the raw answer and provider response behind every claim
 - Measurement over time with per-model series
-- Next-actions plan from live site signals: crawler access, `llms.txt`, Organization schema, `sameAs` independence, Wikidata presence
+- **Visibility analytics**: visibility overall and per model, share of voice, cited-domain
+  ranking, the categories the models used, and the citation gap
+- **Claim audit**: model disagreement, assertions with no citation behind them, and claims
+  sharing no meaningful word with what the brand declares
+- **Query fanout capture**, read from archived provider responses across six provider shapes
+- **AI crawler analytics** from a combined-format access log, ingested incrementally, with
+  the three states a frequency chart hides: allowed but never arrived, fetched but never
+  cited, and cited but never fetched
+- **Site signal probe** on a worker cadence, with stored history and a diff between probes
+- **Next-actions plan** built from the stored probe and the real recognition evidence
+- **CSV export** for visibility, share of voice, citations, the gap, fanout and categories

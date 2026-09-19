@@ -29,6 +29,8 @@ import { CrawlerLogIngestService, CrawlerLogStateStore } from "./crawlers/crawle
 import { SiteSignalProbeService } from "./actions/signal-probe.js";
 import { SiteSignalFileStore } from "./actions/signal-store.js";
 import { buildActionPlan } from "./actions/action-plan.js";
+import { toCsv } from "./insights/csv.js";
+import type { CsvTable } from "./insights/csv.js";
 import { renderProductPhase4AppHtml } from "../ui/product-phase4-app.js";
 import { ProductMeasurementFileStore } from "./measurements/measurement-store.js";
 import { ProductWatchSetService } from "./measurements/watchset-service.js";
@@ -127,6 +129,47 @@ async function handle(req: IncomingMessage, res: ServerResponse, dependencies: P
     if (path === root || !path.startsWith(root + sep) || !existsSync(path)) return send(res, 404, { error: "asset not found" });
     if (!(await stat(path)).isFile()) return send(res, 404, { error: "asset not found" });
     return sendAsset(res, path);
+  }
+
+  if (method === "GET" && route.length === 5 && route[0] === "api" && route[1] === "projects" && route[3] === "export") {
+    const projectId = route[2] || "";
+    const table = (route[4] || "").endsWith(".csv") ? (route[4] || "").slice(0, -4) : route[4] || "";
+    try {
+      const built = await insights.build(projectId);
+      const core = built.insights;
+      const tables: Record<string, CsvTable> = {
+        visibility: {
+          columns: ["model", "modelId", "answered", "recognized", "visibility"],
+          rows: core.visibility.byModel.map((row) => [row.displayName, row.modelId, row.answered, row.recognized, row.score]),
+        },
+        voice: {
+          columns: ["brand", "domain", "mentions", "share", "isTarget"],
+          rows: [[core.shareOfVoice.target.name, core.shareOfVoice.target.domain, core.shareOfVoice.target.mentions, core.shareOfVoice.target.share, true]]
+            .concat(core.shareOfVoice.competitors.map((row) => [row.name, row.domain, row.mentions, row.share, false])),
+        },
+        citations: {
+          columns: ["domain", "answers", "isTarget", "models"],
+          rows: core.citations.domains.map((row) => [row.domain, row.answers, row.isTarget, row.models]),
+        },
+        gap: {
+          columns: ["domain", "answers", "competitors", "models"],
+          rows: built.citationGap.map((row) => [row.domain, row.answers, row.competitors, row.models]),
+        },
+        fanout: {
+          columns: ["query", "answers", "models"],
+          rows: built.fanout.queries.map((row) => [row.query, row.answers, row.models]),
+        },
+        categories: {
+          columns: ["category", "count"],
+          rows: core.categories.map((row) => [row.value, row.count]),
+        },
+      };
+      const chosen = tables[table];
+      if (!chosen) return send(res, 404, { error: `Unknown export "${table}". Available: ${Object.keys(tables).join(", ")}.` });
+      return send(res, 200, toCsv(chosen), "text/csv; charset=utf-8");
+    } catch (error) {
+      return send(res, 404, { error: error instanceof Error ? error.message : String(error) });
+    }
   }
 
   if (route.length === 4 && route[0] === "api" && route[1] === "projects" && route[3] === "signals") {
