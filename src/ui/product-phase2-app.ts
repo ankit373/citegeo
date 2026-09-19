@@ -77,6 +77,9 @@ export function renderProductPhase2AppHtml(): string {
     .mcols-cited { grid-template-columns:minmax(0,1fr) 100px minmax(0,1fr); }
     .mcols-crawler { grid-template-columns:minmax(0,1fr) 92px 84px 84px 108px; }
     .mcols-signal { grid-template-columns:130px minmax(0,1fr); align-items:start; }
+    .mcols-credential { grid-template-columns:minmax(0,1fr) 120px minmax(0,1.3fr); }
+    .credential-control { display:flex; gap:8px; align-items:center; }
+    .credential-control input { flex:1; min-width:0; }
     .step.plan-step { grid-template-columns:66px minmax(0,1fr); align-items:start; }
     .plan-step .step-index { font-size:10px; letter-spacing:.07em; text-transform:uppercase; padding-top:2px; }
     .rowlink { background:none; border:0; padding:0; text-align:left; font-size:13px; font-weight:600; font-family:inherit; color:var(--text); }
@@ -244,7 +247,7 @@ export function renderProductPhase2AppHtml(): string {
     </form>
   </aside>
   <script>
-    const state = { page:"overview", mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", signals:null, signalsState:"idle", catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0 };
+    const state = { page:"overview", mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0 };
     const app = document.getElementById("app");
     const element = (id) => document.getElementById(id);
     const html = (value) => String(value).split("&").join("&amp;").split("<").join("&lt;").split(">").join("&gt;").split('"').join("&quot;").split("'").join("&#39;");
@@ -464,6 +467,77 @@ export function renderProductPhase2AppHtml(): string {
         + '<section class="section-card"><div class="section-head"><div><h2>Claim audit</h2><p class="subtle">Disagreement, assertions with no source, and claims unlike your own description.</p></div></div>' + (auditRows ? '<ul class="protocol-list">' + auditRows + '</ul>' : '<p class="subtle">Nothing flagged across ' + audit.answers + ' answer(s).</p>') + '</section>'
         + renderCrawlerSection() + renderSignalHistory() + '<section class="section-card"><div class="section-head"><div><h2>How the models categorise you</h2><p class="subtle">Their words, counted.</p></div></div>' + (categoryRows ? '<ul class="protocol-list">' + categoryRows + '</ul>' : '<p class="subtle">No category returned yet.</p>') + '</section></section>';
     }
+    async function loadCredentials() {
+      if (state.credentialsState === "loading") return;
+      state.credentialsState = "loading";
+      try {
+        state.credentials = await request("/api/credentials");
+        state.credentialsState = "ready";
+      } catch (error) {
+        // 403 means authentication is off, which is a configuration state
+        // rather than a failure, so it is reported as one.
+        state.credentials = { closed:true, detail:error instanceof Error ? error.message : String(error) };
+        state.credentialsState = "ready";
+      }
+      render();
+    }
+    async function saveCredential(providerId, button) {
+      const field = document.querySelector('[data-credential-input="' + providerId + '"]');
+      const secret = field ? field.value : "";
+      try {
+        const result = await runAction(button, { loading:"Saving…", success:"Saved", error:"Refused" }, () => request("/api/credentials/" + encodeURIComponent(providerId), { method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ secret:secret }) }));
+        state.credentialNotice = { text:result.detail || "Stored.", kind:"success" };
+      } catch (error) {
+        state.credentialNotice = { text:error instanceof Error ? error.message : String(error), kind:"error" };
+      }
+      if (field) field.value = "";
+      state.credentialsState = "idle";
+      state.providersState = "idle";
+      loadCredentials();
+      loadProviders();
+    }
+    async function clearCredential(providerId, button) {
+      try {
+        const result = await runAction(button, { loading:"Removing…", success:"Removed", error:"Failed" }, () => request("/api/credentials/" + encodeURIComponent(providerId), { method:"DELETE" }));
+        state.credentialNotice = { text:result.detail || "Removed.", kind:"success" };
+      } catch (error) {
+        state.credentialNotice = { text:error instanceof Error ? error.message : String(error), kind:"error" };
+      }
+      state.credentialsState = "idle";
+      state.providersState = "idle";
+      loadCredentials();
+      loadProviders();
+    }
+    function renderCredentials() {
+      if (state.credentialsState === "idle") { loadCredentials(); }
+      const head = '<section class="section-card"><div class="section-head"><div><h2>Provider keys</h2><p class="subtle">A key set here is encrypted at rest and never returned by the API. Only the last four characters are ever shown.</p></div></div>';
+      if (state.credentialsState !== "ready" || !state.credentials) {
+        return head + '<p class="subtle">Reading key status…</p></section>';
+      }
+      const data = state.credentials;
+      if (data.closed) {
+        return head + '<div class="warning-box">Key entry is closed because this server has no password. Set <span class="mono">AUTH_PASSWORD</span> and restart, or keep using <span class="mono">.env</span>.</div></section>';
+      }
+      const notice = state.credentialNotice.text
+        ? '<div class="' + (state.credentialNotice.kind === "error" ? "warning-box" : "success-box") + '">' + html(state.credentialNotice.text) + '</div>'
+        : '';
+      const disabled = data.storageEnabled
+        ? ''
+        : '<div class="warning-box">Storing keys here needs <span class="mono">CREDENTIAL_KEY</span>, 32 bytes. Without it a stored key could not survive a restart, so the form stays read-only.</div>';
+      const rows = (data.credentials || []).map((row) => {
+        const known = row.last4 ? '<span class="mono">••••' + html(row.last4) + '</span>' : '<span class="state-flag">not set</span>';
+        const where = row.source === "environment"
+          ? '<span class="mcell">from <span class="mono">' + html(row.envKeys.join(" or ")) + '</span></span>'
+          : '<span class="mcell">' + (row.source === "stored" ? "stored here" : "none") + '</span>';
+        const control = !row.editable
+          ? '<span class="step-note">Set in the environment, so it cannot be changed here.</span>'
+          : !data.storageEnabled
+            ? '<span class="step-note">Needs CREDENTIAL_KEY.</span>'
+            : '<span class="credential-control"><input type="password" autocomplete="off" placeholder="Paste a key" data-credential-input="' + html(row.providerId) + '"><button type="button" class="button" data-credential-save="' + html(row.providerId) + '">Save</button>' + (row.source === "stored" ? '<button type="button" class="button danger" data-credential-clear="' + html(row.providerId) + '">Remove</button>' : '') + '</span>';
+        return '<div class="mrow mcols-credential"><div class="mname"><strong>' + html(row.providerId) + '</strong>' + where + '</div><span class="mcell">' + known + '</span>' + control + '</div>';
+      }).join("");
+      return head + notice + disabled + '<div class="mtable"><div class="mhead mcols-credential"><span>Provider</span><span>Key</span><span>Change</span></div>' + rows + '</div></section>';
+    }
     function renderSetup() {
       if (state.providersState === "idle") { loadProviders(); }
       if (state.providersState !== "ready") {
@@ -495,7 +569,7 @@ export function renderProductPhase2AppHtml(): string {
       return '<section class="view"><div class="heading"><div><h1>Setup</h1><p class="subtle">Which providers this machine can actually run, and what each one costs you.</p></div><div class="inline-actions"><button type="button" class="button" data-reload-providers>Re-check</button></div></div>'
         + banner
         + '<section class="section-card"><div class="section-head"><div><h2>Providers</h2><p class="subtle">A provider appears in the model picker only when it is configured and answering.</p></div></div><div class="mtable"><div class="mhead mcols-provider"><span>Provider</span><span>Catalog</span><span>Status</span><span>What this means</span></div>' + rows + '</div></section>'
-        + '<section class="section-card"><div class="section-head"><div><h2>Where these come from</h2><p class="subtle">Set in .env at the repository root, then restart the server.</p></div></div><ul class="protocol-list">' + envRows + '<li>Local gateway endpoint: <span class="mono">OPENAI_COMPATIBLE_BASE_URL</span></li></ul></section></section>';
+        + renderCredentials() + '<section class="section-card"><div class="section-head"><div><h2>Where these come from</h2><p class="subtle">Set in .env at the repository root, then restart the server.</p></div></div><ul class="protocol-list">' + envRows + '<li>Local gateway endpoint: <span class="mono">OPENAI_COMPATIBLE_BASE_URL</span></li></ul></section></section>';
     }
 
     function resultsSwitch(active) {
@@ -568,6 +642,10 @@ export function renderProductPhase2AppHtml(): string {
     async function saveMonitoringConfiguration() { const selected = project(); const configuration = monitoringConfiguration(); if (!selected || configuration.status === "unchanged" || state.monitoringSaveState === "saving") return; if (selectedRows().length === 0) { state.monitoringNotice = { text:"Select at least one available model before saving the configuration.", kind:"error" }; state.monitoringSaveState = "failed"; render(); return; } state.monitoringSaveState = "saving"; state.monitoringNotice = { text:"Saving the current domain, language, models and web search modes…", kind:"loading" }; render(); try { const response = await request("/api/projects/" + encodeURIComponent(selected.id) + "/baselines", { method:"POST", headers:{"Content-Type":"application/json"}, body:"{}" }); state.currentProjects = state.currentProjects.map((item) => item.id === response.project.id ? response.project : item); state.projects = state.projects.map((item) => item.id === response.project.id ? response.project : item); await refreshConfiguration(); const version = response.baseline.version; state.monitoringSaveState = "saved"; state.monitoringNotice = { text:"Saved as config v" + version, kind:"success" }; render(); window.setTimeout(() => { state.monitoringSaveState = "idle"; if (state.page === "configuration") render(); }, 850); } catch (error) { if (errorCode(error) === "baseline_unchanged") { await refreshConfiguration(); state.monitoringSaveState = "idle"; state.monitoringNotice = { text:"The current configuration is already saved", kind:"success" }; render(); return; } state.monitoringSaveState = "failed"; state.monitoringNotice = { text:error instanceof Error ? error.message : expectedErrorText.request_failed, kind:"error" }; render(); } }
     document.addEventListener("click", async (event) => { const target = event.target; if (target && target.closest && target.closest("[data-reload-providers]")) { state.providersState = "idle"; loadProviders(); return; }
       if (target && target.closest && target.closest("[data-reload-insights]")) { state.insightsState = "idle"; state.crawlersState = "idle"; state.planState = "idle"; state.signalsState = "idle"; loadInsights(); loadCrawlers(); loadPlan(); loadSignals(); return; }
+      const saveCred = target && target.closest ? target.closest("[data-credential-save]") : null;
+      if (saveCred) { await saveCredential(saveCred.getAttribute("data-credential-save"), saveCred); return; }
+      const clearCred = target && target.closest ? target.closest("[data-credential-clear]") : null;
+      if (clearCred) { await clearCredential(clearCred.getAttribute("data-credential-clear"), clearCred); return; }
       const probeButton = target && target.closest ? target.closest("[data-probe-signals]") : null;
       if (probeButton) { await captureSignals(probeButton); state.signalsState = "idle"; loadSignals(); return; } if (!(target instanceof Element)) return; const pageButton = target.closest("[data-page]"); if (pageButton) { await setPage(pageButton.getAttribute("data-page") || "overview"); return; } const listModeButton = target.closest("[data-list-mode]"); if (listModeButton) { state.mode = listModeButton.getAttribute("data-list-mode") || "current"; await refreshProjects(); render(); return; } if (target.id === "new-project" || target.id === "empty-new-project") { openDrawer(); return; } if (target.id === "close-drawer" || target.id === "cancel-draft" || target.id === "drawer-backdrop") { closeDrawer(); return; } if (target.id === "retry-catalog") { state.catalogState = "idle"; await loadCatalog(); return; } if (target.id === "save-models") { await saveModels(target); return; } if (target.id === "save-monitoring-configuration") { await saveMonitoringConfiguration(); return; } if (target.id === "archive-project") { const selected = project(); if (selected) await projectAction("archive", selected.id, target); return; } if (target.id === "delete-project") { const selected = project(); if (selected) await projectAction("delete", selected.id, target); return; } const action = target.closest("[data-project-action]"); if (action) { const projectId = action.getAttribute("data-project-id"); const name = action.getAttribute("data-project-action"); if (projectId && name) await projectAction(name, projectId, action); } });
     document.addEventListener("change", async (event) => { const target = event.target; if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) return; if (target.id === "project-select") { setSelectedProject(target.value); state.selectionsDirty = false; await refreshConfiguration(); render(); return; } if (target instanceof HTMLInputElement && target.hasAttribute("data-model-checkbox")) { changeModel(target.getAttribute("data-model-checkbox") || "", target.checked); return; } if (target instanceof HTMLSelectElement && target.hasAttribute("data-model-mode")) { changeModelMode(target.getAttribute("data-model-mode") || "", target.value); return; } if (target instanceof HTMLSelectElement && target.hasAttribute("data-selected-model-mode")) { changeModelMode(target.getAttribute("data-selected-model-mode") || "", target.value); return; } });
