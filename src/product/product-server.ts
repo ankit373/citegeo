@@ -30,6 +30,9 @@ import { SiteSignalProbeService } from "./actions/signal-probe.js";
 import { SiteSignalFileStore } from "./actions/signal-store.js";
 import { buildActionPlan } from "./actions/action-plan.js";
 import { toCsv } from "./insights/csv.js";
+import { authConfig, authorise, passwordMatches } from "./auth/auth-guard.js";
+import { clearedCookie, issueSession, sessionCookie } from "./auth/session.js";
+import { renderLoginPageHtml } from "../ui/login-page.js";
 import type { CsvTable } from "./insights/csv.js";
 import { renderProductPhase4AppHtml } from "../ui/product-phase4-app.js";
 import { ProductMeasurementFileStore } from "./measurements/measurement-store.js";
@@ -48,6 +51,35 @@ export interface ProductServerDependencies {
   modelCatalog?: ProductModelCatalog | undefined;
   recognitionExecutor?: RecognitionAnswerExecutor | undefined;
   measurementExecutor?: RecognitionAnswerExecutor | undefined;
+}
+
+const AUTH = authConfig();
+
+function httpsRequest(req: IncomingMessage): boolean {
+  const forwarded = req.headers["x-forwarded-proto"];
+  const value = Array.isArray(forwarded) ? forwarded[0] : forwarded;
+  return (value || "").split(",")[0]?.trim() === "https";
+}
+
+async function formOrJsonBody(req: IncomingMessage): Promise<Record<string, string>> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of req) chunks.push(chunk as Buffer);
+  const raw = Buffer.concat(chunks).toString("utf8");
+  const type = String(req.headers["content-type"] || "");
+  if (type.includes("application/json")) {
+    try {
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      const out: Record<string, string> = {};
+      for (const [key, value] of Object.entries(parsed)) if (typeof value === "string") out[key] = value;
+      return out;
+    } catch {
+      return {};
+    }
+  }
+  const params = new URLSearchParams(raw);
+  const out: Record<string, string> = {};
+  for (const [key, value] of params) out[key] = value;
+  return out;
 }
 
 function send(res: ServerResponse, status: number, body: unknown, contentType = "application/json"): void {
@@ -95,6 +127,37 @@ async function handle(req: IncomingMessage, res: ServerResponse, dependencies: P
   const method = req.method || "GET";
   const url = new URL(req.url || "/", "http://localhost");
   const route = url.pathname.split("/").filter(Boolean).map((part) => decodeURIComponent(part));
+
+  if (AUTH.enabled) {
+    const secure = httpsRequest(req);
+    if (method === "POST" && url.pathname === "/api/login") {
+      const body = await formOrJsonBody(req);
+      if (!passwordMatches(AUTH, body.password)) {
+        // Same shape and timing for a wrong password as for a missing one.
+        return send(res, 401, renderLoginPageHtml(true), "text/html; charset=utf-8");
+      }
+      res.writeHead(303, {
+        Location: "/",
+        "Set-Cookie": sessionCookie(issueSession(AUTH.secret, AUTH.lifetimeMs), AUTH.lifetimeMs, secure),
+      });
+      res.end();
+      return;
+    }
+    if (method === "POST" && url.pathname === "/api/logout") {
+      res.writeHead(303, { Location: "/login", "Set-Cookie": clearedCookie(secure) });
+      res.end();
+      return;
+    }
+    if (method === "GET" && url.pathname === "/login") {
+      return send(res, 200, renderLoginPageHtml(false), "text/html; charset=utf-8");
+    }
+    const decision = authorise({ config: AUTH, pathname: url.pathname, cookieHeader: req.headers.cookie });
+    if (!decision.allowed) {
+      // An API caller wants a status it can act on; a browser wants the form.
+      if (url.pathname.startsWith("/api/")) return send(res, 401, { error: "Authentication required." });
+      return send(res, 401, renderLoginPageHtml(false), "text/html; charset=utf-8");
+    }
+  }
   const projectStore = new ProductProjectFileStore(productDataDir());
   const projects = new ProductProjectService(projectStore);
   const configurationStore = new ProductConfigurationFileStore(projectStore);
