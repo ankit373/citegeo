@@ -66,6 +66,10 @@ Run the same check the CI runs before you push:
 node scripts/check-dco.mjs origin/main HEAD
 ```
 
+The check is skipped for the repository owner, who is the party the certificate
+is made to rather than a contributor certifying to someone else. Bot commits are
+skipped for the same reason: Dependabot cannot agree to anything.
+
 ## Signing the CLA
 
 Your first pull request needs a signed [Contributor License Agreement](CLA.md).
