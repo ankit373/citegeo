@@ -38,8 +38,8 @@ jobs:
         run: npm run self-check
 
       # The unit suite asserts on HTML strings and never executes the page, so a
-      # broken inline script passes it. Parse what the server actually serves.
-      - name: Parse every inline script the server emits
+      # broken inline script, an undefined name or a stray CSS brace all pass it.
+      - name: Check every script and stylesheet the server emits
         run: node scripts/check-emitted-scripts.mjs
 
       - name: Check documentation links resolve

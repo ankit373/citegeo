@@ -431,7 +431,6 @@ button.metric-card { color: inherit; }
 }
 @keyframes motion-spin { to { transform: rotate(360deg); } }
 @keyframes point-pulse { from { opacity: .8; transform: scale(1); } to { opacity: 0; transform: scale(3.2); } }
- }
 @keyframes refresh-pulse { 50% { opacity: .22; } }
 .chart-empty { display: grid; place-items: center; min-height: 220px; padding: 24px; color: var(--muted); text-align: center; font-size: 12px; }
 .chart-empty strong { color: var(--text); font-size: 15px; }

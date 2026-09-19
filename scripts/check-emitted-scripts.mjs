@@ -14,6 +14,39 @@ const shells = [
   ['app-html.js', 'renderAppHtml'],
 ];
 
+const blocksOf = (html, tag) => {
+  const blocks = [];
+  let cursor = 0;
+  for (;;) {
+    const open = html.indexOf(`<${tag}`, cursor);
+    if (open === -1) break;
+    const bodyStart = html.indexOf('>', open);
+    if (bodyStart === -1) break;
+    const close = html.indexOf(`</${tag}>`, bodyStart);
+    if (close === -1) break;
+    const body = html.slice(bodyStart + 1, close);
+    if (body.trim()) blocks.push(body);
+    cursor = close + tag.length + 3;
+  }
+  return blocks;
+};
+
+// A stray closing brace is not a parse error in CSS. The browser recovers by
+// skipping to the next block, which silently swallows whatever rule follows,
+// so a whole media query can stop applying with nothing to see in the source.
+const braceProblems = (css) => {
+  let depth = 0;
+  let stray = 0;
+  for (const character of css) {
+    if (character === '{') depth += 1;
+    else if (character === '}') {
+      depth -= 1;
+      if (depth < 0) { stray += 1; depth = 0; }
+    }
+  }
+  return { stray, unclosed: depth };
+};
+
 const scriptBlocks = (html) => {
   const blocks = [];
   let cursor = 0;
@@ -35,6 +68,7 @@ const workDir = mkdtempSync(join(tmpdir(), 'citegeo-scripts-'));
 const failures = [];
 const pageFiles = [];
 let checked = 0;
+let styles = 0;
 
 // TypeScript cannot see inside the template literals these shells are built
 // from, and `node --check` only parses, so a variable that is never defined
@@ -75,7 +109,14 @@ try {
       failures.push(`${file}: ${exportName} is not exported`);
       continue;
     }
-    const blocks = scriptBlocks(render());
+    const html = render();
+    blocksOf(html, 'style').forEach((css, index) => {
+      const { stray, unclosed } = braceProblems(css);
+      styles += 1;
+      if (stray) failures.push(`${exportName} stylesheet ${index}: ${stray} stray closing brace(s); the rule after each one is skipped`);
+      if (unclosed) failures.push(`${exportName} stylesheet ${index}: ${unclosed} unclosed rule(s)`);
+    });
+    const blocks = scriptBlocks(html);
     const pagePath = join(workDir, `page-${exportName}.js`);
     writeFileSync(pagePath, blocks.join('\n;\n'));
     pageFiles.push(pagePath);
@@ -102,3 +143,4 @@ if (failures.length) {
   process.exit(1);
 }
 console.log(`${checked} emitted script block(s) parse, with no undefined or redeclared names.`);
+console.log(`${styles} emitted stylesheet(s) have balanced braces.`);

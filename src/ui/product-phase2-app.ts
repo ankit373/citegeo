@@ -204,8 +204,23 @@ export function renderProductPhase2AppHtml(): string {
     .evidence-jump { margin-left:7px; padding:0; border:0; background:transparent; color:var(--text); text-decoration:underline; cursor:pointer; font:inherit; font-size:12px; }
     .evidence-jump:hover,.evidence-jump:focus-visible { color:var(--muted); text-decoration:underline; outline:none; }
     .attempt-row { border-top:1px solid var(--line); padding-top:10px; color:var(--muted); font-size:12px; display:grid; gap:5px; }
-    @keyframes spin { to { transform:rotate(360deg); } } }
-    @media (max-width:840px) { .shell { grid-template-columns:1fr; } .sidebar { display:none; } .workspace { padding:22px 16px; } .topbar,.heading,.section-head { align-items:flex-start; flex-direction:column; } .model-row { grid-template-columns:auto minmax(0,1fr); } .model-mode { grid-column:2; } }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    @media (max-width:840px) {
+      .shell { grid-template-columns:1fr; }
+      /* Hiding the sidebar here left no way to navigate at all on a phone. */
+      .sidebar { border-right:0; border-bottom:1px solid var(--line); padding:14px 16px; }
+      .brand { margin:0 0 14px; }
+      .nav { grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .nav-label,.sidebar-bottom { display:none; }
+      .workspace { padding:22px 16px; }
+      .topbar,.heading,.section-head { align-items:flex-start; flex-direction:column; }
+      /* Fixed column widths do not fit, so every table stacks. */
+      .mhead { display:none; }
+      .mcols-selected,.mcols-readonly,.mcols-project,.mcols-provider { grid-template-columns:minmax(0,1fr); gap:6px; }
+      .mcols-catalog { grid-template-columns:20px minmax(0,1fr); gap:6px 10px; }
+      .mcols-catalog > *:nth-child(n+3) { grid-column:2; }
+      .card-actions { margin-top:2px; }
+    }
     @media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration:.01ms !important; transition-duration:.01ms !important; } }
   </style>
 </head>
