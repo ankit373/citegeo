@@ -3,7 +3,7 @@ import { pathToFileURL } from "node:url";
 import { readdir, readFile, stat } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { extname, join, resolve, sep } from "node:path";
-import { hasProviderKey, loadDotEnv, monitoringDataDir, productDataDir, runsDir } from "./config/env.js";
+import { hasProviderKey, loadDotEnv, monitoringDataDir, productDataDir, runsDir, serverHost } from "./config/env.js";
 import { ProviderCatalog, PROVIDER_MODEL_CAPABILITIES } from "./providers/catalog.js";
 import { AuditRunner } from "./runner/audit-runner.js";
 import { AuditPlanner } from "./runner/audit-planner.js";
@@ -969,7 +969,8 @@ export function createProductServer(dependencies: ProductServerDependencies = {}
 const entrypoint = process.argv[1] ? pathToFileURL(process.argv[1]).href : "";
 if (import.meta.url === entrypoint) {
   const port = Number(process.env.PORT || 8787);
-  createProductServer().listen(port, () => {
-    console.log(`citegeo OSS server listening on http://localhost:${port}`);
+  const host = serverHost();
+  createProductServer().listen(port, host, () => {
+    console.log(`citegeo OSS server listening on http://${host === "0.0.0.0" ? "localhost" : host}:${port} (bound to ${host})`);
   });
 }

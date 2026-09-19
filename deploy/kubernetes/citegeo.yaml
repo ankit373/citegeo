@@ -39,6 +39,7 @@ metadata:
     app.kubernetes.io/managed-by: Helm
 data:
   AZURE_OPENAI_API_VERSION: "2024-10-21"
+  HOST: "0.0.0.0"
   MONITORING_DATA_DIR: "/app/data"
   PORT: "8787"
   PRODUCT_DATA_DIR: "/app/data/product-v2"
@@ -117,7 +118,7 @@ spec:
         app.kubernetes.io/instance: citegeo
         app.kubernetes.io/component: server
       annotations:
-        checksum/config: a4d8b06fa43bb42f52e0212952029a7836d99223b89cb5f24ac8af3015eae715
+        checksum/config: 91c963372ae4e12701b94f7b5fd6d008db88ba995af8773c109caf746d40585f
     spec:
       serviceAccountName: citegeo
       securityContext:

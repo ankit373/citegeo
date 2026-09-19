@@ -71,6 +71,13 @@ export function hasProviderKey(providerId: string): boolean {
   return providerEnvKeys(providerId).some((key) => Boolean(envSecretValue(key)));
 }
 
+// Node binds every interface when listen() is given no host. This app has no
+// authentication, so the safe default is loopback and reaching it from
+// elsewhere has to be a deliberate choice.
+export function serverHost(): string {
+  return process.env.HOST?.trim() || "127.0.0.1";
+}
+
 export function runsDir(): string {
   return process.env.RUNS_DIR || "runs";
 }

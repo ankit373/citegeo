@@ -30,6 +30,10 @@ function httpStatus(message: string | undefined): number | null {
   return Number.isInteger(parsed) ? parsed : null;
 }
 
+function batchOnly(message: string | undefined): boolean {
+  return Boolean(message) && message!.toLocaleLowerCase().includes("batch api");
+}
+
 function mentionsConfirmation(message: string | undefined): boolean {
   if (!message) return false;
   const lower = message.toLocaleLowerCase();
@@ -57,10 +61,23 @@ function statusCopy(input: {
   response: RecognitionModelRunPresentation["responseCompleteness"];
   local: RecognitionModelRunPresentation["localAnalysis"];
 }): Pick<RecognitionModelRunPresentation, "statusLabel" | "detail" | "primaryAction"> {
-  const status = httpStatus(input.modelRun.errorMessage || input.attempt?.errorMessage);
+  const message = input.modelRun.errorMessage || input.attempt?.errorMessage;
+  const status = httpStatus(message);
+  // A paid model with no credit reported as a generic provider failure, which
+  // gave no hint that the account, not the model, was the problem.
+  if (status === 402) return {
+    statusLabel: "This provider account has no credit for this model",
+    detail: "Every paid model answers HTTP 402 until the account is funded. Models ending in :free and any local gateway model still run. Setup shows the balance.",
+    primaryAction: "open_provider_settings",
+  };
+  if (batchOnly(message)) return {
+    statusLabel: "This model is only served through the provider's batch API",
+    detail: "It cannot answer a single request, whatever the configuration. Remove it from the configuration and pick a non-batch variant.",
+    primaryAction: "check_model_configuration",
+  };
   if (status === 404) return {
     statusLabel: "No endpoint is available for the current model and the selected request configuration",
-    detail: "No usable endpoint was found for this request. Check the model and web search configuration before deciding whether to request again.",
+    detail: "No provider serving this model accepts the requested parameters. Native web search is the usual cause, so set this model's web search mode to Offline and request again.",
     primaryAction: "check_model_configuration",
   };
   if (status === 403 && mentionsConfirmation(input.modelRun.errorMessage || input.attempt?.errorMessage)) return {

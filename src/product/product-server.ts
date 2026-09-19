@@ -10,7 +10,7 @@ import { handleProductConfigurationApi } from "./configuration/configuration-htt
 import { OpenRouterProductModelCatalog } from "./configuration/model-catalog.js";
 import { AzureOpenAiProductModelCatalog, CompositeProductModelCatalog, OpenAiCompatibleProductModelCatalog } from "./configuration/local-model-catalog.js";
 import { providerStatuses } from "./configuration/provider-status.js";
-import { hasProviderKey } from "../config/env.js";
+import { hasProviderKey, serverHost } from "../config/env.js";
 import { ProductModelSelectionService } from "./configuration/model-selection-service.js";
 import type { ProductModelCatalog } from "./configuration/model-selection-schema.js";
 import { ProductBaselineService } from "./configuration/baseline-service.js";
@@ -140,7 +140,8 @@ export function createProductServer(dependencies: ProductServerDependencies = {}
 const entrypoint = process.argv[1] ? pathToFileURL(process.argv[1]).href : "";
 if (import.meta.url === entrypoint) {
   const port = Number(process.env.PORT || 8787);
-  createProductServer().listen(port, () => {
-    console.log(`citegeo product server listening on http://localhost:${port}`);
+  const host = serverHost();
+  createProductServer().listen(port, host, () => {
+    console.log(`citegeo product server listening on http://${host === "0.0.0.0" ? "localhost" : host}:${port} (bound to ${host})`);
   });
 }

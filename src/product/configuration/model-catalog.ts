@@ -12,17 +12,22 @@ export class OpenRouterProductModelCatalog implements ProductModelCatalog {
       throw new ProductModelCatalogUnavailableError(group?.error || "OpenRouter model catalog is unavailable.");
     }
     const checkedAt = new Date().toISOString();
-    return group.models.map((model) => ({
-      providerId: "openrouter",
-      modelId: model.model,
-      displayName: model.name,
-      vendor: model.vendor,
-      releasedAt: model.releasedAt,
-      available: true,
-      unavailableReason: null,
-      nativeWebSearchSupported: model.nativeWebSearchSupported,
-      checkedAt,
-      source: "openrouter_catalog",
-    }));
+    return group.models.map((model) => {
+      const batchOnly = model.model.endsWith(":batch");
+      return {
+        providerId: "openrouter" as const,
+        modelId: model.model,
+        displayName: model.name,
+        vendor: model.vendor,
+        releasedAt: model.releasedAt,
+        available: !batchOnly,
+        unavailableReason: batchOnly
+          ? "Served only through the provider's batch API, so it cannot answer a single request."
+          : null,
+        nativeWebSearchSupported: batchOnly ? false : model.nativeWebSearchSupported,
+        checkedAt,
+        source: "openrouter_catalog" as const,
+      };
+    });
   }
 }

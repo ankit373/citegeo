@@ -56,6 +56,8 @@ secrets:
 
 # Non-secret configuration.
 config:
+  # The pod must listen on all interfaces for the Service to reach it.
+  HOST: "0.0.0.0"
   PORT: "8787"
   PRODUCT_DATA_DIR: /app/data/product-v2
   MONITORING_DATA_DIR: /app/data
