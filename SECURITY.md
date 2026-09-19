@@ -47,7 +47,13 @@ This is one shared password, not accounts. It keeps strangers out of an exposed 
 
 Keys are read from the environment, or from a file when you set `<VARIABLE>_FILE` to its path, which is the convention Docker and Kubernetes secrets use. The application never writes a key, never logs one, and never returns one from an API: `GET /api/providers` reports variable names, the endpoint and whether a key is present, never its value.
 
-There is deliberately no way to enter a provider key through the web UI. Doing that on a server with no authentication would let anyone who reaches the port store and use credentials, so key entry has to wait until the app can authenticate a user.
+Keys can also be entered through the portal, under three conditions that are enforced rather than documented:
+
+- `AUTH_PASSWORD` must be set. Without a password the endpoint refuses outright, because anyone reaching the port could otherwise store a key and spend through it.
+- `CREDENTIAL_KEY` must be set, 32 bytes. Keys are encrypted with AES-256-GCM under it. Without one the portal refuses to store anything, since a key encrypted under a secret regenerated each boot would not survive a restart.
+- The environment wins. A provider whose key is already in the environment is not editable in the portal, so nobody can set a value there, see no effect, and conclude the app is broken.
+
+A stored key is never returned by any endpoint. Reads carry whether a key is set and its last four characters, which is enough to recognise it and useless to anyone who intercepts the response. The file is written owner-only and holds ciphertext.
 
 ## Reporting a vulnerability
 
