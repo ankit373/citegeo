@@ -25,7 +25,7 @@ import { RecognitionReportFileStore } from "./reports/report-store.js";
 import { RecognitionReportService } from "./reports/report-service.js";
 import { handleRecognitionReportApi } from "./reports/report-http.js";
 import { ProductInsightsService } from "./insights/insights-service.js";
-import { readCrawlerReport } from "./crawlers/crawler-service.js";
+import { CrawlerLogIngestService, CrawlerLogStateStore } from "./crawlers/crawler-ingest.js";
 import { SiteSignalProbeService } from "./actions/signal-probe.js";
 import { SiteSignalFileStore } from "./actions/signal-store.js";
 import { buildActionPlan } from "./actions/action-plan.js";
@@ -105,6 +105,7 @@ async function handle(req: IncomingMessage, res: ServerResponse, dependencies: P
   const reports = new RecognitionReportService(projects, baselines, recognitionStore, reportStore);
   const insights = new ProductInsightsService(projects, recognition);
   const signals = new SiteSignalProbeService(projects, new SiteSignalFileStore(projectStore));
+  const crawlerLog = new CrawlerLogIngestService(new CrawlerLogStateStore(productDataDir()));
   const measurementStore = new ProductMeasurementFileStore(projectStore);
   const watchSets = new ProductWatchSetService(projects, baselines, measurementStore, recognitionStore, reportStore);
   const measurements = new ProductMeasurementRunService(projects, baselines, watchSets, measurementStore, dependencies.measurementExecutor || dependencies.recognitionExecutor);
@@ -167,7 +168,8 @@ async function handle(req: IncomingMessage, res: ServerResponse, dependencies: P
   if (method === "GET" && route.length === 4 && route[0] === "api" && route[1] === "projects" && route[3] === "crawlers") {
     try {
       const built = await insights.build(route[2] || "");
-      return send(res, 200, await readCrawlerReport({ citedPaths: built.citedPaths }));
+      // Incremental, so this reads only what was appended since the last pass.
+      return send(res, 200, await crawlerLog.ingest({ citedPaths: built.citedPaths }));
     } catch (error) {
       return send(res, 404, { error: error instanceof Error ? error.message : String(error) });
     }

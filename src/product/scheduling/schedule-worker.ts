@@ -16,6 +16,7 @@ import { ProductScheduleFileStore } from "./schedule-store.js";
 import { ProductWatchSetService } from "../measurements/watchset-service.js";
 import { SiteSignalProbeService } from "../actions/signal-probe.js";
 import { SiteSignalFileStore } from "../actions/signal-store.js";
+import { CrawlerLogIngestService, CrawlerLogStateStore } from "../crawlers/crawler-ingest.js";
 
 export function productScheduleService(): ProductScheduleService {
   const projectStore = new ProductProjectFileStore(productDataDir());
@@ -36,6 +37,10 @@ export function siteSignalProbeService(): SiteSignalProbeService {
   return new SiteSignalProbeService(new ProductProjectService(projectStore), new SiteSignalFileStore(projectStore));
 }
 
+export function crawlerLogIngestService(): CrawlerLogIngestService {
+  return new CrawlerLogIngestService(new CrawlerLogStateStore(productDataDir()));
+}
+
 export async function runProductScheduleDue(): Promise<Awaited<ReturnType<ProductScheduleService["runDue"]>>> {
   return productScheduleService().runDue();
 }
@@ -48,6 +53,7 @@ export async function runProductScheduleWorker(pollSeconds = 60): Promise<void> 
   process.once("SIGINT", stop);
   process.once("SIGTERM", stop);
   const probe = siteSignalProbeService();
+  const crawlerLog = crawlerLogIngestService();
   while (!stopped) {
     const occurrences = await service.runDue();
     if (occurrences.length) console.log(JSON.stringify({ type: "product_schedule_due", occurrenceCount: occurrences.length, occurrenceIds: occurrences.map((item) => item.id) }));
@@ -65,6 +71,14 @@ export async function runProductScheduleWorker(pollSeconds = 60): Promise<void> 
       }
     } catch (error) {
       console.error(JSON.stringify({ type: "site_signal_probe_failed", detail: error instanceof Error ? error.message : String(error) }));
+    }
+    try {
+      const ingested = await crawlerLog.ingest();
+      if (ingested.state === "ingested" && ingested.linesParsed) {
+        console.log(JSON.stringify({ type: "crawler_log_ingested", lines: ingested.linesParsed, bytes: ingested.bytesRead, restarted: ingested.restarted }));
+      }
+    } catch (error) {
+      console.error(JSON.stringify({ type: "crawler_log_ingest_failed", detail: error instanceof Error ? error.message : String(error) }));
     }
     await new Promise<void>((resolve) => setTimeout(resolve, pollSeconds * 1000));
   }
