@@ -1,4 +1,5 @@
-import { PRODUCT_NAME, PRODUCT_TITLE, renderCiteGeoLockup, renderCiteGeoMarkSvg } from "./brand.js";
+import { PRODUCT_NAME, PRODUCT_TITLE, renderCiteGeoLockupInline, renderCiteGeoMarkSvg } from "./brand.js";
+import { THEME_BASE, THEME_FONT_LINKS, THEME_TOKENS } from "./theme.js";
 
 export function renderProductPhase2AppHtml(): string {
   return `<!doctype html>
@@ -6,39 +7,26 @@ export function renderProductPhase2AppHtml(): string {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="dark">
   <link rel="icon" type="image/svg+xml" href="/assets/brand/citegeo-emblem.svg"><link rel="apple-touch-icon" href="/assets/brand/citegeo-emblem.svg">
   <title>${PRODUCT_TITLE}</title>
-  <style>
-    :root {
-      --bg:#08090B; --sidebar:#0B0C0F; --panel:#0F1114; --panel-hover:#14171B;
-      --line:#1B1F25; --line-strong:#2A3039;
-      --text:#F6F7F9; --muted:#98A1AE; --weak:#5D6673;
-      --accent:#6E9BFF; --accent-soft:rgba(110,155,255,.12);
-      --confirmed:#3FB27F; --confirmed-text:#5FD3A0;
-      --unknown:#C69A3C; --unknown-text:#E3B75E;
-      --failed:#C0574A; --failed-text:#E08579;
-      --radius:10px; --radius-sm:7px;
-      --gutter:clamp(20px,3.5vw,56px);
-      --motion-fast:140ms; --motion-normal:260ms;
-      --ease-standard:cubic-bezier(.22,1,.36,1); --ease-press:cubic-bezier(.2,.8,.2,1);
-    }
-    * { box-sizing:border-box; }
-    body { font-variant-numeric:tabular-nums; margin:0; min-height:100vh; background:var(--bg); color:var(--text); font-family:"General Sans",ui-sans-serif,system-ui,-apple-system,sans-serif; font-size:14px; -webkit-font-smoothing:antialiased; }
-    h1,h2,h3 { font-family:"Cabinet Grotesk",ui-sans-serif,system-ui,sans-serif; letter-spacing:-0.025em; }
-    .domain,.mono { font-family:"JetBrains Mono",ui-monospace,monospace; font-variant-numeric:tabular-nums; }
-    button,input,select { font:inherit; }
-    button { color:inherit; cursor:pointer; }
-    button:disabled { cursor:not-allowed; opacity:.58; }
-    button:focus-visible,input:focus-visible,select:focus-visible { outline:2px solid var(--text); outline-offset:2px; }
+  ${THEME_FONT_LINKS}
+  <script>
+    // Applied before the stylesheet paints, otherwise the page shows the system
+    // theme for a frame and then swaps, which reads as a bug.
+    try {
+      var saved = localStorage.getItem("citegeo.theme");
+      if (saved === "light" || saved === "dark") document.documentElement.setAttribute("data-theme", saved);
+    } catch (error) { /* private browsing denies storage; the system theme is a fine default */ }
+  </script>
+  <style>${THEME_TOKENS}${THEME_BASE}
     /* The sidebar is sticky and one viewport tall, so below the fold its grid
        column fell back to the page background and the rail appeared to stop. */
-    .shell { min-height:100vh; display:grid; grid-template-columns:236px minmax(0,1fr); background:linear-gradient(to right, var(--sidebar) 0 236px, var(--bg) 236px); }
-    .sidebar { background:var(--sidebar); border-right:1px solid var(--line); display:flex; flex-direction:column; padding:20px 12px; position:sticky; top:0; height:100vh; overflow:auto; }
-    .brand { display:flex; align-items:center; min-height:48px; margin:0 8px 28px; }
-    .brand-lockup { display:block; width:min(100%,190px); }
-    .brand-lockup img { display:block; width:100%; height:auto; }
-    .brand-lockup-image { display:block; width:min(100%,190px); height:auto; }
+    .shell { min-height:100vh; display:grid; grid-template-columns:244px minmax(0,1fr); background:linear-gradient(to right, var(--sunken) 0 244px, var(--paper) 244px); }
+    .sidebar { background:transparent; border-right:1px solid var(--line); display:flex; flex-direction:column; padding:22px 14px; position:sticky; top:0; height:100vh; overflow:auto; }
+    .brand { display:flex; align-items:center; min-height:40px; margin:0 8px 22px; }
+    .brand-lockup-inline { display:inline-flex; align-items:center; gap:8px; color:var(--text); }
+    .brand-mark-svg { width:24px; height:24px; display:block; color:var(--accent); }
+    .brand-word { font-family:var(--font-display); font-size:20px; font-weight:600; letter-spacing:-0.02em; }
     .brand-mark { width:30px; height:30px; display:grid; place-items:center; }
     .brand-mark svg { width:30px; height:30px; }
     .brand-title { display:grid; gap:2px; font-size:14px; }
@@ -46,29 +34,33 @@ export function renderProductPhase2AppHtml(): string {
     .brand-title span,.subtle,.field-help,.model-meta { color:var(--muted); }
     .brand-title span { font-size:12px; }
     .project-label,.nav-label { color:var(--weak); font-size:10px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; margin:18px 10px 6px; }
-    .project-select,input,select { width:100%; min-height:34px; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--panel); color:var(--text); padding:0 10px; font-size:13px; transition:border-color var(--motion-fast) var(--ease-standard); }
+    .project-select,input,select { width:100%; min-height:34px; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--surface); color:var(--text); padding:0 10px; font-size:13px; transition:border-color var(--motion-fast) var(--ease-standard); }
     .project-select:hover,input:hover,select:hover { border-color:var(--line-strong); }
     .nav { margin-top:20px; display:grid; gap:1px; }
     .nav-item { display:flex; align-items:center; gap:9px; min-height:34px; border:0; border-radius:var(--radius-sm); background:transparent; color:var(--muted); text-align:left; padding:0 10px; font-size:13px; text-decoration:none; transition:background-color var(--motion-fast) var(--ease-standard),color var(--motion-fast) var(--ease-standard); }
-    .nav-item:hover,.nav-item:focus-visible { background:var(--panel-hover); color:var(--text); }
-    .nav-item.active { background:var(--accent-soft); color:var(--text); box-shadow:inset 2px 0 0 var(--accent); }
+    .nav-item:hover,.nav-item:focus-visible { background:var(--raised); color:var(--text); }
+    .nav-item.active:hover { color:var(--accent); }
+    .nav-item.active { background:var(--accent-wash); color:var(--accent); font-weight:550; }
     .button:active,.card-action:active { transform:translateY(1px); }
     .sidebar-bottom { margin-top:auto; padding:16px 8px 0; color:var(--weak); font-size:12px; }
     .workspace { min-width:0; padding:0 var(--gutter) 64px; }
-    .topbar { position:sticky; top:0; z-index:3; display:flex; justify-content:space-between; align-items:center; gap:16px; border-bottom:1px solid var(--line); padding:16px 0; background:color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter:blur(12px); }
+    .topbar { position:sticky; top:0; z-index:3; display:flex; justify-content:space-between; align-items:center; gap:16px; border-bottom:1px solid var(--line); padding:16px 0; background:color-mix(in srgb, var(--paper) 86%, transparent); backdrop-filter:saturate(180%) blur(14px); }
     .crumb { color:var(--weak); font-size:13px; }
+    .topbar-actions { display:flex; align-items:center; gap:10px; }
+    .theme-toggle { width:32px; height:32px; display:grid; place-items:center; border:1px solid var(--line); border-radius:var(--radius-xs); background:var(--surface); color:var(--muted); transition:color var(--motion-fast) var(--ease-standard),border-color var(--motion-fast) var(--ease-standard); }
+    .theme-toggle:hover { color:var(--text); border-color:var(--line-strong); }
     .crumb strong { color:var(--text); }
-    .button { position:relative; min-height:34px; border-radius:var(--radius-sm); border:1px solid var(--line-strong); background:var(--panel); padding:0 12px; font-size:13px; font-weight:550; transition:transform var(--motion-fast) var(--ease-press),background-color var(--motion-fast) var(--ease-standard),border-color var(--motion-fast) var(--ease-standard),color var(--motion-fast) var(--ease-standard); }
-    .button:hover,.button:focus-visible { background:var(--panel-hover); border-color:var(--muted); }
-    .button.primary { background:var(--accent); border-color:var(--accent); color:#06080C; font-weight:600; }
-    .button.primary:hover,.button.primary:focus-visible { filter:brightness(1.1); background:var(--accent); border-color:var(--accent); }
+    .button { position:relative; min-height:34px; border-radius:var(--radius-sm); border:1px solid var(--line-strong); background:var(--surface); padding:0 13px; font-size:13px; font-weight:500; box-shadow:var(--shadow-sm); transition:transform var(--motion-fast) var(--ease-press),background-color var(--motion-fast) var(--ease-standard),border-color var(--motion-fast) var(--ease-standard),color var(--motion-fast) var(--ease-standard); }
+    .button:hover,.button:focus-visible { background:var(--raised); border-color:var(--line-strong); color:var(--text); }
+    .button.primary { background:var(--accent); border-color:var(--accent); color:var(--accent-ink); font-weight:550; }
+    .button.primary:hover,.button.primary:focus-visible { background:var(--accent-hover); border-color:var(--accent-hover); }
     /* The failed colour reports an evidence state; chrome must not borrow it. */
     .button.danger { color:var(--text); border-color:var(--line-strong); }
     .button.danger:hover { border-color:var(--text); }
     .button[data-action-state="loading"] { color:var(--muted); }
     .button[data-action-state="loading"]::before { content:""; display:inline-block; width:12px; height:12px; margin-right:7px; vertical-align:-1px; border:2px solid currentColor; border-right-color:transparent; border-radius:50%; animation:spin 700ms linear infinite; }
-    .button[data-action-state="success"] { color:var(--confirmed-text); border-color:#2E3A26; }
-    .button[data-action-state="error"] { color:var(--failed-text); border-color:#4A2620; }
+    .button[data-action-state="success"] { color:var(--confirmed-text); border-color:var(--confirmed); }
+    .button[data-action-state="error"] { color:var(--failed-text); border-color:var(--failed); }
     .content { max-width:1280px; margin:0 auto; padding-top:clamp(24px,3vw,40px); }
     /* No entrance animation: a view is static content, not a state change. */
     .view { }
@@ -83,11 +75,11 @@ export function renderProductPhase2AppHtml(): string {
     .heading .button,.heading .inline-actions .button { white-space:nowrap; }
     .toolbar { margin:24px 0 18px; }
     .filter { border:1px solid var(--line); background:transparent; color:var(--muted); padding:8px 10px; border-radius:7px; transition:background-color var(--motion-fast) var(--ease-standard),border-color var(--motion-fast) var(--ease-standard),transform var(--motion-fast) var(--ease-press); }
-    .filter:hover,.filter:focus-visible,.filter.active { background:var(--panel); color:var(--text); border-color:var(--line-strong); }
+    .filter:hover,.filter:focus-visible,.filter.active { background:var(--surface); color:var(--text); border-color:var(--line-strong); }
     .filter:active { transform:translateY(1px) scale(.98); }
     .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:12px; }
-    .card,.detail,.section-card { border:1px solid var(--line); border-radius:var(--radius); background:var(--panel); padding:clamp(14px,1.6vw,20px); transition:border-color var(--motion-fast) var(--ease-standard),background-color var(--motion-fast) var(--ease-standard); }
-    .card:hover,.card:focus-within { border-color:var(--line-strong); background:var(--panel-hover); }
+    .card,.detail,.section-card { border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); padding:clamp(16px,1.8vw,24px); box-shadow:var(--shadow-sm); transition:border-color var(--motion-fast) var(--ease-standard),box-shadow var(--motion-fast) var(--ease-standard); }
+    .card:hover,.card:focus-within { border-color:var(--line-strong); box-shadow:var(--shadow); }
     .mcols-project { grid-template-columns:minmax(0,1.1fr) minmax(0,1.2fr) 86px 148px auto; }
     .mcols-provider { grid-template-columns:minmax(0,1fr) 210px 124px minmax(0,1.5fr); align-items:start; }
     .mcols-board { grid-template-columns:32px minmax(0,1.6fr) 150px 90px 110px; align-items:start; }
@@ -95,16 +87,16 @@ export function renderProductPhase2AppHtml(): string {
     .mcols-aemodel { grid-template-columns:minmax(0,1.6fr) 80px 110px 90px; align-items:start; }
     .mcols-prompt { grid-template-columns:minmax(0,1fr) 110px 120px; align-items:start; }
     .scorehead { display:flex; flex-direction:column; align-items:flex-end; gap:4px; }
-    .scorebig { font-size:clamp(40px,5vw,60px); font-weight:650; line-height:.9; letter-spacing:-0.04em; font-variant-numeric:tabular-nums; background:linear-gradient(180deg,var(--text),var(--muted)); -webkit-background-clip:text; background-clip:text; color:transparent; }
-    .statgrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:1px; margin-top:16px; background:var(--line); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; }
-    .stat { background:var(--panel); padding:14px 16px; display:grid; gap:3px; }
+    .scorebig { font-family:var(--font-display); font-size:clamp(44px,5.4vw,66px); font-weight:500; line-height:.92; letter-spacing:-0.035em; font-variant-numeric:tabular-nums; color:var(--text); }
+    .statgrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:1px; margin-top:18px; background:var(--line); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; }
+    .stat { background:var(--surface); padding:16px 18px; display:grid; gap:4px; }
     .stat span { font-size:11px; letter-spacing:.07em; text-transform:uppercase; color:var(--weak); font-weight:600; }
-    .stat strong { font-size:24px; font-weight:600; letter-spacing:-0.02em; line-height:1.1; }
+    .stat strong { font-family:var(--font-display); font-size:25px; font-weight:500; letter-spacing:-0.018em; line-height:1.15; }
     .stat small { font-size:12px; color:var(--weak); }
-    .bar { height:3px; border-radius:2px; background:var(--line-strong); overflow:hidden; margin-top:6px; }
+    .bar { height:4px; border-radius:2px; background:var(--sunken); overflow:hidden; margin-top:8px; }
     .bar > i { display:block; height:100%; background:var(--accent); border-radius:2px; transition:width var(--motion-normal) var(--ease-standard); }
     .inline-form { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
-    .inline-form input,.inline-form select { flex:1 1 180px; min-width:0; padding:8px 10px; border-radius:6px; border:1px solid var(--line); background:var(--sidebar); color:var(--text); font:inherit; font-size:13px; }
+    .inline-form input,.inline-form select { flex:1 1 180px; min-width:0; padding:8px 10px; border-radius:6px; border:1px solid var(--line); background:var(--sunken); color:var(--text); font:inherit; font-size:13px; }
     .inline-form input { flex:3 1 320px; }
     .mcols-vis { grid-template-columns:minmax(0,1fr) 120px 110px; }
     .mcols-voice { grid-template-columns:minmax(0,1fr) 110px 120px; }
@@ -133,13 +125,13 @@ export function renderProductPhase2AppHtml(): string {
     .domain { font-feature-settings:"tnum" 1; color:var(--muted); margin-top:8px; overflow-wrap:anywhere; }
     .meta { display:flex; gap:8px; flex-wrap:wrap; margin-top:15px; color:var(--weak); font-size:12px; }
     .tag { border:1px solid var(--line); border-radius:999px; padding:3px 8px; font-size:12px; }
-    .tag.draft { color:var(--unknown-text); border-color:#4A3A1E; }
+    .tag.draft { color:var(--unknown-text); border-color:var(--unknown); background:var(--unknown-wash); }
     .tag.archived { color:var(--muted); }
-    .tag.deleted { color:var(--failed-text); border-color:#4A2620; }
-    .tag.ready { color:var(--confirmed-text); border-color:#2E3A26; }
-    .tag.warning { color:var(--unknown-text); border-color:#4A3A1E; }
-    .card-action { min-height:32px; border:1px solid var(--line-strong); border-radius:6px; background:var(--sidebar); color:var(--muted); padding:0 9px; font-size:12px; font-weight:700; transition:transform var(--motion-fast) var(--ease-press),background-color var(--motion-fast) var(--ease-standard),border-color var(--motion-fast) var(--ease-standard); }
-    .card-action:hover,.card-action:focus-visible { background:var(--panel-hover); border-color:#555; color:var(--text); }
+    .tag.deleted { color:var(--failed-text); border-color:var(--failed); background:var(--failed-wash); }
+    .tag.ready { color:var(--confirmed-text); border-color:var(--confirmed); background:var(--confirmed-wash); }
+    .tag.warning { color:var(--unknown-text); border-color:var(--unknown); background:var(--unknown-wash); }
+    .card-action { min-height:32px; border:1px solid var(--line-strong); border-radius:6px; background:var(--sunken); color:var(--muted); padding:0 9px; font-size:12px; font-weight:700; transition:transform var(--motion-fast) var(--ease-press),background-color var(--motion-fast) var(--ease-standard),border-color var(--motion-fast) var(--ease-standard); }
+    .card-action:hover,.card-action:focus-visible { background:var(--raised); border-color:#555; color:var(--text); }
     .card-action.danger { color:var(--text); border-color:var(--line-strong); }
     .empty { border:1px dashed var(--line-strong); min-height:230px; display:grid; place-items:center; text-align:center; padding:30px; border-radius:8px; }
     .empty-copy { max-width:500px; }
@@ -159,17 +151,17 @@ export function renderProductPhase2AppHtml(): string {
     .form-status.success { color:var(--confirmed-text); }
     .form-status.loading { color:var(--muted); }
     .drawer-backdrop { position:fixed; z-index:4; inset:0; background:rgba(0,0,0,.62); opacity:0; pointer-events:none; transition:opacity var(--motion-normal) var(--ease-standard); }
-    .drawer { position:fixed; z-index:5; top:0; right:0; bottom:0; width:min(530px,100vw); background:var(--sidebar); border-left:1px solid var(--line-strong); transform:translateX(100%); transition:transform var(--motion-normal) var(--ease-standard); padding:26px; overflow:auto; }
+    .drawer { position:fixed; z-index:5; top:0; right:0; bottom:0; width:min(530px,100vw); background:var(--sunken); border-left:1px solid var(--line-strong); transform:translateX(100%); transition:transform var(--motion-normal) var(--ease-standard); padding:26px; overflow:auto; }
     body.drawer-open .drawer-backdrop { opacity:1; pointer-events:auto; }
     body.drawer-open .drawer { transform:translateX(0); }
     .drawer-head { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; margin-bottom:28px; }
-    .close { width:34px; min-width:34px; height:34px; border:1px solid var(--line); border-radius:7px; background:var(--panel); }
+    .close { width:34px; min-width:34px; height:34px; border:1px solid var(--line); border-radius:7px; background:var(--surface); }
     .drawer-footer { display:flex; justify-content:space-between; gap:12px; border-top:1px solid var(--line); margin-top:28px; padding-top:18px; }
     .section-stack { display:grid; gap:12px; margin-top:20px; }
     .section-card { margin-top:12px; }
     .section-head { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; margin-bottom:4px; flex-wrap:wrap; }
     .protocol-list { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:8px; padding:0; margin:15px 0 0; list-style:none; }
-    .protocol-list li { border:1px solid var(--line); background:var(--sidebar); border-radius:7px; padding:10px; color:var(--muted); font-size:13px; min-width:0; overflow-wrap:anywhere; }
+    .protocol-list li { border:1px solid var(--line); background:var(--sunken); border-radius:7px; padding:10px; color:var(--muted); font-size:13px; min-width:0; overflow-wrap:anywhere; }
     .model-search { margin:18px 0 12px; }
     .model-catalog-controls { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:10px; margin-bottom:12px; }
     .model-catalog-controls label { display:grid; gap:6px; color:var(--weak); font-size:12px; }
@@ -181,7 +173,7 @@ export function renderProductPhase2AppHtml(): string {
     .mrow:last-child { border-bottom:0; }
     .mhead { font-size:10px; letter-spacing:.09em; text-transform:uppercase; color:var(--weak); font-weight:600; }
     .mrow { transition:background-color var(--motion-fast) var(--ease-standard); }
-    .mrow:hover,.mrow:focus-within { background:var(--panel-hover); border-radius:var(--radius-sm); }
+    .mrow:hover,.mrow:focus-within { background:var(--raised); border-radius:var(--radius-sm); }
     .mcols-selected { grid-template-columns:minmax(0,1fr) 104px 92px 178px; }
     .mcols-readonly { grid-template-columns:minmax(0,1fr) 104px 178px; }
     .mcols-catalog { grid-template-columns:20px minmax(0,1fr) 116px 96px 178px; }
@@ -190,9 +182,9 @@ export function renderProductPhase2AppHtml(): string {
     .mname span { display:block; font-size:12px; color:var(--weak); overflow-wrap:anywhere; margin-top:2px; }
     .mname .subtle { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; font-size:12px; color:var(--weak); margin-top:3px; }
     .mcell { font-size:13px; color:var(--muted); min-width:0; overflow-wrap:anywhere; }
-    .state-ok { color:var(--confirmed-text); }
-    .state-flag { color:var(--unknown-text); }
-    .state-bad { color:var(--failed-text); }
+    .state-ok { color:var(--confirmed-text); font-weight:500; }
+    .state-flag { color:var(--unknown-text); font-weight:500; }
+    .state-bad { color:var(--failed-text); font-weight:500; }
     .mrow select { width:100%; }
     .mrow input[type="checkbox"] { width:16px; min-height:16px; accent-color:var(--text); }
     .mlegend { font-size:12px; color:var(--weak); margin:10px 2px 0; }
@@ -208,24 +200,24 @@ export function renderProductPhase2AppHtml(): string {
     .model-mode { display:grid; gap:5px; }
     .model-mode label { color:var(--weak); font-size:11px; }
     .baseline-list { display:grid; gap:8px; margin-top:14px; }
-    .baseline-row { display:grid; grid-template-columns:minmax(0,1fr) 150px; align-items:start; gap:14px; border:1px solid var(--line); border-radius:7px; padding:11px; background:var(--sidebar); }
+    .baseline-row { display:grid; grid-template-columns:minmax(0,1fr) 150px; align-items:start; gap:14px; border:1px solid var(--line); border-radius:7px; padding:11px; background:var(--sunken); }
     .baseline-row strong { display:block; font-size:13px; }
     .baseline-row span { display:block; color:var(--weak); font-size:12px; margin-top:3px; overflow-wrap:anywhere; }
     .status-line { display:flex; gap:9px; flex-wrap:wrap; align-items:center; color:var(--muted); font-size:13px; }
-    .warning-box { border:1px solid #4A3A1E; background:#1F1810; padding:12px; border-radius:7px; color:var(--unknown-text); }
-    .success-box { border:1px solid #2E3A26; background:#161B12; padding:12px; border-radius:7px; color:var(--confirmed-text); }
-    .technical-details { border:1px solid var(--line); border-radius:8px; background:var(--sidebar); padding:14px 16px; color:var(--muted); }
+    .warning-box { border:1px solid var(--unknown); background:var(--unknown-wash); padding:12px 14px; border-radius:var(--radius-sm); color:var(--unknown-text); }
+    .success-box { border:1px solid var(--confirmed); background:var(--confirmed-wash); padding:12px 14px; border-radius:var(--radius-sm); color:var(--confirmed-text); }
+    .technical-details { border:1px solid var(--line); border-radius:8px; background:var(--sunken); padding:14px 16px; color:var(--muted); }
     .technical-details summary { color:var(--text); cursor:pointer; font-weight:700; }
     .technical-details[open] summary { margin-bottom:14px; }
     .run-list { display:grid; gap:12px; }
-    .run-row { border:1px solid var(--line); background:var(--sidebar); border-radius:8px; padding:14px; display:grid; gap:10px; }
+    .run-row { border:1px solid var(--line); background:var(--sunken); border-radius:8px; padding:14px; display:grid; gap:10px; }
     .run-row-head,.model-run-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
     .run-row h3,.model-run-card h3 { margin:0; }
     .model-run-list { display:grid; gap:10px; }
-    .model-run-card { border:1px solid var(--line); border-radius:8px; padding:14px; background:var(--sidebar); display:grid; gap:12px; }
+    .model-run-card { border:1px solid var(--line); border-radius:8px; padding:14px; background:var(--sunken); display:grid; gap:12px; }
     .model-run-card.running { border-color:var(--line-strong); }
-    .model-run-card.completed,.model-run-card.unknown { border-color:#2E3A26; }
-    .model-run-card.failed,.model-run-card.unsupported { border-color:#4A2620; }
+    .model-run-card.completed,.model-run-card.unknown { border-color:var(--confirmed); }
+    .model-run-card.failed,.model-run-card.unsupported { border-color:var(--failed); }
     /* The data is a matrix, so it reads as rows with rule lines. No card-in-card. */
     .nav-label { margin:16px 8px 6px; color:var(--weak); font-size:11px; letter-spacing:.08em; text-transform:uppercase; }
     .nav-step { display:inline-block; width:16px; color:var(--weak); font-variant-numeric:tabular-nums; }
@@ -247,13 +239,13 @@ export function renderProductPhase2AppHtml(): string {
     .recognition-summary > div { display:contents; }
     .recognition-summary span { padding:10px 16px 10px 0; border-bottom:1px solid var(--line); color:var(--muted); font-size:12px; }
     .recognition-summary strong { padding:10px 0; border-bottom:1px solid var(--line); overflow-wrap:anywhere; font-weight:600; }
-    .evidence-details { border:1px solid var(--line); border-radius:7px; padding:12px; background:var(--sidebar); }
+    .evidence-details { border:1px solid var(--line); border-radius:7px; padding:12px; background:var(--sunken); }
     .evidence-details summary { cursor:pointer; font-weight:700; }
     .evidence-details[open] summary { margin-bottom:12px; }
     .evidence-group { display:grid; gap:7px; margin-top:14px; }
     .evidence-group h4 { margin:0; font-size:13px; }
     .evidence-group ul { margin:0; padding-left:18px; display:grid; gap:5px; color:var(--muted); }
-    .raw-answer { max-height:360px; overflow:auto; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; padding:12px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--muted); font-size:12px; line-height:1.55; }
+    .raw-answer { max-height:360px; overflow:auto; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; padding:12px; border:1px solid var(--line); border-radius:6px; background:var(--paper); color:var(--muted); font-size:12px; line-height:1.55; }
     .raw-answer mark { background:rgba(201,151,62,0.22); color:var(--unknown-text); border-bottom:1px solid var(--unknown); border-radius:2px; scroll-margin:28px; }
     .evidence-jump { margin-left:7px; padding:0; border:0; background:transparent; color:var(--text); text-decoration:underline; cursor:pointer; font:inherit; font-size:12px; }
     .evidence-jump:hover,.evidence-jump:focus-visible { color:var(--muted); text-decoration:underline; outline:none; }
@@ -954,8 +946,8 @@ export function renderProductPhase2AppHtml(): string {
     function saveConfigurationButton(configuration, hasModels) { const visual = configurationVisualState(configuration); const disabled = !hasModels || visual === "unchanged" || visual === "saving" || visual === "saved"; const label = visual === "no_version" ? "Save config v1" : visual === "unchanged" ? "✓ Current configuration saved" : visual === "changed" ? "Save as config v" + configuration.nextVersion : visual === "saving" ? "Saving…" : visual === "saved" ? "✓ Saved as v" + configuration.currentVersion : "Save again"; return '<button id="save-monitoring-configuration" type="button" class="button primary" data-testid="save-monitoring-configuration" data-action-state="' + visual + '" ' + (disabled ? "disabled" : "") + '>' + label + '</button>'; }
     function renderConfiguration() { const selected = project(); if (!selected) return '<section class="view"><div class="empty"><div class="empty-copy"><h2>Select a project first</h2><p class="subtle">A configuration belongs to a single project.</p></div></div></section>'; if (state.configurationState === "loading") return '<section class="view"><div class="heading"><div><h1>Configuration</h1><p class="subtle">Loading the current configuration…</p></div></div><div class="section-card inline-empty" aria-live="polite">Loading the domain, models and web search modes.</div></section>'; const configuration = monitoringConfiguration(); const hasModels = selectedRows().length > 0; const notice = state.monitoringNotice.text; const noticeKind = state.monitoringNotice.kind; const stateMessage = !hasModels ? "Select at least one available model before saving the configuration." : configuration.status === "no_version" ? "No configuration saved yet. Saving fixes the current domain, language, models and web search modes." : configuration.status === "changed" ? "The models or web search modes have changed. Saving creates a new configuration version." : "The current models and web search modes are saved."; const stateClass = !hasModels || configuration.status === "changed" ? "warning-box" : configuration.status === "unchanged" ? "success-box" : "warning-box"; return '<section class="view"><div class="heading"><div><h1>Configuration</h1><p class="subtle">Save the domain, output language and each model\\'s web search mode as reusable monitoring conditions.</p></div>' + saveConfigurationButton(configuration, hasModels) + '</div><div id="monitoring-configuration-status" data-testid="monitoring-configuration-status" class="form-status ' + html(noticeKind) + '" aria-live="polite">' + html(notice) + '</div><div class="section-stack"><section class="section-card"><div class="section-head"><div><h2>Current version</h2><p class="subtle">Target domain: <span class="mono">' + html(selected.normalizedDomain) + '</span></p></div><span class="tag ' + (configuration.status === "unchanged" ? "ready" : "warning") + '">' + (configuration.currentVersion ? "v" + configuration.currentVersion : "Not saved yet") + '</span></div><div class="' + stateClass + '" data-testid="monitoring-configuration-summary">' + html(stateMessage) + '</div></section><section class="section-card"><div class="section-head"><div><h2>Current model configuration</h2><p class="subtle">Each model stores its own web search mode.</p></div><button type="button" class="button" data-page="models">Adjust models</button></div>' + renderSelectedModels(true) + '</section>' + renderConfigurationDiff(configuration) + '<section class="section-card"><div class="section-head"><div><h2>Past configurations</h2><p class="subtle">Read-only snapshot. Saving a new version does not overwrite past configurations.</p></div></div>' + renderConfigurationRows(configuration) + '</section>' + renderTechnicalDetails(configuration) + '</div></section>'; }
     const brandMark = ${JSON.stringify(renderCiteGeoMarkSvg("phase2-brand-mark").split("\n").join(""))};
-    const brandLockup = ${JSON.stringify(renderCiteGeoLockup("brand-lockup-image"))};
-    function render() { if (window.__citegeoPhase5Active) return; const selected = project(); const options = state.currentProjects.length ? state.currentProjects.map((item) => '<option value="' + html(item.id) + '">' + html(item.name) + ' · ' + html(item.normalizedDomain) + '</option>').join("") : '<option value="">No projects yet</option>'; let view = state.page === "models" ? renderModels() : state.page === "configuration" ? renderConfiguration() : state.page === "setup" ? renderSetup() : state.page === "visibility" ? renderVisibility() : state.page === "prompts" ? renderPrompts() : state.page === "answer-engine" ? renderAnswerEngine() : state.page === "dashboard" ? renderDashboard() : renderOverview(); app.innerHTML = '<div class="shell"><aside class="sidebar"><div class="brand"><div class="brand-lockup">' + brandLockup + '</div></div><div class="project-label">Project</div><select id="project-select" class="project-select" aria-label="Switch project" data-testid="project-select">' + options + '</select><nav class="nav" aria-label="Project navigation"><button type="button" class="nav-item ' + (state.page === "dashboard" ? "active" : "") + '" data-page="dashboard"><span>Dashboard</span></button><div class="nav-label">Run a test</div><button type="button" class="nav-item ' + (state.page === "models" ? "active" : "") + '" data-page="models"><span class="nav-step">1</span><span>Choose models</span></button><button type="button" class="nav-item ' + (state.page === "recognition" || state.page === "reports" ? "active" : "") + '" data-page="recognition"><span class="nav-step">2</span><span>Results</span></button><button type="button" class="nav-item ' + (state.page === "visibility" ? "active" : "") + '" data-page="visibility"><span class="nav-step">3</span><span>Visibility</span></button><div class="nav-label">Answer engine</div><button type="button" class="nav-item ' + (state.page === "answer-engine" ? "active" : "") + '" data-page="answer-engine"><span>Scores</span></button><button type="button" class="nav-item ' + (state.page === "prompts" ? "active" : "") + '" data-page="prompts"><span>Prompts</span></button><div class="nav-label">Over time</div><a class="nav-item" href="?view=measurements"><span>Continuous measurement</span></a><div class="nav-label">Machine</div><button type="button" class="nav-item ' + (state.page === "overview" ? "active" : "") + '" data-page="overview"><span>Projects</span></button><button type="button" class="nav-item ' + (state.page === "configuration" ? "active" : "") + '" data-page="configuration"><span>Configuration history</span></button><button type="button" class="nav-item ' + (state.page === "setup" ? "active" : "") + '" data-page="setup"><span>Setup</span></button></nav><div class="sidebar-bottom">Domain recognition</div></aside><main class="workspace"><header class="topbar"><div class="crumb"><strong>${PRODUCT_NAME}</strong> / ' + html(selected ? selected.name : "Project") + '</div><button id="new-project" type="button" class="button primary" data-testid="new-project">New project</button></header><section class="content">' + view + '</section></main></div>'; const select = element("project-select"); select.value = state.selectedId; document.title = selected ? selected.name + " | ${PRODUCT_TITLE}" : "${PRODUCT_TITLE}"; }
+    const brandLockup = ${JSON.stringify(renderCiteGeoLockupInline())};
+    function render() { if (window.__citegeoPhase5Active) return; const selected = project(); const options = state.currentProjects.length ? state.currentProjects.map((item) => '<option value="' + html(item.id) + '">' + html(item.name) + ' · ' + html(item.normalizedDomain) + '</option>').join("") : '<option value="">No projects yet</option>'; let view = state.page === "models" ? renderModels() : state.page === "configuration" ? renderConfiguration() : state.page === "setup" ? renderSetup() : state.page === "visibility" ? renderVisibility() : state.page === "prompts" ? renderPrompts() : state.page === "answer-engine" ? renderAnswerEngine() : state.page === "dashboard" ? renderDashboard() : renderOverview(); app.innerHTML = '<div class="shell"><aside class="sidebar"><div class="brand">' + brandLockup + '</div><div class="project-label">Project</div><select id="project-select" class="project-select" aria-label="Switch project" data-testid="project-select">' + options + '</select><nav class="nav" aria-label="Project navigation"><button type="button" class="nav-item ' + (state.page === "dashboard" ? "active" : "") + '" data-page="dashboard"><span>Dashboard</span></button><div class="nav-label">Run a test</div><button type="button" class="nav-item ' + (state.page === "models" ? "active" : "") + '" data-page="models"><span class="nav-step">1</span><span>Choose models</span></button><button type="button" class="nav-item ' + (state.page === "recognition" || state.page === "reports" ? "active" : "") + '" data-page="recognition"><span class="nav-step">2</span><span>Results</span></button><button type="button" class="nav-item ' + (state.page === "visibility" ? "active" : "") + '" data-page="visibility"><span class="nav-step">3</span><span>Visibility</span></button><div class="nav-label">Answer engine</div><button type="button" class="nav-item ' + (state.page === "answer-engine" ? "active" : "") + '" data-page="answer-engine"><span>Scores</span></button><button type="button" class="nav-item ' + (state.page === "prompts" ? "active" : "") + '" data-page="prompts"><span>Prompts</span></button><div class="nav-label">Over time</div><a class="nav-item" href="?view=measurements"><span>Continuous measurement</span></a><div class="nav-label">Machine</div><button type="button" class="nav-item ' + (state.page === "overview" ? "active" : "") + '" data-page="overview"><span>Projects</span></button><button type="button" class="nav-item ' + (state.page === "configuration" ? "active" : "") + '" data-page="configuration"><span>Configuration history</span></button><button type="button" class="nav-item ' + (state.page === "setup" ? "active" : "") + '" data-page="setup"><span>Setup</span></button></nav><div class="sidebar-bottom">Domain recognition</div></aside><main class="workspace"><header class="topbar"><div class="crumb"><strong>${PRODUCT_NAME}</strong> / ' + html(selected ? selected.name : "Project") + '</div><div class="topbar-actions"><button type="button" class="theme-toggle" data-theme-toggle aria-label="Switch between light and dark">&#9681;</button><button id="new-project" type="button" class="button primary" data-testid="new-project">New project</button></div></header><section class="content">' + view + '</section></main></div>'; const select = element("project-select"); select.value = state.selectedId; document.title = selected ? selected.name + " | ${PRODUCT_TITLE}" : "${PRODUCT_TITLE}"; }
     async function setPage(page) { state.page = page; savePreference("page", page); if (page === "configuration") { await refreshConfiguration(); return; } if (page === "reports" && window.__citegeoPhase4 && typeof window.__citegeoPhase4.open === "function") { await window.__citegeoPhase4.open(); return; } render(); if (page === "models") { await refreshConfiguration(); await loadCatalog(); } }
     async function createDraft(event) { event.preventDefault(); const button = element("save-draft"); const session = state.drawerSession; setFormStatus("Creating project draft", "loading"); try { const response = await runAction(button, { loading:"Saving…", success:"Saved", error:"Save failed" }, () => request("/api/projects", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ domain:element("project-domain").value, name:element("project-name").value }) })); state.mode = "current"; state.page = "overview"; setSelectedProject(response.project.id); await refreshProjects(); state.selections = []; state.baselines = []; resetDraftSelections(); setFormStatus("Draft saved", "success"); render(); window.setTimeout(() => { if (state.drawerSession === session) closeDrawer(); }, 850); } catch (error) { setFormStatus(error instanceof Error ? error.message : String(error), "error"); } }
     async function saveProject(event) { event.preventDefault(); const selected = project(); if (!selected) return; const button = event.currentTarget.querySelector('button[type="submit"]'); try { await runAction(button, { loading:"Saving…", success:"Saved", error:"Save failed" }, () => request("/api/projects/" + encodeURIComponent(selected.id), { method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ domain:element("edit-domain").value, name:element("edit-name").value }) })); await refreshProjects(); render(); } catch (error) { window.alert(error instanceof Error ? error.message : String(error)); } }
@@ -980,6 +972,16 @@ export function renderProductPhase2AppHtml(): string {
         const ids = set.prompts.filter((prompt) => prompt.topicId === topicId && prompt.status === "proposed").map((prompt) => prompt.id);
         await postPrompts("/prompts/activate", { promptIds: ids }, "saving", ids.length + " prompt(s) now tracked.");
       }
+    });
+
+    document.addEventListener("click", (event) => {
+      const toggle = event.target && event.target.closest ? event.target.closest("[data-theme-toggle]") : null;
+      if (!toggle) return;
+      const root = document.documentElement;
+      const current = root.getAttribute("data-theme") || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      const next = current === "dark" ? "light" : "dark";
+      root.setAttribute("data-theme", next);
+      try { localStorage.setItem("citegeo.theme", next); } catch (error) { /* the choice just will not persist */ }
     });
 
     document.addEventListener("submit", async (event) => {
@@ -1034,7 +1036,7 @@ export function renderProductPhase2AppHtml(): string {
     async function retryRecognition(modelRunId, button) { const selected = project(); const detail = state.recognitionDetail; if (!selected || !detail) return; try { await runAction(button, { loading:"Retrying…", success:"Started", error:"Retry failed" }, () => request("/api/projects/" + encodeURIComponent(selected.id) + "/recognition-runs/" + encodeURIComponent(detail.run.id) + "/model-runs/" + encodeURIComponent(modelRunId) + "/retry", { method:"POST" })); state.recognitionNotice = { text:"A new execution attempt was created for this model.", kind:"success" }; await refreshRecognition(); } catch (error) { state.recognitionNotice = { text:error instanceof Error ? error.message : expectedErrorText.request_failed, kind:"error" }; render(); } }
     async function reanalyzeRecognition(modelRunId, attemptId, button) { const selected = project(); const detail = state.recognitionDetail; if (!selected || !detail || !attemptId) return; try { await runAction(button, { loading:"Parsing the saved answer…", success:"Local parse complete", error:"Parsing failed" }, () => request("/api/projects/" + encodeURIComponent(selected.id) + "/recognition-runs/" + encodeURIComponent(detail.run.id) + "/model-runs/" + encodeURIComponent(modelRunId) + "/attempts/" + encodeURIComponent(attemptId) + "/reanalyze", { method:"POST" })); state.recognitionNotice = { text:"A new local parse was generated from the saved raw answer. No model was called.", kind:"success" }; await refreshRecognition(); } catch (error) { state.recognitionNotice = { text:error instanceof Error ? error.message : expectedErrorText.request_failed, kind:"error" }; render(); } }
     const phase2Render = render;
-    render = function renderWithRecognition() { if (window.__citegeoPhase5Active) return; if (state.page === "reports" && window.__citegeoPhase4 && typeof window.__citegeoPhase4.render === "function") return window.__citegeoPhase4.render(); if (state.page !== "recognition") return phase2Render(); const selected = project(); const options = state.currentProjects.length ? state.currentProjects.map((item) => '<option value="' + html(item.id) + '">' + html(item.name) + ' · ' + html(item.normalizedDomain) + '</option>').join("") : '<option value="">No projects yet</option>'; app.innerHTML = '<div class="shell"><aside class="sidebar"><div class="brand"><div class="brand-lockup">' + brandLockup + '</div></div><div class="project-label">Project</div><select id="project-select" class="project-select" aria-label="Switch project" data-testid="project-select">' + options + '</select><nav class="nav" aria-label="Project navigation"><button type="button" class="nav-item" data-page="dashboard"><span>Dashboard</span></button><div class="nav-label">Run a test</div><button type="button" class="nav-item" data-page="models"><span class="nav-step">1</span><span>Choose models</span></button><button type="button" class="nav-item" data-page="recognition"><span class="nav-step">2</span><span>Results</span></button><button type="button" class="nav-item" data-page="visibility"><span class="nav-step">3</span><span>Visibility</span></button><div class="nav-label">Answer engine</div><button type="button" class="nav-item" data-page="answer-engine"><span>Scores</span></button><button type="button" class="nav-item" data-page="prompts"><span>Prompts</span></button><div class="nav-label">Over time</div><a class="nav-item" href="?view=measurements"><span>Continuous measurement</span></a><div class="nav-label">Machine</div><button type="button" class="nav-item" data-page="overview"><span>Projects</span></button><button type="button" class="nav-item" data-page="configuration"><span>Configuration history</span></button><button type="button" class="nav-item" data-page="setup"><span>Setup</span></button></nav><div class="sidebar-bottom">Domain recognition</div></aside><main class="workspace"><header class="topbar"><div class="crumb"><strong>${PRODUCT_NAME}</strong> / ' + html(selected ? selected.name : "Project") + '</div><button id="new-project" type="button" class="button primary" data-testid="new-project">New project</button></header><section class="content">' + renderRecognitionPage() + '</section></main></div>'; const select = element("project-select"); if (select) select.value = state.selectedId; document.title = selected ? selected.name + " | ${PRODUCT_TITLE}" : "${PRODUCT_TITLE}"; };
+    render = function renderWithRecognition() { if (window.__citegeoPhase5Active) return; if (state.page === "reports" && window.__citegeoPhase4 && typeof window.__citegeoPhase4.render === "function") return window.__citegeoPhase4.render(); if (state.page !== "recognition") return phase2Render(); const selected = project(); const options = state.currentProjects.length ? state.currentProjects.map((item) => '<option value="' + html(item.id) + '">' + html(item.name) + ' · ' + html(item.normalizedDomain) + '</option>').join("") : '<option value="">No projects yet</option>'; app.innerHTML = '<div class="shell"><aside class="sidebar"><div class="brand">' + brandLockup + '</div><div class="project-label">Project</div><select id="project-select" class="project-select" aria-label="Switch project" data-testid="project-select">' + options + '</select><nav class="nav" aria-label="Project navigation"><button type="button" class="nav-item" data-page="dashboard"><span>Dashboard</span></button><div class="nav-label">Run a test</div><button type="button" class="nav-item" data-page="models"><span class="nav-step">1</span><span>Choose models</span></button><button type="button" class="nav-item" data-page="recognition"><span class="nav-step">2</span><span>Results</span></button><button type="button" class="nav-item" data-page="visibility"><span class="nav-step">3</span><span>Visibility</span></button><div class="nav-label">Answer engine</div><button type="button" class="nav-item" data-page="answer-engine"><span>Scores</span></button><button type="button" class="nav-item" data-page="prompts"><span>Prompts</span></button><div class="nav-label">Over time</div><a class="nav-item" href="?view=measurements"><span>Continuous measurement</span></a><div class="nav-label">Machine</div><button type="button" class="nav-item" data-page="overview"><span>Projects</span></button><button type="button" class="nav-item" data-page="configuration"><span>Configuration history</span></button><button type="button" class="nav-item" data-page="setup"><span>Setup</span></button></nav><div class="sidebar-bottom">Domain recognition</div></aside><main class="workspace"><header class="topbar"><div class="crumb"><strong>${PRODUCT_NAME}</strong> / ' + html(selected ? selected.name : "Project") + '</div><div class="topbar-actions"><button type="button" class="theme-toggle" data-theme-toggle aria-label="Switch between light and dark">&#9681;</button><button id="new-project" type="button" class="button primary" data-testid="new-project">New project</button></div></header><section class="content">' + renderRecognitionPage() + '</section></main></div>'; const select = element("project-select"); if (select) select.value = state.selectedId; document.title = selected ? selected.name + " | ${PRODUCT_TITLE}" : "${PRODUCT_TITLE}"; };
     document.addEventListener("click", async (event) => { const target = event.target; if (!(target instanceof Element)) return; if (target.id === "start-recognition") { await startRecognition(); return; } const evidenceButton = target.closest("[data-evidence-target]"); if (evidenceButton) { const card = evidenceButton.closest("[data-testid=recognition-model-run]"); const details = card ? card.querySelector("details.evidence-details") : null; if (details) details.open = true; const evidenceTarget = evidenceButton.getAttribute("data-evidence-target"); window.setTimeout(() => { const marked = evidenceTarget ? element(evidenceTarget) : null; if (marked) marked.scrollIntoView({ block:"center", behavior:"smooth" }); }, 0); return; } const runButton = target.closest("[data-recognition-run]"); if (runButton) { state.recognitionSelectedRunId = runButton.getAttribute("data-recognition-run") || ""; await refreshRecognition(); return; } const reanalyzeButton = target.closest("[data-recognition-reanalyze]"); if (reanalyzeButton) { await reanalyzeRecognition(reanalyzeButton.getAttribute("data-recognition-reanalyze") || "", reanalyzeButton.getAttribute("data-recognition-attempt") || "", reanalyzeButton); return; } const retryButton = target.closest("[data-recognition-retry]"); if (retryButton) { await retryRecognition(retryButton.getAttribute("data-recognition-retry") || "", retryButton); return; } const pageButton = target.closest("[data-page]"); if (pageButton && pageButton.getAttribute("data-page") === "recognition") { window.setTimeout(() => refreshRecognition().catch((error) => { state.recognitionNotice = { text:error instanceof Error ? error.message : expectedErrorText.request_failed, kind:"error" }; render(); }), 0); } if (pageButton && pageButton.getAttribute("data-page") !== "recognition") window.clearTimeout(state.recognitionRefreshTimer); });
     document.addEventListener("change", (event) => { const target = event.target; if (target instanceof HTMLSelectElement && target.id === "project-select") { state.recognitionSelectedRunId = ""; window.setTimeout(() => { if (state.page === "recognition") refreshRecognition().catch(() => {}); }, 0); } });
     window.__citegeoPhase2 = { state, app, html, element, project, formatTime, brandMark, brandLockup, request, refreshRecognition, phase2Render, render: () => render() };
