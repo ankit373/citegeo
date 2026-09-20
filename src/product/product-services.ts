@@ -21,6 +21,8 @@ import { PromptScheduleFileStore, PromptScheduleService } from "./topics/prompt-
 import { DemandReportFileStore } from "./demand/demand-store.js";
 import { BrandProfileFileStore, BrandProfileService } from "./discovery/brand-profile-service.js";
 import { StorageSettingsStore } from "./storage/storage-settings.js";
+import { createObjectStore } from "./storage/storage-config.js";
+import { DeferredObjectStore, LocalObjectStore, type ObjectStore } from "./storage/object-store.js";
 import type { StructuredAsk } from "./topics/topic-service.js";
 import { ProductRecognitionRunService } from "./recognition/recognition-service.js";
 import { ProductRecognitionFileStore } from "./recognition/recognition-store.js";
@@ -46,6 +48,7 @@ import { ProductScheduleService } from "./scheduling/schedule-service.js";
 
 export interface ProductServerDependencies {
   modelCatalog?: ProductModelCatalog | undefined;
+  objectStore?: ObjectStore | undefined;
   recognitionExecutor?: RecognitionAnswerExecutor | undefined;
   measurementExecutor?: RecognitionAnswerExecutor | undefined;
 }
@@ -75,6 +78,21 @@ function defaultProductCatalog(): ProductModelCatalog {
   // With nothing configured the product still has to render a provider page, and
   // an empty catalogue says "nothing is set up" more clearly than an error does.
   return new CompositeProductModelCatalog(catalogs);
+}
+
+function buildConfiguredStore(): ObjectStore {
+  const settings = new StorageSettingsStore(productDataDir());
+  return new DeferredObjectStore(async () => {
+    try {
+      const saved = await settings.load();
+      if (saved.backend === "local") return new LocalObjectStore(saved.values.rootDir?.trim() || productDataDir());
+      return createObjectStore(saved, productDataDir());
+    } catch {
+      // A broken setting must not stop the server booting, or it could never
+      // be fixed through the page that fixes it.
+      return new LocalObjectStore(productDataDir());
+    }
+  });
 }
 
 export interface ProductServices {
@@ -107,7 +125,10 @@ export interface ProductServices {
 /** Built once per server. Rebuilding it per request discarded everything a
  * service held between calls, so the insights cache cached nothing. */
 export function createProductServices(dependencies: ProductServerDependencies = {}): ProductServices {
-  const projectStore = new ProductProjectFileStore(productDataDir());
+  // Built from whatever was configured, falling back to the disk so a broken
+  // setting cannot stop the server booting and being fixed through the page.
+  const objects: ObjectStore = dependencies.objectStore || buildConfiguredStore();
+  const projectStore = new ProductProjectFileStore(productDataDir(), objects);
   const projects = new ProductProjectService(projectStore);
   const configurationStore = new ProductConfigurationFileStore(projectStore);
   const catalog = dependencies.modelCatalog || defaultProductCatalog();
@@ -124,7 +145,7 @@ export function createProductServices(dependencies: ProductServerDependencies = 
   const watchSets = new ProductWatchSetService(projects, baselines, measurementStore, recognitionStore, reportStore);
   const measurements = new ProductMeasurementRunService(projects, baselines, watchSets, measurementStore, dependencies.measurementExecutor || dependencies.recognitionExecutor);
   const stats = new ProductMeasurementStatsService(projects, measurementStore);
-  const schedules = new ProductScheduleService(projects, baselines, watchSets, measurements, new ProductScheduleFileStore(projectStore));
+  const schedules = new ProductScheduleService(projects, baselines, watchSets, measurements, new ProductScheduleFileStore(projectStore, productDataDir()));
 
   // One executor for the prompt engine and for generation, so both are billed
   // and configured exactly like a recognition run.

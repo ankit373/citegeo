@@ -154,3 +154,70 @@ test("a prefix keeps everything under one path and is stripped from listings", (
   const store = new S3ObjectStore({ bucket: "b", region: "us-east-1", accessKeyId: "k", secretAccessKey: "s", prefix: "/citegeo/" });
   assert.ok(store.describe().includes("under citegeo/"));
 });
+
+// An in-memory store with none of the filesystem's behaviour, to prove the
+// product is running on the interface rather than on the disk underneath it.
+class MemoryObjectStore {
+  readonly objects = new Map<string, string>();
+  async get(key: string) { return this.objects.get(assertSafeKey(key)) ?? null; }
+  async put(key: string, body: string) { this.objects.set(assertSafeKey(key), body); }
+  async delete(key: string) { this.objects.delete(assertSafeKey(key)); }
+  async list(prefix: string) {
+    const clean = prefix.endsWith("/") ? prefix.slice(0, -1) : prefix;
+    return [...this.objects.keys()].filter((key) => key === clean || key.startsWith(`${clean}/`)).sort();
+  }
+  describe() { return "memory"; }
+}
+
+test("a project round-trips through a store that is not a filesystem", async () => {
+  const { ProductProjectFileStore } = await import("../src/product/projects/project-store.js");
+  const { ProductProjectService } = await import("../src/product/projects/project-service.js");
+  const memory = new MemoryObjectStore();
+  const store = new ProductProjectFileStore("unused", memory);
+  const projects = new ProductProjectService(store);
+
+  const created = await projects.createDraft({ name: "Memory", primaryDomain: "memory.test", brandName: "Memory" });
+  assert.equal((await projects.get(created.id)).brandName, "Memory");
+  assert.deepEqual((await projects.list()).map((row) => row.id), [created.id]);
+  // Nothing reached a disk: every byte is in the map.
+  assert.ok([...memory.objects.keys()].some((key) => key.endsWith("project.json")));
+});
+
+test("topics, runs and answers all round-trip through the same store", async () => {
+  const { ProductProjectFileStore } = await import("../src/product/projects/project-store.js");
+  const { ProductProjectService } = await import("../src/product/projects/project-service.js");
+  const { TopicFileStore } = await import("../src/product/topics/topic-store.js");
+  const { PromptRunFileStore } = await import("../src/product/topics/prompt-run-store.js");
+  const memory = new MemoryObjectStore();
+  const store = new ProductProjectFileStore("unused", memory);
+  const project = await new ProductProjectService(store).createDraft({ name: "M", primaryDomain: "m.test", brandName: "M" });
+
+  const topics = new TopicFileStore(store);
+  const set = await topics.load(project.id);
+  assert.deepEqual(set.prompts, [], "an unseen project reads as empty, not as an error");
+  await topics.save({ ...set, topics: [{ id: "t", projectId: project.id, name: "T", description: "", source: "authored", status: "active", createdAt: "" }] });
+  assert.equal((await topics.load(project.id)).topics.length, 1);
+
+  const runs = new PromptRunFileStore(store);
+  await runs.saveRun({ id: "r1", projectId: project.id, status: "completed", promptIds: [], modelIds: [], regionIds: [], languageIds: [], answersRequested: 0, answersCompleted: 0, answersFailed: 0, startedAt: "2026-01-01T00:00:00.000Z", completedAt: null });
+  assert.equal((await runs.listRuns(project.id)).length, 1);
+  assert.deepEqual(await runs.listAnswers(project.id), []);
+});
+
+test("purging removes every key of that project and nothing of another", async () => {
+  const { ProductProjectFileStore } = await import("../src/product/projects/project-store.js");
+  const { ProductProjectService } = await import("../src/product/projects/project-service.js");
+  const { TopicFileStore } = await import("../src/product/topics/topic-store.js");
+  const memory = new MemoryObjectStore();
+  const store = new ProductProjectFileStore("unused", memory);
+  const projects = new ProductProjectService(store);
+  const one = await projects.createDraft({ name: "One", primaryDomain: "one.test", brandName: "One" });
+  const two = await projects.createDraft({ name: "Two", primaryDomain: "two.test", brandName: "Two" });
+  const topics = new TopicFileStore(store);
+  await topics.save(await topics.load(one.id));
+  await topics.save(await topics.load(two.id));
+
+  await store.purge(one.id);
+  assert.equal([...memory.objects.keys()].some((key) => key.includes(one.id)), false);
+  assert.ok([...memory.objects.keys()].some((key) => key.includes(two.id)), "the other project is untouched");
+});

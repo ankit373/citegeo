@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rename, rm, rmdir, writeFile } from "node:fs/promises";
 import { dirname, join, resolve, sep } from "node:path";
 
 // Everything this product stores is a small JSON document under a key. That is
@@ -61,7 +61,27 @@ export class LocalObjectStore implements ObjectStore {
   }
 
   async delete(key: string): Promise<void> {
-    await rm(this.pathFor(key), { force: true });
+    const path = this.pathFor(key);
+    await rm(path, { force: true });
+    // Object storage has no empty directories, so neither does this. Without
+    // pruning, a purged project left its folder behind.
+    await this.pruneEmpty(dirname(path));
+  }
+
+  private async pruneEmpty(directory: string): Promise<void> {
+    const root = resolve(this.rootDir);
+    let current = directory;
+    while (current.startsWith(root + sep)) {
+      try {
+        if ((await readdir(current)).length) return;
+        // rmdir, not rm: it is the operation that means "only if empty", and
+        // rm without recursive throws on a directory and was being swallowed.
+        await rmdir(current);
+      } catch {
+        return;
+      }
+      current = dirname(current);
+    }
   }
 
   async list(prefix: string): Promise<string[]> {
@@ -110,4 +130,41 @@ export async function getJson<T>(store: ObjectStore, key: string): Promise<T | n
 
 export async function putJson(store: ObjectStore, key: string, value: unknown): Promise<void> {
   await store.put(key, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+/** Every JSON document under a prefix. A document mid-write is skipped rather
+ * than failing the read of every other one. */
+export async function listJson<T>(store: ObjectStore, prefix: string): Promise<T[]> {
+  const rows: T[] = [];
+  for (const key of await store.list(prefix)) {
+    if (!key.endsWith(".json")) continue;
+    const row = await getJson<T>(store, key);
+    if (row) rows.push(row);
+  }
+  return rows;
+}
+
+/** Resolves its backend on first use. Construction of the service graph stays
+ * synchronous while the settings behind it are decrypted asynchronously. */
+export class DeferredObjectStore implements ObjectStore {
+  private resolved: Promise<ObjectStore> | null = null;
+  private described = "not resolved yet";
+
+  constructor(private readonly resolve: () => Promise<ObjectStore>) {}
+
+  private store(): Promise<ObjectStore> {
+    if (!this.resolved) {
+      this.resolved = this.resolve().then((store) => {
+        this.described = store.describe();
+        return store;
+      });
+    }
+    return this.resolved;
+  }
+
+  async get(key: string): Promise<string | null> { return (await this.store()).get(key); }
+  async put(key: string, body: string): Promise<void> { return (await this.store()).put(key, body); }
+  async delete(key: string): Promise<void> { return (await this.store()).delete(key); }
+  async list(prefix: string): Promise<string[]> { return (await this.store()).list(prefix); }
+  describe(): string { return this.described; }
 }

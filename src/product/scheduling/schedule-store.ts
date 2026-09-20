@@ -1,59 +1,103 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, open, readFile, readdir, rename, unlink, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { mkdir, open, unlink } from "node:fs/promises";
+import { join, resolve } from "node:path";
 import { sha256 } from "../../utils/hash.js";
 import type { ProductProjectFileStore } from "../projects/project-store.js";
+import { getJson, listJson, putJson } from "../storage/object-store.js";
 import type { BudgetLedgerEntry, MonitoringTask, ScheduledOccurrence } from "./schedule-schema.js";
 
-function notFound(error: unknown): boolean { return Boolean(error && typeof error === "object" && "code" in error && error.code === "ENOENT"); }
-async function readJson<T>(path: string): Promise<T> { return JSON.parse(await readFile(path, "utf8")) as T; }
-async function writeJson(path: string, value: unknown): Promise<void> { const temporary = `${path}.${randomUUID()}.tmp`; await writeFile(temporary, `${JSON.stringify(value, null, 2)}\n`, "utf8"); await rename(temporary, path); }
-
 export class ProductScheduleFileStore {
-  constructor(private readonly projects: ProductProjectFileStore) {}
-  private root(projectId: string): string { return join(this.projects.projectDir(projectId), "schedules"); }
-  private tasks(projectId: string): string { return join(this.root(projectId), "tasks"); }
-  private taskPath(projectId: string, taskId: string): string { return join(this.tasks(projectId), `${taskId}.json`); }
-  private occurrenceRoot(projectId: string): string { return join(this.root(projectId), "occurrences"); }
-  private occurrencePath(projectId: string, taskId: string, scheduledFor: string): string { return join(this.occurrenceRoot(projectId), `${sha256(`${taskId}:${scheduledFor}`)}.json`); }
-  private ledgerRoot(projectId: string): string { return join(this.root(projectId), "ledger"); }
-  private ledgerPath(projectId: string, entryId: string): string { return join(this.ledgerRoot(projectId), `${entryId}.json`); }
-  private lockRoot(projectId: string): string { return join(this.root(projectId), "locks"); }
-  private lockPath(projectId: string, taskId: string): string { return join(this.lockRoot(projectId), `${sha256(taskId)}.lock`); }
+  constructor(private readonly projects: ProductProjectFileStore, private readonly localRoot: string) {}
 
-  async saveTask(value: MonitoringTask): Promise<void> { await mkdir(this.tasks(value.projectId), { recursive: true }); await writeJson(this.taskPath(value.projectId, value.id), value); }
-  async readTask(projectId: string, taskId: string): Promise<MonitoringTask | null> { try { const row = await readJson<MonitoringTask>(this.taskPath(projectId, taskId)); return row.projectId === projectId && row.id === taskId ? row : null; } catch (error) { if (notFound(error)) return null; throw error; } }
-  async listTasks(projectId: string): Promise<MonitoringTask[]> { try { const values: MonitoringTask[] = []; for (const entry of await readdir(this.tasks(projectId), { withFileTypes: true })) { if (!entry.isFile() || !entry.name.endsWith(".json")) continue; const row = await this.readTask(projectId, entry.name.slice(0, -5)); if (row) values.push(row); } return values.sort((left, right) => left.createdAt.localeCompare(right.createdAt)); } catch (error) { if (notFound(error)) return []; throw error; } }
+  private prefix(projectId: string, ...parts: string[]): string {
+    return this.projects.keyFor(projectId, "schedules", ...parts);
+  }
 
+  private occurrenceKey(projectId: string, taskId: string, scheduledFor: string): string {
+    return `${this.prefix(projectId, "occurrences")}/${sha256(`${taskId}:${scheduledFor}`)}.json`;
+  }
+
+  /** Guards stay on local disk whatever the backend is: they need an atomic
+   * create-if-absent, which object storage does not offer portably. */
+  private guardPath(projectId: string, name: string): string {
+    return join(resolve(this.localRoot, "guards", projectId), `${sha256(name)}.lock`);
+  }
+
+  async saveTask(value: MonitoringTask): Promise<void> {
+    await putJson(this.projects.objects, `${this.prefix(value.projectId, "tasks")}/${value.id}.json`, value);
+  }
+
+  async readTask(projectId: string, taskId: string): Promise<MonitoringTask | null> {
+    const row = await getJson<MonitoringTask>(this.projects.objects, `${this.prefix(projectId, "tasks")}/${taskId}.json`);
+    return row && row.projectId === projectId && row.id === taskId ? row : null;
+  }
+
+  async listTasks(projectId: string): Promise<MonitoringTask[]> {
+    const rows = await listJson<MonitoringTask>(this.projects.objects, this.prefix(projectId, "tasks"));
+    return rows.filter((row) => row.projectId === projectId).sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+  }
+
+  /** Once-only per scheduled time. The guard decides who creates it; the
+   * occurrence itself is stored with everything else. */
   async getOrCreateOccurrence(input: Omit<ScheduledOccurrence, "id" | "createdAt">): Promise<{ occurrence: ScheduledOccurrence; created: boolean }> {
-    const path = this.occurrencePath(input.projectId, input.taskId, input.scheduledFor);
-    await mkdir(this.occurrenceRoot(input.projectId), { recursive: true });
-    const value: ScheduledOccurrence = { ...input, id: randomUUID(), createdAt: new Date().toISOString() };
+    const key = this.occurrenceKey(input.projectId, input.taskId, input.scheduledFor);
+    const guard = this.guardPath(input.projectId, `occurrence:${input.taskId}:${input.scheduledFor}`);
+    await mkdir(join(resolve(this.localRoot, "guards", input.projectId)), { recursive: true });
     let handle;
     try {
-      handle = await open(path, "wx");
-      await handle.writeFile(`${JSON.stringify(value, null, 2)}\n`, "utf8");
-      await handle.close();
-      return { occurrence: value, created: true };
+      handle = await open(guard, "wx");
     } catch (error) {
-      if (handle) await handle.close();
       if (error && typeof error === "object" && "code" in error && error.code === "EEXIST") {
-        return { occurrence: await readJson<ScheduledOccurrence>(path), created: false };
+        const existing = await getJson<ScheduledOccurrence>(this.projects.objects, key);
+        if (existing) return { occurrence: existing, created: false };
+        // The guard exists but the document does not, so the previous attempt
+        // died between the two. Taking it over is better than never running.
+        await unlink(guard).catch(() => undefined);
+        return this.getOrCreateOccurrence(input);
       }
       throw error;
     }
+    try {
+      const existing = await getJson<ScheduledOccurrence>(this.projects.objects, key);
+      if (existing) return { occurrence: existing, created: false };
+      const value: ScheduledOccurrence = { ...input, id: randomUUID(), createdAt: new Date().toISOString() };
+      await putJson(this.projects.objects, key, value);
+      return { occurrence: value, created: true };
+    } finally {
+      await handle.close();
+    }
   }
 
-  async saveOccurrence(value: ScheduledOccurrence): Promise<void> { await mkdir(this.occurrenceRoot(value.projectId), { recursive: true }); await writeJson(this.occurrencePath(value.projectId, value.taskId, value.scheduledFor), value); }
-  async readOccurrence(projectId: string, taskId: string, scheduledFor: string): Promise<ScheduledOccurrence | null> { try { const row = await readJson<ScheduledOccurrence>(this.occurrencePath(projectId, taskId, scheduledFor)); return row.projectId === projectId && row.taskId === taskId && row.scheduledFor === scheduledFor ? row : null; } catch (error) { if (notFound(error)) return null; throw error; } }
-  async listOccurrences(projectId: string, taskId?: string): Promise<ScheduledOccurrence[]> { try { const values: ScheduledOccurrence[] = []; for (const entry of await readdir(this.occurrenceRoot(projectId), { withFileTypes: true })) { if (!entry.isFile() || !entry.name.endsWith(".json")) continue; const row = await readJson<ScheduledOccurrence>(join(this.occurrenceRoot(projectId), entry.name)); if (row.projectId === projectId && (!taskId || row.taskId === taskId)) values.push(row); } return values.sort((left, right) => left.scheduledFor.localeCompare(right.scheduledFor)); } catch (error) { if (notFound(error)) return []; throw error; } }
+  async saveOccurrence(value: ScheduledOccurrence): Promise<void> {
+    await putJson(this.projects.objects, this.occurrenceKey(value.projectId, value.taskId, value.scheduledFor), value);
+  }
 
-  async saveLedger(value: BudgetLedgerEntry): Promise<void> { await mkdir(this.ledgerRoot(value.projectId), { recursive: true }); await writeJson(this.ledgerPath(value.projectId, value.id), value); }
-  async listLedger(projectId: string, taskId?: string): Promise<BudgetLedgerEntry[]> { try { const values: BudgetLedgerEntry[] = []; for (const entry of await readdir(this.ledgerRoot(projectId), { withFileTypes: true })) { if (!entry.isFile() || !entry.name.endsWith(".json")) continue; const row = await readJson<BudgetLedgerEntry>(join(this.ledgerRoot(projectId), entry.name)); if (row.projectId === projectId && (!taskId || row.taskId === taskId)) values.push(row); } return values.sort((left, right) => left.createdAt.localeCompare(right.createdAt)); } catch (error) { if (notFound(error)) return []; throw error; } }
+  async readOccurrence(projectId: string, taskId: string, scheduledFor: string): Promise<ScheduledOccurrence | null> {
+    const row = await getJson<ScheduledOccurrence>(this.projects.objects, this.occurrenceKey(projectId, taskId, scheduledFor));
+    return row && row.projectId === projectId && row.taskId === taskId && row.scheduledFor === scheduledFor ? row : null;
+  }
+
+  async listOccurrences(projectId: string, taskId?: string): Promise<ScheduledOccurrence[]> {
+    const rows = await listJson<ScheduledOccurrence>(this.projects.objects, this.prefix(projectId, "occurrences"));
+    return rows
+      .filter((row) => row.projectId === projectId && (!taskId || row.taskId === taskId))
+      .sort((left, right) => left.scheduledFor.localeCompare(right.scheduledFor));
+  }
+
+  async saveLedger(value: BudgetLedgerEntry): Promise<void> {
+    await putJson(this.projects.objects, `${this.prefix(value.projectId, "ledger")}/${value.id}.json`, value);
+  }
+
+  async listLedger(projectId: string, taskId?: string): Promise<BudgetLedgerEntry[]> {
+    const rows = await listJson<BudgetLedgerEntry>(this.projects.objects, this.prefix(projectId, "ledger"));
+    return rows
+      .filter((row) => row.projectId === projectId && (!taskId || row.taskId === taskId))
+      .sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+  }
 
   async withTaskLock<T>(projectId: string, taskId: string, operation: () => Promise<T>): Promise<{ acquired: boolean; value?: T }> {
-    await mkdir(this.lockRoot(projectId), { recursive: true });
-    const path = this.lockPath(projectId, taskId);
+    await mkdir(join(resolve(this.localRoot, "guards", projectId)), { recursive: true });
+    const path = this.guardPath(projectId, `task:${taskId}`);
     let handle;
     try {
       handle = await open(path, "wx");

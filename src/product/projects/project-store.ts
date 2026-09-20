@@ -1,7 +1,7 @@
-import { randomUUID } from "node:crypto";
-import { mkdir, open, readFile, readdir, rename, rm, unlink, writeFile } from "node:fs/promises";
+import { mkdir, open, unlink } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { sha256 } from "../../utils/hash.js";
+import { getJson, LocalObjectStore, putJson, type ObjectStore } from "../storage/object-store.js";
 import type { ProductProject, ProductProjectListOptions } from "./project-schema.js";
 
 function safeSegment(value: string, label: string): string {
@@ -16,16 +16,6 @@ function isNotFound(error: unknown): boolean {
   return Boolean(error && typeof error === "object" && "code" in error && error.code === "ENOENT");
 }
 
-async function readJson<T>(path: string): Promise<T> {
-  return JSON.parse(await readFile(path, "utf8")) as T;
-}
-
-async function writeJson(path: string, value: unknown): Promise<void> {
-  const temporaryPath = `${path}.${randomUUID()}.tmp`;
-  await writeFile(temporaryPath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
-  await rename(temporaryPath, path);
-}
-
 function visibleInList(project: ProductProject, options: ProductProjectListOptions): boolean {
   if (project.status === "deleted") return options.includeDeleted === true;
   if (project.status === "archived") return options.includeArchived === true;
@@ -33,49 +23,37 @@ function visibleInList(project: ProductProject, options: ProductProjectListOptio
 }
 
 export class ProductProjectFileStore {
-  constructor(private readonly rootDir: string) {}
+  readonly objects: ObjectStore;
 
-  projectsDir(): string {
-    return resolve(this.rootDir, "projects");
+  constructor(private readonly rootDir: string, objects?: ObjectStore) {
+    this.objects = objects || new LocalObjectStore(rootDir);
   }
 
-  private locksDir(): string {
-    return resolve(this.rootDir, "locks");
+  /** The key prefix every store hangs its own documents off. */
+  projectKey(projectId: string): string {
+    return `projects/${safeSegment(projectId, "project id")}`;
   }
 
-  projectDir(projectId: string): string {
-    return join(this.projectsDir(), safeSegment(projectId, "project id"));
-  }
-
-  private projectPath(projectId: string): string {
-    return join(this.projectDir(projectId), "project.json");
+  /** A document belonging to a project, by its path within that project. */
+  keyFor(projectId: string, ...parts: string[]): string {
+    return [this.projectKey(projectId), ...parts].join("/");
   }
 
   async read(projectId: string): Promise<ProductProject | null> {
-    try {
-      const project = await readJson<ProductProject>(this.projectPath(projectId));
-      if (project.id !== projectId) throw new Error(`Project file does not belong to ${projectId}.`);
-      return project;
-    } catch (error) {
-      if (isNotFound(error)) return null;
-      throw error;
-    }
+    const project = await getJson<ProductProject>(this.objects, this.keyFor(projectId, "project.json"));
+    if (!project) return null;
+    if (project.id !== projectId) throw new Error(`Project file does not belong to ${projectId}.`);
+    return project;
   }
 
   async list(options: ProductProjectListOptions = {}): Promise<ProductProject[]> {
-    try {
-      const entries = await readdir(this.projectsDir(), { withFileTypes: true });
-      const projects: ProductProject[] = [];
-      for (const entry of entries) {
-        if (!entry.isDirectory()) continue;
-        const project = await this.read(entry.name);
-        if (project && visibleInList(project, options)) projects.push(project);
-      }
-      return projects.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
-    } catch (error) {
-      if (isNotFound(error)) return [];
-      throw error;
+    const projects: ProductProject[] = [];
+    for (const key of await this.objects.list("projects")) {
+      if (!key.endsWith("/project.json")) continue;
+      const project = await getJson<ProductProject>(this.objects, key);
+      if (project && visibleInList(project, options)) projects.push(project);
     }
+    return projects.sort((left, right) => left.createdAt.localeCompare(right.createdAt));
   }
 
   async listAll(): Promise<ProductProject[]> {
@@ -83,18 +61,25 @@ export class ProductProjectFileStore {
   }
 
   async save(project: ProductProject): Promise<void> {
-    const directory = this.projectDir(project.id);
-    await mkdir(directory, { recursive: true });
-    await writeJson(this.projectPath(project.id), project);
+    await putJson(this.objects, this.keyFor(project.id, "project.json"), project);
   }
 
   async purge(projectId: string): Promise<void> {
-    await rm(this.projectDir(projectId), { recursive: true, force: false });
+    const prefix = this.projectKey(projectId);
+    const keys = await this.objects.list(prefix);
+    if (!keys.length) throw new Error(`Project ${projectId} has nothing stored.`);
+    for (const key of keys) await this.objects.delete(key);
   }
 
+  /**
+   * Stays on local disk whatever the backend is. It needs an atomic
+   * create-if-absent, which object storage does not offer portably, and the
+   * deployment is single-writer so a local lock is the right scope.
+   */
   async withDomainLock<T>(normalizedDomain: string, operation: () => Promise<T>): Promise<T> {
-    await mkdir(this.locksDir(), { recursive: true });
-    const path = join(this.locksDir(), `${sha256(normalizedDomain)}.lock`);
+    const locksDir = resolve(this.rootDir, "locks");
+    await mkdir(locksDir, { recursive: true });
+    const path = join(locksDir, `${sha256(normalizedDomain)}.lock`);
     let handle;
     try {
       handle = await open(path, "wx");

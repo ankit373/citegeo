@@ -35,7 +35,7 @@ export function productScheduleService(): ProductScheduleService {
   const reportStore = new RecognitionReportFileStore(projectStore);
   const watchSets = new ProductWatchSetService(projects, baselines, measurementStore, recognitionStore, reportStore);
   const measurements = new ProductMeasurementRunService(projects, baselines, watchSets, measurementStore);
-  return new ProductScheduleService(projects, baselines, watchSets, measurements, new ProductScheduleFileStore(projectStore));
+  return new ProductScheduleService(projects, baselines, watchSets, measurements, new ProductScheduleFileStore(projectStore, productDataDir()));
 }
 
 export function siteSignalProbeService(): SiteSignalProbeService {

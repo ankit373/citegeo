@@ -50,7 +50,7 @@ async function withFixture(action: (fixture: Fixture) => Promise<void>): Promise
   const executor = new Phase5FixtureExecutor();
   const measurements = new ProductMeasurementRunService(projects, baselines, watchSets, store, executor);
   const stats = new ProductMeasurementStatsService(projects, store);
-  const schedules = new ProductScheduleService(projects, baselines, watchSets, measurements, new ProductScheduleFileStore(projectStore));
+  const schedules = new ProductScheduleService(projects, baselines, watchSets, measurements, new ProductScheduleFileStore(projectStore, root));
   try { await action({ root, projects, selections, baselines, store, watchSets, measurements, stats, schedules, executor }); }
   // Runs keep writing after the assertions finish, so removing the root here
   // without waiting raced them and failed with ENOENT or ENOTEMPTY.

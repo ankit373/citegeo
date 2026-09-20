@@ -1,7 +1,5 @@
-import { randomUUID } from "node:crypto";
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
-import { join } from "node:path";
 import type { ProductProjectFileStore } from "../projects/project-store.js";
+import { getJson, putJson } from "../storage/object-store.js";
 import type { ProductProjectService } from "../projects/project-service.js";
 import type { StructuredAsk } from "../topics/topic-service.js";
 import { readStructuredValue } from "../topics/structured-value.js";
@@ -25,32 +23,19 @@ export interface StoredBrandProfile extends BrandProfile {
   builtAt: string;
 }
 
-function notFound(error: unknown): boolean {
-  return Boolean(error && typeof error === "object" && "code" in error && error.code === "ENOENT");
-}
-
 export class BrandProfileFileStore {
   constructor(private readonly projects: ProductProjectFileStore) {}
 
-  private path(projectId: string): string {
-    return join(this.projects.projectDir(projectId), "brand-profile.json");
+  private key(projectId: string): string {
+    return this.projects.keyFor(projectId, "brand-profile.json");
   }
 
   async load(projectId: string): Promise<StoredBrandProfile | null> {
-    try {
-      return JSON.parse(await readFile(this.path(projectId), "utf8")) as StoredBrandProfile;
-    } catch (error) {
-      if (notFound(error)) return null;
-      throw error;
-    }
+    return getJson<StoredBrandProfile>(this.projects.objects, this.key(projectId));
   }
 
   async save(profile: StoredBrandProfile): Promise<void> {
-    await mkdir(this.projects.projectDir(profile.projectId), { recursive: true });
-    const path = this.path(profile.projectId);
-    const temporary = `${path}.${randomUUID()}.tmp`;
-    await writeFile(temporary, `${JSON.stringify(profile, null, 2)}\n`, "utf8");
-    await rename(temporary, path);
+    await putJson(this.projects.objects, this.key(profile.projectId), profile);
   }
 }
 

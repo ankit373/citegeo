@@ -165,10 +165,20 @@ not appear, which makes every past run read as empty.
 could not read its own configuration to reach its storage. Secrets are
 encrypted with `CREDENTIAL_KEY` and never sent back to the page.
 
-The stores themselves are still local-only; migrating them onto the interface
-is the remaining work.
+**Every store goes through it.** Nothing under `src/product` touches
+`node:fs` for data any more. A store composes keys with
+`projects.keyFor(projectId, ...)` and reads and writes through
+`projects.objects`.
 
-File-backed today, one directory per project. Every write is **temp file then
+**Locks stay on local disk whatever the backend is.** They need an atomic
+create-if-absent, which object storage does not offer portably, and the
+deployment is single-writer so a local guard is the right scope. The scheduler
+keeps its once-only guard local and the occurrence itself in the store.
+
+**The local adapter prunes empty directories**, because object storage has no
+such thing and a purged project must leave nothing behind.
+
+One key prefix per project. Every write is **temp file then
 rename**, never a direct write, because the worker writes while the server
 reads the same volume.
 
