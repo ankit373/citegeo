@@ -18,6 +18,7 @@ import { TopicFileStore } from "./topics/topic-store.js";
 import { TopicService } from "./topics/topic-service.js";
 import { createStructuredAsk } from "./topics/structured-ask.js";
 import { PromptScheduleFileStore, PromptScheduleService } from "./topics/prompt-schedule.js";
+import { DemandReportFileStore } from "./demand/demand-store.js";
 import type { StructuredAsk } from "./topics/topic-service.js";
 import { ProductRecognitionRunService } from "./recognition/recognition-service.js";
 import { ProductRecognitionFileStore } from "./recognition/recognition-store.js";
@@ -91,6 +92,7 @@ export interface ProductServices {
   topics: TopicService;
   promptRuns: PromptRunService;
   promptSchedule: PromptScheduleService;
+  demand: DemandReportFileStore;
   /** Asks one structured question through the project's own saved models. */
   ask: StructuredAsk;
   credentials: CredentialService;
@@ -126,11 +128,12 @@ export function createProductServices(dependencies: ProductServerDependencies = 
   const promptRuns = new PromptRunService(new PromptRunFileStore(projectStore), topics, projects, baselines, executor);
   const ask = createStructuredAsk({ baselines, executor });
   const promptSchedule = new PromptScheduleService(new PromptScheduleFileStore(projectStore), promptRuns);
+  const demand = new DemandReportFileStore(projectStore);
 
   return {
     projects, catalog, selections, baselines, recognition, reports, insights,
     signals, crawlerLog, watchSets, measurements, stats, schedules,
-    topics, promptRuns, promptSchedule, ask,
+    topics, promptRuns, promptSchedule, demand, ask,
     credentials: new CredentialService(new CredentialFileStore(productDataDir())),
     auth: authConfig(),
   };

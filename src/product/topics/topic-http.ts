@@ -3,6 +3,8 @@ import { isPromptIntent } from "./topic-schema.js";
 import { REGIONS, REGION_CAVEAT } from "./region.js";
 import type { PromptRunService } from "./prompt-run-service.js";
 import type { PromptScheduleService } from "./prompt-schedule.js";
+import type { DemandReportFileStore } from "../demand/demand-store.js";
+import { CORPUS_SOURCES } from "../demand/corpus-schema.js";
 import type { StructuredAsk, TopicService } from "./topic-service.js";
 
 export type TopicJsonSender = (status: number, body: unknown, contentType?: string) => void;
@@ -22,10 +24,11 @@ export async function handleTopicApi(input: {
   topics: TopicService;
   runs: PromptRunService;
   schedule: PromptScheduleService;
+  demand: DemandReportFileStore;
   ask: StructuredAsk;
   readJson: () => Promise<Record<string, unknown>>;
 }): Promise<boolean> {
-  const { method, route, send, topics, runs, schedule, ask, readJson } = input;
+  const { method, route, send, topics, runs, schedule, demand, ask, readJson } = input;
   if (route[0] !== "api" || route[1] !== "projects") return false;
   const projectId = route[2];
   if (!projectId) return false;
@@ -128,6 +131,17 @@ export async function handleTopicApi(input: {
       ...(rule ? { rule: rule as never } : {}),
       regionIds: stringList(body.regionIds),
     }));
+    return true;
+  }
+
+  if (method === "GET" && tail.length === 1 && tail[0] === "prompt-demand") {
+    const report = await demand.load(projectId);
+    // Absent rather than empty: no report means none was built, not no demand.
+    if (!report) {
+      send(404, { error: "No demand report has been built for this project. See docs/prompt-demand.md.", corpora: CORPUS_SOURCES });
+      return true;
+    }
+    send(200, report);
     return true;
   }
 
