@@ -31,14 +31,16 @@ Everything below needs something this project cannot provide for itself.
 
 | Feature | State |
 | :--- | :--- |
-| **Citation gap** | Built and returning empty. It needs answers that name competitors, which needs web search enabled, which needs OpenRouter credit. |
+| **Citation gap** | Built and returning empty. It needs a grounded answer, which needs a provider that can search: Perplexity grounds every answer, OpenAI and Anthropic search on request, and Gemini does once billing is enabled. |
 | **Query fanout** | Built across six provider shapes and returning empty for the same reason: every run so far was offline. |
 | **Share of voice** | Built. Reports mentions but a null share, because no competitor has been named yet. |
 | **Crawler analytics** | Built and verified against a synthetic log. Needs `ACCESS_LOG_PATH` pointed at a real one. |
 
 ## Already shipped
 
-- Recognition runs across OpenRouter, an OpenAI-compatible local gateway and Azure OpenAI
+- Recognition runs across eight providers: OpenAI, Anthropic, Gemini, Perplexity, DeepSeek,
+  OpenRouter, Azure OpenAI and any OpenAI-compatible local gateway, each reporting what it
+  costs and whether it can cite before a run rather than during one
 - Evidence archive: the raw answer and provider response behind every claim
 - Measurement over time with per-model series
 - **Visibility analytics**: visibility overall and per model, share of voice, cited-domain
