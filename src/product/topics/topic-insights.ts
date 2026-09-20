@@ -94,6 +94,9 @@ export interface TopicInsights {
   byLanguage: LanguageStanding[];
   /** What the UI must print next to any regional figure. */
   regionCaveat: string;
+  /** Set when the brand is named after its own category, so a name match
+   * cannot tell the product from the word. */
+  identityCaveat: string | null;
 }
 
 /** Keyed on the name: a model gives ChatGPT as openai.com in one answer and
@@ -209,7 +212,13 @@ function languageStandings(answers: PromptAnswer[]): LanguageStanding[] {
     .sort((left, right) => (left.score.score || 0) - (right.score.score || 0));
 }
 
-export function buildTopicInsights(input: { projectId: string; set: TopicSet; answers: PromptAnswer[]; runs?: PromptRun[] }): TopicInsights {
+export function buildTopicInsights(input: {
+  projectId: string;
+  set: TopicSet;
+  answers: PromptAnswer[];
+  runs?: PromptRun[];
+  identityCaveat?: string | null;
+}): TopicInsights {
   const { projectId, set, answers } = input;
   const completed = answers.filter((answer) => answer.status === "completed");
   const leaderboard = standings(answers);
@@ -276,5 +285,6 @@ export function buildTopicInsights(input: { projectId: string; set: TopicSet; an
     byRegion: regionStandings(answers),
     byLanguage: languageStandings(answers),
     regionCaveat: REGION_CAVEAT,
+    identityCaveat: input.identityCaveat || null,
   };
 }

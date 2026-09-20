@@ -2,7 +2,7 @@ import { sha256 } from "../../utils/hash.js";
 import type { BrandProfileService } from "../discovery/brand-profile-service.js";
 import type { ProductInsightsService } from "../insights/insights-service.js";
 import type { ProductProjectService } from "../projects/project-service.js";
-import { namesIdentity } from "./prompt-identity.js";
+import { resolveBrandIdentity, textNamesBrand, type BrandIdentity } from "./brand-identity.js";
 import {
   parsePromptSetProposal,
   promptGenerationPrompt,
@@ -113,12 +113,19 @@ export class TopicService {
 
   /** Only the target brand counts: naming a competitor is the entire point of
    * an alternatives or comparison prompt. */
-  private async targetIdentities(projectId: string): Promise<string[]> {
+  async targetIdentity(projectId: string): Promise<BrandIdentity> {
     const project = await this.projects.get(projectId);
     if (!project) throw new TopicSetUnavailableError(`Project ${projectId} does not exist.`);
-    return [project.brandName, ...project.aliases, project.primaryDomain, project.normalizedDomain]
-      .map((value) => (value || "").trim())
-      .filter(Boolean);
+    const profile = await this.profiles?.get(projectId).catch(() => null);
+    // The brand's own category is what makes its name ambiguous, so it is read
+    // from the profile rather than guessed at.
+    const categoryText = [profile?.productCategory || "", ...(profile?.features || [])].join(" ").trim();
+    return resolveBrandIdentity({
+      brandName: project.brandName,
+      aliases: project.aliases,
+      domain: project.normalizedDomain,
+      categoryText: categoryText || undefined,
+    });
   }
 
   private buildPrompt(input: {
@@ -127,10 +134,10 @@ export class TopicService {
     text: string;
     intent: PromptIntent;
     source: Prompt["source"];
-    identities: string[];
+    identity: BrandIdentity;
     status: EntityStatus;
   }): Prompt {
-    const named = namesIdentity(input.text, input.identities);
+    const named = textNamesBrand(input.text, input.identity);
     return {
       id: promptId(input.projectId, input.text),
       projectId: input.projectId,
@@ -190,7 +197,7 @@ export class TopicService {
         `No usable prompt set was produced, so nothing was saved.${reasons}${remedy}`,
       );
     }
-    const identities = await this.targetIdentities(projectId);
+    const identity = await this.targetIdentity(projectId);
     const topics: Topic[] = [...existing.topics];
     const prompts: Prompt[] = [...existing.prompts];
     const seenTopics = new Set(topics.map((topic) => topic.id));
@@ -217,7 +224,7 @@ export class TopicService {
           text: item.text,
           intent: item.intent,
           source: "generated",
-          identities,
+          identity,
           status: "proposed",
         });
         // The same question proposed twice is one prompt, not two data points.
@@ -260,14 +267,14 @@ export class TopicService {
     if (!set.topics.some((topic) => topic.id === input.topicId)) {
       throw new TopicSetUnavailableError(`Topic ${input.topicId} does not exist.`);
     }
-    const identities = await this.targetIdentities(projectId);
+    const identity = await this.targetIdentity(projectId);
     const prompt = this.buildPrompt({
       projectId,
       topicId: input.topicId,
       text,
       intent: input.intent,
       source: "authored",
-      identities,
+      identity,
       status: "active",
     });
     if (!set.prompts.some((existing) => existing.id === prompt.id)) {
@@ -284,14 +291,14 @@ export class TopicService {
     if (!set.topics.some((topic) => topic.id === input.topicId)) {
       throw new TopicSetUnavailableError(`Topic ${input.topicId} does not exist.`);
     }
-    const identities = await this.targetIdentities(projectId);
+    const identity = await this.targetIdentity(projectId);
     const seen = new Set(set.prompts.map((prompt) => prompt.id));
     let added = 0;
     let skipped = 0;
     for (const line of input.text.split("\n")) {
       const text = line.trim();
       if (!text) continue;
-      const prompt = this.buildPrompt({ projectId, topicId: input.topicId, text, intent: input.intent, source: "authored", identities, status: "active" });
+      const prompt = this.buildPrompt({ projectId, topicId: input.topicId, text, intent: input.intent, source: "authored", identity, status: "active" });
       if (seen.has(prompt.id)) {
         skipped += 1;
         continue;

@@ -240,12 +240,19 @@ export async function handleTopicApi(input: {
 
   if (method === "GET" && tail.length === 1 && tail[0] === "prompt-insights") {
     await guard(async (): Promise<TopicInsights> => {
-      const [set, answers, runList] = await Promise.all([
+      const [set, answers, runList, identity] = await Promise.all([
         topics.get(projectId),
         runs.listAnswers(projectId),
         runs.listRuns(projectId),
+        topics.targetIdentity(projectId).catch(() => null),
       ]);
-      return buildTopicInsights({ projectId, set, answers: sliced(answers, url), runs: runList });
+      return buildTopicInsights({
+        projectId,
+        set,
+        answers: sliced(answers, url),
+        runs: runList,
+        identityCaveat: identity?.caveat || null,
+      });
     }, 404);
     return true;
   }

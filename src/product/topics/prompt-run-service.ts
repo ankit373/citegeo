@@ -3,7 +3,7 @@ import type { ProductBaseline, ProductModelSnapshot } from "../configuration/bas
 import type { ProductBaselineService } from "../configuration/baseline-service.js";
 import type { ProductProjectService } from "../projects/project-service.js";
 import type { RecognitionAnswerExecutor } from "../recognition/recognition-service.js";
-import { namesIdentity } from "./prompt-identity.js";
+import { answerNamesBrand, type BrandIdentity } from "./brand-identity.js";
 import {
   parsePromptAnswerOutput,
   promptAnswerPrompt,
@@ -114,9 +114,7 @@ export class PromptRunService {
       throw new PromptRunUnavailableError("No models are saved for this project. Choose models and save a configuration first.");
     }
 
-    const identities = [project.brandName, ...project.aliases, project.primaryDomain, project.normalizedDomain]
-      .map((value) => (value || "").trim())
-      .filter(Boolean);
+    const identity = await this.topics.targetIdentity(input.projectId);
 
     // An unknown market id is refused rather than quietly dropped, or a run
     // would silently cover fewer markets than it was asked for.
@@ -162,7 +160,7 @@ export class PromptRunService {
             run.currentPromptText = prompt.text;
             run.currentModelId = model.modelId;
             await this.store.saveRun(run);
-            const answer = await this.ask({ run, baseline, model, prompt, identities, market, tongue });
+            const answer = await this.ask({ run, baseline, model, prompt, identity, market, tongue });
             await this.store.saveAnswer(answer);
             if (answer.status === "completed") run.answersCompleted += 1;
             else run.answersFailed += 1;
@@ -199,7 +197,7 @@ export class PromptRunService {
     baseline: ProductBaseline;
     model: ProductModelSnapshot;
     prompt: { id: string; topicId: string; text: string; intent: PromptIntent };
-    identities: string[];
+    identity: BrandIdentity;
     market: Region;
     tongue: AnswerLanguage;
   }): Promise<PromptAnswer> {
@@ -273,11 +271,14 @@ export class PromptRunService {
         };
       }
 
+      // Decided here from the project's own identity, never from the model's
+      // opinion of who it was talking about.
       const mentions: AnswerMention[] = parsed.mentions.map((row) => ({
         ...row,
-        // Whether a mention is the brand is decided here, from the project's own
-        // identities, never from the model's opinion of who it was talking about.
-        isTarget: namesIdentity(row.name, input.identities) || (row.domain ? namesIdentity(row.domain, input.identities) : false),
+        isTarget: answerNamesBrand(
+          { text: "", citationUrls: row.domain ? [row.domain] : [], names: [row.name] },
+          input.identity,
+        ),
       }));
 
       const providerCitations = result.citations.map((citation) => citation.url).filter(Boolean);
