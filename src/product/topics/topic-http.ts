@@ -3,6 +3,7 @@ import { buildHomeSummary } from "../alerts/home-summary.js";
 import { buildAnswerDigest } from "../alerts/answer-digest.js";
 import { buildCitationAnalysis } from "./citation-analysis.js";
 import type { CompetitorService } from "./competitor-set.js";
+import type { SegmentService } from "./segment-set.js";
 import { isPromptIntent } from "./topic-schema.js";
 import { REGIONS, REGION_CAVEAT } from "./region.js";
 import { LANGUAGES } from "./language.js";
@@ -54,10 +55,11 @@ export async function handleTopicApi(input: {
   /** How many models the project has saved, for the setup checklist. */
   models: (projectId: string) => Promise<number>;
   competitors: CompetitorService;
+  segments: SegmentService;
   ask: StructuredAsk;
   readJson: () => Promise<Record<string, unknown>>;
 }): Promise<boolean> {
-  const { method, route, url, send, topics, runs, schedule, demand, profiles, models, competitors, ask, readJson } = input;
+  const { method, route, url, send, topics, runs, schedule, demand, profiles, models, competitors, segments, ask, readJson } = input;
   if (route[0] !== "api" || route[1] !== "projects") return false;
   const projectId = route[2];
   if (!projectId) return false;
@@ -242,6 +244,27 @@ export async function handleTopicApi(input: {
       return true;
     }
     send(200, report);
+    return true;
+  }
+
+  if (method === "GET" && tail.length === 1 && tail[0] === "segments") {
+    await guard(() => segments.get(projectId), 404);
+    return true;
+  }
+
+  if (method === "POST" && tail.length === 1 && tail[0] === "segments") {
+    const body = await readJson();
+    const filters = body.filters && typeof body.filters === "object" ? (body.filters as Record<string, string>) : {};
+    await guard(() => segments.save(projectId, {
+      name: typeof body.name === "string" ? body.name : "",
+      filters,
+    }));
+    return true;
+  }
+
+  if (method === "POST" && tail.length === 2 && tail[0] === "segments" && tail[1] === "remove") {
+    const body = await readJson();
+    await guard(() => segments.remove(projectId, stringList(body.segmentIds)));
     return true;
   }
 

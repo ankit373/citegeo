@@ -352,7 +352,7 @@ export function renderProductPhase2AppHtml(): string {
     </form>
   </aside>
   <script>
-    const state = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", rivals:null, rivalsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, runPollTimer:0 };
+    const state = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", rivals:null, rivalsState:"idle", segments:null, segmentsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, runPollTimer:0 };
     const app = document.getElementById("app");
     const element = (id) => document.getElementById(id);
     const html = (value) => String(value).split("&").join("&amp;").split("<").join("&lt;").split(">").join("&gt;").split('"').join("&quot;").split("'").join("&#39;");
@@ -406,6 +406,36 @@ export function renderProductPhase2AppHtml(): string {
         state.topicState = "error";
       }
       render();
+    }
+
+    async function loadSegments() {
+      if (!state.selectedId || state.segmentsState === "loading") return;
+      state.segmentsState = "loading";
+      try {
+        state.segments = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/segments");
+        state.segmentsState = "ready";
+      } catch (error) {
+        state.segmentsState = "error";
+      }
+      render();
+    }
+
+    function applySegment(filters) {
+      state.filters = { modelId:"", regionId:"", languageId:"", topicId:"" };
+      for (const key of ["topicId", "modelId", "regionId", "languageId"]) {
+        if (filters[key]) state.filters[key] = filters[key];
+      }
+      state.answerEngineState = "idle";
+      state.citedState = "idle";
+      loadAnswerEngine();
+    }
+
+    async function saveSegment() {
+      const name = window.prompt("Name this view");
+      if (!name) return;
+      await postPrompts("/segments", { name: name, filters: state.filters }, "saving", "View saved.");
+      state.segmentsState = "idle";
+      loadSegments();
     }
 
     async function loadRivals() {
@@ -1118,6 +1148,15 @@ export function renderProductPhase2AppHtml(): string {
       return '<option value="' + html(value) + '"' + (selected === value ? " selected" : "") + '>' + html(label) + '</option>';
     }
 
+    function renderSavedViews() {
+      if (state.segmentsState === "idle") { loadSegments(); }
+      const saved = state.segments ? state.segments.segments : [];
+      if (!saved.length && !filtersApplied()) return "";
+      const chips = saved.map((row) => '<button type="button" class="filter" data-segment="' + html(row.id) + '">' + html(row.name) + ' <span class="chev" data-segment-remove="' + html(row.id) + '">\u00d7</span></button>').join("");
+      const save = filtersApplied() ? '<button type="button" class="filter" data-save-segment>+ Save this view</button>' : '';
+      return '<div class="toolbar" style="margin:0 0 4px">' + chips + save + '</div>';
+    }
+
     function renderSegment(data) {
       const models = [option("", "All models", state.filters.modelId)].concat(data.byModel.map((row) => option(row.modelId, row.displayName, state.filters.modelId)));
       const topics = [option("", "All topics", state.filters.topicId)].concat(data.topics.map((row) => option(row.topicId, row.name, state.filters.topicId)));
@@ -1351,6 +1390,7 @@ export function renderProductPhase2AppHtml(): string {
       return '<section class="view"><div class="heading"><div><h1>Answer engine</h1><p class="subtle">' + data.answers + ' answer(s) across ' + data.topics.length + ' topic(s) for ' + html(selected.normalizedDomain) + '. Click any question to read the answers behind it.</p></div><div class="inline-actions"><button type="button" class="button" data-page="prompts">Prompts</button><button type="button" class="button primary" data-run-prompts>' + (state.promptRunState === "running" ? "Running…" : "Run prompts") + '</button></div></div>'
         + renderLiveRun()
         + renderHero(data)
+        + renderSavedViews()
         + renderSegment(data)
         + identityNote + failedNote + citationNote
         + '<section class="section-card"><div class="section-head"><div><h2>How the score is built</h2><p class="subtle">Presence scaled by where you appear and how you are described.</p></div></div>'
@@ -1586,6 +1626,20 @@ export function renderProductPhase2AppHtml(): string {
       }
       if (target.closest("[data-stop-run]")) { stopRun(); return; }
       if (target.closest("[data-adopt-rivals]")) { rivalAction("/competitors/adopt", {}, "Adopted."); return; }
+      if (target.closest("[data-save-segment]")) { saveSegment(); return; }
+      const removeSegment = target.closest("[data-segment-remove]");
+      if (removeSegment) {
+        postPrompts("/segments/remove", { segmentIds: [removeSegment.getAttribute("data-segment-remove")] }, "saving", "View removed.")
+          .then(() => { state.segmentsState = "idle"; loadSegments(); });
+        return;
+      }
+      const segment = target.closest("[data-segment]");
+      if (segment) {
+        const saved = state.segments ? state.segments.segments : [];
+        const found = saved.find((row) => row.id === segment.getAttribute("data-segment"));
+        if (found) applySegment(found.filters);
+        return;
+      }
       const retireRival = target.closest("[data-retire-rival]");
       if (retireRival) { rivalAction("/competitors/retire", { competitorIds: [retireRival.getAttribute("data-retire-rival")] }, "No longer tracked."); return; }
       if (target.closest("[data-storage-check]")) { storageAction("/check", "POST", "Connected."); return; }

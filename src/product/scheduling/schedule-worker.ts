@@ -23,6 +23,7 @@ import { DigestBaselineStore } from "../reporting/delivery.js";
 import { runDigests } from "../reporting/digest-run.js";
 import { reportWebhookUrl } from "../reporting/delivery.js";
 import { createProductServices } from "../product-services.js";
+import { AnswerDigestBaselineStore, runAnswerDigests } from "../alerts/answer-digest-run.js";
 
 export function productScheduleService(): ProductScheduleService {
   const projectStore = new ProductProjectFileStore(productDataDir());
@@ -72,6 +73,29 @@ export function digestDependencies(): DigestDependencies {
 
 export async function runProductScheduleDue(): Promise<Awaited<ReturnType<ProductScheduleService["runDue"]>>> {
   return productScheduleService().runDue();
+}
+
+/** Answer-engine digests for every project, delivered only where something
+ * moved. Shares the graph with prompt runs so both see the same evidence. */
+export async function runAnswerDigestsDue(): Promise<number> {
+  const services = createProductServices();
+  const outcomes = await runAnswerDigests({
+    projects: services.projects,
+    topics: services.topics,
+    runs: services.promptRuns,
+    store: new AnswerDigestBaselineStore(productDataDir()),
+    modelCount: async (projectId) => (await services.selections.list(projectId)).length,
+    url: reportWebhookUrl(),
+  });
+  let sent = 0;
+  for (const outcome of outcomes) {
+    if (outcome.outcome === "sent") sent += 1;
+    // "no_news" is the common case and saying so every hour is noise.
+    if (outcome.outcome === "sent" || outcome.outcome === "failed") {
+      console.log(JSON.stringify({ type: `answer_digest_${outcome.outcome}`, projectId: outcome.projectId, detail: outcome.detail, headline: outcome.headline }));
+    }
+  }
+  return sent;
 }
 
 /**
@@ -126,6 +150,7 @@ export async function runProductScheduleWorker(pollSeconds = 60): Promise<void> 
     // loop continues rather than taking the worker down.
     try {
       await runPromptSchedulesDue();
+      await runAnswerDigestsDue();
     } catch (error) {
       console.error(JSON.stringify({ type: "prompt_schedule_worker_failed", detail: error instanceof Error ? error.message : String(error) }));
     }
