@@ -1,6 +1,8 @@
 import { domainLabel, tokenize } from "./prompt-identity.js";
 import { buildPromptTrend, type PromptTrend } from "./prompt-trend.js";
 import { region, REGION_CAVEAT } from "./region.js";
+import { language } from "./language.js";
+import { matchesCompetitor, type Competitor } from "./competitor-set.js";
 import type { PromptRun } from "./prompt-run-schema.js";
 import type { AnswerMention, PromptAnswer } from "./prompt-run-schema.js";
 import { emptyScore, scoreAnswers, SCORE_WEIGHTS, type ScoreWeights, type VisibilityScore } from "./visibility-score.js";
@@ -14,6 +16,9 @@ export interface EntityStanding {
   name: string;
   domain: string | null;
   isTarget: boolean;
+  /** True when this is a rival the project declared, as opposed to one the
+   * models happened to name. */
+  isTracked?: boolean;
   /** Answers naming this entity. */
   appearances: number;
   /** appearances / answers considered. */
@@ -63,6 +68,13 @@ export interface RegionStanding {
   rank: number | null;
 }
 
+export interface LanguageStanding {
+  languageId: string;
+  label: string;
+  score: VisibilityScore;
+  rank: number | null;
+}
+
 export interface TopicInsights {
   projectId: string;
   /** Completed answers behind everything below. */
@@ -82,8 +94,16 @@ export interface TopicInsights {
   trend: PromptTrend;
   /** Per market, worst first. Empty until a run states one. */
   byRegion: RegionStanding[];
+  /** Per language, worst first. Empty until a run asks in more than one. */
+  byLanguage: LanguageStanding[];
   /** What the UI must print next to any regional figure. */
   regionCaveat: string;
+  /** Set when the brand is named after its own category, so a name match
+   * cannot tell the product from the word. */
+  identityCaveat: string | null;
+  /** Declared rivals, including the ones no answer named. A rival you track
+   * and never see is a finding; showing nothing would hide it. */
+  trackedRivals: EntityStanding[];
 }
 
 /** Keyed on the name: a model gives ChatGPT as openai.com in one answer and
@@ -182,7 +202,53 @@ function regionStandings(answers: PromptAnswer[]): RegionStanding[] {
     .sort((left, right) => (left.score.score || 0) - (right.score.score || 0));
 }
 
-export function buildTopicInsights(input: { projectId: string; set: TopicSet; answers: PromptAnswer[]; runs?: PromptRun[] }): TopicInsights {
+function languageStandings(answers: PromptAnswer[]): LanguageStanding[] {
+  const groups = new Map<string, PromptAnswer[]>();
+  for (const answer of answers) {
+    const id = answer.languageId || "en";
+    groups.set(id, [...(groups.get(id) || []), answer]);
+  }
+  if (groups.size < 2) return [];
+  return [...groups.entries()]
+    .map(([languageId, group]) => ({
+      languageId,
+      label: language(languageId)?.label || languageId,
+      score: scoreAnswers(group),
+      rank: rankOfTarget(standings(group)),
+    }))
+    .sort((left, right) => (left.score.score || 0) - (right.score.score || 0));
+}
+
+function trackedStandings(competitors: Competitor[], leaderboard: EntityStanding[], answers: number): EntityStanding[] {
+  return competitors
+    .filter((row) => row.tracked)
+    .map((competitor) => {
+      const seen = leaderboard.find((row) => !row.isTarget && matchesCompetitor(competitor, row.name, row.domain));
+      if (seen) return { ...seen, name: competitor.name, isTracked: true };
+      // Zero, not absent: it was asked about and the answer is none.
+      return {
+        name: competitor.name,
+        domain: competitor.domain,
+        isTarget: false,
+        isTracked: true,
+        appearances: 0,
+        shareOfAnswers: answers > 0 ? 0 : null,
+        prominence: null,
+        positive: 0,
+        negative: 0,
+      };
+    })
+    .sort((left, right) => right.appearances - left.appearances);
+}
+
+export function buildTopicInsights(input: {
+  projectId: string;
+  set: TopicSet;
+  answers: PromptAnswer[];
+  runs?: PromptRun[];
+  identityCaveat?: string | null;
+  competitors?: Competitor[] | undefined;
+}): TopicInsights {
   const { projectId, set, answers } = input;
   const completed = answers.filter((answer) => answer.status === "completed");
   const leaderboard = standings(answers);
@@ -247,6 +313,9 @@ export function buildTopicInsights(input: { projectId: string; set: TopicSet; an
       rankOf: (group) => rankOfTarget(standings(group)),
     }),
     byRegion: regionStandings(answers),
+    byLanguage: languageStandings(answers),
     regionCaveat: REGION_CAVEAT,
+    identityCaveat: input.identityCaveat || null,
+    trackedRivals: trackedStandings(input.competitors || [], leaderboard, completed.length),
   };
 }

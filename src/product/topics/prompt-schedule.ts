@@ -1,7 +1,5 @@
-import { randomUUID } from "node:crypto";
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
-import { join } from "node:path";
 import type { ProductProjectFileStore } from "../projects/project-store.js";
+import { getJson, putJson } from "../storage/object-store.js";
 import { nextRunAt } from "../scheduling/schedule-rule.js";
 import type { MonitoringScheduleRule } from "../scheduling/schedule-schema.js";
 import type { PromptRunService } from "./prompt-run-service.js";
@@ -39,36 +37,21 @@ export function emptyPromptSchedule(projectId: string): PromptSchedule {
   };
 }
 
-function notFound(error: unknown): boolean {
-  return Boolean(error && typeof error === "object" && "code" in error && error.code === "ENOENT");
-}
-
-async function writeJson(path: string, value: unknown): Promise<void> {
-  const temporary = `${path}.${randomUUID()}.tmp`;
-  await writeFile(temporary, `${JSON.stringify(value, null, 2)}\n`, "utf8");
-  await rename(temporary, path);
-}
-
 export class PromptScheduleFileStore {
   constructor(private readonly projects: ProductProjectFileStore) {}
 
-  private path(projectId: string): string {
-    return join(this.projects.projectDir(projectId), "prompt-schedule.json");
+  private key(projectId: string): string {
+    return this.projects.keyFor(projectId, "prompt-schedule.json");
   }
 
   async load(projectId: string): Promise<PromptSchedule> {
-    try {
-      const parsed = JSON.parse(await readFile(this.path(projectId), "utf8")) as PromptSchedule;
-      return { ...emptyPromptSchedule(projectId), ...parsed, projectId };
-    } catch (error) {
-      if (notFound(error)) return emptyPromptSchedule(projectId);
-      throw error;
-    }
+    const parsed = await getJson<PromptSchedule>(this.projects.objects, this.key(projectId));
+    if (!parsed) return emptyPromptSchedule(projectId);
+    return { ...emptyPromptSchedule(projectId), ...parsed, projectId };
   }
 
   async save(schedule: PromptSchedule): Promise<void> {
-    await mkdir(this.projects.projectDir(schedule.projectId), { recursive: true });
-    await writeJson(this.path(schedule.projectId), { ...schedule, updatedAt: new Date().toISOString() });
+    await putJson(this.projects.objects, this.key(schedule.projectId), { ...schedule, updatedAt: new Date().toISOString() });
   }
 }
 

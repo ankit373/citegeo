@@ -19,6 +19,12 @@ import { TopicService } from "./topics/topic-service.js";
 import { createStructuredAsk } from "./topics/structured-ask.js";
 import { PromptScheduleFileStore, PromptScheduleService } from "./topics/prompt-schedule.js";
 import { DemandReportFileStore } from "./demand/demand-store.js";
+import { BrandProfileFileStore, BrandProfileService } from "./discovery/brand-profile-service.js";
+import { StorageSettingsStore } from "./storage/storage-settings.js";
+import { CompetitorFileStore, CompetitorService } from "./topics/competitor-set.js";
+import { SegmentFileStore, SegmentService } from "./topics/segment-set.js";
+import { createObjectStore } from "./storage/storage-config.js";
+import { DeferredObjectStore, LocalObjectStore, type ObjectStore } from "./storage/object-store.js";
 import type { StructuredAsk } from "./topics/topic-service.js";
 import { ProductRecognitionRunService } from "./recognition/recognition-service.js";
 import { ProductRecognitionFileStore } from "./recognition/recognition-store.js";
@@ -44,6 +50,7 @@ import { ProductScheduleService } from "./scheduling/schedule-service.js";
 
 export interface ProductServerDependencies {
   modelCatalog?: ProductModelCatalog | undefined;
+  objectStore?: ObjectStore | undefined;
   recognitionExecutor?: RecognitionAnswerExecutor | undefined;
   measurementExecutor?: RecognitionAnswerExecutor | undefined;
 }
@@ -75,6 +82,21 @@ function defaultProductCatalog(): ProductModelCatalog {
   return new CompositeProductModelCatalog(catalogs);
 }
 
+function buildConfiguredStore(): ObjectStore {
+  const settings = new StorageSettingsStore(productDataDir());
+  return new DeferredObjectStore(async () => {
+    try {
+      const saved = await settings.load();
+      if (saved.backend === "local") return new LocalObjectStore(saved.values.rootDir?.trim() || productDataDir());
+      return createObjectStore(saved, productDataDir());
+    } catch {
+      // A broken setting must not stop the server booting, or it could never
+      // be fixed through the page that fixes it.
+      return new LocalObjectStore(productDataDir());
+    }
+  });
+}
+
 export interface ProductServices {
   projects: ProductProjectService;
   catalog: ProductModelCatalog;
@@ -93,6 +115,11 @@ export interface ProductServices {
   promptRuns: PromptRunService;
   promptSchedule: PromptScheduleService;
   demand: DemandReportFileStore;
+  profiles: BrandProfileService;
+  competitors: CompetitorService;
+  segments: SegmentService;
+  storageSettings: StorageSettingsStore;
+  dataDir: string;
   /** Asks one structured question through the project's own saved models. */
   ask: StructuredAsk;
   credentials: CredentialService;
@@ -102,7 +129,10 @@ export interface ProductServices {
 /** Built once per server. Rebuilding it per request discarded everything a
  * service held between calls, so the insights cache cached nothing. */
 export function createProductServices(dependencies: ProductServerDependencies = {}): ProductServices {
-  const projectStore = new ProductProjectFileStore(productDataDir());
+  // Built from whatever was configured, falling back to the disk so a broken
+  // setting cannot stop the server booting and being fixed through the page.
+  const objects: ObjectStore = dependencies.objectStore || buildConfiguredStore();
+  const projectStore = new ProductProjectFileStore(productDataDir(), objects);
   const projects = new ProductProjectService(projectStore);
   const configurationStore = new ProductConfigurationFileStore(projectStore);
   const catalog = dependencies.modelCatalog || defaultProductCatalog();
@@ -119,21 +149,31 @@ export function createProductServices(dependencies: ProductServerDependencies = 
   const watchSets = new ProductWatchSetService(projects, baselines, measurementStore, recognitionStore, reportStore);
   const measurements = new ProductMeasurementRunService(projects, baselines, watchSets, measurementStore, dependencies.measurementExecutor || dependencies.recognitionExecutor);
   const stats = new ProductMeasurementStatsService(projects, measurementStore);
-  const schedules = new ProductScheduleService(projects, baselines, watchSets, measurements, new ProductScheduleFileStore(projectStore));
+  const schedules = new ProductScheduleService(projects, baselines, watchSets, measurements, new ProductScheduleFileStore(projectStore, productDataDir()));
 
   // One executor for the prompt engine and for generation, so both are billed
   // and configured exactly like a recognition run.
   const executor = dependencies.recognitionExecutor || new OpenRouterRecognitionAnswerExecutor();
-  const topics = new TopicService(new TopicFileStore(projectStore), projects, insights);
-  const promptRuns = new PromptRunService(new PromptRunFileStore(projectStore), topics, projects, baselines, executor);
+  const profiles = new BrandProfileService(new BrandProfileFileStore(projectStore), projects);
+  const topics = new TopicService(new TopicFileStore(projectStore), projects, insights, profiles);
+  const promptRuns = new PromptRunService(new PromptRunFileStore(projectStore), topics, projects, baselines, executor, catalog);
   const ask = createStructuredAsk({ baselines, executor });
   const promptSchedule = new PromptScheduleService(new PromptScheduleFileStore(projectStore), promptRuns);
   const demand = new DemandReportFileStore(projectStore);
+  const competitors = new CompetitorService(new CompetitorFileStore(projectStore));
+  const segments = new SegmentService(new SegmentFileStore(projectStore));
+  const storageSettings = new StorageSettingsStore(productDataDir());
+  // A run left "running" by a process that is gone would otherwise show as
+  // live forever, which is how three dead runs kept claiming to be working.
+  void projects.list().then(async (rows) => {
+    for (const row of rows) await promptRuns.reconcileInterrupted(row.id).catch(() => 0);
+  }).catch(() => undefined);
 
   return {
     projects, catalog, selections, baselines, recognition, reports, insights,
     signals, crawlerLog, watchSets, measurements, stats, schedules,
-    topics, promptRuns, promptSchedule, demand, ask,
+    topics, promptRuns, promptSchedule, demand, profiles, competitors, segments, ask,
+    storageSettings, dataDir: productDataDir(),
     credentials: new CredentialService(new CredentialFileStore(productDataDir())),
     auth: authConfig(),
   };

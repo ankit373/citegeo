@@ -16,7 +16,7 @@ test("a multi-word brand is matched as a phrase, not as loose words", () => {
 
 test("a domain matches on its distinguishing label, with or without the suffix", () => {
   assert.equal(domainLabel("screener.in"), "screener");
-  assert.equal(domainLabel("www.blue-chip.co.uk"), "chip");
+  assert.equal(domainLabel("www.blue-chip.co.uk"), "blue chip");
   assert.equal(namesIdentity("alternatives to screener", ["screener.in"]), true);
   assert.equal(namesIdentity("alternatives to screener.in", ["screener.in"]), true);
 });
@@ -28,4 +28,24 @@ test("punctuation and case do not hide a mention", () => {
 
 test("an empty identity never matches everything", () => {
   assert.equal(namesIdentity("best stock screener", ["", "   "]), false);
+});
+
+test("a brand whose domain suffix is an ordinary word does not match that word", () => {
+  // tradomate.one reduced to the label "one", so every prompt containing the
+  // word "one" read as naming the brand. Two real prompts were mislabelled.
+  assert.equal(domainLabel("tradomate.one"), "tradomate");
+  assert.equal(namesIdentity("screen stocks in one place", ["tradomate.one"]), false);
+  assert.equal(namesIdentity("chartink vs screener.in which one is better", ["tradomate.one"]), false);
+  assert.equal(namesIdentity("is tradomate good for equities", ["tradomate.one"]), true);
+});
+
+test("a suffix is stripped only from the end, so a hyphenated label survives", () => {
+  assert.equal(domainLabel("www.blue-chip.co.uk"), "blue chip");
+  assert.equal(domainLabel("a.b.example.com"), "example");
+  assert.equal(domainLabel("chartink.com"), "chartink");
+});
+
+test("a host that is nothing but a suffix still yields something rather than nothing", () => {
+  assert.equal(domainLabel("com"), "com");
+  assert.equal(domainLabel(""), "");
 });

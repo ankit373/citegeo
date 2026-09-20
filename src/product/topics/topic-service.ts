@@ -1,7 +1,8 @@
 import { sha256 } from "../../utils/hash.js";
+import type { BrandProfileService } from "../discovery/brand-profile-service.js";
 import type { ProductInsightsService } from "../insights/insights-service.js";
 import type { ProductProjectService } from "../projects/project-service.js";
-import { namesIdentity } from "./prompt-identity.js";
+import { resolveBrandIdentity, textNamesBrand, type BrandIdentity } from "./brand-identity.js";
 import {
   parsePromptSetProposal,
   promptGenerationPrompt,
@@ -39,6 +40,9 @@ export interface GenerateOptions {
    * Without it, generation has nothing to work from but invention. */
   businessDescription?: string | undefined;
   productCategory?: string | undefined;
+  /** Rivals the user knows about. Comparison and alternatives prompts need a
+   * real name, and a brand no model recognises yields none from the runs. */
+  competitors?: Array<{ name: string; domain: string | null }> | undefined;
 }
 
 /** What the models have already said about the brand, used to ground generation. */
@@ -69,11 +73,22 @@ export class TopicService {
     private readonly store: TopicFileStore,
     private readonly projects: ProductProjectService,
     private readonly insights?: ProductInsightsService | undefined,
+    private readonly profiles?: BrandProfileService | undefined,
   ) {}
 
   /** Read where it exists and left absent where it does not, never filled in:
    * guessed facts produce prompts for a company that does not exist. */
   async brandFacts(projectId: string): Promise<BrandFacts> {
+    // The site is the best source: a brand no model recognises still has a
+    // homepage that says what it does.
+    const profile = await this.profiles?.get(projectId).catch(() => null);
+    if (profile?.businessDescription) {
+      return {
+        businessDescription: profile.businessDescription,
+        productCategory: profile.productCategory,
+        competitors: profile.competitors,
+      };
+    }
     if (!this.insights) return NO_BRAND_FACTS;
     try {
       const built = await this.insights.build(projectId);
@@ -98,12 +113,19 @@ export class TopicService {
 
   /** Only the target brand counts: naming a competitor is the entire point of
    * an alternatives or comparison prompt. */
-  private async targetIdentities(projectId: string): Promise<string[]> {
+  async targetIdentity(projectId: string): Promise<BrandIdentity> {
     const project = await this.projects.get(projectId);
     if (!project) throw new TopicSetUnavailableError(`Project ${projectId} does not exist.`);
-    return [project.brandName, ...project.aliases, project.primaryDomain, project.normalizedDomain]
-      .map((value) => (value || "").trim())
-      .filter(Boolean);
+    const profile = await this.profiles?.get(projectId).catch(() => null);
+    // The brand's own category is what makes its name ambiguous, so it is read
+    // from the profile rather than guessed at.
+    const categoryText = [profile?.productCategory || "", ...(profile?.features || [])].join(" ").trim();
+    return resolveBrandIdentity({
+      brandName: project.brandName,
+      aliases: project.aliases,
+      domain: project.normalizedDomain,
+      categoryText: categoryText || undefined,
+    });
   }
 
   private buildPrompt(input: {
@@ -112,10 +134,10 @@ export class TopicService {
     text: string;
     intent: PromptIntent;
     source: Prompt["source"];
-    identities: string[];
+    identity: BrandIdentity;
     status: EntityStatus;
   }): Prompt {
-    const named = namesIdentity(input.text, input.identities);
+    const named = textNamesBrand(input.text, input.identity);
     return {
       id: promptId(input.projectId, input.text),
       projectId: input.projectId,
@@ -138,14 +160,19 @@ export class TopicService {
     const project = await this.projects.get(projectId);
     if (!project) throw new TopicSetUnavailableError(`Project ${projectId} does not exist.`);
     const existing = await this.store.load(projectId);
-    const facts = await this.brandFacts(projectId);
+    let facts = await this.brandFacts(projectId);
+    if (!facts.businessDescription && !options.businessDescription && this.profiles) {
+      // Nothing known and nothing supplied, so go and find out.
+      const built = await this.profiles.build(projectId, ask);
+      facts = { businessDescription: built.businessDescription, productCategory: built.productCategory, competitors: built.competitors };
+    }
     const subject: PromptGenerationSubject = {
       brandName: project.brandName,
       domain: project.normalizedDomain,
       // What the user tells us outranks what the runs inferred: they know.
       businessDescription: options.businessDescription?.trim() || facts.businessDescription,
       productCategory: options.productCategory?.trim() || facts.productCategory,
-      competitors: facts.competitors,
+      competitors: options.competitors?.length ? options.competitors : facts.competitors,
       topicCount: options.topicCount || 5,
       promptsPerTopic: options.promptsPerTopic || 6,
     };
@@ -170,7 +197,7 @@ export class TopicService {
         `No usable prompt set was produced, so nothing was saved.${reasons}${remedy}`,
       );
     }
-    const identities = await this.targetIdentities(projectId);
+    const identity = await this.targetIdentity(projectId);
     const topics: Topic[] = [...existing.topics];
     const prompts: Prompt[] = [...existing.prompts];
     const seenTopics = new Set(topics.map((topic) => topic.id));
@@ -197,7 +224,7 @@ export class TopicService {
           text: item.text,
           intent: item.intent,
           source: "generated",
-          identities,
+          identity,
           status: "proposed",
         });
         // The same question proposed twice is one prompt, not two data points.
@@ -240,14 +267,14 @@ export class TopicService {
     if (!set.topics.some((topic) => topic.id === input.topicId)) {
       throw new TopicSetUnavailableError(`Topic ${input.topicId} does not exist.`);
     }
-    const identities = await this.targetIdentities(projectId);
+    const identity = await this.targetIdentity(projectId);
     const prompt = this.buildPrompt({
       projectId,
       topicId: input.topicId,
       text,
       intent: input.intent,
       source: "authored",
-      identities,
+      identity,
       status: "active",
     });
     if (!set.prompts.some((existing) => existing.id === prompt.id)) {
@@ -255,6 +282,34 @@ export class TopicService {
       await this.store.save(set);
     }
     return this.store.load(projectId);
+  }
+
+  /** One question per line. Blank lines and duplicates are skipped rather than
+   * refused, because a pasted list always has both. */
+  async addPrompts(projectId: string, input: { topicId: string; text: string; intent: PromptIntent }): Promise<{ set: TopicSet; added: number; skipped: number }> {
+    const set = await this.store.load(projectId);
+    if (!set.topics.some((topic) => topic.id === input.topicId)) {
+      throw new TopicSetUnavailableError(`Topic ${input.topicId} does not exist.`);
+    }
+    const identity = await this.targetIdentity(projectId);
+    const seen = new Set(set.prompts.map((prompt) => prompt.id));
+    let added = 0;
+    let skipped = 0;
+    for (const line of input.text.split("\n")) {
+      const text = line.trim();
+      if (!text) continue;
+      const prompt = this.buildPrompt({ projectId, topicId: input.topicId, text, intent: input.intent, source: "authored", identity, status: "active" });
+      if (seen.has(prompt.id)) {
+        skipped += 1;
+        continue;
+      }
+      seen.add(prompt.id);
+      set.prompts.push(prompt);
+      added += 1;
+    }
+    if (!added && !skipped) throw new TopicSetUnavailableError("No questions were found in that text.");
+    if (added) await this.store.save(set);
+    return { set: await this.store.load(projectId), added, skipped };
   }
 
   /** Moves prompts, and the topics holding them, from proposed to active. */

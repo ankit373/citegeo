@@ -1,7 +1,10 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+function key(...parts: string[]): string {
+  return parts.filter(Boolean).join("/");
+}
+
 import type { ProductProjectFileStore } from "../projects/project-store.js";
+import { getJson, putJson } from "../storage/object-store.js";
 import type {
   DomainProbeResult,
   KeywordDiscoveryMention,
@@ -20,16 +23,6 @@ function notFound(error: unknown): boolean {
   return Boolean(error && typeof error === "object" && "code" in error && error.code === "ENOENT");
 }
 
-async function readJson<T>(path: string): Promise<T> {
-  return JSON.parse(await readFile(path, "utf8")) as T;
-}
-
-async function writeJson(path: string, value: unknown): Promise<void> {
-  const temporary = `${path}.${randomUUID()}.tmp`;
-  await writeFile(temporary, `${JSON.stringify(value, null, 2)}\n`, "utf8");
-  await rename(temporary, path);
-}
-
 function sorted<T extends { createdAt: string }>(entries: T[]): T[] {
   return entries.sort((left, right) => left.createdAt.localeCompare(right.createdAt));
 }
@@ -37,31 +30,56 @@ function sorted<T extends { createdAt: string }>(entries: T[]): T[] {
 export class ProductMeasurementFileStore {
   constructor(private readonly projects: ProductProjectFileStore) {}
 
-  private root(projectId: string): string { return join(this.projects.projectDir(projectId), "measurements"); }
-  private watchSets(projectId: string): string { return join(this.root(projectId), "watch-sets"); }
-  private watchSetPath(projectId: string, watchSetId: string): string { return join(this.watchSets(projectId), `${watchSetId}.json`); }
-  private runs(projectId: string): string { return join(this.root(projectId), "runs"); }
-  private runRoot(projectId: string, runId: string): string { return join(this.runs(projectId), runId); }
-  private runPath(projectId: string, runId: string): string { return join(this.runRoot(projectId, runId), "run.json"); }
-  private modelRoot(projectId: string, runId: string, modelRunId: string): string { return join(this.runRoot(projectId, runId), "model-runs", modelRunId); }
-  private modelPath(projectId: string, runId: string, modelRunId: string): string { return join(this.modelRoot(projectId, runId, modelRunId), "model-run.json"); }
-  private probeRoot(projectId: string, runId: string, modelRunId: string): string { return join(this.modelRoot(projectId, runId, modelRunId), "probe-runs"); }
-  private probePath(projectId: string, runId: string, modelRunId: string, probeId: string): string { return join(this.probeRoot(projectId, runId, modelRunId), `${probeId}.json`); }
-  private attemptRoot(projectId: string, runId: string, modelRunId: string, probeId: string): string { return join(this.modelRoot(projectId, runId, modelRunId), "attempts", probeId); }
-  private attemptPath(projectId: string, runId: string, modelRunId: string, probeId: string, attemptId: string): string { return join(this.attemptRoot(projectId, runId, modelRunId, probeId), `${attemptId}.json`); }
-  private resultPath(projectId: string, runId: string, modelRunId: string, probeId: string): string { return join(this.modelRoot(projectId, runId, modelRunId), "results", `${probeId}.json`); }
-  private evidencePath(projectId: string, runId: string, modelRunId: string, probeId: string): string { return join(this.modelRoot(projectId, runId, modelRunId), "evidence", `${probeId}.json`); }
-  private snapshotRoot(projectId: string): string { return join(this.root(projectId), "stats"); }
-  private snapshotPath(projectId: string, snapshotId: string): string { return join(this.snapshotRoot(projectId), `${snapshotId}.json`); }
+  /** The four primitives the bodies below call. Shimmed onto the object store
+   * so key composition and control flow stay exactly as they were. */
+  private async readJson<T>(key: string): Promise<T> {
+    const row = await getJson<T>(this.projects.objects, key);
+    if (row === null) throw Object.assign(new Error(`No object at ${key}`), { code: "ENOENT" });
+    return row;
+  }
+
+  private async writeJson(key: string, value: unknown): Promise<void> {
+    await putJson(this.projects.objects, key, value);
+  }
+
+  /** Shaped like readdir entries, because that is what the callers expect. */
+  private async listDir(prefix: string): Promise<Array<{ name: string; isFile: () => boolean; isDirectory: () => boolean }>> {
+    const keys = await this.projects.objects.list(prefix);
+    const clean = prefix.endsWith("/") ? prefix.slice(0, -1) : prefix;
+    const names = new Set<string>();
+    for (const key of keys) {
+      const rest = key.startsWith(`${clean}/`) ? key.slice(clean.length + 1) : key;
+      const head = rest.split("/")[0];
+      if (head) names.add(rest.includes("/") ? head : rest);
+    }
+    // A name with no .json suffix stood for a directory on disk, so it still does.
+    return [...names].sort().map((name) => ({ name, isFile: () => name.endsWith(".json"), isDirectory: () => !name.endsWith(".json") }));
+  }
+
+  private root(projectId: string): string { return this.projects.keyFor(projectId, "measurements"); }
+  private watchSets(projectId: string): string { return key(this.root(projectId), "watch-sets"); }
+  private watchSetPath(projectId: string, watchSetId: string): string { return key(this.watchSets(projectId), `${watchSetId}.json`); }
+  private runs(projectId: string): string { return key(this.root(projectId), "runs"); }
+  private runRoot(projectId: string, runId: string): string { return key(this.runs(projectId), runId); }
+  private runPath(projectId: string, runId: string): string { return key(this.runRoot(projectId, runId), "run.json"); }
+  private modelRoot(projectId: string, runId: string, modelRunId: string): string { return key(this.runRoot(projectId, runId), "model-runs", modelRunId); }
+  private modelPath(projectId: string, runId: string, modelRunId: string): string { return key(this.modelRoot(projectId, runId, modelRunId), "model-run.json"); }
+  private probeRoot(projectId: string, runId: string, modelRunId: string): string { return key(this.modelRoot(projectId, runId, modelRunId), "probe-runs"); }
+  private probePath(projectId: string, runId: string, modelRunId: string, probeId: string): string { return key(this.probeRoot(projectId, runId, modelRunId), `${probeId}.json`); }
+  private attemptRoot(projectId: string, runId: string, modelRunId: string, probeId: string): string { return key(this.modelRoot(projectId, runId, modelRunId), "attempts", probeId); }
+  private attemptPath(projectId: string, runId: string, modelRunId: string, probeId: string, attemptId: string): string { return key(this.attemptRoot(projectId, runId, modelRunId, probeId), `${attemptId}.json`); }
+  private resultPath(projectId: string, runId: string, modelRunId: string, probeId: string): string { return key(this.modelRoot(projectId, runId, modelRunId), "results", `${probeId}.json`); }
+  private evidencePath(projectId: string, runId: string, modelRunId: string, probeId: string): string { return key(this.modelRoot(projectId, runId, modelRunId), "evidence", `${probeId}.json`); }
+  private snapshotRoot(projectId: string): string { return key(this.root(projectId), "stats"); }
+  private snapshotPath(projectId: string, snapshotId: string): string { return key(this.snapshotRoot(projectId), `${snapshotId}.json`); }
 
   async saveWatchSet(value: WatchSet): Promise<void> {
-    await mkdir(this.watchSets(value.projectId), { recursive: true });
-    await writeJson(this.watchSetPath(value.projectId, value.id), value);
+    await this.writeJson(this.watchSetPath(value.projectId, value.id), value);
   }
 
   async readWatchSet(projectId: string, watchSetId: string): Promise<WatchSet | null> {
     try {
-      const value = await readJson<WatchSet>(this.watchSetPath(projectId, watchSetId));
+      const value = await this.readJson<WatchSet>(this.watchSetPath(projectId, watchSetId));
       return value.projectId === projectId && value.id === watchSetId ? value : null;
     } catch (error) {
       if (notFound(error)) return null;
@@ -72,9 +90,9 @@ export class ProductMeasurementFileStore {
   async listWatchSets(projectId: string): Promise<WatchSet[]> {
     try {
       const rows: WatchSet[] = [];
-      for (const entry of await readdir(this.watchSets(projectId), { withFileTypes: true })) {
+      for (const entry of await this.listDir(this.watchSets(projectId))) {
         if (!entry.isFile() || !entry.name.endsWith(".json")) continue;
-        const value = await readJson<WatchSet>(join(this.watchSets(projectId), entry.name));
+        const value = await this.readJson<WatchSet>(key(this.watchSets(projectId), entry.name));
         if (value.projectId === projectId) rows.push(value);
       }
       return rows.sort((left, right) => left.version - right.version);
@@ -85,13 +103,12 @@ export class ProductMeasurementFileStore {
   }
 
   async saveRun(value: MeasurementRun): Promise<void> {
-    await mkdir(this.runRoot(value.projectId, value.id), { recursive: true });
-    await writeJson(this.runPath(value.projectId, value.id), value);
+    await this.writeJson(this.runPath(value.projectId, value.id), value);
   }
 
   async readRun(projectId: string, runId: string): Promise<MeasurementRun | null> {
     try {
-      const value = await readJson<MeasurementRun>(this.runPath(projectId, runId));
+      const value = await this.readJson<MeasurementRun>(this.runPath(projectId, runId));
       return value.projectId === projectId && value.id === runId ? value : null;
     } catch (error) {
       if (notFound(error)) return null;
@@ -102,7 +119,7 @@ export class ProductMeasurementFileStore {
   async listRuns(projectId: string): Promise<MeasurementRun[]> {
     try {
       const values: MeasurementRun[] = [];
-      for (const entry of await readdir(this.runs(projectId), { withFileTypes: true })) {
+      for (const entry of await this.listDir(this.runs(projectId))) {
         if (!entry.isDirectory()) continue;
         const row = await this.readRun(projectId, entry.name);
         if (row) values.push(row);
@@ -115,13 +132,12 @@ export class ProductMeasurementFileStore {
   }
 
   async saveModelRun(value: MeasurementModelRun): Promise<void> {
-    await mkdir(this.modelRoot(value.projectId, value.runId, value.id), { recursive: true });
-    await writeJson(this.modelPath(value.projectId, value.runId, value.id), value);
+    await this.writeJson(this.modelPath(value.projectId, value.runId, value.id), value);
   }
 
   async readModelRun(projectId: string, runId: string, modelRunId: string): Promise<MeasurementModelRun | null> {
     try {
-      const value = await readJson<MeasurementModelRun>(this.modelPath(projectId, runId, modelRunId));
+      const value = await this.readJson<MeasurementModelRun>(this.modelPath(projectId, runId, modelRunId));
       return value.projectId === projectId && value.runId === runId && value.id === modelRunId ? value : null;
     } catch (error) {
       if (notFound(error)) return null;
@@ -130,10 +146,10 @@ export class ProductMeasurementFileStore {
   }
 
   async listModelRuns(projectId: string, runId: string): Promise<MeasurementModelRun[]> {
-    const root = join(this.runRoot(projectId, runId), "model-runs");
+    const root = key(this.runRoot(projectId, runId), "model-runs");
     try {
       const values: MeasurementModelRun[] = [];
-      for (const entry of await readdir(root, { withFileTypes: true })) {
+      for (const entry of await this.listDir(root)) {
         if (!entry.isDirectory()) continue;
         const row = await this.readModelRun(projectId, runId, entry.name);
         if (row) values.push(row);
@@ -146,13 +162,12 @@ export class ProductMeasurementFileStore {
   }
 
   async saveProbe(value: ProbeRun): Promise<void> {
-    await mkdir(this.probeRoot(value.projectId, value.runId, value.modelRunId), { recursive: true });
-    await writeJson(this.probePath(value.projectId, value.runId, value.modelRunId, value.id), value);
+    await this.writeJson(this.probePath(value.projectId, value.runId, value.modelRunId, value.id), value);
   }
 
   async readProbe(projectId: string, runId: string, modelRunId: string, probeId: string): Promise<ProbeRun | null> {
     try {
-      const value = await readJson<ProbeRun>(this.probePath(projectId, runId, modelRunId, probeId));
+      const value = await this.readJson<ProbeRun>(this.probePath(projectId, runId, modelRunId, probeId));
       return value.projectId === projectId && value.runId === runId && value.modelRunId === modelRunId && value.id === probeId ? value : null;
     } catch (error) {
       if (notFound(error)) return null;
@@ -163,7 +178,7 @@ export class ProductMeasurementFileStore {
   async listProbes(projectId: string, runId: string, modelRunId: string): Promise<ProbeRun[]> {
     try {
       const values: ProbeRun[] = [];
-      for (const entry of await readdir(this.probeRoot(projectId, runId, modelRunId), { withFileTypes: true })) {
+      for (const entry of await this.listDir(this.probeRoot(projectId, runId, modelRunId))) {
         if (!entry.isFile() || !entry.name.endsWith(".json")) continue;
         const row = await this.readProbe(projectId, runId, modelRunId, entry.name.slice(0, -5));
         if (row) values.push(row);
@@ -176,13 +191,12 @@ export class ProductMeasurementFileStore {
   }
 
   async saveAttempt(value: ProbeAttempt): Promise<void> {
-    await mkdir(this.attemptRoot(value.projectId, value.runId, value.modelRunId, value.probeRunId), { recursive: true });
-    await writeJson(this.attemptPath(value.projectId, value.runId, value.modelRunId, value.probeRunId, value.id), value);
+    await this.writeJson(this.attemptPath(value.projectId, value.runId, value.modelRunId, value.probeRunId, value.id), value);
   }
 
   async readAttempt(projectId: string, runId: string, modelRunId: string, probeId: string, attemptId: string): Promise<ProbeAttempt | null> {
     try {
-      const value = await readJson<ProbeAttempt>(this.attemptPath(projectId, runId, modelRunId, probeId, attemptId));
+      const value = await this.readJson<ProbeAttempt>(this.attemptPath(projectId, runId, modelRunId, probeId, attemptId));
       return value.projectId === projectId && value.runId === runId && value.modelRunId === modelRunId && value.probeRunId === probeId && value.id === attemptId ? value : null;
     } catch (error) {
       if (notFound(error)) return null;
@@ -193,7 +207,7 @@ export class ProductMeasurementFileStore {
   async listAttempts(projectId: string, runId: string, modelRunId: string, probeId: string): Promise<ProbeAttempt[]> {
     try {
       const values: ProbeAttempt[] = [];
-      for (const entry of await readdir(this.attemptRoot(projectId, runId, modelRunId, probeId), { withFileTypes: true })) {
+      for (const entry of await this.listDir(this.attemptRoot(projectId, runId, modelRunId, probeId))) {
         if (!entry.isFile() || !entry.name.endsWith(".json")) continue;
         const row = await this.readAttempt(projectId, runId, modelRunId, probeId, entry.name.slice(0, -5));
         if (row) values.push(row);
@@ -207,13 +221,12 @@ export class ProductMeasurementFileStore {
 
   async saveResults(input: { projectId: string; runId: string; modelRunId: string; probeRunId: string; domainResult?: DomainProbeResult; keywordResult?: KeywordDiscoveryResult; mentions: KeywordDiscoveryMention[] }): Promise<void> {
     const path = this.resultPath(input.projectId, input.runId, input.modelRunId, input.probeRunId);
-    await mkdir(join(path, ".."), { recursive: true });
-    await writeJson(path, input);
+    await this.writeJson(path, input);
   }
 
   async readResults(projectId: string, runId: string, modelRunId: string, probeId: string): Promise<{ domainResult?: DomainProbeResult; keywordResult?: KeywordDiscoveryResult; mentions: KeywordDiscoveryMention[] } | null> {
     try {
-      const value = await readJson<{ projectId: string; runId: string; modelRunId: string; probeRunId: string; domainResult?: DomainProbeResult; keywordResult?: KeywordDiscoveryResult; mentions: KeywordDiscoveryMention[] }>(this.resultPath(projectId, runId, modelRunId, probeId));
+      const value = await this.readJson<{ projectId: string; runId: string; modelRunId: string; probeRunId: string; domainResult?: DomainProbeResult; keywordResult?: KeywordDiscoveryResult; mentions: KeywordDiscoveryMention[] }>(this.resultPath(projectId, runId, modelRunId, probeId));
       return value.projectId === projectId && value.runId === runId && value.modelRunId === modelRunId && value.probeRunId === probeId ? value : null;
     } catch (error) {
       if (notFound(error)) return null;
@@ -223,13 +236,12 @@ export class ProductMeasurementFileStore {
 
   async saveEvidence(projectId: string, runId: string, modelRunId: string, probeId: string, value: ProbeEvidenceArchive): Promise<void> {
     const path = this.evidencePath(projectId, runId, modelRunId, probeId);
-    await mkdir(join(path, ".."), { recursive: true });
-    await writeJson(path, value);
+    await this.writeJson(path, value);
   }
 
   async readEvidence(projectId: string, runId: string, modelRunId: string, probeId: string): Promise<ProbeEvidenceArchive> {
     try {
-      return await readJson<ProbeEvidenceArchive>(this.evidencePath(projectId, runId, modelRunId, probeId));
+      return await this.readJson<ProbeEvidenceArchive>(this.evidencePath(projectId, runId, modelRunId, probeId));
     } catch (error) {
       if (notFound(error)) return { providerCitations: [], answerMentionedUrls: [] };
       throw error;
@@ -248,13 +260,12 @@ export class ProductMeasurementFileStore {
   }
 
   async saveSnapshot(value: MeasurementStatsSnapshot): Promise<void> {
-    await mkdir(this.snapshotRoot(value.projectId), { recursive: true });
-    await writeJson(this.snapshotPath(value.projectId, value.id), value);
+    await this.writeJson(this.snapshotPath(value.projectId, value.id), value);
   }
 
   async readSnapshot(projectId: string, snapshotId: string): Promise<MeasurementStatsSnapshot | null> {
     try {
-      const value = await readJson<MeasurementStatsSnapshot>(this.snapshotPath(projectId, snapshotId));
+      const value = await this.readJson<MeasurementStatsSnapshot>(this.snapshotPath(projectId, snapshotId));
       return value.projectId === projectId && value.id === snapshotId ? value : null;
     } catch (error) {
       if (notFound(error)) return null;
@@ -265,7 +276,7 @@ export class ProductMeasurementFileStore {
   async listSnapshots(projectId: string): Promise<MeasurementStatsSnapshot[]> {
     try {
       const values: MeasurementStatsSnapshot[] = [];
-      for (const entry of await readdir(this.snapshotRoot(projectId), { withFileTypes: true })) {
+      for (const entry of await this.listDir(this.snapshotRoot(projectId))) {
         if (!entry.isFile() || !entry.name.endsWith(".json")) continue;
         const value = await this.readSnapshot(projectId, entry.name.slice(0, -5));
         if (value) values.push(value);

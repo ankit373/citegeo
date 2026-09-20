@@ -88,6 +88,21 @@ Only where none exists does a declared list apply.
 gap, cited domains and query fanout are built from citations; visibility, share
 of voice and sentiment are not. A provider that cannot search still powers the
 second half, so say which half it powers rather than calling it unsupported.
+## Discovery
+
+**A domain is the only input the product should need.** `src/product/discovery`
+reads a handful of pages a person would open to answer "what is this", and asks
+a model to describe the company from those pages alone. Generation falls back
+to it whenever nothing else knows the brand, so nobody types a description.
+
+The model is told to use the pages and **not** what it already knows about the
+name, and that an absent competitor list is a correct answer. A brand no model
+recognises still has a homepage; a brand it half-recognises is worse than one it
+does not, because it will confidently describe the wrong company.
+
+A profile records the pages it came from, so a wrong one is traceable. A read
+that fails saves nothing rather than a half profile.
+
 ## Prompts and topics
 
 **The unit of measurement is the question a buyer types, not a keyword.**
@@ -116,6 +131,15 @@ fenced.** Always read it through `readStructuredValue`. Assuming an object gives
 an object-shaped read of a string: every field is absent and a correct payload
 is discarded as empty.
 
+## Rivals
+
+**A rival you track and never see reads as zero, not as absent.** It was asked
+about and the answer is none; omitting it hides the finding. With nothing
+answered at all the share is `null`, because that is a different state again.
+
+Declared rivals are separate from whoever the models happened to name. Adopting
+takes both what the site names and what answers named more than once.
+
 ## Demand
 
 **A corpus figure is a historical sample and says so.** `src/product/demand`
@@ -132,7 +156,38 @@ Download instructions live in `docs/`.
 
 ## Storage
 
-File-backed, one directory per project. Every write is **temp file then
+**Everything stored is a small JSON document under a key**, which is why it can
+sit on a disk or a bucket. `src/product/storage` holds the `ObjectStore`
+interface and one adapter per backend: the disk, anything S3-compatible (AWS,
+R2, GCS through its S3 API, MinIO, Spaces, B2) and Azure Blob.
+
+Signing is written here rather than taken from an SDK, the same judgement as
+the GitHub client. The signing-key derivation is checked against the vector AWS
+publishes, so the crypto is verified rather than hoped at.
+
+**A connection is only connected once it has written, read back, listed and
+deleted a probe object.** Anything less reports a configuration that fails on
+the first real write. Listing is part of it because a key can write and still
+not appear, which makes every past run read as empty.
+
+**Settings live on disk, never in the bucket they configure**, or the product
+could not read its own configuration to reach its storage. Secrets are
+encrypted with `CREDENTIAL_KEY` and never sent back to the page.
+
+**Every store goes through it.** Nothing under `src/product` touches
+`node:fs` for data any more. A store composes keys with
+`projects.keyFor(projectId, ...)` and reads and writes through
+`projects.objects`.
+
+**Locks stay on local disk whatever the backend is.** They need an atomic
+create-if-absent, which object storage does not offer portably, and the
+deployment is single-writer so a local guard is the right scope. The scheduler
+keeps its once-only guard local and the occurrence itself in the store.
+
+**The local adapter prunes empty directories**, because object storage has no
+such thing and a purged project must leave nothing behind.
+
+One key prefix per project. Every write is **temp file then
 rename**, never a direct write, because the worker writes while the server
 reads the same volume.
 
@@ -193,8 +248,12 @@ the source to see.
 ## Before opening a pull request
 
 ```bash
-npm run check:all      # typecheck, 422 tests, emitted scripts, doc links
+rm -rf dist && npm run check:all   # typecheck, tests, emitted scripts, doc links
 ```
+
+**Delete `dist/` first.** The checks run against build output, and a file from
+a branch you switched away from stays there and fails, or passes, for reasons
+that are not in your working tree. It has produced three false failures.
 
 If the UI changed, **open it in a browser**. Several real bugs here were
 invisible to the test suite and obvious in a screenshot: a duplicated nav
