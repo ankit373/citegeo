@@ -18,6 +18,7 @@ import { readStructuredValue } from "./structured-value.js";
 import { activePrompts, type PromptIntent } from "./topic-schema.js";
 import { audienceInstruction, GLOBAL_REGION, region, type Region } from "./region.js";
 import { DEFAULT_LANGUAGE, language, languageInstruction, type AnswerLanguage } from "./language.js";
+import { currentBaseline } from "../configuration/current-baseline.js";
 import type { TopicService } from "./topic-service.js";
 
 export class PromptRunUnavailableError extends Error {}
@@ -188,8 +189,7 @@ export class PromptRunService {
   }
 
   private async currentBaseline(projectId: string): Promise<ProductBaseline> {
-    const baselines = await this.baselines.list(projectId);
-    const current = baselines[0];
+    const current = currentBaseline(await this.baselines.list(projectId));
     if (!current) throw new PromptRunUnavailableError("This project has no saved configuration to run against.");
     return current;
   }

@@ -39,6 +39,9 @@ export interface GenerateOptions {
    * Without it, generation has nothing to work from but invention. */
   businessDescription?: string | undefined;
   productCategory?: string | undefined;
+  /** Rivals the user knows about. Comparison and alternatives prompts need a
+   * real name, and a brand no model recognises yields none from the runs. */
+  competitors?: Array<{ name: string; domain: string | null }> | undefined;
 }
 
 /** What the models have already said about the brand, used to ground generation. */
@@ -145,7 +148,7 @@ export class TopicService {
       // What the user tells us outranks what the runs inferred: they know.
       businessDescription: options.businessDescription?.trim() || facts.businessDescription,
       productCategory: options.productCategory?.trim() || facts.productCategory,
-      competitors: facts.competitors,
+      competitors: options.competitors?.length ? options.competitors : facts.competitors,
       topicCount: options.topicCount || 5,
       promptsPerTopic: options.promptsPerTopic || 6,
     };

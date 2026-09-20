@@ -76,6 +76,13 @@ export async function handleTopicApi(input: {
       promptsPerTopic: typeof body.promptsPerTopic === "number" ? body.promptsPerTopic : undefined,
       businessDescription: typeof body.businessDescription === "string" ? body.businessDescription : undefined,
       productCategory: typeof body.productCategory === "string" ? body.productCategory : undefined,
+      competitors: Array.isArray(body.competitors)
+        ? body.competitors.flatMap((row) => {
+            const item = row && typeof row === "object" ? (row as Record<string, unknown>) : null;
+            const name = typeof item?.name === "string" ? item.name.trim() : "";
+            return name ? [{ name, domain: typeof item?.domain === "string" ? item.domain : null }] : [];
+          })
+        : undefined,
     }));
     return true;
   }

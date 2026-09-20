@@ -40,13 +40,24 @@ function containsSequence(haystack: string[], needle: string[]): boolean {
   return false;
 }
 
-/** "screener.in" and "www.screener.co.uk" both reduce to "screener", because
- * people name a brand without its suffix. */
+// Suffixes stripped from the end of a host. ".one" belongs here: without it
+// tradomate.one reduced to the label "one" and every prompt containing the
+// word "one" read as naming the brand.
+const HOST_SUFFIXES = new Set([
+  "com", "net", "org", "io", "ai", "co", "in", "uk", "us", "app", "dev", "so", "xyz", "one",
+  "tech", "site", "online", "store", "cloud", "me", "tv", "gg", "sh", "fm", "to", "info", "biz",
+  "au", "ca", "de", "fr", "es", "it", "nl", "jp", "kr", "cn", "br", "sg", "ae", "ch", "se", "pl",
+]);
+
+/** The label that distinguishes a host: "screener.in" and "www.screener.co.uk"
+ * both reduce to "screener", because people name a brand without its suffix. */
 export function domainLabel(domain: string): string {
-  const tokens = tokenize(domain);
-  const suffixes = new Set(["com", "net", "org", "io", "ai", "co", "in", "uk", "app", "dev", "so", "xyz"]);
-  const meaningful = tokens.filter((token) => !suffixes.has(token) && token !== "www");
-  return meaningful.length ? meaningful[meaningful.length - 1]! : (tokens[0] || "");
+  const parts = domain.trim().toLocaleLowerCase().split(".").filter(Boolean);
+  while (parts.length && parts[0] === "www") parts.shift();
+  // Only from the end, or a suffix-looking word inside the name is lost.
+  while (parts.length > 1 && HOST_SUFFIXES.has(parts[parts.length - 1] || "")) parts.pop();
+  const label = parts[parts.length - 1] || "";
+  return tokenize(label).join(" ");
 }
 
 /** True when the text names any of these identities as whole words. */
