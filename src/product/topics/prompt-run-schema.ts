@@ -30,6 +30,8 @@ export interface PromptAnswer {
   providerId: ProductProviderId;
   modelId: string;
   modelDisplayName: string;
+  /** The market stated to the model. "global" means none was. */
+  regionId: string;
   status: PromptAnswerStatus;
   /** The answer as the model wrote it. Every number here traces back to this. */
   text: string;
@@ -48,6 +50,7 @@ export interface PromptRun {
   status: PromptRunStatus;
   promptIds: string[];
   modelIds: string[];
+  regionIds: string[];
   answersRequested: number;
   answersCompleted: number;
   answersFailed: number;

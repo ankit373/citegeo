@@ -16,11 +16,8 @@ async function writeJson(path: string, value: unknown): Promise<void> {
   await rename(temporary, path);
 }
 
-/**
- * One file per project. The whole set is written together because a topic and
- * its prompts are edited as one thing, and half a set is not a valid state to
- * read back.
- */
+/** One file per project: a topic and its prompts are edited together, and half
+ * a set is not a valid state to read back. */
 export class TopicFileStore {
   constructor(private readonly projects: ProductProjectFileStore) {}
 

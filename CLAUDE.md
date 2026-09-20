@@ -144,10 +144,10 @@ the login page, the project app, the workbench and the product shell, and they
 drifted because nothing made them move together. Never write a colour, a font
 or a radius as a literal in a surface; add a token.
 
-The language is Claude's: warm paper, a single terracotta accent, a text serif
-for headings against a neutral sans, hairline rules instead of boxes. Light is
-the default and dark follows the system, overridden by `data-theme` on the root
-and applied by an inline script before first paint.
+Warm paper, a single terracotta accent, a text serif for headings against a
+neutral sans, hairline rules instead of boxes. Light is the default and dark
+follows the system, overridden by `data-theme` on the root and applied by an
+inline script before first paint.
 
 **A hardcoded hex survives a theme change and then looks broken.** The alert
 boxes stayed black on paper for exactly this reason. State colours have `--x`,
@@ -197,6 +197,14 @@ branch, open a PR, and let the owner merge.
 
 ## Writing
 
-Plain technical prose. No em dashes. Comments explain **why**, in one or two
-lines, and never restate the code. A commit message says what changed and what
-it cost to learn.
+Plain technical prose. No em dashes.
+
+**Comments are capped at two lines.** No exceptions, including doc comments.
+They explain *why*, never what the code already says. A comment that needs a
+third line belongs in the pull request description instead.
+
+A commit message says what changed and what it cost to learn.
+
+**Never name another product in this repository.** Not in a comment, a
+document, a commit or a pull request. It is public, and the work stands on its
+own terms.

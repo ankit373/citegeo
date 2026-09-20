@@ -1,19 +1,7 @@
 import type { AnswerMention, PromptAnswer } from "./prompt-run-schema.js";
 
-// A single score is only useful if the person reading it can take it apart.
-// Everything here therefore reports its components alongside the composite, and
-// returns null rather than zero wherever there is nothing to measure.
-//
-// Three things decide how visible a brand is in an answer, and they are not the
-// same thing:
-//   presence   was it named at all
-//   prominence was it named first, or last
-//   sentiment  was it recommended, or merely listed
-//
-// A brand named late and grudgingly is still more visible than one not named,
-// so the last two scale the first rather than replacing it. The floors below
-// are that choice, written down. They are a judgement, not a measurement, which
-// is why they travel with every score this module returns.
+// Named late and grudgingly still beats not named, so prominence and sentiment
+// scale presence rather than replacing it. These floors are that judgement.
 export const PROMINENCE_FLOOR = 0.6;
 export const SENTIMENT_FLOOR = 0.5;
 
@@ -62,12 +50,8 @@ export function emptyScore(): VisibilityScore {
   };
 }
 
-/**
- * Where the target sat among everything this answer named. Position comes from
- * the offsets the model reported, ranked within the answer, because a raw
- * character offset means nothing on its own: 400 is early in a long answer and
- * last in a short one.
- */
+/** Ranked within the answer, because a raw offset means nothing on its own:
+ * 400 is early in a long answer and last in a short one. */
 export function positionWeight(mentions: AnswerMention[]): number | null {
   const target = mentions.find((mention) => mention.isTarget);
   if (!target) return null;

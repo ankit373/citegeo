@@ -1,26 +1,12 @@
-// One theme, imported by every surface.
-//
-// The tokens used to be redeclared in four files: the login page, the project
-// app, the workbench and the product shell each carried their own :root. They
-// drifted, because nothing made them move together. A colour changed here is a
-// colour changed everywhere now.
-//
-// The language is Claude's: warm paper rather than cool grey, a single
-// terracotta accent, a text serif for headings against a neutral sans, hairline
-// rules instead of boxes, and generous air. It reads as a document that happens
-// to hold data, which is the right register for a tool whose whole claim is
-// "here is the evidence".
+// One theme, imported by every surface. The tokens used to live in four files
+// and drifted, because nothing made them move together.
 
 /** Loaded once in the document head. Google Fonts is the only stylesheet host allowed here. */
 export const THEME_FONT_LINKS = `<link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&family=Inter:wght@400;450;500;600&family=JetBrains+Mono:wght@400;500&display=swap">`;
 
-/**
- * Light is the default because the warm paper is the distinctive half of this
- * language. Dark follows the system rather than a toggle, so a person who has
- * already told their machine gets what they asked for without asking twice.
- */
+/** Light by default; dark follows the system unless data-theme overrides it. */
 export const THEME_TOKENS = `
   :root {
     color-scheme: light dark;

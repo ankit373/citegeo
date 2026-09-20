@@ -1,4 +1,7 @@
 import { domainLabel, tokenize } from "./prompt-identity.js";
+import { buildPromptTrend, type PromptTrend } from "./prompt-trend.js";
+import { region, REGION_CAVEAT } from "./region.js";
+import type { PromptRun } from "./prompt-run-schema.js";
 import type { AnswerMention, PromptAnswer } from "./prompt-run-schema.js";
 import { emptyScore, scoreAnswers, SCORE_WEIGHTS, type ScoreWeights, type VisibilityScore } from "./visibility-score.js";
 import type { PromptIntent, TopicSet } from "./topic-schema.js";
@@ -53,6 +56,13 @@ export interface TopicStanding {
   prompts: PromptStanding[];
 }
 
+export interface RegionStanding {
+  regionId: string;
+  label: string;
+  score: VisibilityScore;
+  rank: number | null;
+}
+
 export interface TopicInsights {
   projectId: string;
   /** Completed answers behind everything below. */
@@ -68,14 +78,16 @@ export interface TopicInsights {
   absentFrom: PromptStanding[];
   /** True when no answer carried a citation, so source analysis is unavailable. */
   citationsUnavailable: boolean;
+  /** One point per run, oldest first. */
+  trend: PromptTrend;
+  /** Per market, worst first. Empty until a run states one. */
+  byRegion: RegionStanding[];
+  /** What the UI must print next to any regional figure. */
+  regionCaveat: string;
 }
 
-/**
- * What makes two mentions the same organisation. The name, because a model
- * gives ChatGPT as openai.com in one answer and chatgpt.com in the next, and
- * keying on the domain ranked one product as two rivals. A mention always
- * carries a name; the domain is optional, so it cannot be the identity.
- */
+/** Keyed on the name: a model gives ChatGPT as openai.com in one answer and
+ * chatgpt.com in the next, which ranked one product as two rivals. */
 function entityKey(mention: AnswerMention): string {
   const name = tokenize(mention.name).join(" ");
   return name || (mention.domain ? domainLabel(mention.domain) : "");
@@ -152,7 +164,25 @@ function modelStandings(answers: PromptAnswer[]): ModelStanding[] {
     .sort((left, right) => (right.score.score || 0) - (left.score.score || 0));
 }
 
-export function buildTopicInsights(input: { projectId: string; set: TopicSet; answers: PromptAnswer[] }): TopicInsights {
+function regionStandings(answers: PromptAnswer[]): RegionStanding[] {
+  const groups = new Map<string, PromptAnswer[]>();
+  for (const answer of answers) {
+    const id = answer.regionId || "global";
+    groups.set(id, [...(groups.get(id) || []), answer]);
+  }
+  // One market is not a comparison, so it is not offered as one.
+  if (groups.size < 2) return [];
+  return [...groups.entries()]
+    .map(([regionId, group]) => ({
+      regionId,
+      label: region(regionId)?.label || regionId,
+      score: scoreAnswers(group),
+      rank: rankOfTarget(standings(group)),
+    }))
+    .sort((left, right) => (left.score.score || 0) - (right.score.score || 0));
+}
+
+export function buildTopicInsights(input: { projectId: string; set: TopicSet; answers: PromptAnswer[]; runs?: PromptRun[] }): TopicInsights {
   const { projectId, set, answers } = input;
   const completed = answers.filter((answer) => answer.status === "completed");
   const leaderboard = standings(answers);
@@ -208,10 +238,15 @@ export function buildTopicInsights(input: { projectId: string; set: TopicSet; an
     absentFrom: promptRows
       .filter((row) => row.score.appearances === 0 && row.score.answers > 0)
       .sort((left, right) => right.score.answers - left.score.answers),
-    // Stated rather than shown as an empty table, so "no sources" is never read
-    // as "no sources exist". With nothing answered this is false, not true:
-    // [].every() is true, which would report citations as unavailable on a
-    // project that has simply never run.
+    // False with nothing answered: [].every() is true, which would report a
+    // project that never ran as one whose citations are unavailable.
     citationsUnavailable: completed.length > 0 && completed.every((answer) => answer.citationUrls.length === 0),
+    trend: buildPromptTrend({
+      runs: input.runs || [],
+      answers,
+      rankOf: (group) => rankOfTarget(standings(group)),
+    }),
+    byRegion: regionStandings(answers),
+    regionCaveat: REGION_CAVEAT,
   };
 }

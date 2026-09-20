@@ -110,12 +110,8 @@ function text(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
-/**
- * Reads a proposal out of whatever the model returned. A malformed topic is
- * dropped rather than repaired: a proposal is reviewed by a person before it
- * measures anything, and a silently invented prompt would survive that review
- * looking exactly like a real one.
- */
+/** A malformed topic is dropped rather than repaired: an invented prompt would
+ * survive review looking exactly like a real one. */
 export function parsePromptSetProposal(raw: unknown): PromptSetProposal {
   const root = asObject(raw);
   const status = text(root?.analysisStatus) === "completed" ? "completed" : "unknown";

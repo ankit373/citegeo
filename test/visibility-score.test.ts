@@ -36,6 +36,7 @@ function answer(overrides: Partial<PromptAnswer> = {}): PromptAnswer {
     errorCode: null,
     errorMessage: null,
     latencyMs: 10,
+    regionId: "global",
     createdAt: "2026-09-20T00:00:00.000Z",
     ...overrides,
   };

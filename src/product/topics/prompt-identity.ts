@@ -1,9 +1,5 @@
-// Whether a prompt names one of the brands being watched. The existing keyword
-// check used plain substring containment, which reports a brand called "Ten" as
-// named in "often". A prompt set is proposed to the user for review, so a false
-// positive quietly removes a good prompt from the visibility numbers.
-//
-// Matching is therefore on whole tokens, not characters.
+// Matched on whole tokens, not substrings: containment reports a brand called
+// "Ten" as named by the word "often", quietly dropping a good prompt.
 
 function isWordCharacter(character: string): boolean {
   const code = character.charCodeAt(0);
@@ -44,11 +40,8 @@ function containsSequence(haystack: string[], needle: string[]): boolean {
   return false;
 }
 
-/**
- * A domain's distinguishing label: "screener.in" and "www.screener.co.uk" both
- * reduce to "screener". Matching the full host would miss a prompt that names
- * the brand without its suffix, which is how people actually write.
- */
+/** "screener.in" and "www.screener.co.uk" both reduce to "screener", because
+ * people name a brand without its suffix. */
 export function domainLabel(domain: string): string {
   const tokens = tokenize(domain);
   const suffixes = new Set(["com", "net", "org", "io", "ai", "co", "in", "uk", "app", "dev", "so", "xyz"]);

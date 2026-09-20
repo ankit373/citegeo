@@ -1,12 +1,5 @@
-/**
- * What a provider puts in `structuredOutput.value`.
- *
- * Some return a parsed object and some return the JSON as a string, sometimes
- * inside a markdown code fence. Nothing in the type says which, so a caller
- * that assumes an object gets an object-shaped read of a string: every field
- * reads as absent and the whole payload is silently discarded as unparseable.
- * That is exactly how a correct prompt set arrived and was thrown away.
- */
+/** Some providers return a parsed object, some a JSON string, sometimes fenced.
+ * Reading a string as an object makes every field absent and loses the payload. */
 export function readStructuredValue(value: unknown): unknown {
   if (typeof value !== "string") return value;
   const trimmed = value.trim();

@@ -19,13 +19,8 @@ export function renderCiteGeoLockup(className = "citegeo-lockup"): string {
   return `<img class="${className}" src="${CITEGEO_LOCKUP_ASSET}" alt="CiteGEO" width="640" height="160">`;
 }
 
-/**
- * The lockup drawn inline rather than fetched.
- *
- * The asset is light ink baked into the file, so on paper it disappeared
- * entirely. Drawing it here lets the mark and the wordmark both take
- * currentColor, which is the only version that survives a theme change.
- */
+/** Drawn inline so it takes currentColor. The asset has light ink baked in and
+ * vanishes on a pale background. */
 export function renderCiteGeoLockupInline(className = "brand-lockup-inline"): string {
   return `<span class="${className}">${renderCiteGeoMarkSvg("brand-mark-svg")}<span class="brand-word">${PRODUCT_NAME}</span></span>`;
 }

@@ -17,6 +17,7 @@ import { PromptRunService } from "./topics/prompt-run-service.js";
 import { TopicFileStore } from "./topics/topic-store.js";
 import { TopicService } from "./topics/topic-service.js";
 import { createStructuredAsk } from "./topics/structured-ask.js";
+import { PromptScheduleFileStore, PromptScheduleService } from "./topics/prompt-schedule.js";
 import type { StructuredAsk } from "./topics/topic-service.js";
 import { ProductRecognitionRunService } from "./recognition/recognition-service.js";
 import { ProductRecognitionFileStore } from "./recognition/recognition-store.js";
@@ -89,17 +90,15 @@ export interface ProductServices {
   schedules: ProductScheduleService;
   topics: TopicService;
   promptRuns: PromptRunService;
+  promptSchedule: PromptScheduleService;
   /** Asks one structured question through the project's own saved models. */
   ask: StructuredAsk;
   credentials: CredentialService;
   auth: ReturnType<typeof authConfig>;
 }
 
-/**
- * Builds the service graph once per server. It used to be rebuilt on every
- * request, which quietly discarded anything a service held between calls: the
- * insights cache never survived a request, so it cached nothing.
- */
+/** Built once per server. Rebuilding it per request discarded everything a
+ * service held between calls, so the insights cache cached nothing. */
 export function createProductServices(dependencies: ProductServerDependencies = {}): ProductServices {
   const projectStore = new ProductProjectFileStore(productDataDir());
   const projects = new ProductProjectService(projectStore);
@@ -126,11 +125,12 @@ export function createProductServices(dependencies: ProductServerDependencies = 
   const topics = new TopicService(new TopicFileStore(projectStore), projects, insights);
   const promptRuns = new PromptRunService(new PromptRunFileStore(projectStore), topics, projects, baselines, executor);
   const ask = createStructuredAsk({ baselines, executor });
+  const promptSchedule = new PromptScheduleService(new PromptScheduleFileStore(projectStore), promptRuns);
 
   return {
     projects, catalog, selections, baselines, recognition, reports, insights,
     signals, crawlerLog, watchSets, measurements, stats, schedules,
-    topics, promptRuns, ask,
+    topics, promptRuns, promptSchedule, ask,
     credentials: new CredentialService(new CredentialFileStore(productDataDir())),
     auth: authConfig(),
   };
