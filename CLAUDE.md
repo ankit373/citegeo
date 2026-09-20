@@ -147,7 +147,28 @@ Download instructions live in `docs/`.
 
 ## Storage
 
-File-backed, one directory per project. Every write is **temp file then
+**Everything stored is a small JSON document under a key**, which is why it can
+sit on a disk or a bucket. `src/product/storage` holds the `ObjectStore`
+interface and one adapter per backend: the disk, anything S3-compatible (AWS,
+R2, GCS through its S3 API, MinIO, Spaces, B2) and Azure Blob.
+
+Signing is written here rather than taken from an SDK, the same judgement as
+the GitHub client. The signing-key derivation is checked against the vector AWS
+publishes, so the crypto is verified rather than hoped at.
+
+**A connection is only connected once it has written, read back, listed and
+deleted a probe object.** Anything less reports a configuration that fails on
+the first real write. Listing is part of it because a key can write and still
+not appear, which makes every past run read as empty.
+
+**Settings live on disk, never in the bucket they configure**, or the product
+could not read its own configuration to reach its storage. Secrets are
+encrypted with `CREDENTIAL_KEY` and never sent back to the page.
+
+The stores themselves are still local-only; migrating them onto the interface
+is the remaining work.
+
+File-backed today, one directory per project. Every write is **temp file then
 rename**, never a direct write, because the worker writes while the server
 reads the same volume.
 

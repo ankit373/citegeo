@@ -152,6 +152,11 @@ export function renderProductPhase2AppHtml(): string {
     .checkline input { width:15px; min-height:15px; flex:0 0 auto; accent-color:var(--accent); }
     .checkgrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:8px; margin-top:12px; }
     .trend-head { margin-bottom:10px; font-size:13px; }
+    .storage-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:12px; margin-top:14px; }
+    .storage-field { display:grid; gap:4px; min-width:0; }
+    .storage-field > span { font-size:12px; font-weight:550; }
+    .storage-field > span em { color:var(--weak); font-style:normal; font-weight:400; }
+    .storage-field small { color:var(--weak); font-size:11px; overflow-wrap:anywhere; }
     .liverun { border:1px solid var(--accent); background:var(--accent-wash); border-radius:var(--radius); padding:13px 15px; margin:14px 0; display:grid; gap:9px; }
     .liverun-top { display:flex; align-items:center; gap:12px; flex-wrap:wrap; font-size:13px; }
     .liverun .bar { margin:0; background:var(--surface); }
@@ -341,7 +346,7 @@ export function renderProductPhase2AppHtml(): string {
     </form>
   </aside>
   <script>
-    const state = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, runPollTimer:0 };
+    const state = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, runPollTimer:0 };
     const app = document.getElementById("app");
     const element = (id) => document.getElementById(id);
     const html = (value) => String(value).split("&").join("&amp;").split("<").join("&lt;").split(">").join("&gt;").split('"').join("&quot;").split("'").join("&#39;");
@@ -395,6 +400,41 @@ export function renderProductPhase2AppHtml(): string {
         state.topicState = "error";
       }
       render();
+    }
+
+    async function loadStorage() {
+      if (state.storageState === "loading") return;
+      state.storageState = "loading";
+      try {
+        state.storage = await request("/api/storage");
+        state.storageBackend = state.storageBackend || state.storage.current.backend;
+        state.storageState = "ready";
+      } catch (error) {
+        state.storageState = "error";
+      }
+      render();
+    }
+
+    async function storageAction(path, method, notice) {
+      const values = {};
+      for (const input of document.querySelectorAll("[data-storage-field]")) {
+        values[input.getAttribute("data-storage-field")] = input.value;
+      }
+      state.storageCheck = { pending: true };
+      render();
+      try {
+        const result = await request("/api/storage" + path, {
+          method: method,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ backend: state.storageBackend, values: values }),
+        });
+        state.storageCheck = { ok: true, detail: result.detail || notice, describes: result.describes || "" };
+        state.storageState = "idle";
+        loadStorage();
+      } catch (error) {
+        state.storageCheck = { ok: false, detail: error && error.message ? error.message : "That did not work." };
+        render();
+      }
     }
 
     async function loadSchedule() {
@@ -1193,6 +1233,37 @@ export function renderProductPhase2AppHtml(): string {
       return head + renderPromptRows(set) + addTopic + '</section>';
     }
 
+    function renderStorage() {
+      if (state.storageState === "idle") { loadStorage(); }
+      if (state.storageState !== "ready" || !state.storage) {
+        return '<p class="subtle">' + (state.storageState === "error" ? "Could not read the storage settings." : "Reading storage settings.") + '</p>';
+      }
+      const backends = state.storage.backends;
+      const current = state.storage.current;
+      const chosen = backends.find((row) => row.id === state.storageBackend) || backends[0];
+      const options = backends.map((row) => '<option value="' + html(row.id) + '"' + (row.id === chosen.id ? " selected" : "") + '>' + html(row.label) + '</option>').join("");
+      const fields = chosen.fields.map((field) => {
+        const stored = current.backend === chosen.id;
+        const isSet = stored && current.secretsSet.indexOf(field.key) >= 0;
+        const value = stored && !field.secret ? (current.values[field.key] || "") : "";
+        return '<label class="storage-field"><span>' + html(field.label) + (field.required ? '' : ' <em>optional</em>') + '</span>'
+          + '<input data-storage-field="' + html(field.key) + '" type="' + (field.secret ? "password" : "text") + '"'
+          + ' value="' + html(value) + '"'
+          + ' placeholder="' + html(isSet ? "stored, leave blank to keep" : (field.placeholder || "")) + '">'
+          + '<small class="mono">' + html(field.envKey) + '</small></label>';
+      }).join("");
+      const result = state.storageCheck
+        ? (state.storageCheck.pending
+            ? '<p class="subtle">Writing a probe object.</p>'
+            : '<div class="' + (state.storageCheck.ok ? "success-box" : "warning-box") + '">' + html(state.storageCheck.detail) + (state.storageCheck.describes ? ' (' + html(state.storageCheck.describes) + ')' : '') + '</div>')
+        : '';
+      return '<p class="subtle">' + html(chosen.note) + '</p>'
+        + '<div class="storage-grid"><label class="storage-field"><span>Where to store</span><select data-storage-backend>' + options + '</select><small class="mono">STORAGE_BACKEND</small></label>' + fields + '</div>'
+        + result
+        + '<div class="inline-actions" style="margin-top:14px"><button type="button" class="button" data-storage-check>Test connection</button><button type="button" class="button primary" data-storage-save>Save</button></div>'
+        + '<p class="subtle">A secret is encrypted with <span class="mono">CREDENTIAL_KEY</span> and never sent back to this page. Anything set in the environment wins over what is saved here.</p>';
+    }
+
     function renderSetup() {
       if (state.providersState === "idle") { loadProviders(); }
       if (state.providersState !== "ready") {
@@ -1228,6 +1299,7 @@ export function renderProductPhase2AppHtml(): string {
       return '<section class="view"><div class="heading"><div><h1>Setup</h1><p class="subtle">Which providers this machine can actually run, and what each one costs you.</p></div><div class="inline-actions"><button type="button" class="button" data-reload-providers>Re-check</button></div></div>'
         + banner
         + '<section class="section-card"><div class="section-head"><div><h2>Providers</h2><p class="subtle">A provider appears in the model picker only when it is configured and answering.</p></div></div><div class="mtable"><div class="mhead mcols-provider"><span>Provider</span><span>Catalog</span><span>Status</span><span>What this means</span></div>' + rows + '</div></section>'
+        + '<section class="section-card"><div class="section-head"><div><h2>Where this is stored</h2><p class="subtle">Everything is small JSON documents, so it sits on a disk or a bucket equally well.</p></div></div>' + renderStorage() + '</section>'
         + renderCredentials() + '<section class="section-card"><div class="section-head"><div><h2>Where these come from</h2><p class="subtle">Set in .env at the repository root, then restart the server.</p></div></div><ul class="protocol-list">' + envRows + '</ul></section></section>';
     }
 
@@ -1318,6 +1390,13 @@ export function renderProductPhase2AppHtml(): string {
     });
 
     document.addEventListener("change", (event) => {
+      const backend = event.target && event.target.closest ? event.target.closest("[data-storage-backend]") : null;
+      if (backend) {
+        state.storageBackend = backend.value;
+        state.storageCheck = null;
+        render();
+        return;
+      }
       const control = event.target && event.target.closest ? event.target.closest("[data-filter]") : null;
       if (!control) return;
       state.filters[control.getAttribute("data-filter")] = control.value;
@@ -1335,6 +1414,8 @@ export function renderProductPhase2AppHtml(): string {
         return;
       }
       if (target.closest("[data-stop-run]")) { stopRun(); return; }
+      if (target.closest("[data-storage-check]")) { storageAction("/check", "POST", "Connected."); return; }
+      if (target.closest("[data-storage-save]")) { storageAction("", "PUT", "Saved."); return; }
       if (target.closest("[data-close-panel]")) { closeEvidence(); return; }
       const row = target.closest("[data-evidence]");
       if (row) openEvidence(row.getAttribute("data-evidence"), row.getAttribute("data-evidence-title") || "");

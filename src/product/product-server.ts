@@ -23,6 +23,7 @@ import { renderProductPhase4AppHtml } from "../ui/product-phase4-app.js";
 import { handleMeasurementApi } from "./measurements/measurement-http.js";
 import { handleScheduleApi } from "./scheduling/schedule-http.js";
 import { handleTopicApi } from "./topics/topic-http.js";
+import { handleStorageApi } from "./storage/storage-http.js";
 import { renderProductPhase5AppHtml } from "../ui/product-phase5-app.js";
 import { createProductServices } from "./product-services.js";
 import type { ProductServerDependencies, ProductServices } from "./product-services.js";
@@ -82,6 +83,7 @@ async function handle(req: IncomingMessage, res: ServerResponse, services: Produ
   const json = (status: number, body: unknown, contentType?: string) => send(res, status, body, contentType);
   const body = () => readJson(req);
 
+  if (await handleStorageApi({ method, route, send: json, settings: services.storageSettings, dataDir: services.dataDir, readJson: body })) return;
   if (await handleProviderStatusApi({ method, route, send: json, catalog })) return;
   if (await handleCredentialApi({ method, route, send: json, service: services.credentials, authEnabled: services.auth.enabled, readJson: body })) return;
   if (await handleInsightsApi({ method, route, send: json, service: insights })) return;

@@ -20,6 +20,7 @@ import { createStructuredAsk } from "./topics/structured-ask.js";
 import { PromptScheduleFileStore, PromptScheduleService } from "./topics/prompt-schedule.js";
 import { DemandReportFileStore } from "./demand/demand-store.js";
 import { BrandProfileFileStore, BrandProfileService } from "./discovery/brand-profile-service.js";
+import { StorageSettingsStore } from "./storage/storage-settings.js";
 import type { StructuredAsk } from "./topics/topic-service.js";
 import { ProductRecognitionRunService } from "./recognition/recognition-service.js";
 import { ProductRecognitionFileStore } from "./recognition/recognition-store.js";
@@ -95,6 +96,8 @@ export interface ProductServices {
   promptSchedule: PromptScheduleService;
   demand: DemandReportFileStore;
   profiles: BrandProfileService;
+  storageSettings: StorageSettingsStore;
+  dataDir: string;
   /** Asks one structured question through the project's own saved models. */
   ask: StructuredAsk;
   credentials: CredentialService;
@@ -132,6 +135,7 @@ export function createProductServices(dependencies: ProductServerDependencies = 
   const ask = createStructuredAsk({ baselines, executor });
   const promptSchedule = new PromptScheduleService(new PromptScheduleFileStore(projectStore), promptRuns);
   const demand = new DemandReportFileStore(projectStore);
+  const storageSettings = new StorageSettingsStore(productDataDir());
   // A run left "running" by a process that is gone would otherwise show as
   // live forever, which is how three dead runs kept claiming to be working.
   void projects.list().then(async (rows) => {
@@ -142,6 +146,7 @@ export function createProductServices(dependencies: ProductServerDependencies = 
     projects, catalog, selections, baselines, recognition, reports, insights,
     signals, crawlerLog, watchSets, measurements, stats, schedules,
     topics, promptRuns, promptSchedule, demand, profiles, ask,
+    storageSettings, dataDir: productDataDir(),
     credentials: new CredentialService(new CredentialFileStore(productDataDir())),
     auth: authConfig(),
   };
