@@ -1,4 +1,5 @@
 import { sha256 } from "../../utils/hash.js";
+import type { BrandProfileService } from "../discovery/brand-profile-service.js";
 import type { ProductInsightsService } from "../insights/insights-service.js";
 import type { ProductProjectService } from "../projects/project-service.js";
 import { namesIdentity } from "./prompt-identity.js";
@@ -72,11 +73,22 @@ export class TopicService {
     private readonly store: TopicFileStore,
     private readonly projects: ProductProjectService,
     private readonly insights?: ProductInsightsService | undefined,
+    private readonly profiles?: BrandProfileService | undefined,
   ) {}
 
   /** Read where it exists and left absent where it does not, never filled in:
    * guessed facts produce prompts for a company that does not exist. */
   async brandFacts(projectId: string): Promise<BrandFacts> {
+    // The site is the best source: a brand no model recognises still has a
+    // homepage that says what it does.
+    const profile = await this.profiles?.get(projectId).catch(() => null);
+    if (profile?.businessDescription) {
+      return {
+        businessDescription: profile.businessDescription,
+        productCategory: profile.productCategory,
+        competitors: profile.competitors,
+      };
+    }
     if (!this.insights) return NO_BRAND_FACTS;
     try {
       const built = await this.insights.build(projectId);
@@ -141,7 +153,12 @@ export class TopicService {
     const project = await this.projects.get(projectId);
     if (!project) throw new TopicSetUnavailableError(`Project ${projectId} does not exist.`);
     const existing = await this.store.load(projectId);
-    const facts = await this.brandFacts(projectId);
+    let facts = await this.brandFacts(projectId);
+    if (!facts.businessDescription && !options.businessDescription && this.profiles) {
+      // Nothing known and nothing supplied, so go and find out.
+      const built = await this.profiles.build(projectId, ask);
+      facts = { businessDescription: built.businessDescription, productCategory: built.productCategory, competitors: built.competitors };
+    }
     const subject: PromptGenerationSubject = {
       brandName: project.brandName,
       domain: project.normalizedDomain,

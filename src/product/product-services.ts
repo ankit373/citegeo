@@ -19,6 +19,7 @@ import { TopicService } from "./topics/topic-service.js";
 import { createStructuredAsk } from "./topics/structured-ask.js";
 import { PromptScheduleFileStore, PromptScheduleService } from "./topics/prompt-schedule.js";
 import { DemandReportFileStore } from "./demand/demand-store.js";
+import { BrandProfileFileStore, BrandProfileService } from "./discovery/brand-profile-service.js";
 import type { StructuredAsk } from "./topics/topic-service.js";
 import { ProductRecognitionRunService } from "./recognition/recognition-service.js";
 import { ProductRecognitionFileStore } from "./recognition/recognition-store.js";
@@ -93,6 +94,7 @@ export interface ProductServices {
   promptRuns: PromptRunService;
   promptSchedule: PromptScheduleService;
   demand: DemandReportFileStore;
+  profiles: BrandProfileService;
   /** Asks one structured question through the project's own saved models. */
   ask: StructuredAsk;
   credentials: CredentialService;
@@ -124,7 +126,8 @@ export function createProductServices(dependencies: ProductServerDependencies = 
   // One executor for the prompt engine and for generation, so both are billed
   // and configured exactly like a recognition run.
   const executor = dependencies.recognitionExecutor || new OpenRouterRecognitionAnswerExecutor();
-  const topics = new TopicService(new TopicFileStore(projectStore), projects, insights);
+  const profiles = new BrandProfileService(new BrandProfileFileStore(projectStore), projects);
+  const topics = new TopicService(new TopicFileStore(projectStore), projects, insights, profiles);
   const promptRuns = new PromptRunService(new PromptRunFileStore(projectStore), topics, projects, baselines, executor);
   const ask = createStructuredAsk({ baselines, executor });
   const promptSchedule = new PromptScheduleService(new PromptScheduleFileStore(projectStore), promptRuns);
@@ -138,7 +141,7 @@ export function createProductServices(dependencies: ProductServerDependencies = 
   return {
     projects, catalog, selections, baselines, recognition, reports, insights,
     signals, crawlerLog, watchSets, measurements, stats, schedules,
-    topics, promptRuns, promptSchedule, demand, ask,
+    topics, promptRuns, promptSchedule, demand, profiles, ask,
     credentials: new CredentialService(new CredentialFileStore(productDataDir())),
     auth: authConfig(),
   };

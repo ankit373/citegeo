@@ -88,6 +88,21 @@ Only where none exists does a declared list apply.
 gap, cited domains and query fanout are built from citations; visibility, share
 of voice and sentiment are not. A provider that cannot search still powers the
 second half, so say which half it powers rather than calling it unsupported.
+## Discovery
+
+**A domain is the only input the product should need.** `src/product/discovery`
+reads a handful of pages a person would open to answer "what is this", and asks
+a model to describe the company from those pages alone. Generation falls back
+to it whenever nothing else knows the brand, so nobody types a description.
+
+The model is told to use the pages and **not** what it already knows about the
+name, and that an absent competitor list is a correct answer. A brand no model
+recognises still has a homepage; a brand it half-recognises is worse than one it
+does not, because it will confidently describe the wrong company.
+
+A profile records the pages it came from, so a wrong one is traceable. A read
+that fails saves nothing rather than a half profile.
+
 ## Prompts and topics
 
 **The unit of measurement is the question a buyer types, not a keyword.**

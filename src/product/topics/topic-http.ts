@@ -6,6 +6,7 @@ import { promptExportNames, promptExportTable } from "./topic-export.js";
 import type { PromptAnswer } from "./prompt-run-schema.js";
 import type { PromptRunService } from "./prompt-run-service.js";
 import type { PromptScheduleService } from "./prompt-schedule.js";
+import type { BrandProfileService } from "../discovery/brand-profile-service.js";
 import type { DemandReportFileStore } from "../demand/demand-store.js";
 import { CORPUS_SOURCES } from "../demand/corpus-schema.js";
 import type { StructuredAsk, TopicService } from "./topic-service.js";
@@ -45,10 +46,11 @@ export async function handleTopicApi(input: {
   runs: PromptRunService;
   schedule: PromptScheduleService;
   demand: DemandReportFileStore;
+  profiles: BrandProfileService;
   ask: StructuredAsk;
   readJson: () => Promise<Record<string, unknown>>;
 }): Promise<boolean> {
-  const { method, route, url, send, topics, runs, schedule, demand, ask, readJson } = input;
+  const { method, route, url, send, topics, runs, schedule, demand, profiles, ask, readJson } = input;
   if (route[0] !== "api" || route[1] !== "projects") return false;
   const projectId = route[2];
   if (!projectId) return false;
@@ -63,6 +65,19 @@ export async function handleTopicApi(input: {
       send(status, { error: message(error) });
     }
   };
+
+  if (method === "GET" && tail.length === 1 && tail[0] === "profile") {
+    const profile = await profiles.get(projectId);
+    // Absent rather than empty: no profile means none was built.
+    if (!profile) send(404, { error: "No profile has been built for this project yet." });
+    else send(200, profile);
+    return true;
+  }
+
+  if (method === "POST" && tail.length === 1 && tail[0] === "profile") {
+    await guard(() => profiles.build(projectId, ask));
+    return true;
+  }
 
   if (method === "GET" && tail.length === 1 && tail[0] === "topics") {
     await guard(() => topics.get(projectId), 404);
