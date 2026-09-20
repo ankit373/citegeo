@@ -78,7 +78,7 @@ export function buildHomeSummary(input: {
     rank: insights.rank,
     rivals: insights.leaderboard.filter((row) => !row.isTarget).length,
     answers: insights.answers,
-    alerts: evaluateAlerts(insights),
+    alerts: evaluateAlerts(insights, undefined, { skippedModels: latest?.skippedModels }),
     weakestTopics: insights.topics.slice(0, 4).map((topic) => ({
       topicId: topic.topicId,
       name: topic.name,

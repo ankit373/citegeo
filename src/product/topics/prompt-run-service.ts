@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { ProductBaseline, ProductModelSnapshot } from "../configuration/baseline-schema.js";
 import type { ProductBaselineService } from "../configuration/baseline-service.js";
+import type { ProductModelCatalog } from "../configuration/model-selection-schema.js";
 import type { ProductProjectService } from "../projects/project-service.js";
 import type { RecognitionAnswerExecutor } from "../recognition/recognition-service.js";
 import { answerNamesBrand, type BrandIdentity } from "./brand-identity.js";
@@ -46,7 +47,28 @@ export class PromptRunService {
     private readonly projects: ProductProjectService,
     private readonly baselines: ProductBaselineService,
     private readonly executor: RecognitionAnswerExecutor,
+    private readonly catalog?: ProductModelCatalog | undefined,
   ) {}
+
+  /** Splits the saved models into the ones the catalogue still says can answer
+   * and the ones it does not. A catalogue that cannot be read blocks nothing. */
+  private async usable(models: ProductModelSnapshot[]): Promise<{ run: ProductModelSnapshot[]; skipped: Array<{ modelId: string; reason: string }> }> {
+    if (!this.catalog) return { run: models, skipped: [] };
+    let current;
+    try {
+      current = await this.catalog.list();
+    } catch {
+      return { run: models, skipped: [] };
+    }
+    const run: ProductModelSnapshot[] = [];
+    const skipped: Array<{ modelId: string; reason: string }> = [];
+    for (const model of models) {
+      const row = current.find((item) => item.providerId === model.providerId && item.modelId === model.modelId);
+      if (row && !row.available) skipped.push({ modelId: model.modelId, reason: row.unavailableReason || "The catalogue reports it as unavailable." });
+      else run.push(model);
+    }
+    return { run, skipped };
+  }
 
   /** Ids asked to stop. In memory, because a cancel only means anything to the
    * process actually running the loop. */
@@ -109,9 +131,14 @@ export class PromptRunService {
     }
 
     const baseline = await this.currentBaseline(input.projectId);
-    const models = baseline.modelSnapshots;
-    if (!models.length) {
+    if (!baseline.modelSnapshots.length) {
       throw new PromptRunUnavailableError("No models are saved for this project. Choose models and save a configuration first.");
+    }
+    const { run: models, skipped } = await this.usable(baseline.modelSnapshots);
+    if (!models.length) {
+      throw new PromptRunUnavailableError(
+        `Every saved model is unusable: ${skipped.map((row) => `${row.modelId} (${row.reason})`).join("; ")}`,
+      );
     }
 
     const identity = await this.topics.targetIdentity(input.projectId);
@@ -138,6 +165,7 @@ export class PromptRunService {
       modelIds: models.map((model) => model.modelId),
       regionIds: regions.map((row) => row.id),
       languageIds: languages.map((row) => row.id),
+      skippedModels: skipped,
       answersRequested: prompts.length * models.length * regions.length * languages.length,
       answersCompleted: 0,
       answersFailed: 0,

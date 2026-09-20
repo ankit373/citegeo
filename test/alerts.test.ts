@@ -141,3 +141,17 @@ test("a project with answers shows them even while a step is undone", () => {
   assert.equal(home.ready, false, "no prompts are tracked");
   assert.equal(home.showSetupOnly, false, "but twelve answers are worth showing");
 });
+
+test("models the catalogue rejects are reported rather than silently shrinking a run", () => {
+  const alerts = evaluateAlerts(insights(), DEFAULT_THRESHOLDS, {
+    skippedModels: [{ modelId: "vendor/x:batch", reason: "Served only through the provider's batch API." }],
+  });
+  const skipped = alerts.find((alert) => alert.kind === "models_skipped");
+  assert.ok(skipped?.headline.includes("1 saved model"));
+  assert.ok(skipped?.detail.includes("vendor/x:batch"));
+  assert.ok(skipped?.detail.includes("batch API"));
+});
+
+test("no skipped models means no such alert", () => {
+  assert.equal(evaluateAlerts(insights(), DEFAULT_THRESHOLDS, {}).some((alert) => alert.kind === "models_skipped"), false);
+});

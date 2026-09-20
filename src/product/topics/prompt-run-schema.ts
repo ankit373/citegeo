@@ -73,6 +73,9 @@ export interface PromptRun {
   answersFailed: number;
   startedAt: string;
   completedAt: string | null;
+  /** Models left out because the catalogue says they cannot answer a single
+   * request. A saved configuration ages; the catalogue is the live truth. */
+  skippedModels?: Array<{ modelId: string; reason: string }> | undefined;
   /** What the run is doing right now, so a long run is legible while it runs. */
   currentPromptText?: string | undefined;
   currentModelId?: string | undefined;

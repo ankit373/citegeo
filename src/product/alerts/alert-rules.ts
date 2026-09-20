@@ -10,7 +10,8 @@ export type AlertKind =
   | "rival_overtook"
   | "topic_lost"
   | "citations_lost"
-  | "answers_failing";
+  | "answers_failing"
+  | "models_skipped";
 
 export type AlertSeverity = "critical" | "warning" | "info";
 
@@ -35,7 +36,16 @@ function pct(value: number | null): string {
   return value === null ? "not measurable" : `${Math.round(value * 100)}%`;
 }
 
-export function evaluateAlerts(insights: TopicInsights, thresholds: AlertThresholds = DEFAULT_THRESHOLDS): Alert[] {
+export interface AlertContext {
+  /** Models the latest run left out, with why. */
+  skippedModels?: Array<{ modelId: string; reason: string }> | undefined;
+}
+
+export function evaluateAlerts(
+  insights: TopicInsights,
+  thresholds: AlertThresholds = DEFAULT_THRESHOLDS,
+  context: AlertContext = {},
+): Alert[] {
   const alerts: Alert[] = [];
   const points = insights.trend.points;
   const latest = points[points.length - 1];
@@ -100,6 +110,16 @@ export function evaluateAlerts(insights: TopicInsights, thresholds: AlertThresho
       severity: insights.answers === 0 ? "critical" : "warning",
       headline: `${insights.answersFailed} of ${attempted} answers failed`,
       detail: "A failed answer is excluded rather than counted as an absence, so the figures are built on fewer answers than were asked for.",
+    });
+  }
+
+  const skipped = context.skippedModels || [];
+  if (skipped.length) {
+    alerts.push({
+      kind: "models_skipped",
+      severity: "warning",
+      headline: `${skipped.length} saved model(s) were skipped`,
+      detail: `${skipped.map((row) => row.modelId).join(", ")}. ${skipped[0]?.reason || ""} Choose models again to save a configuration without them.`,
     });
   }
 
