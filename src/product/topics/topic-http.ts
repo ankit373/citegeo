@@ -1,4 +1,5 @@
 import { buildTopicInsights, type TopicInsights } from "./topic-insights.js";
+import { buildHomeSummary } from "../alerts/home-summary.js";
 import { isPromptIntent } from "./topic-schema.js";
 import { REGIONS, REGION_CAVEAT } from "./region.js";
 import { LANGUAGES } from "./language.js";
@@ -47,10 +48,12 @@ export async function handleTopicApi(input: {
   schedule: PromptScheduleService;
   demand: DemandReportFileStore;
   profiles: BrandProfileService;
+  /** How many models the project has saved, for the setup checklist. */
+  models: (projectId: string) => Promise<number>;
   ask: StructuredAsk;
   readJson: () => Promise<Record<string, unknown>>;
 }): Promise<boolean> {
-  const { method, route, url, send, topics, runs, schedule, demand, profiles, ask, readJson } = input;
+  const { method, route, url, send, topics, runs, schedule, demand, profiles, models, ask, readJson } = input;
   if (route[0] !== "api" || route[1] !== "projects") return false;
   const projectId = route[2];
   if (!projectId) return false;
@@ -235,6 +238,28 @@ export async function handleTopicApi(input: {
       return true;
     }
     send(200, report);
+    return true;
+  }
+
+  if (method === "GET" && tail.length === 1 && tail[0] === "home") {
+    await guard(async () => {
+      const [set, answers, runList, identity, selections] = await Promise.all([
+        topics.get(projectId),
+        runs.listAnswers(projectId),
+        runs.listRuns(projectId),
+        topics.targetIdentity(projectId).catch(() => null),
+        models(projectId).catch(() => 0),
+      ]);
+      const insights = buildTopicInsights({ projectId, set, answers, runs: runList, identityCaveat: identity?.caveat || null });
+      return buildHomeSummary({
+        projectId,
+        domain: identity?.host || projectId,
+        set,
+        insights,
+        runs: runList,
+        modelCount: selections,
+      });
+    }, 404);
     return true;
   }
 
