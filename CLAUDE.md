@@ -116,6 +116,20 @@ fenced.** Always read it through `readStructuredValue`. Assuming an object gives
 an object-shaped read of a string: every field is absent and a correct payload
 is discarded as empty.
 
+## Demand
+
+**A corpus figure is a historical sample and says so.** `src/product/demand`
+reports how often anyone asked something like a tracked prompt, from an openly
+licensed corpus of real conversations. Every figure carries that corpus's own
+caveat, and two counts are always reported, because quoting either alone
+misleads.
+
+Zero matches means nobody in that sample asked it. An empty corpus reports
+`null`, because zero over zero is not zero demand.
+
+**No third-party hostname in `src/`.** `architecture-constraints` fails on one.
+Download instructions live in `docs/`.
+
 ## Storage
 
 File-backed, one directory per project. Every write is **temp file then

@@ -34,7 +34,7 @@ async function handle(req: IncomingMessage, res: ServerResponse, services: Produ
   const method = req.method || "GET";
   const url = new URL(req.url || "/", "http://localhost");
   const route = url.pathname.split("/").filter(Boolean).map((part) => decodeURIComponent(part));
-  const { projects, catalog, selections, baselines, recognition, reports, insights, signals, crawlerLog, watchSets, measurements, stats, schedules, topics, promptRuns, promptSchedule } = services;
+  const { projects, catalog, selections, baselines, recognition, reports, insights, signals, crawlerLog, watchSets, measurements, stats, schedules, topics, promptRuns, promptSchedule, demand } = services;
 
   if (services.auth.enabled) {
     const secure = httpsRequest(req);
@@ -87,7 +87,7 @@ async function handle(req: IncomingMessage, res: ServerResponse, services: Produ
   if (await handleInsightsApi({ method, route, send: json, service: insights })) return;
   if (await handleCrawlerApi({ method, route, send: json, crawlerLog, insights })) return;
   if (await handleActionApi({ method, route, send: json, signals, insights })) return;
-  if (await handleTopicApi({ method, route, send: json, topics, runs: promptRuns, schedule: promptSchedule, ask: services.ask, readJson: body })) return;
+  if (await handleTopicApi({ method, route, send: json, topics, runs: promptRuns, schedule: promptSchedule, demand, ask: services.ask, readJson: body })) return;
 
   if (await handleProductConfigurationApi({ method, route, projects, selections, baselines, catalog, readJson: () => readJson(req), send: (status, body) => send(res, status, body) })) return;
   if (await handleMeasurementApi({ method, route, readJson: () => readJson(req), send: (status, body) => send(res, status, body), projects, watchSets, measurements, stats })) return;
