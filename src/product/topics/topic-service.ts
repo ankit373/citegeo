@@ -35,12 +35,8 @@ export interface StructuredAsk {
 export interface GenerateOptions {
   topicCount?: number | undefined;
   promptsPerTopic?: number | undefined;
-  /**
-   * What the company does, where the user knows it and the models do not. A
-   * brand no model recognises yet has no facts to generate from, and the
-   * alternative to accepting them here is a prompt set about an invented
-   * company.
-   */
+  /** What the company does, where the user knows it and the models do not.
+   * Without it, generation has nothing to work from but invention. */
   businessDescription?: string | undefined;
   productCategory?: string | undefined;
 }
@@ -75,11 +71,8 @@ export class TopicService {
     private readonly insights?: ProductInsightsService | undefined,
   ) {}
 
-  /**
-   * What earlier runs established about the brand. Generation without this
-   * produces prompts for a company the model has guessed at, so it is read
-   * where it exists and left absent where it does not, never filled in.
-   */
+  /** Read where it exists and left absent where it does not, never filled in:
+   * guessed facts produce prompts for a company that does not exist. */
   async brandFacts(projectId: string): Promise<BrandFacts> {
     if (!this.insights) return NO_BRAND_FACTS;
     try {
@@ -103,11 +96,8 @@ export class TopicService {
     return this.store.load(projectId);
   }
 
-  /**
-   * The identities that make a prompt unable to measure visibility. Only the
-   * target brand counts: naming a competitor is the entire point of an
-   * alternatives or comparison prompt.
-   */
+  /** Only the target brand counts: naming a competitor is the entire point of
+   * an alternatives or comparison prompt. */
   private async targetIdentities(projectId: string): Promise<string[]> {
     const project = await this.projects.get(projectId);
     if (!project) throw new TopicSetUnavailableError(`Project ${projectId} does not exist.`);
@@ -142,12 +132,8 @@ export class TopicService {
     };
   }
 
-  /**
-   * Asks a model to propose the set, and stores it as proposed rather than
-   * active. A generated prompt is a suggestion about what buyers ask, which is
-   * not something this tool can observe, so nothing measures anything until a
-   * person has read it.
-   */
+  /** Stored as proposed, never active: what buyers ask is not something this
+   * tool can observe, so a person approves it first. */
   async generate(projectId: string, ask: StructuredAsk, options: GenerateOptions = {}): Promise<TopicSet> {
     const project = await this.projects.get(projectId);
     if (!project) throw new TopicSetUnavailableError(`Project ${projectId} does not exist.`);
@@ -172,10 +158,8 @@ export class TopicService {
     });
     const proposal = parsePromptSetProposal(raw);
     if (proposal.analysisStatus !== "completed") {
-      // The model is usually right to refuse: a brand it has never heard of
-      // gives it nothing to work from, and the prompt forbids inventing any.
-      // Passing its reasons back is the difference between a dead end and a
-      // next step.
+      // Passing the model's reasons back is the difference between a dead end
+      // and a next step.
       const reasons = proposal.unknowns.length
         ? ` The model could not proceed because: ${proposal.unknowns.join(" ")}`
         : "";

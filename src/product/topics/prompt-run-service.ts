@@ -16,6 +16,7 @@ import type { AnswerMention, PromptAnswer, PromptRun } from "./prompt-run-schema
 import type { PromptRunFileStore } from "./prompt-run-store.js";
 import { readStructuredValue } from "./structured-value.js";
 import { activePrompts, type PromptIntent } from "./topic-schema.js";
+import { audienceInstruction, GLOBAL_REGION, region, type Region } from "./region.js";
 import type { TopicService } from "./topic-service.js";
 
 export class PromptRunUnavailableError extends Error {}
@@ -28,14 +29,12 @@ export interface StartPromptRunInput {
   projectId: string;
   /** Limits the run to these prompts. Every active prompt when omitted. */
   promptIds?: string[] | undefined;
+  /** Markets to ask in. The global region alone when omitted. */
+  regionIds?: string[] | undefined;
 }
 
-/**
- * Runs the tracked prompts against the configured models and keeps every
- * answer. One answer per prompt per model is one observation; nothing is
- * averaged here, because the aggregation has to be able to name the answers it
- * came from.
- */
+/** One answer per prompt per model per market is one observation. Nothing is
+ * averaged here; the aggregation has to name the answers it came from. */
 export class PromptRunService {
   constructor(
     private readonly store: PromptRunFileStore,
@@ -76,13 +75,22 @@ export class PromptRunService {
       .map((value) => (value || "").trim())
       .filter(Boolean);
 
+    // An unknown market id is refused rather than quietly dropped, or a run
+    // would silently cover fewer markets than it was asked for.
+    const regions: Region[] = (input.regionIds && input.regionIds.length ? input.regionIds : [GLOBAL_REGION.id]).map((id) => {
+      const found = region(id);
+      if (!found) throw new PromptRunUnavailableError(`Unknown market "${id}".`);
+      return found;
+    });
+
     const run: PromptRun = {
       id: `prompt-run-${randomUUID()}`,
       projectId: input.projectId,
       status: "running",
       promptIds: prompts.map((prompt) => prompt.id),
       modelIds: models.map((model) => model.modelId),
-      answersRequested: prompts.length * models.length,
+      regionIds: regions.map((row) => row.id),
+      answersRequested: prompts.length * models.length * regions.length,
       answersCompleted: 0,
       answersFailed: 0,
       startedAt: nowIso(),
@@ -92,12 +100,14 @@ export class PromptRunService {
 
     for (const prompt of prompts) {
       for (const model of models) {
-        const answer = await this.ask({ run, baseline, model, prompt, identities });
-        await this.store.saveAnswer(answer);
-        if (answer.status === "completed") run.answersCompleted += 1;
-        else run.answersFailed += 1;
-        // Progress is written as it happens, so a long run is readable while it runs.
-        await this.store.saveRun(run);
+        for (const market of regions) {
+          const answer = await this.ask({ run, baseline, model, prompt, identities, market });
+          await this.store.saveAnswer(answer);
+          if (answer.status === "completed") run.answersCompleted += 1;
+          else run.answersFailed += 1;
+          // Progress is written as it happens, so a long run is readable while it runs.
+          await this.store.saveRun(run);
+        }
       }
     }
 
@@ -124,6 +134,7 @@ export class PromptRunService {
     model: ProductModelSnapshot;
     prompt: { id: string; topicId: string; text: string; intent: PromptIntent };
     identities: string[];
+    market: Region;
   }): Promise<PromptAnswer> {
     const base = {
       id: `prompt-answer-${randomUUID()}`,
@@ -136,6 +147,7 @@ export class PromptRunService {
       providerId: input.model.providerId,
       modelId: input.model.modelId,
       modelDisplayName: input.model.displayName,
+      regionId: input.market.id,
       createdAt: nowIso(),
     };
 
@@ -143,7 +155,7 @@ export class PromptRunService {
       const result = await this.executor.execute({
         baseline: input.baseline,
         modelSnapshot: input.model,
-        prompt: promptAnswerPrompt({ question: input.prompt.text, language: "en" }),
+        prompt: promptAnswerPrompt({ question: input.prompt.text, language: "en", audience: audienceInstruction(input.market) }),
         requestParameters: {
           model: input.model.modelId,
           temperature: 0,

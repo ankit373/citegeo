@@ -49,9 +49,12 @@ const PROMPT_TEMPLATE = [
 
 export const PROMPT_ANSWER_PROMPT_HASH = sha256(PROMPT_TEMPLATE);
 
-export function promptAnswerPrompt(input: { question: string; language: "en" }): string {
+export function promptAnswerPrompt(input: { question: string; language: "en"; audience?: string }): string {
   return [
     PROMPT_TEMPLATE,
+    // Empty for the global region, so a run with no market stated produces the
+    // same prompt it did before markets existed and stays comparable with it.
+    ...(input.audience ? [input.audience] : []),
     `Question: ${input.question}`,
     "Use English for all string values.",
   ].join("\n");

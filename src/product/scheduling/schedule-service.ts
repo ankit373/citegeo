@@ -1,5 +1,4 @@
 import { randomUUID } from "node:crypto";
-import { CronExpressionParser } from "cron-parser";
 import { ProductBaselineService } from "../configuration/baseline-service.js";
 import { ProductProjectService } from "../projects/project-service.js";
 import { ProductMeasurementRunService } from "../measurements/measurement-service.js";
@@ -7,42 +6,9 @@ import { ProductWatchSetService } from "../measurements/watchset-service.js";
 import type { MeasurementBudget } from "../measurements/measurement-schema.js";
 import type { MonitoringScheduleRule, MonitoringTask, ScheduledOccurrence } from "./schedule-schema.js";
 import { ProductScheduleFileStore } from "./schedule-store.js";
+import { dateKey, nextDates } from "./schedule-rule.js";
 
 function now(): string { return new Date().toISOString(); }
-function validInteger(value: number | undefined, minimum: number, maximum: number): value is number {
-  return typeof value === "number" && Number.isInteger(value) && value >= minimum && value <= maximum;
-}
-
-function cron(rule: MonitoringScheduleRule): string {
-  const hour = rule.hour === undefined ? 9 : rule.hour;
-  const minute = rule.minute === undefined ? 0 : rule.minute;
-  if (!validInteger(hour, 0, 23) || !validInteger(minute, 0, 59)) throw new Error("Schedule hour and minute are invalid.");
-  if (rule.frequency === "daily") return `0 ${minute} ${hour} * * *`;
-  if (rule.frequency === "weekly") {
-    if (!validInteger(rule.weekday, 0, 6)) throw new Error("Weekly schedule weekday is invalid.");
-    return `0 ${minute} ${hour} * * ${rule.weekday}`;
-  }
-  if (rule.frequency === "monthly") {
-    if (!validInteger(rule.dayOfMonth, 1, 31)) throw new Error("Monthly schedule day is invalid.");
-    return `0 ${minute} ${hour} ${rule.dayOfMonth} * *`;
-  }
-  if (!rule.cron?.trim()) throw new Error("A custom Cron expression is required.");
-  return rule.cron.trim();
-}
-
-function nextDates(rule: MonitoringScheduleRule, after: Date, count: number): Date[] {
-  const expression = CronExpressionParser.parse(cron(rule), { currentDate: after, tz: rule.timezone });
-  const values: Date[] = [];
-  for (let index = 0; index < count; index += 1) values.push(expression.next().toDate());
-  return values;
-}
-
-function dateKey(value: Date, timezone: string): string {
-  const pieces = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(value);
-  const byType = new Map(pieces.map((item) => [item.type, item.value]));
-  return `${byType.get("year")}-${byType.get("month")}-${byType.get("day")}`;
-}
-
 export class ProductScheduleService {
   constructor(
     private readonly projects: ProductProjectService,

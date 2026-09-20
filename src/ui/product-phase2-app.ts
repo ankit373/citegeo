@@ -98,6 +98,10 @@ export function renderProductPhase2AppHtml(): string {
     .inline-form { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
     .inline-form input,.inline-form select { flex:1 1 180px; min-width:0; padding:8px 10px; border-radius:6px; border:1px solid var(--line); background:var(--sunken); color:var(--text); font:inherit; font-size:13px; }
     .inline-form input { flex:3 1 320px; }
+    .checkline { display:inline-flex; align-items:center; gap:7px; font-size:13px; color:var(--muted); }
+    .checkline input { width:15px; min-height:15px; flex:0 0 auto; accent-color:var(--accent); }
+    .checkgrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:8px; margin-top:12px; }
+    .trend-head { margin-bottom:10px; font-size:13px; }
     .mcols-vis { grid-template-columns:minmax(0,1fr) 120px 110px; }
     .mcols-voice { grid-template-columns:minmax(0,1fr) 110px 120px; }
     .mcols-cited { grid-template-columns:minmax(0,1fr) 100px minmax(0,1fr); }
@@ -283,7 +287,7 @@ export function renderProductPhase2AppHtml(): string {
     </form>
   </aside>
   <script>
-    const state = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" } };
+    const state = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[] };
     const app = document.getElementById("app");
     const element = (id) => document.getElementById(id);
     const html = (value) => String(value).split("&").join("&amp;").split("<").join("&lt;").split(">").join("&gt;").split('"').join("&quot;").split("'").join("&#39;");
@@ -339,6 +343,23 @@ export function renderProductPhase2AppHtml(): string {
       render();
     }
 
+    async function loadSchedule() {
+      if (!state.selectedId || state.scheduleState === "loading") return;
+      state.scheduleState = "loading";
+      try {
+        const results = await Promise.all([
+          request("/api/projects/" + encodeURIComponent(state.selectedId) + "/prompt-schedule"),
+          request("/api/projects/" + encodeURIComponent(state.selectedId) + "/regions"),
+        ]);
+        state.schedule = results[0];
+        state.regions = results[1].regions || [];
+        state.scheduleState = "ready";
+      } catch (error) {
+        state.scheduleState = "error";
+      }
+      render();
+    }
+
     async function loadAnswerEngine() {
       if (!state.selectedId || state.answerEngineState === "loading") return;
       state.answerEngineState = "loading";
@@ -357,7 +378,8 @@ export function renderProductPhase2AppHtml(): string {
       state.promptNotice = { text:"", kind:"" };
       render();
       try {
-        await request("/api/projects/" + encodeURIComponent(state.selectedId) + path, { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body || {}) });
+        const verb = path === "/prompt-schedule" ? "PUT" : "POST";
+        await request("/api/projects/" + encodeURIComponent(state.selectedId) + path, { method:verb, headers:{"Content-Type":"application/json"}, body: JSON.stringify(body || {}) });
         state.promptRunState = "idle";
         state.promptNotice = { text: done, kind: "success" };
         state.topicState = "idle";
@@ -790,6 +812,48 @@ export function renderProductPhase2AppHtml(): string {
         + '</div>';
     }
 
+    function renderPromptTrend(trend) {
+      if (!trend || !trend.points.length) return '<p class="subtle">One run is a snapshot. Run the set again and this becomes a trend.</p>';
+      const points = trend.points.map((point) => ({
+        at: point.at,
+        value: point.score.score,
+        display: point.score.score === null ? "Not measurable" : point.score.score + " / 100",
+        format: (value) => Math.round(value) + "",
+        axisMax: 100,
+      }));
+      const change = trend.change === null
+        ? '<span class="subtle">Not comparable yet</span>'
+        : '<span class="' + (trend.change > 0 ? "state-ok" : trend.change < 0 ? "state-bad" : "") + '">' + (trend.change > 0 ? "+" : "") + trend.change + ' since ' + html(trend.since.slice(0, 10)) + '</span>';
+      return '<div class="trend-head">' + change + '</div>' + trendChart(points, "answer engine score");
+    }
+
+    function renderRegionRows(rows, caveat) {
+      if (!rows || !rows.length) return '<p class="subtle">Only one market has been asked, so there is nothing to compare. Pick more when you run.</p>';
+      return '<p class="subtle">' + html(caveat) + '</p><div class="mtable"><div class="mhead mcols-aemodel"><span>Market</span><span>Score</span><span>Presence</span><span>Rank</span></div>'
+        + rows.map((row) => '<div class="mrow mcols-aemodel">'
+          + '<div class="mname"><strong>' + html(row.label) + '</strong></div>'
+          + '<span class="mcell">' + scoreText(row.score.score) + '</span>'
+          + '<span class="mcell">' + pct(row.score.presenceRate) + '</span>'
+          + '<span class="mcell">' + (row.rank === null ? "Not named" : "#" + row.rank) + '</span></div>').join("")
+        + '</div>';
+    }
+
+    function renderSchedule() {
+      if (state.scheduleState === "idle") { loadSchedule(); }
+      const schedule = state.schedule;
+      if (!schedule) return '<p class="subtle">Reading the schedule.</p>';
+      const options = ["daily", "weekly", "monthly"].map((value) => '<option value="' + value + '"' + (schedule.rule.frequency === value ? " selected" : "") + '>' + value.charAt(0).toUpperCase() + value.slice(1) + '</option>').join("");
+      const markets = (state.regions || []).map((row) => '<label class="checkline"><input type="checkbox" name="regionIds" value="' + html(row.id) + '"' + (schedule.regionIds.indexOf(row.id) >= 0 ? " checked" : "") + '> ' + html(row.label) + '</label>').join("");
+      const next = schedule.enabled && schedule.nextRunAt ? 'Next run ' + html(schedule.nextRunAt.slice(0, 16).replace("T", " ")) + ' UTC.' : 'Not scheduled.';
+      const failure = schedule.lastError ? '<div class="warning-box">The last scheduled run did not happen: ' + html(schedule.lastError) + '</div>' : '';
+      return failure + '<form id="schedule-form" class="inline-form">'
+        + '<label class="checkline"><input type="checkbox" name="enabled"' + (schedule.enabled ? " checked" : "") + '> Run automatically</label>'
+        + '<select name="frequency" aria-label="How often">' + options + '</select>'
+        + '<button type="submit" class="button">Save schedule</button></form>'
+        + '<p class="subtle">' + next + ' The worker must be running: <span class="mono">npm run monitor:worker</span>.</p>'
+        + '<details class="technical-details"><summary>Markets to ask in</summary><div class="checkgrid">' + markets + '</div></details>';
+    }
+
     function renderAnswerEngine() {
       const selected = project();
       if (!selected) return '<section class="view"><div class="empty"><div class="empty-copy"><h2>Select a project first</h2></div></div></section>';
@@ -813,7 +877,10 @@ export function renderProductPhase2AppHtml(): string {
         + '<section class="section-card"><div class="section-head"><div><h2>Who the models name</h2><p class="subtle">Ranked by how many answers named them, then by how early.</p></div></div>' + renderLeaderboard(data.leaderboard) + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>Topics, weakest first</h2><p class="subtle">Where you are losing, in the order worth fixing.</p></div></div>' + renderTopicRows(data.topics) + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>Questions you never appear in</h2><p class="subtle">Answered, and you were not named once. This is the actionable list.</p></div></div>' + renderAbsent(data.absentFrom) + '</section>'
-        + '<section class="section-card"><div class="section-head"><div><h2>By model</h2><p class="subtle">The same questions, answered differently.</p></div></div>' + renderModelRows(data.byModel) + '</section></section>';
+        + '<section class="section-card"><div class="section-head"><div><h2>Movement</h2><p class="subtle">One point per run. A run where everything failed is left out rather than drawn as a drop.</p></div></div>' + renderPromptTrend(data.trend) + '</section>'
+        + '<section class="section-card"><div class="section-head"><div><h2>By market</h2><p class="subtle">The same questions, asked for a different buyer.</p></div></div>' + renderRegionRows(data.byRegion, data.regionCaveat) + '</section>'
+        + '<section class="section-card"><div class="section-head"><div><h2>By model</h2><p class="subtle">The same questions, answered differently.</p></div></div>' + renderModelRows(data.byModel) + '</section>'
+        + '<section class="section-card"><div class="section-head"><div><h2>Keep it running</h2><p class="subtle">A tracker that is run by hand is a snapshot.</p></div></div>' + renderSchedule() + '</section></section>';
     }
 
     function renderPromptRows(set) {
@@ -986,6 +1053,19 @@ export function renderProductPhase2AppHtml(): string {
 
     document.addEventListener("submit", async (event) => {
       const form = event.target;
+      if (form && form.id === "schedule-form") {
+        event.preventDefault();
+        const data = new FormData(form);
+        const checked = data.getAll("regionIds").map(String);
+        await postPrompts("/prompt-schedule", {
+          enabled: data.get("enabled") === "on",
+          rule: { frequency: data.get("frequency"), timezone: "UTC", hour: 9, minute: 0, weekday: 1, dayOfMonth: 1 },
+          regionIds: checked,
+        }, "saving", "Schedule saved.");
+        state.scheduleState = "idle";
+        render();
+        return;
+      }
       if (!form || form.id !== "add-prompt-form") return;
       event.preventDefault();
       const data = new FormData(form);

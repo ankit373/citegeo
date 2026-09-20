@@ -4,14 +4,8 @@ import type { StructuredAsk } from "./topic-service.js";
 import { sha256 } from "../../utils/hash.js";
 import { readStructuredValue } from "./structured-value.js";
 
-/**
- * One structured question, asked through the project's own configuration.
- *
- * Generation runs on the first model the project already saved rather than a
- * model chosen here, so a proposal is produced by something the user has seen
- * and can afford, and a project with no configuration says so instead of
- * quietly reaching for a default.
- */
+/** Runs on the first model the project already saved, so a proposal costs what
+ * the user has already agreed to and no default is reached for silently. */
 export function createStructuredAsk(input: {
   baselines: ProductBaselineService;
   executor: RecognitionAnswerExecutor;

@@ -22,6 +22,7 @@ import { ProductRecognitionRunService } from "../recognition/recognition-service
 import { DigestBaselineStore } from "../reporting/delivery.js";
 import { runDigests } from "../reporting/digest-run.js";
 import { reportWebhookUrl } from "../reporting/delivery.js";
+import { createProductServices } from "../product-services.js";
 
 export function productScheduleService(): ProductScheduleService {
   const projectStore = new ProductProjectFileStore(productDataDir());
@@ -73,6 +74,26 @@ export async function runProductScheduleDue(): Promise<Awaited<ReturnType<Produc
   return productScheduleService().runDue();
 }
 
+/**
+ * Prompt runs due right now. The whole service graph is built because a prompt
+ * run needs the same executor, baselines and topic set the server uses, and
+ * building a second half-graph here is how the two would drift.
+ */
+export async function runPromptSchedulesDue(at: Date = new Date()): Promise<number> {
+  const services = createProductServices();
+  const projects = await services.projects.list();
+  const fired = await services.promptSchedule.runDue(projects.map((project) => project.id), at);
+  for (const schedule of fired) {
+    console.log(JSON.stringify({
+      type: schedule.lastError ? "prompt_schedule_failed" : "prompt_schedule_ran",
+      projectId: schedule.projectId,
+      runId: schedule.lastRunId,
+      detail: schedule.lastError || undefined,
+    }));
+  }
+  return fired.length;
+}
+
 export async function runProductScheduleWorker(pollSeconds = 60): Promise<void> {
   if (!Number.isInteger(pollSeconds) || pollSeconds < 10) throw new Error("Poll seconds must be an integer of at least 10.");
   const service = productScheduleService();
@@ -100,6 +121,13 @@ export async function runProductScheduleWorker(pollSeconds = 60): Promise<void> 
       }
     } catch (error) {
       console.error(JSON.stringify({ type: "site_signal_probe_failed", detail: error instanceof Error ? error.message : String(error) }));
+    }
+    // Prompt runs are the tracker's job, so a failure here is logged and the
+    // loop continues rather than taking the worker down.
+    try {
+      await runPromptSchedulesDue();
+    } catch (error) {
+      console.error(JSON.stringify({ type: "prompt_schedule_worker_failed", detail: error instanceof Error ? error.message : String(error) }));
     }
     try {
       const ingested = await crawlerLog.ingest();

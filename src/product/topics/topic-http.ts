@@ -1,6 +1,8 @@
 import { buildTopicInsights, type TopicInsights } from "./topic-insights.js";
 import { isPromptIntent } from "./topic-schema.js";
+import { REGIONS, REGION_CAVEAT } from "./region.js";
 import type { PromptRunService } from "./prompt-run-service.js";
+import type { PromptScheduleService } from "./prompt-schedule.js";
 import type { StructuredAsk, TopicService } from "./topic-service.js";
 
 export type TopicJsonSender = (status: number, body: unknown, contentType?: string) => void;
@@ -19,10 +21,11 @@ export async function handleTopicApi(input: {
   send: TopicJsonSender;
   topics: TopicService;
   runs: PromptRunService;
+  schedule: PromptScheduleService;
   ask: StructuredAsk;
   readJson: () => Promise<Record<string, unknown>>;
 }): Promise<boolean> {
-  const { method, route, send, topics, runs, ask, readJson } = input;
+  const { method, route, send, topics, runs, schedule, ask, readJson } = input;
   if (route[0] !== "api" || route[1] !== "projects") return false;
   const projectId = route[2];
   if (!projectId) return false;
@@ -90,6 +93,11 @@ export async function handleTopicApi(input: {
     return true;
   }
 
+  if (method === "GET" && tail.length === 1 && tail[0] === "regions") {
+    send(200, { regions: REGIONS, caveat: REGION_CAVEAT });
+    return true;
+  }
+
   if (method === "GET" && tail.length === 1 && tail[0] === "prompt-runs") {
     await guard(() => runs.listRuns(projectId), 404);
     return true;
@@ -98,14 +106,39 @@ export async function handleTopicApi(input: {
   if (method === "POST" && tail.length === 1 && tail[0] === "prompt-runs") {
     const body = await readJson();
     const promptIds = stringList(body.promptIds);
-    await guard(() => runs.start({ projectId, promptIds: promptIds.length ? promptIds : undefined }));
+    const regionIds = stringList(body.regionIds);
+    await guard(() => runs.start({
+      projectId,
+      promptIds: promptIds.length ? promptIds : undefined,
+      regionIds: regionIds.length ? regionIds : undefined,
+    }));
+    return true;
+  }
+
+  if (method === "GET" && tail.length === 1 && tail[0] === "prompt-schedule") {
+    await guard(() => schedule.get(projectId), 404);
+    return true;
+  }
+
+  if (method === "PUT" && tail.length === 1 && tail[0] === "prompt-schedule") {
+    const body = await readJson();
+    const rule = body.rule && typeof body.rule === "object" ? (body.rule as Record<string, unknown>) : undefined;
+    await guard(() => schedule.set(projectId, {
+      enabled: body.enabled === true,
+      ...(rule ? { rule: rule as never } : {}),
+      regionIds: stringList(body.regionIds),
+    }));
     return true;
   }
 
   if (method === "GET" && tail.length === 1 && tail[0] === "prompt-insights") {
     await guard(async (): Promise<TopicInsights> => {
-      const [set, answers] = await Promise.all([topics.get(projectId), runs.listAnswers(projectId)]);
-      return buildTopicInsights({ projectId, set, answers });
+      const [set, answers, runList] = await Promise.all([
+        topics.get(projectId),
+        runs.listAnswers(projectId),
+        runs.listRuns(projectId),
+      ]);
+      return buildTopicInsights({ projectId, set, answers, runs: runList });
     }, 404);
     return true;
   }
