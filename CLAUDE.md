@@ -88,6 +88,33 @@ Only where none exists does a declared list apply.
 gap, cited domains and query fanout are built from citations; visibility, share
 of voice and sentiment are not. A provider that cannot search still powers the
 second half, so say which half it powers rather than calling it unsupported.
+## Prompts and topics
+
+**The unit of measurement is the question a buyer types, not a keyword.**
+`src/product/topics` holds the topic set, the prompt engine and the scoring.
+A keyword collapses "best stock screener for indian markets" and "screener.in
+alternatives" into one thing; they reach the same buyer through different
+answers, so they are different prompts under different topics.
+
+**A generated prompt set is proposed, never active.** What buyers ask is not
+something this tool can observe, so a model suggests it and a person approves
+it. A generation that returns nothing usable saves nothing, and passes the
+model's own reasons back rather than a dead end.
+
+**A prompt that names the brand cannot measure visibility.** The model will
+discuss it whatever it thinks, so `measuresVisibility` is false and the prompt
+still measures sentiment and framing. Identity matching is on whole tokens: a
+brand called Ten is not named by the word "often".
+
+**A score is reported with its components and its weights.** Presence,
+prominence and sentiment are always shown next to the composite, and the two
+floors in `visibility-score.ts` are named constants that travel with every
+score, because they are a judgement rather than a measurement.
+
+**`structuredOutput.value` may be a parsed object or a JSON string, sometimes
+fenced.** Always read it through `readStructuredValue`. Assuming an object gives
+an object-shaped read of a string: every field is absent and a correct payload
+is discarded as empty.
 
 ## Storage
 

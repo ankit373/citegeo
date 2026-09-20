@@ -1,5 +1,5 @@
 // What the models assert about a brand, and whether any of it is backed.
-// Profound's FactCheck names inaccurate claims. This stores claim-to-citation
+// Names inaccurate claims about the brand. This stores claim-to-citation
 // links, so it can also name an assertion with no source behind it at all,
 // which is the more common failure and the one nothing else reports.
 //

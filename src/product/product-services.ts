@@ -11,7 +11,13 @@ import type { ProductModelCatalog } from "./configuration/model-selection-schema
 import { ProductBaselineService } from "./configuration/baseline-service.js";
 import { ProductProjectService } from "./projects/project-service.js";
 import { ProductProjectFileStore } from "./projects/project-store.js";
-import type { RecognitionAnswerExecutor } from "./recognition/recognition-service.js";
+import { OpenRouterRecognitionAnswerExecutor, type RecognitionAnswerExecutor } from "./recognition/recognition-service.js";
+import { PromptRunFileStore } from "./topics/prompt-run-store.js";
+import { PromptRunService } from "./topics/prompt-run-service.js";
+import { TopicFileStore } from "./topics/topic-store.js";
+import { TopicService } from "./topics/topic-service.js";
+import { createStructuredAsk } from "./topics/structured-ask.js";
+import type { StructuredAsk } from "./topics/topic-service.js";
 import { ProductRecognitionRunService } from "./recognition/recognition-service.js";
 import { ProductRecognitionFileStore } from "./recognition/recognition-store.js";
 import { RecognitionReportFileStore } from "./reports/report-store.js";
@@ -81,6 +87,10 @@ export interface ProductServices {
   measurements: ProductMeasurementRunService;
   stats: ProductMeasurementStatsService;
   schedules: ProductScheduleService;
+  topics: TopicService;
+  promptRuns: PromptRunService;
+  /** Asks one structured question through the project's own saved models. */
+  ask: StructuredAsk;
   credentials: CredentialService;
   auth: ReturnType<typeof authConfig>;
 }
@@ -110,9 +120,17 @@ export function createProductServices(dependencies: ProductServerDependencies = 
   const stats = new ProductMeasurementStatsService(projects, measurementStore);
   const schedules = new ProductScheduleService(projects, baselines, watchSets, measurements, new ProductScheduleFileStore(projectStore));
 
+  // One executor for the prompt engine and for generation, so both are billed
+  // and configured exactly like a recognition run.
+  const executor = dependencies.recognitionExecutor || new OpenRouterRecognitionAnswerExecutor();
+  const topics = new TopicService(new TopicFileStore(projectStore), projects, insights);
+  const promptRuns = new PromptRunService(new PromptRunFileStore(projectStore), topics, projects, baselines, executor);
+  const ask = createStructuredAsk({ baselines, executor });
+
   return {
     projects, catalog, selections, baselines, recognition, reports, insights,
     signals, crawlerLog, watchSets, measurements, stats, schedules,
+    topics, promptRuns, ask,
     credentials: new CredentialService(new CredentialFileStore(productDataDir())),
     auth: authConfig(),
   };

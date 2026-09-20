@@ -1,18 +1,20 @@
 # Roadmap
 
-What CiteGEO could take from the commercial tools in this category, what it
-should not, and why. Ordered by value against the effort to build it.
+What belongs in CiteGEO, what does not, and why. Ordered by value against the
+effort to build it.
 
-The two reference points are [Profound](https://www.tryprofound.com/), which is
-measurement-led, and [Okara](https://okara.ai/), which is action-led. CiteGEO
-today is measurement-only, so the whole second half of the loop is missing.
+The category splits into measurement, which tells you where you stand, and
+action, which tells you what to change. A tool that only measures leaves the
+second half of the loop to the reader.
 
 Three rules decide what belongs here:
 
 1. **Evidence, not opinion.** A recommendation has to name the observation
    behind it. Anything that needs a model to invent advice does not ship.
 2. **Self-hosted and honest about cost.** No feature may depend on data this
-   project cannot obtain without a consumer panel.
+   project cannot obtain. Where an openly licensed corpus of real questions
+   exists, that counts as obtainable and is used; where nothing does, the
+   number is not estimated.
 3. **Own the gap the category ignores.** Every competitor sells a score.
    This one sells the receipt behind it.
 
@@ -22,25 +24,23 @@ Everything below needs something this project cannot provide for itself.
 
 | # | Feature | Taken from | Blocked on |
 | :-- | :--- | :--- | :--- |
-| 1 | **Fix as a pull request** — generate the schema, `llms.txt` and robots patch and open a PR against the site repo | Okara, Coding Agent | Write access to the site's own repository |
-| 2 | **Search Console integration** — real query and impression data, the honest substitute for panel demand data | Okara, GA/GSC connection | Google OAuth credentials |
-| 3 | **Engines with no API** — Google AI Overviews, AI Mode, Copilot through a driven browser | Profound, engine coverage | Browser automation and the maintenance it carries |
+| 1 | **Fix as a pull request** — generate the schema, `llms.txt` and robots patch and open a PR against the site repo | Action loop | Write access to the site's own repository |
+| 2 | **Search Console integration** — real query and impression data, alongside the open-corpus demand figures | Demand data | Google OAuth credentials |
+| 3 | **Engines with no API** — Google AI Overviews, AI Mode, Copilot through a driven browser | Engine coverage | Browser automation and the maintenance it carries |
 
 ## Built, waiting on data rather than code
 
 
 | Feature | State |
 | :--- | :--- |
-| **Citation gap** | Built and returning empty. It needs a grounded answer, which needs a provider that can search: Perplexity grounds every answer, OpenAI and Anthropic search on request, and Gemini does once billing is enabled. |
+| **Citation gap** | Built and returning empty. It needs answers that name competitors, which needs web search enabled, which needs OpenRouter credit. |
 | **Query fanout** | Built across six provider shapes and returning empty for the same reason: every run so far was offline. |
 | **Share of voice** | Built. Reports mentions but a null share, because no competitor has been named yet. |
 | **Crawler analytics** | Built and verified against a synthetic log. Needs `ACCESS_LOG_PATH` pointed at a real one. |
 
 ## Already shipped
 
-- Recognition runs across eight providers: OpenAI, Anthropic, Gemini, Perplexity, DeepSeek,
-  OpenRouter, Azure OpenAI and any OpenAI-compatible local gateway, each reporting what it
-  costs and whether it can cite before a run rather than during one
+- Recognition runs across OpenRouter, an OpenAI-compatible local gateway and Azure OpenAI
 - Evidence archive: the raw answer and provider response behind every claim
 - Measurement over time with per-model series
 - **Visibility analytics**: visibility overall and per model, share of voice, cited-domain

@@ -1,4 +1,4 @@
-// The analytics Profound sells, computed from evidence this product already
+// Visibility, share of voice and citation sources, computed from evidence this
 // stores: visibility, share of voice, citation sources and the categories the
 // models actually use. Nothing here calls a model or estimates a missing value.
 // A metric with no evidence behind it stays null rather than becoming zero.

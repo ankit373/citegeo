@@ -1,7 +1,5 @@
-// The searches an engine actually ran behind one prompt. Profound infers fanout
-// patterns from their own corpus; these are read out of the provider response
-// this project already archived, so they are the queries that produced the
-// answers on file rather than a model of what such an engine tends to do.
+// The searches an engine actually ran behind one prompt, read out of the
+// archived provider response rather than inferred from a corpus.
 //
 // Every provider names the field differently, so each shape is read explicitly
 // and an unknown shape yields nothing rather than a guess.
