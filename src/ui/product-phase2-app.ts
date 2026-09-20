@@ -352,7 +352,7 @@ export function renderProductPhase2AppHtml(): string {
     </form>
   </aside>
   <script>
-    const state = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, runPollTimer:0 };
+    const state = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, runPollTimer:0 };
     const app = document.getElementById("app");
     const element = (id) => document.getElementById(id);
     const html = (value) => String(value).split("&").join("&amp;").split("<").join("&lt;").split(">").join("&gt;").split('"').join("&quot;").split("'").join("&#39;");
@@ -404,6 +404,18 @@ export function renderProductPhase2AppHtml(): string {
         state.topicState = "ready";
       } catch (error) {
         state.topicState = "error";
+      }
+      render();
+    }
+
+    async function loadCited() {
+      if (!state.selectedId || state.citedState === "loading") return;
+      state.citedState = "loading";
+      try {
+        state.cited = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/cited-pages" + filterQuery());
+        state.citedState = "ready";
+      } catch (error) {
+        state.citedState = "error";
       }
       render();
     }
@@ -1241,6 +1253,41 @@ export function renderProductPhase2AppHtml(): string {
         + '<section class="section-card"><div class="section-head"><div><h2>Questions you never appear in</h2><p class="subtle">Answered, and you were not named once.</p></div></div>' + absent + '</section></section>';
     }
 
+    function renderCitedPages() {
+      if (state.citedState === "idle") { loadCited(); }
+      if (state.citedState !== "ready" || !state.cited) return '<p class="subtle">Reading the archived sources.</p>';
+      const data = state.cited;
+      if (data.unavailable) {
+        return '<div class="warning-box">No answer carried a source, so there are no pages to analyse. That is a property of the models you ran, not evidence that nobody cites you.</div>';
+      }
+      if (!data.answersWithCitations) return '<p class="subtle">Nothing has been answered with a source yet.</p>';
+
+      const own = data.ownPages.length
+        ? '<div class="mtable"><div class="mhead mcols-aemodel"><span>Your page</span><span>Answers</span><span>Questions</span><span></span></div>'
+          + data.ownPages.slice(0, 12).map((page) => '<div class="mrow mcols-aemodel">'
+            + '<div class="mname"><strong>' + html(page.path) + '</strong><span class="mono">' + html(page.url) + '</span></div>'
+            + '<span class="mcell">' + page.answers + '</span>'
+            + '<span class="mcell">' + page.prompts.length + '</span>'
+            + '<span class="mcell"><a href="' + html(page.url) + '" target="_blank" rel="noreferrer">Open</a></span></div>').join("") + '</div>'
+        : '<p class="subtle">No answer cited a page of yours. Every source below belongs to somebody else.</p>';
+
+      const rivals = '<div class="mtable"><div class="mhead mcols-aemodel"><span>Domain</span><span>Answers</span><span>Pages</span><span>Without you</span></div>'
+        + data.domains.slice(0, 12).map((row) => '<div class="mrow mcols-aemodel">'
+          + '<div class="mname"><strong>' + html(row.domain) + (row.isTarget ? ' <span class="pill good">You</span>' : '') + '</strong></div>'
+          + '<span class="mcell">' + row.answers + '</span>'
+          + '<span class="mcell">' + row.pages + '</span>'
+          + '<span class="mcell">' + row.answersWithoutYou + '</span></div>').join("") + '</div>';
+
+      const openings = data.openings.length
+        ? '<ul class="protocol-list">' + data.openings.slice(0, 8).map((row) => '<li><strong>' + html(row.domain) + '</strong><br><span class="subtle">won "' + html(row.prompt) + '"</span><br><span class="mono">' + html(row.url) + '</span></li>').join("") + '</ul>'
+        : '<p class="subtle">No page won a question you were absent from.</p>';
+
+      return '<p class="subtle">' + data.answersWithCitations + ' of ' + data.answersConsidered + ' answers carried a source.</p>'
+        + '<h3 style="margin-top:16px">Pages of yours the models reached for</h3>' + own
+        + '<h3 style="margin-top:20px">Every domain cited</h3>' + rivals
+        + '<h3 style="margin-top:20px">Pages that won a question you are absent from</h3>' + openings;
+    }
+
     function renderAnswerEngine() {
       const selected = project();
       if (!selected) return '<section class="view"><div class="empty"><div class="empty-copy"><h2>Select a project first</h2></div></div></section>';
@@ -1271,6 +1318,7 @@ export function renderProductPhase2AppHtml(): string {
         + '<section class="section-card"><div class="section-head"><div><h2>Questions you never appear in</h2><p class="subtle">Answered, and you were not named once. This is the actionable list.</p></div></div>' + renderAbsent(data.absentFrom) + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>Movement</h2><p class="subtle">One point per run. A run where everything failed is left out rather than drawn as a drop.</p></div></div>' + renderPromptTrend(data.trend) + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>By market</h2><p class="subtle">The same questions, asked for a different buyer.</p></div></div>' + renderRegionRows(data.byRegion, data.regionCaveat) + '</section>'
+        + '<section class="section-card"><div class="section-head"><div><h2>Sources</h2><p class="subtle">A domain says you are cited. A page says which one to write more of.</p></div></div>' + renderCitedPages() + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>By model</h2><p class="subtle">The same questions, answered differently.</p></div></div>' + renderModelRows(data.byModel) + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>Keep it running</h2><p class="subtle">A tracker that is run by hand is a snapshot.</p></div></div>' + renderSchedule() + '</section></section>';
     }
@@ -1477,6 +1525,7 @@ export function renderProductPhase2AppHtml(): string {
       if (!control) return;
       state.filters[control.getAttribute("data-filter")] = control.value;
       state.answerEngineState = "idle";
+      state.citedState = "idle";
       loadAnswerEngine();
     });
 
@@ -1486,6 +1535,7 @@ export function renderProductPhase2AppHtml(): string {
       if (target.closest("[data-clear-filters]")) {
         state.filters = { modelId:"", regionId:"", languageId:"", topicId:"" };
         state.answerEngineState = "idle";
+        state.citedState = "idle";
         loadAnswerEngine();
         return;
       }

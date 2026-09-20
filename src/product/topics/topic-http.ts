@@ -1,5 +1,7 @@
 import { buildTopicInsights, type TopicInsights } from "./topic-insights.js";
 import { buildHomeSummary } from "../alerts/home-summary.js";
+import { buildAnswerDigest } from "../alerts/answer-digest.js";
+import { buildCitationAnalysis } from "./citation-analysis.js";
 import { isPromptIntent } from "./topic-schema.js";
 import { REGIONS, REGION_CAVEAT } from "./region.js";
 import { LANGUAGES } from "./language.js";
@@ -238,6 +240,33 @@ export async function handleTopicApi(input: {
       return true;
     }
     send(200, report);
+    return true;
+  }
+
+  if (method === "GET" && tail.length === 1 && tail[0] === "cited-pages") {
+    await guard(async () => {
+      const [answers, identity] = await Promise.all([
+        runs.listAnswers(projectId),
+        topics.targetIdentity(projectId),
+      ]);
+      return buildCitationAnalysis({ answers: sliced(answers, url), identity });
+    }, 404);
+    return true;
+  }
+
+  if (method === "GET" && tail.length === 1 && tail[0] === "digest") {
+    await guard(async () => {
+      const [set, answers, runList, identity, selections] = await Promise.all([
+        topics.get(projectId),
+        runs.listAnswers(projectId),
+        runs.listRuns(projectId),
+        topics.targetIdentity(projectId).catch(() => null),
+        models(projectId).catch(() => 0),
+      ]);
+      const insights = buildTopicInsights({ projectId, set, answers, runs: runList, identityCaveat: identity?.caveat || null });
+      const home = buildHomeSummary({ projectId, domain: identity?.host || projectId, set, insights, runs: runList, modelCount: selections });
+      return buildAnswerDigest({ home });
+    }, 404);
     return true;
   }
 
