@@ -1,6 +1,7 @@
 import { domainLabel, tokenize } from "./prompt-identity.js";
 import { buildPromptTrend, type PromptTrend } from "./prompt-trend.js";
 import { region, REGION_CAVEAT } from "./region.js";
+import { language } from "./language.js";
 import type { PromptRun } from "./prompt-run-schema.js";
 import type { AnswerMention, PromptAnswer } from "./prompt-run-schema.js";
 import { emptyScore, scoreAnswers, SCORE_WEIGHTS, type ScoreWeights, type VisibilityScore } from "./visibility-score.js";
@@ -63,6 +64,13 @@ export interface RegionStanding {
   rank: number | null;
 }
 
+export interface LanguageStanding {
+  languageId: string;
+  label: string;
+  score: VisibilityScore;
+  rank: number | null;
+}
+
 export interface TopicInsights {
   projectId: string;
   /** Completed answers behind everything below. */
@@ -82,6 +90,8 @@ export interface TopicInsights {
   trend: PromptTrend;
   /** Per market, worst first. Empty until a run states one. */
   byRegion: RegionStanding[];
+  /** Per language, worst first. Empty until a run asks in more than one. */
+  byLanguage: LanguageStanding[];
   /** What the UI must print next to any regional figure. */
   regionCaveat: string;
 }
@@ -182,6 +192,23 @@ function regionStandings(answers: PromptAnswer[]): RegionStanding[] {
     .sort((left, right) => (left.score.score || 0) - (right.score.score || 0));
 }
 
+function languageStandings(answers: PromptAnswer[]): LanguageStanding[] {
+  const groups = new Map<string, PromptAnswer[]>();
+  for (const answer of answers) {
+    const id = answer.languageId || "en";
+    groups.set(id, [...(groups.get(id) || []), answer]);
+  }
+  if (groups.size < 2) return [];
+  return [...groups.entries()]
+    .map(([languageId, group]) => ({
+      languageId,
+      label: language(languageId)?.label || languageId,
+      score: scoreAnswers(group),
+      rank: rankOfTarget(standings(group)),
+    }))
+    .sort((left, right) => (left.score.score || 0) - (right.score.score || 0));
+}
+
 export function buildTopicInsights(input: { projectId: string; set: TopicSet; answers: PromptAnswer[]; runs?: PromptRun[] }): TopicInsights {
   const { projectId, set, answers } = input;
   const completed = answers.filter((answer) => answer.status === "completed");
@@ -247,6 +274,7 @@ export function buildTopicInsights(input: { projectId: string; set: TopicSet; an
       rankOf: (group) => rankOfTarget(standings(group)),
     }),
     byRegion: regionStandings(answers),
+    byLanguage: languageStandings(answers),
     regionCaveat: REGION_CAVEAT,
   };
 }

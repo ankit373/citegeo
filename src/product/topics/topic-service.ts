@@ -257,6 +257,34 @@ export class TopicService {
     return this.store.load(projectId);
   }
 
+  /** One question per line. Blank lines and duplicates are skipped rather than
+   * refused, because a pasted list always has both. */
+  async addPrompts(projectId: string, input: { topicId: string; text: string; intent: PromptIntent }): Promise<{ set: TopicSet; added: number; skipped: number }> {
+    const set = await this.store.load(projectId);
+    if (!set.topics.some((topic) => topic.id === input.topicId)) {
+      throw new TopicSetUnavailableError(`Topic ${input.topicId} does not exist.`);
+    }
+    const identities = await this.targetIdentities(projectId);
+    const seen = new Set(set.prompts.map((prompt) => prompt.id));
+    let added = 0;
+    let skipped = 0;
+    for (const line of input.text.split("\n")) {
+      const text = line.trim();
+      if (!text) continue;
+      const prompt = this.buildPrompt({ projectId, topicId: input.topicId, text, intent: input.intent, source: "authored", identities, status: "active" });
+      if (seen.has(prompt.id)) {
+        skipped += 1;
+        continue;
+      }
+      seen.add(prompt.id);
+      set.prompts.push(prompt);
+      added += 1;
+    }
+    if (!added && !skipped) throw new TopicSetUnavailableError("No questions were found in that text.");
+    if (added) await this.store.save(set);
+    return { set: await this.store.load(projectId), added, skipped };
+  }
+
   /** Moves prompts, and the topics holding them, from proposed to active. */
   async activate(projectId: string, promptIds: string[]): Promise<TopicSet> {
     const wanted = new Set(promptIds);

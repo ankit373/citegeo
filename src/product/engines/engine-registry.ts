@@ -99,7 +99,46 @@ export const perplexityWeb: BrowserEngine = {
   },
 };
 
-export const BROWSER_ENGINES: BrowserEngine[] = [googleAiOverview, perplexityWeb];
+
+/** Copilot answers from Bing's index and cites as it goes, so a missing
+ * citation list means the page changed rather than that it cited nothing. */
+export const copilotWeb: BrowserEngine = {
+  id: "copilot",
+  label: "Microsoft Copilot",
+  caveat: "Read from copilot.microsoft.com in your own signed-in browser. Copilot personalises by account and region, so this is what your session saw.",
+  async ask(session, question) {
+    await session.send("Page.navigate", { url: `https://copilot.microsoft.com/?q=${encodeURIComponent(question)}` });
+    const specific = ["[data-content='ai-message']", "div[data-testid='message-content']", "cib-message-group"];
+    const expression = readerExpression([...specific, "main"], "a[href^='http']");
+    await waitFor(session, `(() => { const found = ${expression}; return Boolean(found && found.text.length > 200); })()`, 60000);
+    return readAnswer({ session, engineId: "copilot", expression, minimumLength: 200, specificSelectors: specific });
+  },
+};
+
+/** The product, not the API. It runs its own retrieval and routing, so its
+ * answer and the API's answer to the same question are different measurements. */
+export const chatgptWeb: BrowserEngine = {
+  id: "chatgpt",
+  label: "ChatGPT (web)",
+  caveat: "Read from chatgpt.com in your own signed-in browser. The product and the API answer differently, because the product runs retrieval and model routing an API key does not expose.",
+  async ask(session, question) {
+    await session.send("Page.navigate", { url: `https://chatgpt.com/?q=${encodeURIComponent(question)}` });
+    const specific = ["[data-message-author-role='assistant']", "div.markdown.prose"];
+    const expression = readerExpression([...specific, "main"], "a[href^='http']");
+    const settled = await waitFor(
+      session,
+      `(() => { const found = ${expression}; return Boolean(found && found.text.length > 200 && !document.querySelector("button[data-testid='stop-button']")); })()`,
+      90000,
+    );
+    if (!settled) {
+      // Reading a streaming answer captures half of it, which is worse than none.
+      return { state: "no_answer", detail: "The answer did not finish streaming within the time allowed." };
+    }
+    return readAnswer({ session, engineId: "chatgpt", expression, minimumLength: 200, specificSelectors: specific });
+  },
+};
+
+export const BROWSER_ENGINES: BrowserEngine[] = [googleAiOverview, perplexityWeb, chatgptWeb, copilotWeb];
 
 export function browserEngine(id: string): BrowserEngine | undefined {
   return BROWSER_ENGINES.find((engine) => engine.id === id);

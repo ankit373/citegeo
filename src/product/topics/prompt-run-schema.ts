@@ -32,6 +32,8 @@ export interface PromptAnswer {
   modelDisplayName: string;
   /** The market stated to the model. "global" means none was. */
   regionId: string;
+  /** The language the answer was asked for. */
+  languageId: string;
   status: PromptAnswerStatus;
   /** The answer as the model wrote it. Every number here traces back to this. */
   text: string;
@@ -51,6 +53,7 @@ export interface PromptRun {
   promptIds: string[];
   modelIds: string[];
   regionIds: string[];
+  languageIds: string[];
   answersRequested: number;
   answersCompleted: number;
   answersFailed: number;

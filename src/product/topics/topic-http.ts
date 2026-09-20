@@ -1,6 +1,8 @@
 import { buildTopicInsights, type TopicInsights } from "./topic-insights.js";
 import { isPromptIntent } from "./topic-schema.js";
 import { REGIONS, REGION_CAVEAT } from "./region.js";
+import { LANGUAGES } from "./language.js";
+import { promptExportNames, promptExportTable } from "./topic-export.js";
 import type { PromptRunService } from "./prompt-run-service.js";
 import type { PromptScheduleService } from "./prompt-schedule.js";
 import type { DemandReportFileStore } from "../demand/demand-store.js";
@@ -84,6 +86,21 @@ export async function handleTopicApi(input: {
     return true;
   }
 
+  if (method === "POST" && tail.length === 2 && tail[0] === "prompts" && tail[1] === "bulk") {
+    const body = await readJson();
+    const intent = body.intent;
+    if (!isPromptIntent(intent)) {
+      send(400, { error: "A prompt needs an intent: discovery, comparison, alternatives, brand or problem." });
+      return true;
+    }
+    await guard(() => topics.addPrompts(projectId, {
+      topicId: typeof body.topicId === "string" ? body.topicId : "",
+      text: typeof body.text === "string" ? body.text : "",
+      intent,
+    }));
+    return true;
+  }
+
   if (method === "POST" && tail.length === 2 && tail[0] === "prompts" && tail[1] === "activate") {
     const body = await readJson();
     await guard(() => topics.activate(projectId, stringList(body.promptIds)));
@@ -97,7 +114,7 @@ export async function handleTopicApi(input: {
   }
 
   if (method === "GET" && tail.length === 1 && tail[0] === "regions") {
-    send(200, { regions: REGIONS, caveat: REGION_CAVEAT });
+    send(200, { regions: REGIONS, languages: LANGUAGES, caveat: REGION_CAVEAT });
     return true;
   }
 
@@ -110,10 +127,12 @@ export async function handleTopicApi(input: {
     const body = await readJson();
     const promptIds = stringList(body.promptIds);
     const regionIds = stringList(body.regionIds);
+    const languageIds = stringList(body.languageIds);
     await guard(() => runs.start({
       projectId,
       promptIds: promptIds.length ? promptIds : undefined,
       regionIds: regionIds.length ? regionIds : undefined,
+      languageIds: languageIds.length ? languageIds : undefined,
     }));
     return true;
   }
@@ -131,6 +150,23 @@ export async function handleTopicApi(input: {
       ...(rule ? { rule: rule as never } : {}),
       regionIds: stringList(body.regionIds),
     }));
+    return true;
+  }
+
+  if (method === "GET" && tail.length === 2 && tail[0] === "prompt-export") {
+    try {
+      const [set, answers, runList] = await Promise.all([
+        topics.get(projectId),
+        runs.listAnswers(projectId),
+        runs.listRuns(projectId),
+      ]);
+      const csv = promptExportTable(buildTopicInsights({ projectId, set, answers, runs: runList }), tail[1] || "");
+      // A typo is a 404 naming the tables, not an empty file that looks like no data.
+      if (csv === null) send(404, { error: `Unknown export "${tail[1]}". Available: ${promptExportNames().join(", ")}.` });
+      else send(200, csv, "text/csv; charset=utf-8");
+    } catch (error) {
+      send(404, { error: message(error) });
+    }
     return true;
   }
 

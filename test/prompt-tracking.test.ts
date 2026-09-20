@@ -21,14 +21,14 @@ function answer(overrides: Partial<PromptAnswer> = {}): PromptAnswer {
   return {
     id: `a-${Math.random()}`, projectId: "p", runId: "r1", promptId: "prompt-1", topicId: "topic-1",
     promptText: "best stock screener", intent: "discovery", providerId: "openrouter", modelId: "m",
-    modelDisplayName: "M", regionId: "global", status: "completed", text: "...", mentions: [],
+    modelDisplayName: "M", regionId: "global", languageId: "en", status: "completed", text: "...", mentions: [],
     citationUrls: [], errorCode: null, errorMessage: null, latencyMs: 1, createdAt: "2026-09-01T00:00:00.000Z",
     ...overrides,
   };
 }
 
 function run(id: string, startedAt: string, regionIds: string[] = ["global"]): PromptRun {
-  return { id, projectId: "p", status: "completed", promptIds: ["prompt-1"], modelIds: ["m"], regionIds, answersRequested: 1, answersCompleted: 1, answersFailed: 0, startedAt, completedAt: startedAt };
+  return { id, projectId: "p", status: "completed", promptIds: ["prompt-1"], modelIds: ["m"], regionIds, languageIds: ["en"], answersRequested: 1, answersCompleted: 1, answersFailed: 0, startedAt, completedAt: startedAt };
 }
 
 const SET: TopicSet = {
@@ -97,15 +97,15 @@ test("every regional figure carries the caveat that the market is stated, not de
 
 test("the global market adds nothing to the prompt, so old runs stay comparable", () => {
   assert.equal(audienceInstruction(GLOBAL_REGION), "");
-  const plain = promptAnswerPrompt({ question: "best screener", language: "en" });
-  const global = promptAnswerPrompt({ question: "best screener", language: "en", audience: audienceInstruction(GLOBAL_REGION) });
+  const plain = promptAnswerPrompt({ question: "best screener" });
+  const global = promptAnswerPrompt({ question: "best screener", audience: audienceInstruction(GLOBAL_REGION) });
   assert.equal(plain, global);
 });
 
 test("a stated market is added to the prompt verbatim", () => {
   const india = region("in");
   assert.ok(india);
-  const prompt = promptAnswerPrompt({ question: "best screener", language: "en", audience: audienceInstruction(india) });
+  const prompt = promptAnswerPrompt({ question: "best screener", audience: audienceInstruction(india) });
   assert.ok(prompt.includes("Answer as you would for someone in India."));
 });
 

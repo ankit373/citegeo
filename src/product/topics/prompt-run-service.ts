@@ -17,6 +17,7 @@ import type { PromptRunFileStore } from "./prompt-run-store.js";
 import { readStructuredValue } from "./structured-value.js";
 import { activePrompts, type PromptIntent } from "./topic-schema.js";
 import { audienceInstruction, GLOBAL_REGION, region, type Region } from "./region.js";
+import { DEFAULT_LANGUAGE, language, languageInstruction, type AnswerLanguage } from "./language.js";
 import type { TopicService } from "./topic-service.js";
 
 export class PromptRunUnavailableError extends Error {}
@@ -31,6 +32,8 @@ export interface StartPromptRunInput {
   promptIds?: string[] | undefined;
   /** Markets to ask in. The global region alone when omitted. */
   regionIds?: string[] | undefined;
+  /** Languages to ask in. English alone when omitted. */
+  languageIds?: string[] | undefined;
 }
 
 /** One answer per prompt per model per market is one observation. Nothing is
@@ -83,6 +86,12 @@ export class PromptRunService {
       return found;
     });
 
+    const languages: AnswerLanguage[] = (input.languageIds && input.languageIds.length ? input.languageIds : [DEFAULT_LANGUAGE.id]).map((id) => {
+      const found = language(id);
+      if (!found) throw new PromptRunUnavailableError(`Unknown language "${id}".`);
+      return found;
+    });
+
     const run: PromptRun = {
       id: `prompt-run-${randomUUID()}`,
       projectId: input.projectId,
@@ -90,7 +99,8 @@ export class PromptRunService {
       promptIds: prompts.map((prompt) => prompt.id),
       modelIds: models.map((model) => model.modelId),
       regionIds: regions.map((row) => row.id),
-      answersRequested: prompts.length * models.length * regions.length,
+      languageIds: languages.map((row) => row.id),
+      answersRequested: prompts.length * models.length * regions.length * languages.length,
       answersCompleted: 0,
       answersFailed: 0,
       startedAt: nowIso(),
@@ -101,12 +111,14 @@ export class PromptRunService {
     for (const prompt of prompts) {
       for (const model of models) {
         for (const market of regions) {
-          const answer = await this.ask({ run, baseline, model, prompt, identities, market });
-          await this.store.saveAnswer(answer);
-          if (answer.status === "completed") run.answersCompleted += 1;
-          else run.answersFailed += 1;
-          // Progress is written as it happens, so a long run is readable while it runs.
-          await this.store.saveRun(run);
+          for (const tongue of languages) {
+            const answer = await this.ask({ run, baseline, model, prompt, identities, market, tongue });
+            await this.store.saveAnswer(answer);
+            if (answer.status === "completed") run.answersCompleted += 1;
+            else run.answersFailed += 1;
+            // Progress is written as it happens, so a long run is readable while it runs.
+            await this.store.saveRun(run);
+          }
         }
       }
     }
@@ -135,6 +147,7 @@ export class PromptRunService {
     prompt: { id: string; topicId: string; text: string; intent: PromptIntent };
     identities: string[];
     market: Region;
+    tongue: AnswerLanguage;
   }): Promise<PromptAnswer> {
     const base = {
       id: `prompt-answer-${randomUUID()}`,
@@ -148,6 +161,7 @@ export class PromptRunService {
       modelId: input.model.modelId,
       modelDisplayName: input.model.displayName,
       regionId: input.market.id,
+      languageId: input.tongue.id,
       createdAt: nowIso(),
     };
 
@@ -155,7 +169,11 @@ export class PromptRunService {
       const result = await this.executor.execute({
         baseline: input.baseline,
         modelSnapshot: input.model,
-        prompt: promptAnswerPrompt({ question: input.prompt.text, language: "en", audience: audienceInstruction(input.market) }),
+        prompt: promptAnswerPrompt({
+          question: input.prompt.text,
+          languageInstruction: languageInstruction(input.tongue),
+          audience: audienceInstruction(input.market),
+        }),
         requestParameters: {
           model: input.model.modelId,
           temperature: 0,
