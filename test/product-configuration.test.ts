@@ -284,6 +284,9 @@ test("Phase 2 UI exposes the domain-only configuration flow without prompt or ex
   assert.equal(html.includes("Create a new baseline"), false);
   assert.equal(html.includes("You can, in stage 3"), false);
   assert.equal(html.includes("Stage 2 · Configuration and baseline"), false);
-  assert.equal(html.includes("--motion-fast:120ms"), true);
+  // Motion is tokenised so it can be tuned and reduced in one place. Pinning the
+  // duration itself made a restyle fail a test about accessibility.
+  assert.equal(html.includes("--motion-fast:"), true);
+  assert.equal(html.includes("--ease-standard:"), true);
   assert.equal(html.includes("prefers-reduced-motion"), true);
 });

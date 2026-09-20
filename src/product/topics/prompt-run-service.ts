@@ -1,0 +1,225 @@
+import { randomUUID } from "node:crypto";
+import type { ProductBaseline, ProductModelSnapshot } from "../configuration/baseline-schema.js";
+import type { ProductBaselineService } from "../configuration/baseline-service.js";
+import type { ProductProjectService } from "../projects/project-service.js";
+import type { RecognitionAnswerExecutor } from "../recognition/recognition-service.js";
+import { namesIdentity } from "./prompt-identity.js";
+import {
+  parsePromptAnswerOutput,
+  promptAnswerPrompt,
+  promptAnswerResponseSchema,
+  PROMPT_ANSWER_SCHEMA_HASH,
+  PROMPT_ANSWER_SCHEMA_NAME,
+  PROMPT_ANSWER_TOOL_DESCRIPTION,
+} from "./prompt-answer-protocol.js";
+import type { AnswerMention, PromptAnswer, PromptRun } from "./prompt-run-schema.js";
+import type { PromptRunFileStore } from "./prompt-run-store.js";
+import { readStructuredValue } from "./structured-value.js";
+import { activePrompts, type PromptIntent } from "./topic-schema.js";
+import type { TopicService } from "./topic-service.js";
+
+export class PromptRunUnavailableError extends Error {}
+
+function nowIso(): string {
+  return new Date().toISOString();
+}
+
+export interface StartPromptRunInput {
+  projectId: string;
+  /** Limits the run to these prompts. Every active prompt when omitted. */
+  promptIds?: string[] | undefined;
+}
+
+/**
+ * Runs the tracked prompts against the configured models and keeps every
+ * answer. One answer per prompt per model is one observation; nothing is
+ * averaged here, because the aggregation has to be able to name the answers it
+ * came from.
+ */
+export class PromptRunService {
+  constructor(
+    private readonly store: PromptRunFileStore,
+    private readonly topics: TopicService,
+    private readonly projects: ProductProjectService,
+    private readonly baselines: ProductBaselineService,
+    private readonly executor: RecognitionAnswerExecutor,
+  ) {}
+
+  async listRuns(projectId: string): Promise<PromptRun[]> {
+    return this.store.listRuns(projectId);
+  }
+
+  async listAnswers(projectId: string, runId?: string): Promise<PromptAnswer[]> {
+    return this.store.listAnswers(projectId, runId);
+  }
+
+  async start(input: StartPromptRunInput): Promise<PromptRun> {
+    const project = await this.projects.get(input.projectId);
+    if (!project) throw new PromptRunUnavailableError(`Project ${input.projectId} does not exist.`);
+
+    const set = await this.topics.get(input.projectId);
+    const wanted = input.promptIds ? new Set(input.promptIds) : null;
+    const prompts = activePrompts(set).filter((prompt) => !wanted || wanted.has(prompt.id));
+    if (!prompts.length) {
+      throw new PromptRunUnavailableError(
+        "No active prompts. Generate a set and activate the ones worth tracking before running.",
+      );
+    }
+
+    const baseline = await this.currentBaseline(input.projectId);
+    const models = baseline.modelSnapshots;
+    if (!models.length) {
+      throw new PromptRunUnavailableError("No models are saved for this project. Choose models and save a configuration first.");
+    }
+
+    const identities = [project.brandName, ...project.aliases, project.primaryDomain, project.normalizedDomain]
+      .map((value) => (value || "").trim())
+      .filter(Boolean);
+
+    const run: PromptRun = {
+      id: `prompt-run-${randomUUID()}`,
+      projectId: input.projectId,
+      status: "running",
+      promptIds: prompts.map((prompt) => prompt.id),
+      modelIds: models.map((model) => model.modelId),
+      answersRequested: prompts.length * models.length,
+      answersCompleted: 0,
+      answersFailed: 0,
+      startedAt: nowIso(),
+      completedAt: null,
+    };
+    await this.store.saveRun(run);
+
+    for (const prompt of prompts) {
+      for (const model of models) {
+        const answer = await this.ask({ run, baseline, model, prompt, identities });
+        await this.store.saveAnswer(answer);
+        if (answer.status === "completed") run.answersCompleted += 1;
+        else run.answersFailed += 1;
+        // Progress is written as it happens, so a long run is readable while it runs.
+        await this.store.saveRun(run);
+      }
+    }
+
+    run.status = run.answersCompleted === 0
+      ? "failed"
+      : run.answersFailed > 0
+        ? "partial"
+        : "completed";
+    run.completedAt = nowIso();
+    await this.store.saveRun(run);
+    return run;
+  }
+
+  private async currentBaseline(projectId: string): Promise<ProductBaseline> {
+    const baselines = await this.baselines.list(projectId);
+    const current = baselines[0];
+    if (!current) throw new PromptRunUnavailableError("This project has no saved configuration to run against.");
+    return current;
+  }
+
+  private async ask(input: {
+    run: PromptRun;
+    baseline: ProductBaseline;
+    model: ProductModelSnapshot;
+    prompt: { id: string; topicId: string; text: string; intent: PromptIntent };
+    identities: string[];
+  }): Promise<PromptAnswer> {
+    const base = {
+      id: `prompt-answer-${randomUUID()}`,
+      projectId: input.run.projectId,
+      runId: input.run.id,
+      promptId: input.prompt.id,
+      topicId: input.prompt.topicId,
+      promptText: input.prompt.text,
+      intent: input.prompt.intent,
+      providerId: input.model.providerId,
+      modelId: input.model.modelId,
+      modelDisplayName: input.model.displayName,
+      createdAt: nowIso(),
+    };
+
+    try {
+      const result = await this.executor.execute({
+        baseline: input.baseline,
+        modelSnapshot: input.model,
+        prompt: promptAnswerPrompt({ question: input.prompt.text, language: "en" }),
+        requestParameters: {
+          model: input.model.modelId,
+          temperature: 0,
+          maxTokens: 2000,
+          responseSchemaName: PROMPT_ANSWER_SCHEMA_NAME,
+          responseSchemaHash: PROMPT_ANSWER_SCHEMA_HASH,
+          structuredOutputTransport: "response_json_schema",
+          requireProviderParameters: false,
+          webSearchEnabled: input.model.webSearchMode === "provider_native",
+          webSearchMode: input.model.webSearchMode,
+        },
+        structuredOutput: {
+          name: PROMPT_ANSWER_SCHEMA_NAME,
+          description: PROMPT_ANSWER_TOOL_DESCRIPTION,
+          schema: promptAnswerResponseSchema,
+        },
+      });
+
+      if (!result.structuredOutput) {
+        return {
+          ...base,
+          status: "analysis_failed",
+          text: result.text || "",
+          mentions: [],
+          citationUrls: [],
+          errorCode: "no_structured_output",
+          errorMessage: "The provider returned no structured payload, so nothing could be counted from it.",
+          latencyMs: result.latencyMs,
+        };
+      }
+
+      const parsed = parsePromptAnswerOutput(readStructuredValue(result.structuredOutput.value));
+      if (parsed.analysisStatus !== "completed") {
+        return {
+          ...base,
+          status: "analysis_failed",
+          text: parsed.answer || result.text || "",
+          mentions: [],
+          citationUrls: [],
+          errorCode: "unreadable_answer",
+          errorMessage: "The answer could not be read as a completed observation, so it counts as nothing rather than as an absence of mentions.",
+          latencyMs: result.latencyMs,
+        };
+      }
+
+      const mentions: AnswerMention[] = parsed.mentions.map((row) => ({
+        ...row,
+        // Whether a mention is the brand is decided here, from the project's own
+        // identities, never from the model's opinion of who it was talking about.
+        isTarget: namesIdentity(row.name, input.identities) || (row.domain ? namesIdentity(row.domain, input.identities) : false),
+      }));
+
+      const providerCitations = result.citations.map((citation) => citation.url).filter(Boolean);
+      const citationUrls = [...new Set([...providerCitations, ...parsed.citationUrls])];
+
+      return {
+        ...base,
+        status: "completed",
+        text: parsed.answer,
+        mentions,
+        citationUrls,
+        errorCode: null,
+        errorMessage: null,
+        latencyMs: result.latencyMs,
+      };
+    } catch (error) {
+      return {
+        ...base,
+        status: "provider_failed",
+        text: "",
+        mentions: [],
+        citationUrls: [],
+        errorCode: "provider_error",
+        errorMessage: error instanceof Error ? error.message : String(error),
+        latencyMs: null,
+      };
+    }
+  }
+}

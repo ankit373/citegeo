@@ -1,0 +1,114 @@
+import { buildTopicInsights, type TopicInsights } from "./topic-insights.js";
+import { isPromptIntent } from "./topic-schema.js";
+import type { PromptRunService } from "./prompt-run-service.js";
+import type { StructuredAsk, TopicService } from "./topic-service.js";
+
+export type TopicJsonSender = (status: number, body: unknown, contentType?: string) => void;
+
+function message(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function stringList(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+}
+
+export async function handleTopicApi(input: {
+  method: string;
+  route: string[];
+  send: TopicJsonSender;
+  topics: TopicService;
+  runs: PromptRunService;
+  ask: StructuredAsk;
+  readJson: () => Promise<Record<string, unknown>>;
+}): Promise<boolean> {
+  const { method, route, send, topics, runs, ask, readJson } = input;
+  if (route[0] !== "api" || route[1] !== "projects") return false;
+  const projectId = route[2];
+  if (!projectId) return false;
+  const tail = route.slice(3);
+
+  // A project that does not exist is a 404: nothing failed, the question was
+  // about something that is not there.
+  const guard = async (run: () => Promise<unknown>, status = 400) => {
+    try {
+      send(200, await run());
+    } catch (error) {
+      send(status, { error: message(error) });
+    }
+  };
+
+  if (method === "GET" && tail.length === 1 && tail[0] === "topics") {
+    await guard(() => topics.get(projectId), 404);
+    return true;
+  }
+
+  if (method === "POST" && tail.length === 2 && tail[0] === "topics" && tail[1] === "generate") {
+    const body = await readJson();
+    await guard(() => topics.generate(projectId, ask, {
+      topicCount: typeof body.topicCount === "number" ? body.topicCount : undefined,
+      promptsPerTopic: typeof body.promptsPerTopic === "number" ? body.promptsPerTopic : undefined,
+      businessDescription: typeof body.businessDescription === "string" ? body.businessDescription : undefined,
+      productCategory: typeof body.productCategory === "string" ? body.productCategory : undefined,
+    }));
+    return true;
+  }
+
+  if (method === "POST" && tail.length === 1 && tail[0] === "topics") {
+    const body = await readJson();
+    await guard(() => topics.addTopic(projectId, {
+      name: typeof body.name === "string" ? body.name : "",
+      description: typeof body.description === "string" ? body.description : "",
+    }));
+    return true;
+  }
+
+  if (method === "POST" && tail.length === 1 && tail[0] === "prompts") {
+    const body = await readJson();
+    const intent = body.intent;
+    if (!isPromptIntent(intent)) {
+      send(400, { error: "A prompt needs an intent: discovery, comparison, alternatives, brand or problem." });
+      return true;
+    }
+    await guard(() => topics.addPrompt(projectId, {
+      topicId: typeof body.topicId === "string" ? body.topicId : "",
+      text: typeof body.text === "string" ? body.text : "",
+      intent,
+    }));
+    return true;
+  }
+
+  if (method === "POST" && tail.length === 2 && tail[0] === "prompts" && tail[1] === "activate") {
+    const body = await readJson();
+    await guard(() => topics.activate(projectId, stringList(body.promptIds)));
+    return true;
+  }
+
+  if (method === "POST" && tail.length === 2 && tail[0] === "prompts" && tail[1] === "retire") {
+    const body = await readJson();
+    await guard(() => topics.retire(projectId, stringList(body.promptIds)));
+    return true;
+  }
+
+  if (method === "GET" && tail.length === 1 && tail[0] === "prompt-runs") {
+    await guard(() => runs.listRuns(projectId), 404);
+    return true;
+  }
+
+  if (method === "POST" && tail.length === 1 && tail[0] === "prompt-runs") {
+    const body = await readJson();
+    const promptIds = stringList(body.promptIds);
+    await guard(() => runs.start({ projectId, promptIds: promptIds.length ? promptIds : undefined }));
+    return true;
+  }
+
+  if (method === "GET" && tail.length === 1 && tail[0] === "prompt-insights") {
+    await guard(async (): Promise<TopicInsights> => {
+      const [set, answers] = await Promise.all([topics.get(projectId), runs.listAnswers(projectId)]);
+      return buildTopicInsights({ projectId, set, answers });
+    }, 404);
+    return true;
+  }
+
+  return false;
+}

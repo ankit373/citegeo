@@ -10,17 +10,31 @@ export function renderProductPhase2AppHtml(): string {
   <link rel="icon" type="image/svg+xml" href="/assets/brand/citegeo-emblem.svg"><link rel="apple-touch-icon" href="/assets/brand/citegeo-emblem.svg">
   <title>${PRODUCT_TITLE}</title>
   <style>
-    :root { --bg:#14120F; --sidebar:#0E0C0A; --panel:#1C1914; --panel-hover:#24201A; --line:#332C22; --line-strong:#4A4030; --text:#F2EEE4; --muted:#A89C87; --weak:#6E6455; --confirmed:#7FA06E; --confirmed-text:#9DBC8E; --unknown:#C9973E; --unknown-text:#DBB05F; --failed:#B2503B; --failed-text:#CC7157; --motion-fast:120ms; --motion-normal:200ms; --ease-standard:cubic-bezier(.22,1,.36,1); --ease-press:cubic-bezier(.2,.8,.2,1); }
+    :root {
+      --bg:#08090B; --sidebar:#0B0C0F; --panel:#0F1114; --panel-hover:#14171B;
+      --line:#1B1F25; --line-strong:#2A3039;
+      --text:#F6F7F9; --muted:#98A1AE; --weak:#5D6673;
+      --accent:#6E9BFF; --accent-soft:rgba(110,155,255,.12);
+      --confirmed:#3FB27F; --confirmed-text:#5FD3A0;
+      --unknown:#C69A3C; --unknown-text:#E3B75E;
+      --failed:#C0574A; --failed-text:#E08579;
+      --radius:10px; --radius-sm:7px;
+      --gutter:clamp(20px,3.5vw,56px);
+      --motion-fast:140ms; --motion-normal:260ms;
+      --ease-standard:cubic-bezier(.22,1,.36,1); --ease-press:cubic-bezier(.2,.8,.2,1);
+    }
     * { box-sizing:border-box; }
-    body { font-variant-numeric:tabular-nums; margin:0; min-height:100vh; background:var(--bg); color:var(--text); font-family:"General Sans",ui-sans-serif,system-ui,-apple-system,sans-serif; }
-    h1,h2,h3 { font-family:"Cabinet Grotesk",ui-sans-serif,system-ui,sans-serif; letter-spacing:-0.01em; }
+    body { font-variant-numeric:tabular-nums; margin:0; min-height:100vh; background:var(--bg); color:var(--text); font-family:"General Sans",ui-sans-serif,system-ui,-apple-system,sans-serif; font-size:14px; -webkit-font-smoothing:antialiased; }
+    h1,h2,h3 { font-family:"Cabinet Grotesk",ui-sans-serif,system-ui,sans-serif; letter-spacing:-0.025em; }
     .domain,.mono { font-family:"JetBrains Mono",ui-monospace,monospace; font-variant-numeric:tabular-nums; }
     button,input,select { font:inherit; }
     button { color:inherit; cursor:pointer; }
     button:disabled { cursor:not-allowed; opacity:.58; }
     button:focus-visible,input:focus-visible,select:focus-visible { outline:2px solid var(--text); outline-offset:2px; }
-    .shell { min-height:100vh; display:grid; grid-template-columns:248px minmax(0,1fr); }
-    .sidebar { background:var(--sidebar); border-right:1px solid var(--line); display:flex; flex-direction:column; padding:22px 16px; }
+    /* The sidebar is sticky and one viewport tall, so below the fold its grid
+       column fell back to the page background and the rail appeared to stop. */
+    .shell { min-height:100vh; display:grid; grid-template-columns:236px minmax(0,1fr); background:linear-gradient(to right, var(--sidebar) 0 236px, var(--bg) 236px); }
+    .sidebar { background:var(--sidebar); border-right:1px solid var(--line); display:flex; flex-direction:column; padding:20px 12px; position:sticky; top:0; height:100vh; overflow:auto; }
     .brand { display:flex; align-items:center; min-height:48px; margin:0 8px 28px; }
     .brand-lockup { display:block; width:min(100%,190px); }
     .brand-lockup img { display:block; width:100%; height:auto; }
@@ -31,21 +45,23 @@ export function renderProductPhase2AppHtml(): string {
     .brand-title strong { font-size:16px; letter-spacing:0; }
     .brand-title span,.subtle,.field-help,.model-meta { color:var(--muted); }
     .brand-title span { font-size:12px; }
-    .project-label { color:var(--weak); font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; margin:0 8px 7px; }
-    .project-select,input,select { width:100%; min-height:40px; border:1px solid var(--line-strong); border-radius:8px; background:var(--sidebar); color:var(--text); padding:0 10px; }
-    .nav { margin-top:24px; display:grid; gap:4px; }
-    .nav-item { min-height:42px; border:1px solid transparent; border-radius:8px; background:transparent; color:var(--muted); text-align:left; padding:0 12px; transition:transform var(--motion-fast) var(--ease-press),background-color var(--motion-fast) var(--ease-standard),border-color var(--motion-fast) var(--ease-standard),color var(--motion-fast) var(--ease-standard); }
-    .nav-item:hover,.nav-item:focus-visible,.nav-item.active { background:var(--panel); border-color:var(--line); color:var(--text); }
-    .nav-item:active,.button:active,.card-action:active { transform:translateY(1px) scale(.98); }
+    .project-label,.nav-label { color:var(--weak); font-size:10px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; margin:18px 10px 6px; }
+    .project-select,input,select { width:100%; min-height:34px; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--panel); color:var(--text); padding:0 10px; font-size:13px; transition:border-color var(--motion-fast) var(--ease-standard); }
+    .project-select:hover,input:hover,select:hover { border-color:var(--line-strong); }
+    .nav { margin-top:20px; display:grid; gap:1px; }
+    .nav-item { display:flex; align-items:center; gap:9px; min-height:34px; border:0; border-radius:var(--radius-sm); background:transparent; color:var(--muted); text-align:left; padding:0 10px; font-size:13px; text-decoration:none; transition:background-color var(--motion-fast) var(--ease-standard),color var(--motion-fast) var(--ease-standard); }
+    .nav-item:hover,.nav-item:focus-visible { background:var(--panel-hover); color:var(--text); }
+    .nav-item.active { background:var(--accent-soft); color:var(--text); box-shadow:inset 2px 0 0 var(--accent); }
+    .button:active,.card-action:active { transform:translateY(1px); }
     .sidebar-bottom { margin-top:auto; padding:16px 8px 0; color:var(--weak); font-size:12px; }
-    .workspace { min-width:0; padding:32px clamp(20px,4vw,64px); }
-    .topbar { display:flex; justify-content:space-between; align-items:center; gap:16px; border-bottom:1px solid var(--line); padding-bottom:20px; }
-    .crumb { color:var(--muted); font-size:14px; }
+    .workspace { min-width:0; padding:0 var(--gutter) 64px; }
+    .topbar { position:sticky; top:0; z-index:3; display:flex; justify-content:space-between; align-items:center; gap:16px; border-bottom:1px solid var(--line); padding:16px 0; background:color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter:blur(12px); }
+    .crumb { color:var(--weak); font-size:13px; }
     .crumb strong { color:var(--text); }
-    .button { position:relative; min-height:38px; border-radius:8px; border:1px solid var(--line-strong); background:var(--panel); padding:0 13px; font-weight:700; transition:transform var(--motion-fast) var(--ease-press),background-color var(--motion-fast) var(--ease-standard),border-color var(--motion-fast) var(--ease-standard),color var(--motion-fast) var(--ease-standard),opacity var(--motion-fast) var(--ease-standard); }
-    .button:hover,.button:focus-visible { background:var(--panel-hover); border-color:#555; }
-    .button.primary { background:var(--text); border-color:var(--text); color:var(--bg); }
-    .button.primary:hover,.button.primary:focus-visible { background:var(--muted); border-color:var(--muted); }
+    .button { position:relative; min-height:34px; border-radius:var(--radius-sm); border:1px solid var(--line-strong); background:var(--panel); padding:0 12px; font-size:13px; font-weight:550; transition:transform var(--motion-fast) var(--ease-press),background-color var(--motion-fast) var(--ease-standard),border-color var(--motion-fast) var(--ease-standard),color var(--motion-fast) var(--ease-standard); }
+    .button:hover,.button:focus-visible { background:var(--panel-hover); border-color:var(--muted); }
+    .button.primary { background:var(--accent); border-color:var(--accent); color:#06080C; font-weight:600; }
+    .button.primary:hover,.button.primary:focus-visible { filter:brightness(1.1); background:var(--accent); border-color:var(--accent); }
     /* The failed colour reports an evidence state; chrome must not borrow it. */
     .button.danger { color:var(--text); border-color:var(--line-strong); }
     .button.danger:hover { border-color:var(--text); }
@@ -53,14 +69,16 @@ export function renderProductPhase2AppHtml(): string {
     .button[data-action-state="loading"]::before { content:""; display:inline-block; width:12px; height:12px; margin-right:7px; vertical-align:-1px; border:2px solid currentColor; border-right-color:transparent; border-radius:50%; animation:spin 700ms linear infinite; }
     .button[data-action-state="success"] { color:var(--confirmed-text); border-color:#2E3A26; }
     .button[data-action-state="error"] { color:var(--failed-text); border-color:#4A2620; }
-    .content { max-width:1440px; margin:0 auto; padding-top:28px; }
+    .content { max-width:1280px; margin:0 auto; padding-top:clamp(24px,3vw,40px); }
     /* No entrance animation: a view is static content, not a state change. */
     .view { }
-    h1 { margin:0; font-size:32px; letter-spacing:-0.01em; }
-    h2 { margin:0; font-size:22px; }
-    h3 { margin:0; font-size:17px; }
-    p { line-height:1.55; }
-    .heading { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; }
+    h1 { margin:0; font-size:clamp(26px,2.6vw,34px); letter-spacing:-0.03em; font-weight:650; }
+    h2 { margin:0; font-size:16px; font-weight:600; letter-spacing:-0.015em; }
+    h3 { margin:0; font-size:14px; font-weight:600; }
+    p { line-height:1.6; }
+    .subtle { font-size:13px; }
+    .heading { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap; margin-bottom:8px; }
+    .heading .subtle { margin-top:6px; }
     .toolbar,.actions,.card-actions,.inline-actions { display:flex; gap:9px; flex-wrap:wrap; }
     .heading .button,.heading .inline-actions .button { white-space:nowrap; }
     .toolbar { margin:24px 0 18px; }
@@ -68,10 +86,26 @@ export function renderProductPhase2AppHtml(): string {
     .filter:hover,.filter:focus-visible,.filter.active { background:var(--panel); color:var(--text); border-color:var(--line-strong); }
     .filter:active { transform:translateY(1px) scale(.98); }
     .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:12px; }
-    .card,.detail,.section-card { border:1px solid var(--line); border-radius:8px; background:var(--panel); padding:18px; transition:border-color var(--motion-fast) var(--ease-standard),background-color var(--motion-fast) var(--ease-standard); }
+    .card,.detail,.section-card { border:1px solid var(--line); border-radius:var(--radius); background:var(--panel); padding:clamp(14px,1.6vw,20px); transition:border-color var(--motion-fast) var(--ease-standard),background-color var(--motion-fast) var(--ease-standard); }
     .card:hover,.card:focus-within { border-color:var(--line-strong); background:var(--panel-hover); }
     .mcols-project { grid-template-columns:minmax(0,1.1fr) minmax(0,1.2fr) 86px 148px auto; }
     .mcols-provider { grid-template-columns:minmax(0,1fr) 210px 124px minmax(0,1.5fr); align-items:start; }
+    .mcols-board { grid-template-columns:32px minmax(0,1.6fr) 150px 90px 110px; align-items:start; }
+    .mcols-topic { grid-template-columns:minmax(0,1.3fr) 80px 110px 90px minmax(0,1.4fr); align-items:start; }
+    .mcols-aemodel { grid-template-columns:minmax(0,1.6fr) 80px 110px 90px; align-items:start; }
+    .mcols-prompt { grid-template-columns:minmax(0,1fr) 110px 120px; align-items:start; }
+    .scorehead { display:flex; flex-direction:column; align-items:flex-end; gap:4px; }
+    .scorebig { font-size:clamp(40px,5vw,60px); font-weight:650; line-height:.9; letter-spacing:-0.04em; font-variant-numeric:tabular-nums; background:linear-gradient(180deg,var(--text),var(--muted)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+    .statgrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:1px; margin-top:16px; background:var(--line); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; }
+    .stat { background:var(--panel); padding:14px 16px; display:grid; gap:3px; }
+    .stat span { font-size:11px; letter-spacing:.07em; text-transform:uppercase; color:var(--weak); font-weight:600; }
+    .stat strong { font-size:24px; font-weight:600; letter-spacing:-0.02em; line-height:1.1; }
+    .stat small { font-size:12px; color:var(--weak); }
+    .bar { height:3px; border-radius:2px; background:var(--line-strong); overflow:hidden; margin-top:6px; }
+    .bar > i { display:block; height:100%; background:var(--accent); border-radius:2px; transition:width var(--motion-normal) var(--ease-standard); }
+    .inline-form { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
+    .inline-form input,.inline-form select { flex:1 1 180px; min-width:0; padding:8px 10px; border-radius:6px; border:1px solid var(--line); background:var(--sidebar); color:var(--text); font:inherit; font-size:13px; }
+    .inline-form input { flex:3 1 320px; }
     .mcols-vis { grid-template-columns:minmax(0,1fr) 120px 110px; }
     .mcols-voice { grid-template-columns:minmax(0,1fr) 110px 120px; }
     .mcols-cited { grid-template-columns:minmax(0,1fr) 100px minmax(0,1fr); }
@@ -131,9 +165,9 @@ export function renderProductPhase2AppHtml(): string {
     .drawer-head { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; margin-bottom:28px; }
     .close { width:34px; min-width:34px; height:34px; border:1px solid var(--line); border-radius:7px; background:var(--panel); }
     .drawer-footer { display:flex; justify-content:space-between; gap:12px; border-top:1px solid var(--line); margin-top:28px; padding-top:18px; }
-    .section-stack { display:grid; gap:14px; margin-top:22px; }
-    .section-card { padding:20px; }
-    .section-head { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; margin-bottom:14px; }
+    .section-stack { display:grid; gap:12px; margin-top:20px; }
+    .section-card { margin-top:12px; }
+    .section-head { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; margin-bottom:4px; flex-wrap:wrap; }
     .protocol-list { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:8px; padding:0; margin:15px 0 0; list-style:none; }
     .protocol-list li { border:1px solid var(--line); background:var(--sidebar); border-radius:7px; padding:10px; color:var(--muted); font-size:13px; min-width:0; overflow-wrap:anywhere; }
     .model-search { margin:18px 0 12px; }
@@ -142,18 +176,20 @@ export function renderProductPhase2AppHtml(): string {
     .model-catalog-controls select { min-width:0; }
     .catalog-result-summary { color:var(--weak); font-size:12px; margin:0 0 12px; }
     .model-list { display:grid; gap:8px; max-height:620px; overflow:auto; padding-right:3px; }
-    .mtable { margin-top:14px; border-top:1px solid var(--line); }
-    .mhead,.mrow { display:grid; align-items:center; gap:14px; padding:8px; border-bottom:1px solid var(--line); }
-    .mhead { font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--weak); }
+    .mtable { margin-top:14px; }
+    .mhead,.mrow { display:grid; align-items:center; gap:16px; padding:10px 8px; border-bottom:1px solid var(--line); }
+    .mrow:last-child { border-bottom:0; }
+    .mhead { font-size:10px; letter-spacing:.09em; text-transform:uppercase; color:var(--weak); font-weight:600; }
     .mrow { transition:background-color var(--motion-fast) var(--ease-standard); }
-    .mrow:hover,.mrow:focus-within { background:var(--panel-hover); }
+    .mrow:hover,.mrow:focus-within { background:var(--panel-hover); border-radius:var(--radius-sm); }
     .mcols-selected { grid-template-columns:minmax(0,1fr) 104px 92px 178px; }
     .mcols-readonly { grid-template-columns:minmax(0,1fr) 104px 178px; }
     .mcols-catalog { grid-template-columns:20px minmax(0,1fr) 116px 96px 178px; }
     .mname { min-width:0; }
-    .mname strong { display:block; font-size:13px; line-height:1.35; }
-    .mname span { display:block; font-size:11px; color:var(--weak); overflow-wrap:anywhere; }
-    .mcell { font-size:12px; color:var(--muted); min-width:0; overflow-wrap:anywhere; }
+    .mname strong { display:block; font-size:13px; line-height:1.4; font-weight:550; color:var(--text); }
+    .mname span { display:block; font-size:12px; color:var(--weak); overflow-wrap:anywhere; margin-top:2px; }
+    .mname .subtle { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; font-size:12px; color:var(--weak); margin-top:3px; }
+    .mcell { font-size:13px; color:var(--muted); min-width:0; overflow-wrap:anywhere; }
     .state-ok { color:var(--confirmed-text); }
     .state-flag { color:var(--unknown-text); }
     .state-bad { color:var(--failed-text); }
@@ -255,7 +291,7 @@ export function renderProductPhase2AppHtml(): string {
     </form>
   </aside>
   <script>
-    const state = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0 };
+    const state = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" } };
     const app = document.getElementById("app");
     const element = (id) => document.getElementById(id);
     const html = (value) => String(value).split("&").join("&amp;").split("<").join("&lt;").split(">").join("&gt;").split('"').join("&quot;").split("'").join("&#39;");
@@ -295,6 +331,48 @@ export function renderProductPhase2AppHtml(): string {
         state.providersState = "ready";
       } catch (error) {
         state.providersState = "error";
+      }
+      render();
+    }
+
+    async function loadTopics() {
+      if (!state.selectedId || state.topicState === "loading") return;
+      state.topicState = "loading";
+      try {
+        state.topicSet = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/topics");
+        state.topicState = "ready";
+      } catch (error) {
+        state.topicState = "error";
+      }
+      render();
+    }
+
+    async function loadAnswerEngine() {
+      if (!state.selectedId || state.answerEngineState === "loading") return;
+      state.answerEngineState = "loading";
+      try {
+        state.answerEngine = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/prompt-insights");
+        state.answerEngineState = "ready";
+      } catch (error) {
+        state.answerEngineState = "error";
+      }
+      render();
+    }
+
+    async function postPrompts(path, body, working, done) {
+      if (!state.selectedId) return;
+      state.promptRunState = working;
+      state.promptNotice = { text:"", kind:"" };
+      render();
+      try {
+        await request("/api/projects/" + encodeURIComponent(state.selectedId) + path, { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body || {}) });
+        state.promptRunState = "idle";
+        state.promptNotice = { text: done, kind: "success" };
+        state.topicState = "idle";
+        state.answerEngineState = "idle";
+      } catch (error) {
+        state.promptRunState = "idle";
+        state.promptNotice = { text: error && error.message ? error.message : String(error), kind: "error" };
       }
       render();
     }
@@ -652,6 +730,134 @@ export function renderProductPhase2AppHtml(): string {
       }).join("");
       return head + notice + disabled + '<div class="mtable"><div class="mhead mcols-credential"><span>Provider</span><span>Key</span><span>Change</span></div>' + rows + '</div></section>';
     }
+    // A score nobody can take apart is a score nobody can act on, so the
+    // components are always next to the number and the weights are printed.
+    function pct(value) { return value === null || value === undefined ? "Not measurable" : Math.round(value * 100) + "%"; }
+    function scoreText(value) { return value === null || value === undefined ? "Not measurable" : String(value); }
+    function intentLabel(intent) {
+      return intent === "discovery" ? "Discovery" : intent === "comparison" ? "Comparison" : intent === "alternatives" ? "Alternatives" : intent === "brand" ? "Brand" : "Problem";
+    }
+
+    function bar(value) { return value === null || value === undefined ? '' : '<div class="bar"><i style="width:' + Math.round(value * 100) + '%"></i></div>'; }
+    function stat(label, value, note, fraction) {
+      return '<div class="stat"><span>' + html(label) + '</span><strong>' + value + '</strong><small>' + html(note) + '</small>' + bar(fraction) + '</div>';
+    }
+
+    function renderScoreBreakdown(score) {
+      if (!score || score.answers === 0) return '<p class="subtle">Nothing has been answered yet, so there is nothing to score. This is not a zero.</p>';
+      return '<div class="statgrid">'
+        + stat("Presence", pct(score.presenceRate), score.appearances + ' of ' + score.answers + ' answers named you', score.presenceRate)
+        + stat("Prominence", pct(score.prominence), score.prominence === null ? 'No answer gave a readable order' : 'Full marks means always named first', score.prominence)
+        + stat("Sentiment", pct(score.sentiment), score.sentiment === null ? 'Nothing named, so nothing judged' : 'Full marks means always recommended', score.sentiment)
+        + '</div>';
+    }
+
+    function renderLeaderboard(rows) {
+      if (!rows || !rows.length) return '<p class="subtle">No organisation was named in any answer yet.</p>';
+      return '<div class="mtable"><div class="mhead mcols-board"><span>#</span><span>Who</span><span>Answers naming them</span><span>Share</span><span>Prominence</span></div>'
+        + rows.slice(0, 12).map((row, index) => '<div class="mrow mcols-board" data-state="' + (row.isTarget ? "done" : "") + '">'
+          + '<span class="mcell mono">' + (index + 1) + '</span>'
+          + '<div class="mname"><strong>' + html(row.name) + (row.isTarget ? ' <span class="tag ready">You</span>' : '') + '</strong><span class="mono">' + html(row.domain || "no domain given") + '</span></div>'
+          + '<span class="mcell">' + row.appearances + '</span>'
+          + '<span class="mcell">' + pct(row.shareOfAnswers) + '</span>'
+          + '<span class="mcell">' + pct(row.prominence) + '</span></div>').join("")
+        + '</div>';
+    }
+
+    function renderTopicRows(topics) {
+      if (!topics || !topics.length) return '<p class="subtle">No topic has been answered yet.</p>';
+      return '<div class="mtable"><div class="mhead mcols-topic"><span>Topic</span><span>Score</span><span>Presence</span><span>Rank</span><span>Weakest prompt</span></div>'
+        + topics.map((topic) => {
+          const worst = topic.prompts[0];
+          const stateClass = topic.score.score === null ? "" : topic.score.score >= 50 ? "state-ok" : topic.score.score > 0 ? "state-flag" : "state-bad";
+          return '<div class="mrow mcols-topic">'
+            + '<div class="mname"><strong>' + html(topic.name) + '</strong><span class="subtle">' + html(topic.description || topic.prompts.length + " prompt(s)") + '</span></div>'
+            + '<span class="mcell ' + stateClass + '">' + scoreText(topic.score.score) + '</span>'
+            + '<span class="mcell">' + pct(topic.score.presenceRate) + '</span>'
+            + '<span class="mcell">' + (topic.rank === null ? "Not named" : "#" + topic.rank) + '</span>'
+            + '<span class="mcell">' + (worst ? html(worst.text) : "") + '</span></div>';
+        }).join("")
+        + '</div>';
+    }
+
+    function renderAbsent(rows) {
+      if (!rows || !rows.length) return '<p class="subtle">Every prompt with an answer named you at least once.</p>';
+      return '<ul class="protocol-list">' + rows.slice(0, 12).map((row) => '<li><strong>' + html(row.text) + '</strong><br><span class="subtle">' + row.score.answers + ' answer(s), none named you. '
+        + (row.ahead.length ? 'Named instead: ' + row.ahead.map((entity) => html(entity.name)).join(", ") + '.' : 'No competitor was named either, so this question may not be about a product at all.')
+        + '</span></li>').join("") + '</ul>';
+    }
+
+    function renderModelRows(rows) {
+      if (!rows || !rows.length) return '<p class="subtle">No model has answered yet.</p>';
+      return '<div class="mtable"><div class="mhead mcols-aemodel"><span>Model</span><span>Score</span><span>Presence</span><span>Answers</span></div>'
+        + rows.map((row) => '<div class="mrow mcols-aemodel">'
+          + '<div class="mname"><strong>' + html(row.displayName) + '</strong><span class="mono">' + html(row.modelId) + '</span></div>'
+          + '<span class="mcell">' + scoreText(row.score.score) + '</span>'
+          + '<span class="mcell">' + pct(row.score.presenceRate) + '</span>'
+          + '<span class="mcell">' + row.score.answers + '</span></div>').join("")
+        + '</div>';
+    }
+
+    function renderAnswerEngine() {
+      const selected = project();
+      if (!selected) return '<section class="view"><div class="empty"><div class="empty-copy"><h2>Select a project first</h2></div></div></section>';
+      if (state.answerEngineState === "idle") { loadAnswerEngine(); }
+      if (state.answerEngineState !== "ready") {
+        return '<section class="view"><div class="heading"><div><h1>Answer engine</h1><p class="subtle">How the models answer the questions your buyers ask.</p></div></div><div class="empty"><div class="empty-copy"><h2>' + (state.answerEngineState === "error" ? "Could not read the answers" : "Reading the archived answers") + '</h2></div></div></section>';
+      }
+      const data = state.answerEngine;
+      if (!data || data.answers === 0) {
+        return '<section class="view"><div class="heading"><div><h1>Answer engine</h1><p class="subtle">How the models answer the questions your buyers ask.</p></div><div class="inline-actions"><button type="button" class="button primary" data-page="prompts">Set up prompts</button></div></div>'
+          + '<div class="empty"><div class="empty-copy"><h2>No answers yet</h2><p class="subtle">Generate a prompt set, activate the questions worth tracking, then run them. Every number on this page traces back to an archived answer.</p></div></div></section>';
+      }
+      const weights = data.weights || { prominenceFloor: 0, sentimentFloor: 0 };
+      const failedNote = data.answersFailed ? '<div class="warning-box">' + data.answersFailed + ' answer(s) failed and are excluded. They are not counted as answers that did not name you.</div>' : '';
+      const citationNote = data.citationsUnavailable ? '<div class="warning-box">No answer carried a citation, so there are no sources to analyse. That is a property of the models you ran, not evidence that nobody cites you. A provider with web search will produce them.</div>' : '';
+      return '<section class="view"><div class="heading"><div><h1>Answer engine</h1><p class="subtle">' + data.answers + ' answer(s) across ' + data.topics.length + ' topic(s) for ' + html(selected.normalizedDomain) + '.</p></div><div class="inline-actions"><button type="button" class="button" data-page="prompts">Prompts</button><button type="button" class="button primary" data-run-prompts>' + (state.promptRunState === "running" ? "Running…" : "Run prompts") + '</button></div></div>'
+        + failedNote + citationNote
+        + '<section class="section-card"><div class="section-head"><div><h2>Answer engine score</h2><p class="subtle">Presence scaled by where you appear and how you are described.</p></div><div class="scorehead"><span class="scorebig">' + scoreText(data.overall.score) + '</span><span class="subtle">' + (data.rank === null ? "Not named" : "Rank #" + data.rank + " of " + data.leaderboard.length) + '</span></div></div>'
+        + renderScoreBreakdown(data.overall)
+        + '<details class="technical-details"><summary>How this number is built</summary><p class="subtle">score = presence × (' + weights.prominenceFloor + ' + ' + (1 - weights.prominenceFloor).toFixed(1) + ' × prominence) × (' + weights.sentimentFloor + ' + ' + (1 - weights.sentimentFloor).toFixed(1) + ' × sentiment) × 100.</p><p class="subtle">The two floors are a judgement, not a measurement: being named late and grudgingly is still better than not being named, so prominence and sentiment scale presence rather than replacing it. Every component above is reported separately so you can ignore the composite entirely.</p></details></section>'
+        + '<section class="section-card"><div class="section-head"><div><h2>Who the models name</h2><p class="subtle">Ranked by how many answers named them, then by how early.</p></div></div>' + renderLeaderboard(data.leaderboard) + '</section>'
+        + '<section class="section-card"><div class="section-head"><div><h2>Topics, weakest first</h2><p class="subtle">Where you are losing, in the order worth fixing.</p></div></div>' + renderTopicRows(data.topics) + '</section>'
+        + '<section class="section-card"><div class="section-head"><div><h2>Questions you never appear in</h2><p class="subtle">Answered, and you were not named once. This is the actionable list.</p></div></div>' + renderAbsent(data.absentFrom) + '</section>'
+        + '<section class="section-card"><div class="section-head"><div><h2>By model</h2><p class="subtle">The same questions, answered differently.</p></div></div>' + renderModelRows(data.byModel) + '</section></section>';
+    }
+
+    function renderPromptRows(set) {
+      if (!set.topics.length) return '<p class="subtle">No topics yet.</p>';
+      return set.topics.map((topic) => {
+        const prompts = set.prompts.filter((prompt) => prompt.topicId === topic.id && prompt.status !== "retired");
+        const proposed = prompts.filter((prompt) => prompt.status === "proposed");
+        const bulk = proposed.length ? '<button type="button" class="card-action" data-activate-topic="' + html(topic.id) + '">Activate all ' + proposed.length + '</button>' : '';
+        const rows = prompts.map((prompt) => '<div class="mrow mcols-prompt">'
+          + '<div class="mname"><strong>' + html(prompt.text) + '</strong><span class="subtle">' + intentLabel(prompt.intent) + (prompt.measuresVisibility ? '' : ' · names you, so it cannot measure visibility') + '</span></div>'
+          + '<span class="mcell ' + (prompt.status === "active" ? "state-ok" : "state-flag") + '">' + (prompt.status === "active" ? "Tracked" : "Proposed") + '</span>'
+          + '<span class="mcell">' + (prompt.status === "active"
+            ? '<button type="button" class="linklike" data-retire-prompt="' + html(prompt.id) + '">Stop tracking</button>'
+            : '<button type="button" class="linklike" data-activate-prompt="' + html(prompt.id) + '">Track it</button>') + '</span></div>').join("");
+        return '<section class="section-card"><div class="section-head"><div><h2>' + html(topic.name) + '</h2><p class="subtle">' + html(topic.description || "") + '</p></div><div class="inline-actions">' + bulk + '</div></div><div class="mtable"><div class="mhead mcols-prompt"><span>Question</span><span>State</span><span></span></div>' + rows + '</div></section>';
+      }).join("");
+    }
+
+    function renderPrompts() {
+      const selected = project();
+      if (!selected) return '<section class="view"><div class="empty"><div class="empty-copy"><h2>Select a project first</h2></div></div></section>';
+      if (state.topicState === "idle") { loadTopics(); }
+      if (state.topicState !== "ready") {
+        return '<section class="view"><div class="heading"><div><h1>Prompts</h1><p class="subtle">The questions your buyers ask.</p></div></div><div class="empty"><div class="empty-copy"><h2>' + (state.topicState === "error" ? "Could not read the prompt set" : "Loading prompts") + '</h2></div></div></section>';
+      }
+      const set = state.topicSet || { topics: [], prompts: [] };
+      const notice = state.promptNotice.text ? '<div class="' + (state.promptNotice.kind === "error" ? "warning-box" : "success-box") + '">' + html(state.promptNotice.text) + '</div>' : '';
+      const active = set.prompts.filter((prompt) => prompt.status === "active").length;
+      const head = '<section class="view"><div class="heading"><div><h1>Prompts</h1><p class="subtle">' + active + ' tracked of ' + set.prompts.length + ' across ' + set.topics.length + ' topic(s). Every metric is sliced by these.</p></div><div class="inline-actions"><button type="button" class="button" data-generate-prompts>' + (state.promptRunState === "generating" ? "Proposing…" : "Propose a set") + '</button><button type="button" class="button primary" data-run-prompts' + (active ? '' : ' disabled') + '>' + (state.promptRunState === "running" ? "Running…" : "Run " + active + " prompt(s)") + '</button></div></div>' + notice;
+      if (!set.prompts.length) {
+        return head + '<div class="empty"><div class="empty-copy"><h2>No prompts yet</h2><p class="subtle">Propose a set and a model will suggest the questions buyers ask about what you do, grouped into topics. Nothing runs until you have read them and chosen which to track, because what buyers ask is not something this tool can observe.</p></div></div></section>';
+      }
+      const addTopic = set.topics.length ? '<section class="section-card"><div class="section-head"><div><h2>Add your own</h2><p class="subtle">A question you know buyers ask. It starts tracked.</p></div></div><form id="add-prompt-form" class="inline-form"><select name="topicId" aria-label="Topic">' + set.topics.map((topic) => '<option value="' + html(topic.id) + '">' + html(topic.name) + '</option>').join("") + '</select><input name="text" type="text" placeholder="best stock screener for indian markets" aria-label="Question"><select name="intent" aria-label="Intent"><option value="discovery">Discovery</option><option value="comparison">Comparison</option><option value="alternatives">Alternatives</option><option value="brand">Brand</option><option value="problem">Problem</option></select><button type="submit" class="button">Add</button></form></section>' : '';
+      return head + renderPromptRows(set) + addTopic + '</section>';
+    }
+
     function renderSetup() {
       if (state.providersState === "idle") { loadProviders(); }
       if (state.providersState !== "ready") {
@@ -749,7 +955,7 @@ export function renderProductPhase2AppHtml(): string {
     function renderConfiguration() { const selected = project(); if (!selected) return '<section class="view"><div class="empty"><div class="empty-copy"><h2>Select a project first</h2><p class="subtle">A configuration belongs to a single project.</p></div></div></section>'; if (state.configurationState === "loading") return '<section class="view"><div class="heading"><div><h1>Configuration</h1><p class="subtle">Loading the current configuration…</p></div></div><div class="section-card inline-empty" aria-live="polite">Loading the domain, models and web search modes.</div></section>'; const configuration = monitoringConfiguration(); const hasModels = selectedRows().length > 0; const notice = state.monitoringNotice.text; const noticeKind = state.monitoringNotice.kind; const stateMessage = !hasModels ? "Select at least one available model before saving the configuration." : configuration.status === "no_version" ? "No configuration saved yet. Saving fixes the current domain, language, models and web search modes." : configuration.status === "changed" ? "The models or web search modes have changed. Saving creates a new configuration version." : "The current models and web search modes are saved."; const stateClass = !hasModels || configuration.status === "changed" ? "warning-box" : configuration.status === "unchanged" ? "success-box" : "warning-box"; return '<section class="view"><div class="heading"><div><h1>Configuration</h1><p class="subtle">Save the domain, output language and each model\\'s web search mode as reusable monitoring conditions.</p></div>' + saveConfigurationButton(configuration, hasModels) + '</div><div id="monitoring-configuration-status" data-testid="monitoring-configuration-status" class="form-status ' + html(noticeKind) + '" aria-live="polite">' + html(notice) + '</div><div class="section-stack"><section class="section-card"><div class="section-head"><div><h2>Current version</h2><p class="subtle">Target domain: <span class="mono">' + html(selected.normalizedDomain) + '</span></p></div><span class="tag ' + (configuration.status === "unchanged" ? "ready" : "warning") + '">' + (configuration.currentVersion ? "v" + configuration.currentVersion : "Not saved yet") + '</span></div><div class="' + stateClass + '" data-testid="monitoring-configuration-summary">' + html(stateMessage) + '</div></section><section class="section-card"><div class="section-head"><div><h2>Current model configuration</h2><p class="subtle">Each model stores its own web search mode.</p></div><button type="button" class="button" data-page="models">Adjust models</button></div>' + renderSelectedModels(true) + '</section>' + renderConfigurationDiff(configuration) + '<section class="section-card"><div class="section-head"><div><h2>Past configurations</h2><p class="subtle">Read-only snapshot. Saving a new version does not overwrite past configurations.</p></div></div>' + renderConfigurationRows(configuration) + '</section>' + renderTechnicalDetails(configuration) + '</div></section>'; }
     const brandMark = ${JSON.stringify(renderCiteGeoMarkSvg("phase2-brand-mark").split("\n").join(""))};
     const brandLockup = ${JSON.stringify(renderCiteGeoLockup("brand-lockup-image"))};
-    function render() { if (window.__citegeoPhase5Active) return; const selected = project(); const options = state.currentProjects.length ? state.currentProjects.map((item) => '<option value="' + html(item.id) + '">' + html(item.name) + ' · ' + html(item.normalizedDomain) + '</option>').join("") : '<option value="">No projects yet</option>'; let view = state.page === "models" ? renderModels() : state.page === "configuration" ? renderConfiguration() : state.page === "setup" ? renderSetup() : state.page === "visibility" ? renderVisibility() : state.page === "dashboard" ? renderDashboard() : renderOverview(); app.innerHTML = '<div class="shell"><aside class="sidebar"><div class="brand"><div class="brand-lockup">' + brandLockup + '</div></div><div class="project-label">Project</div><select id="project-select" class="project-select" aria-label="Switch project" data-testid="project-select">' + options + '</select><nav class="nav" aria-label="Project navigation"><button type="button" class="nav-item ' + (state.page === "dashboard" ? "active" : "") + '" data-page="dashboard"><span>Dashboard</span></button><div class="nav-label">Run a test</div><button type="button" class="nav-item ' + (state.page === "models" ? "active" : "") + '" data-page="models"><span class="nav-step">1</span><span>Choose models</span></button><button type="button" class="nav-item ' + (state.page === "recognition" || state.page === "reports" ? "active" : "") + '" data-page="recognition"><span class="nav-step">2</span><span>Results</span></button><button type="button" class="nav-item ' + (state.page === "visibility" ? "active" : "") + '" data-page="visibility"><span class="nav-step">3</span><span>Visibility</span></button><div class="nav-label">Over time</div><a class="nav-item" href="?view=measurements"><span>Continuous measurement</span></a><div class="nav-label">Machine</div><button type="button" class="nav-item ' + (state.page === "overview" ? "active" : "") + '" data-page="overview"><span>Projects</span></button><button type="button" class="nav-item ' + (state.page === "configuration" ? "active" : "") + '" data-page="configuration"><span>Configuration history</span></button><button type="button" class="nav-item ' + (state.page === "setup" ? "active" : "") + '" data-page="setup"><span>Setup</span></button></nav><div class="sidebar-bottom">Domain recognition</div></aside><main class="workspace"><header class="topbar"><div class="crumb"><strong>${PRODUCT_NAME}</strong> / ' + html(selected ? selected.name : "Project") + '</div><button id="new-project" type="button" class="button primary" data-testid="new-project">New project</button></header><section class="content">' + view + '</section></main></div>'; const select = element("project-select"); select.value = state.selectedId; document.title = selected ? selected.name + " | ${PRODUCT_TITLE}" : "${PRODUCT_TITLE}"; }
+    function render() { if (window.__citegeoPhase5Active) return; const selected = project(); const options = state.currentProjects.length ? state.currentProjects.map((item) => '<option value="' + html(item.id) + '">' + html(item.name) + ' · ' + html(item.normalizedDomain) + '</option>').join("") : '<option value="">No projects yet</option>'; let view = state.page === "models" ? renderModels() : state.page === "configuration" ? renderConfiguration() : state.page === "setup" ? renderSetup() : state.page === "visibility" ? renderVisibility() : state.page === "prompts" ? renderPrompts() : state.page === "answer-engine" ? renderAnswerEngine() : state.page === "dashboard" ? renderDashboard() : renderOverview(); app.innerHTML = '<div class="shell"><aside class="sidebar"><div class="brand"><div class="brand-lockup">' + brandLockup + '</div></div><div class="project-label">Project</div><select id="project-select" class="project-select" aria-label="Switch project" data-testid="project-select">' + options + '</select><nav class="nav" aria-label="Project navigation"><button type="button" class="nav-item ' + (state.page === "dashboard" ? "active" : "") + '" data-page="dashboard"><span>Dashboard</span></button><div class="nav-label">Run a test</div><button type="button" class="nav-item ' + (state.page === "models" ? "active" : "") + '" data-page="models"><span class="nav-step">1</span><span>Choose models</span></button><button type="button" class="nav-item ' + (state.page === "recognition" || state.page === "reports" ? "active" : "") + '" data-page="recognition"><span class="nav-step">2</span><span>Results</span></button><button type="button" class="nav-item ' + (state.page === "visibility" ? "active" : "") + '" data-page="visibility"><span class="nav-step">3</span><span>Visibility</span></button><div class="nav-label">Answer engine</div><button type="button" class="nav-item ' + (state.page === "answer-engine" ? "active" : "") + '" data-page="answer-engine"><span>Scores</span></button><button type="button" class="nav-item ' + (state.page === "prompts" ? "active" : "") + '" data-page="prompts"><span>Prompts</span></button><div class="nav-label">Over time</div><a class="nav-item" href="?view=measurements"><span>Continuous measurement</span></a><div class="nav-label">Machine</div><button type="button" class="nav-item ' + (state.page === "overview" ? "active" : "") + '" data-page="overview"><span>Projects</span></button><button type="button" class="nav-item ' + (state.page === "configuration" ? "active" : "") + '" data-page="configuration"><span>Configuration history</span></button><button type="button" class="nav-item ' + (state.page === "setup" ? "active" : "") + '" data-page="setup"><span>Setup</span></button></nav><div class="sidebar-bottom">Domain recognition</div></aside><main class="workspace"><header class="topbar"><div class="crumb"><strong>${PRODUCT_NAME}</strong> / ' + html(selected ? selected.name : "Project") + '</div><button id="new-project" type="button" class="button primary" data-testid="new-project">New project</button></header><section class="content">' + view + '</section></main></div>'; const select = element("project-select"); select.value = state.selectedId; document.title = selected ? selected.name + " | ${PRODUCT_TITLE}" : "${PRODUCT_TITLE}"; }
     async function setPage(page) { state.page = page; savePreference("page", page); if (page === "configuration") { await refreshConfiguration(); return; } if (page === "reports" && window.__citegeoPhase4 && typeof window.__citegeoPhase4.open === "function") { await window.__citegeoPhase4.open(); return; } render(); if (page === "models") { await refreshConfiguration(); await loadCatalog(); } }
     async function createDraft(event) { event.preventDefault(); const button = element("save-draft"); const session = state.drawerSession; setFormStatus("Creating project draft", "loading"); try { const response = await runAction(button, { loading:"Saving…", success:"Saved", error:"Save failed" }, () => request("/api/projects", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ domain:element("project-domain").value, name:element("project-name").value }) })); state.mode = "current"; state.page = "overview"; setSelectedProject(response.project.id); await refreshProjects(); state.selections = []; state.baselines = []; resetDraftSelections(); setFormStatus("Draft saved", "success"); render(); window.setTimeout(() => { if (state.drawerSession === session) closeDrawer(); }, 850); } catch (error) { setFormStatus(error instanceof Error ? error.message : String(error), "error"); } }
     async function saveProject(event) { event.preventDefault(); const selected = project(); if (!selected) return; const button = event.currentTarget.querySelector('button[type="submit"]'); try { await runAction(button, { loading:"Saving…", success:"Saved", error:"Save failed" }, () => request("/api/projects/" + encodeURIComponent(selected.id), { method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ domain:element("edit-domain").value, name:element("edit-name").value }) })); await refreshProjects(); render(); } catch (error) { window.alert(error instanceof Error ? error.message : String(error)); } }
@@ -758,6 +964,32 @@ export function renderProductPhase2AppHtml(): string {
     function changeModelMode(modelId, mode) { const catalogItem = state.catalog.find((item) => item.modelId === modelId); if (!catalogItem || !state.draftSelections.has(modelId)) return; if (mode === "provider_native" && !catalogItem.nativeWebSearchSupported) return; state.modelNotice = { text:"", kind:"" }; state.modelActionState = "idle"; state.draftSelections.set(modelId, mode); state.selectionsDirty = true; render(); }
     async function saveModels(button) { const selected = project(); if (!selected) return; const selections = Array.from(state.draftSelections.entries()).map(([modelId, webSearchMode]) => ({ modelId, webSearchMode })); state.modelNotice = { text:"Saving each model\\'s own web search mode…", kind:"loading" }; try { const response = await runAction(button, { loading:"Saving…", success:"Saved", error:"Save failed" }, () => request("/api/projects/" + encodeURIComponent(selected.id) + "/models", { method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ selections }) })); state.selections = response.selections; resetDraftSelections(); state.modelNotice = { text:"Model configuration saved", kind:"success" }; state.modelActionState = "success"; render(); window.setTimeout(() => { state.modelActionState = "idle"; if (state.page === "models") render(); }, 850); } catch (error) { state.modelNotice = { text:error instanceof Error ? error.message : String(error), kind:"error" }; state.modelActionState = "error"; render(); } }
     async function saveMonitoringConfiguration() { const selected = project(); const configuration = monitoringConfiguration(); if (!selected || configuration.status === "unchanged" || state.monitoringSaveState === "saving") return; if (selectedRows().length === 0) { state.monitoringNotice = { text:"Select at least one available model before saving the configuration.", kind:"error" }; state.monitoringSaveState = "failed"; render(); return; } state.monitoringSaveState = "saving"; state.monitoringNotice = { text:"Saving the current domain, language, models and web search modes…", kind:"loading" }; render(); try { const response = await request("/api/projects/" + encodeURIComponent(selected.id) + "/baselines", { method:"POST", headers:{"Content-Type":"application/json"}, body:"{}" }); state.currentProjects = state.currentProjects.map((item) => item.id === response.project.id ? response.project : item); state.projects = state.projects.map((item) => item.id === response.project.id ? response.project : item); await refreshConfiguration(); const version = response.baseline.version; state.monitoringSaveState = "saved"; state.monitoringNotice = { text:"Saved as config v" + version, kind:"success" }; render(); window.setTimeout(() => { state.monitoringSaveState = "idle"; if (state.page === "configuration") render(); }, 850); } catch (error) { if (errorCode(error) === "baseline_unchanged") { await refreshConfiguration(); state.monitoringSaveState = "idle"; state.monitoringNotice = { text:"The current configuration is already saved", kind:"success" }; render(); return; } state.monitoringSaveState = "failed"; state.monitoringNotice = { text:error instanceof Error ? error.message : expectedErrorText.request_failed, kind:"error" }; render(); } }
+    document.addEventListener("click", async (event) => {
+      const clicked = event.target;
+      if (!clicked || !clicked.closest) return;
+      if (clicked.closest("[data-generate-prompts]")) { await postPrompts("/topics/generate", {}, "generating", "A set has been proposed. Read it, then track the questions worth tracking."); return; }
+      if (clicked.closest("[data-run-prompts]")) { await postPrompts("/prompt-runs", {}, "running", "The run finished. Every answer is archived."); return; }
+      const activate = clicked.closest("[data-activate-prompt]");
+      if (activate) { await postPrompts("/prompts/activate", { promptIds:[activate.getAttribute("data-activate-prompt")] }, "saving", "Now tracked."); return; }
+      const retire = clicked.closest("[data-retire-prompt]");
+      if (retire) { await postPrompts("/prompts/retire", { promptIds:[retire.getAttribute("data-retire-prompt")] }, "saving", "No longer tracked. Past answers are kept."); return; }
+      const activateTopic = clicked.closest("[data-activate-topic]");
+      if (activateTopic) {
+        const topicId = activateTopic.getAttribute("data-activate-topic");
+        const set = state.topicSet || { prompts: [] };
+        const ids = set.prompts.filter((prompt) => prompt.topicId === topicId && prompt.status === "proposed").map((prompt) => prompt.id);
+        await postPrompts("/prompts/activate", { promptIds: ids }, "saving", ids.length + " prompt(s) now tracked.");
+      }
+    });
+
+    document.addEventListener("submit", async (event) => {
+      const form = event.target;
+      if (!form || form.id !== "add-prompt-form") return;
+      event.preventDefault();
+      const data = new FormData(form);
+      await postPrompts("/prompts", { topicId: data.get("topicId"), text: data.get("text"), intent: data.get("intent") }, "saving", "Added and tracked.");
+    });
+
     document.addEventListener("click", async (event) => { const target = event.target; if (target && target.closest && target.closest("[data-reload-providers]")) { state.providersState = "idle"; loadProviders(); return; }
       if (target && target.closest && target.closest("[data-reload-insights]")) { state.insightsState = "idle"; state.crawlersState = "idle"; state.planState = "idle"; state.signalsState = "idle"; loadInsights(); loadCrawlers(); loadPlan(); loadSignals(); return; }
       const rangeButton = target && target.closest ? target.closest("[data-dash-range]") : null;
@@ -802,7 +1034,7 @@ export function renderProductPhase2AppHtml(): string {
     async function retryRecognition(modelRunId, button) { const selected = project(); const detail = state.recognitionDetail; if (!selected || !detail) return; try { await runAction(button, { loading:"Retrying…", success:"Started", error:"Retry failed" }, () => request("/api/projects/" + encodeURIComponent(selected.id) + "/recognition-runs/" + encodeURIComponent(detail.run.id) + "/model-runs/" + encodeURIComponent(modelRunId) + "/retry", { method:"POST" })); state.recognitionNotice = { text:"A new execution attempt was created for this model.", kind:"success" }; await refreshRecognition(); } catch (error) { state.recognitionNotice = { text:error instanceof Error ? error.message : expectedErrorText.request_failed, kind:"error" }; render(); } }
     async function reanalyzeRecognition(modelRunId, attemptId, button) { const selected = project(); const detail = state.recognitionDetail; if (!selected || !detail || !attemptId) return; try { await runAction(button, { loading:"Parsing the saved answer…", success:"Local parse complete", error:"Parsing failed" }, () => request("/api/projects/" + encodeURIComponent(selected.id) + "/recognition-runs/" + encodeURIComponent(detail.run.id) + "/model-runs/" + encodeURIComponent(modelRunId) + "/attempts/" + encodeURIComponent(attemptId) + "/reanalyze", { method:"POST" })); state.recognitionNotice = { text:"A new local parse was generated from the saved raw answer. No model was called.", kind:"success" }; await refreshRecognition(); } catch (error) { state.recognitionNotice = { text:error instanceof Error ? error.message : expectedErrorText.request_failed, kind:"error" }; render(); } }
     const phase2Render = render;
-    render = function renderWithRecognition() { if (window.__citegeoPhase5Active) return; if (state.page === "reports" && window.__citegeoPhase4 && typeof window.__citegeoPhase4.render === "function") return window.__citegeoPhase4.render(); if (state.page !== "recognition") return phase2Render(); const selected = project(); const options = state.currentProjects.length ? state.currentProjects.map((item) => '<option value="' + html(item.id) + '">' + html(item.name) + ' · ' + html(item.normalizedDomain) + '</option>').join("") : '<option value="">No projects yet</option>'; app.innerHTML = '<div class="shell"><aside class="sidebar"><div class="brand"><div class="brand-lockup">' + brandLockup + '</div></div><div class="project-label">Project</div><select id="project-select" class="project-select" aria-label="Switch project" data-testid="project-select">' + options + '</select><nav class="nav" aria-label="Project navigation"><button type="button" class="nav-item" data-page="dashboard"><span>Dashboard</span></button><div class="nav-label">Run a test</div><button type="button" class="nav-item" data-page="models"><span class="nav-step">1</span><span>Choose models</span></button><button type="button" class="nav-item" data-page="recognition"><span class="nav-step">2</span><span>Results</span></button><button type="button" class="nav-item" data-page="visibility"><span class="nav-step">3</span><span>Visibility</span></button><div class="nav-label">Over time</div><a class="nav-item" href="?view=measurements"><span>Continuous measurement</span></a><div class="nav-label">Machine</div><button type="button" class="nav-item" data-page="overview"><span>Projects</span></button><button type="button" class="nav-item" data-page="configuration"><span>Configuration history</span></button><button type="button" class="nav-item" data-page="setup"><span>Setup</span></button></nav><div class="sidebar-bottom">Domain recognition</div></aside><main class="workspace"><header class="topbar"><div class="crumb"><strong>${PRODUCT_NAME}</strong> / ' + html(selected ? selected.name : "Project") + '</div><button id="new-project" type="button" class="button primary" data-testid="new-project">New project</button></header><section class="content">' + renderRecognitionPage() + '</section></main></div>'; const select = element("project-select"); if (select) select.value = state.selectedId; document.title = selected ? selected.name + " | ${PRODUCT_TITLE}" : "${PRODUCT_TITLE}"; };
+    render = function renderWithRecognition() { if (window.__citegeoPhase5Active) return; if (state.page === "reports" && window.__citegeoPhase4 && typeof window.__citegeoPhase4.render === "function") return window.__citegeoPhase4.render(); if (state.page !== "recognition") return phase2Render(); const selected = project(); const options = state.currentProjects.length ? state.currentProjects.map((item) => '<option value="' + html(item.id) + '">' + html(item.name) + ' · ' + html(item.normalizedDomain) + '</option>').join("") : '<option value="">No projects yet</option>'; app.innerHTML = '<div class="shell"><aside class="sidebar"><div class="brand"><div class="brand-lockup">' + brandLockup + '</div></div><div class="project-label">Project</div><select id="project-select" class="project-select" aria-label="Switch project" data-testid="project-select">' + options + '</select><nav class="nav" aria-label="Project navigation"><button type="button" class="nav-item" data-page="dashboard"><span>Dashboard</span></button><div class="nav-label">Run a test</div><button type="button" class="nav-item" data-page="models"><span class="nav-step">1</span><span>Choose models</span></button><button type="button" class="nav-item" data-page="recognition"><span class="nav-step">2</span><span>Results</span></button><button type="button" class="nav-item" data-page="visibility"><span class="nav-step">3</span><span>Visibility</span></button><div class="nav-label">Answer engine</div><button type="button" class="nav-item" data-page="answer-engine"><span>Scores</span></button><button type="button" class="nav-item" data-page="prompts"><span>Prompts</span></button><div class="nav-label">Over time</div><a class="nav-item" href="?view=measurements"><span>Continuous measurement</span></a><div class="nav-label">Machine</div><button type="button" class="nav-item" data-page="overview"><span>Projects</span></button><button type="button" class="nav-item" data-page="configuration"><span>Configuration history</span></button><button type="button" class="nav-item" data-page="setup"><span>Setup</span></button></nav><div class="sidebar-bottom">Domain recognition</div></aside><main class="workspace"><header class="topbar"><div class="crumb"><strong>${PRODUCT_NAME}</strong> / ' + html(selected ? selected.name : "Project") + '</div><button id="new-project" type="button" class="button primary" data-testid="new-project">New project</button></header><section class="content">' + renderRecognitionPage() + '</section></main></div>'; const select = element("project-select"); if (select) select.value = state.selectedId; document.title = selected ? selected.name + " | ${PRODUCT_TITLE}" : "${PRODUCT_TITLE}"; };
     document.addEventListener("click", async (event) => { const target = event.target; if (!(target instanceof Element)) return; if (target.id === "start-recognition") { await startRecognition(); return; } const evidenceButton = target.closest("[data-evidence-target]"); if (evidenceButton) { const card = evidenceButton.closest("[data-testid=recognition-model-run]"); const details = card ? card.querySelector("details.evidence-details") : null; if (details) details.open = true; const evidenceTarget = evidenceButton.getAttribute("data-evidence-target"); window.setTimeout(() => { const marked = evidenceTarget ? element(evidenceTarget) : null; if (marked) marked.scrollIntoView({ block:"center", behavior:"smooth" }); }, 0); return; } const runButton = target.closest("[data-recognition-run]"); if (runButton) { state.recognitionSelectedRunId = runButton.getAttribute("data-recognition-run") || ""; await refreshRecognition(); return; } const reanalyzeButton = target.closest("[data-recognition-reanalyze]"); if (reanalyzeButton) { await reanalyzeRecognition(reanalyzeButton.getAttribute("data-recognition-reanalyze") || "", reanalyzeButton.getAttribute("data-recognition-attempt") || "", reanalyzeButton); return; } const retryButton = target.closest("[data-recognition-retry]"); if (retryButton) { await retryRecognition(retryButton.getAttribute("data-recognition-retry") || "", retryButton); return; } const pageButton = target.closest("[data-page]"); if (pageButton && pageButton.getAttribute("data-page") === "recognition") { window.setTimeout(() => refreshRecognition().catch((error) => { state.recognitionNotice = { text:error instanceof Error ? error.message : expectedErrorText.request_failed, kind:"error" }; render(); }), 0); } if (pageButton && pageButton.getAttribute("data-page") !== "recognition") window.clearTimeout(state.recognitionRefreshTimer); });
     document.addEventListener("change", (event) => { const target = event.target; if (target instanceof HTMLSelectElement && target.id === "project-select") { state.recognitionSelectedRunId = ""; window.setTimeout(() => { if (state.page === "recognition") refreshRecognition().catch(() => {}); }, 0); } });
     window.__citegeoPhase2 = { state, app, html, element, project, formatTime, brandMark, brandLockup, request, refreshRecognition, phase2Render, render: () => render() };
