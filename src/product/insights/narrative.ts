@@ -1,5 +1,4 @@
-// How a model talks about a brand, not just whether it knows it. Profound calls
-// this sentiment and narrative analysis.
+// How a model talks about a brand, not just whether it knows it.
 //
 // This is the one analysis in the product that is a judgement rather than an
 // observation, so it is bounded hard: the classifier is given the stored answer

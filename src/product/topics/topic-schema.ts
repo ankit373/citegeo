@@ -1,8 +1,5 @@
-// Profound's unit of measurement is the question a buyer actually types, not a
-// keyword. "best stock screener for indian markets" and "screener.in
-// alternatives" reach the same buyer through different answers, and a keyword
-// collapses them into one. Prompts are grouped into topics so every metric can
-// be read per topic rather than only per model.
+// The unit is the question a buyer types, not a keyword: "best stock screener"
+// and "screener.in alternatives" reach one buyer through different answers.
 
 /** How a buyer is asking, which decides what the answer can be used to measure. */
 export type PromptIntent =
@@ -46,11 +43,8 @@ export interface Prompt {
   normalizedText: string;
   intent: PromptIntent;
   source: EntitySource;
-  /**
-   * False when the prompt names the brand. The model will then discuss the
-   * brand whatever it thinks of it, so an appearance is not evidence of
-   * visibility. Those prompts still measure sentiment and framing.
-   */
+  /** False when the prompt names the brand: the model will discuss it whatever
+   * it thinks, so an appearance is not evidence of being found. */
   measuresVisibility: boolean;
   /** Why it does not, when it does not. */
   visibilityExclusionReason: "names_the_brand" | null;
