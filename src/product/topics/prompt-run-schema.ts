@@ -4,7 +4,21 @@ import type { PromptIntent } from "./topic-schema.js";
 
 export const PROMPT_RUN_PROTOCOL_ID = "prompt-run/v1";
 
-export type PromptRunStatus = "running" | "completed" | "partial" | "failed";
+export type PromptRunStatus =
+  | "running"
+  /** Asked to stop; the loop finishes the answer in flight and then stops. */
+  | "cancelling"
+  | "cancelled"
+  /** The process died mid-run. Not a failure of the models, so it is its own state. */
+  | "interrupted"
+  | "completed"
+  | "partial"
+  | "failed";
+
+/** A run that is neither finished nor abandoned. */
+export function isLive(status: PromptRunStatus): boolean {
+  return status === "running" || status === "cancelling";
+}
 export type PromptAnswerStatus = "completed" | "provider_failed" | "analysis_failed";
 
 /** One organisation named in one answer, with the evidence for it. */
@@ -59,6 +73,9 @@ export interface PromptRun {
   answersFailed: number;
   startedAt: string;
   completedAt: string | null;
+  /** What the run is doing right now, so a long run is legible while it runs. */
+  currentPromptText?: string | undefined;
+  currentModelId?: string | undefined;
 }
 
 /** True when this answer can contribute to a visibility figure. */

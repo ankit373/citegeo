@@ -129,6 +129,11 @@ export function createProductServices(dependencies: ProductServerDependencies = 
   const ask = createStructuredAsk({ baselines, executor });
   const promptSchedule = new PromptScheduleService(new PromptScheduleFileStore(projectStore), promptRuns);
   const demand = new DemandReportFileStore(projectStore);
+  // A run left "running" by a process that is gone would otherwise show as
+  // live forever, which is how three dead runs kept claiming to be working.
+  void projects.list().then(async (rows) => {
+    for (const row of rows) await promptRuns.reconcileInterrupted(row.id).catch(() => 0);
+  }).catch(() => undefined);
 
   return {
     projects, catalog, selections, baselines, recognition, reports, insights,

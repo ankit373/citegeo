@@ -152,6 +152,10 @@ export function renderProductPhase2AppHtml(): string {
     .checkline input { width:15px; min-height:15px; flex:0 0 auto; accent-color:var(--accent); }
     .checkgrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:8px; margin-top:12px; }
     .trend-head { margin-bottom:10px; font-size:13px; }
+    .liverun { border:1px solid var(--accent); background:var(--accent-wash); border-radius:var(--radius); padding:13px 15px; margin:14px 0; display:grid; gap:9px; }
+    .liverun-top { display:flex; align-items:center; gap:12px; flex-wrap:wrap; font-size:13px; }
+    .liverun .bar { margin:0; background:var(--surface); }
+    .liverun p { margin:0; }
     .mcols-vis { grid-template-columns:minmax(0,1fr) 120px 110px; }
     .mcols-voice { grid-template-columns:minmax(0,1fr) 110px 120px; }
     .mcols-cited { grid-template-columns:minmax(0,1fr) 100px minmax(0,1fr); }
@@ -337,7 +341,7 @@ export function renderProductPhase2AppHtml(): string {
     </form>
   </aside>
   <script>
-    const state = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[] };
+    const state = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, runPollTimer:0 };
     const app = document.getElementById("app");
     const element = (id) => document.getElementById(id);
     const html = (value) => String(value).split("&").join("&amp;").split("<").join("&lt;").split(">").join("&gt;").split('"').join("&quot;").split("'").join("&#39;");
@@ -433,6 +437,29 @@ export function renderProductPhase2AppHtml(): string {
         state.answerEngineState = "error";
       }
       render();
+    }
+
+    async function loadLiveRun() {
+      if (!state.selectedId) return;
+      try {
+        const result = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/prompt-runs");
+        const rows = result.runs || result || [];
+        const live = rows.find ? rows.find((row) => row.status === "running" || row.status === "cancelling") : null;
+        const had = Boolean(state.liveRun);
+        state.liveRun = live || null;
+        window.clearTimeout(state.runPollTimer);
+        if (live) state.runPollTimer = window.setTimeout(loadLiveRun, 4000);
+        else if (had) { state.answerEngineState = "idle"; loadAnswerEngine(); }
+        render();
+      } catch (error) {
+        state.liveRun = null;
+      }
+    }
+
+    async function stopRun() {
+      if (!state.liveRun) return;
+      await postPrompts("/prompt-runs/" + encodeURIComponent(state.liveRun.id) + "/cancel", {}, "stopping", "Stopping after the answer in flight.");
+      loadLiveRun();
     }
 
     async function openEvidence(promptId, title) {
@@ -965,6 +992,24 @@ export function renderProductPhase2AppHtml(): string {
       return '<span class="pill ' + cls + '">' + arrow + " " + Math.abs(trend.change) + '</span>';
     }
 
+    function renderLiveRun() {
+      const run = state.liveRun;
+      if (!run) return "";
+      const done = run.answersCompleted + run.answersFailed;
+      const pctDone = run.answersRequested ? Math.round(done / run.answersRequested * 100) : 0;
+      const doing = run.currentPromptText
+        ? 'Asking ' + html(run.currentModelId || "a model") + ': \u201c' + html(run.currentPromptText) + '\u201d'
+        : "Starting up";
+      return '<div class="liverun"><div class="liverun-top"><strong>' + (run.status === "cancelling" ? "Stopping" : "Running") + '</strong>'
+        + '<span>' + done + ' of ' + run.answersRequested + ' answers</span>'
+        + '<span class="spacer"></span>'
+        + (run.status === "cancelling"
+          ? '<span class="subtle">Finishing the answer in flight.</span>'
+          : '<button type="button" class="button danger" data-stop-run>Stop</button>')
+        + '</div><div class="bar"><i style="width:' + pctDone + '%"></i></div>'
+        + '<p class="subtle">' + doing + '. These run on this machine, through the provider you configured in Setup.</p></div>';
+    }
+
     function renderHero(data) {
       const rank = data.rank === null ? "Not named" : "#" + data.rank + " of " + data.leaderboard.length;
       const leader = data.leaderboard.find((row) => !row.isTarget);
@@ -1083,7 +1128,7 @@ export function renderProductPhase2AppHtml(): string {
     function renderAnswerEngine() {
       const selected = project();
       if (!selected) return '<section class="view"><div class="empty"><div class="empty-copy"><h2>Select a project first</h2></div></div></section>';
-      if (state.answerEngineState === "idle") { loadAnswerEngine(); }
+      if (state.answerEngineState === "idle") { loadAnswerEngine(); loadLiveRun(); }
       if (state.answerEngineState !== "ready") {
         return '<section class="view"><div class="heading"><div><h1>Answer engine</h1><p class="subtle">How the models answer the questions your buyers ask.</p></div></div><div class="empty"><div class="empty-copy"><h2>' + (state.answerEngineState === "error" ? "Could not read the answers" : "Reading the archived answers") + '</h2></div></div></section>';
       }
@@ -1096,6 +1141,7 @@ export function renderProductPhase2AppHtml(): string {
       const failedNote = data.answersFailed ? '<div class="warning-box">' + data.answersFailed + ' answer(s) failed and are excluded. They are not counted as answers that did not name you.</div>' : '';
       const citationNote = data.citationsUnavailable ? '<div class="warning-box">No answer carried a citation, so there are no sources to analyse. That is a property of the models you ran, not evidence that nobody cites you. A provider with web search will produce them.</div>' : '';
       return '<section class="view"><div class="heading"><div><h1>Answer engine</h1><p class="subtle">' + data.answers + ' answer(s) across ' + data.topics.length + ' topic(s) for ' + html(selected.normalizedDomain) + '. Click any question to read the answers behind it.</p></div><div class="inline-actions"><button type="button" class="button" data-page="prompts">Prompts</button><button type="button" class="button primary" data-run-prompts>' + (state.promptRunState === "running" ? "Running…" : "Run prompts") + '</button></div></div>'
+        + renderLiveRun()
         + renderHero(data)
         + renderSegment(data)
         + failedNote + citationNote
@@ -1138,7 +1184,7 @@ export function renderProductPhase2AppHtml(): string {
       const set = state.topicSet || { topics: [], prompts: [] };
       const notice = state.promptNotice.text ? '<div class="' + (state.promptNotice.kind === "error" ? "warning-box" : "success-box") + '">' + html(state.promptNotice.text) + '</div>' : '';
       const active = set.prompts.filter((prompt) => prompt.status === "active").length;
-      const head = '<section class="view"><div class="heading"><div><h1>Prompts</h1><p class="subtle">' + active + ' tracked of ' + set.prompts.length + ' across ' + set.topics.length + ' topic(s). Every metric is sliced by these.</p></div><div class="inline-actions"><button type="button" class="button" data-generate-prompts>' + (state.promptRunState === "generating" ? "Proposing…" : "Propose a set") + '</button><button type="button" class="button primary" data-run-prompts' + (active ? '' : ' disabled') + '>' + (state.promptRunState === "running" ? "Running…" : "Run " + active + " prompt(s)") + '</button></div></div>' + notice;
+      const head = '<section class="view"><div class="heading"><div><h1>Prompts</h1><p class="subtle">' + active + ' tracked of ' + set.prompts.length + ' across ' + set.topics.length + ' topic(s). Every metric is sliced by these.</p></div><div class="inline-actions"><button type="button" class="button" data-generate-prompts>' + (state.promptRunState === "generating" ? "Proposing…" : "Propose a set") + '</button><button type="button" class="button primary" data-run-prompts' + (active ? '' : ' disabled') + '>' + (state.promptRunState === "running" ? "Running…" : "Run " + active + " prompt(s)") + '</button></div></div>' + notice + renderLiveRun();
       if (!set.prompts.length) {
         return head + '<div class="empty"><div class="empty-copy"><h2>No prompts yet</h2><p class="subtle">Propose a set and a model will suggest the questions buyers ask about what you do, grouped into topics. Nothing runs until you have read them and chosen which to track, because what buyers ask is not something this tool can observe.</p></div></div></section>';
       }
@@ -1256,7 +1302,7 @@ export function renderProductPhase2AppHtml(): string {
       const clicked = event.target;
       if (!clicked || !clicked.closest) return;
       if (clicked.closest("[data-generate-prompts]")) { await postPrompts("/topics/generate", {}, "generating", "A set has been proposed. Read it, then track the questions worth tracking."); return; }
-      if (clicked.closest("[data-run-prompts]")) { await postPrompts("/prompt-runs", {}, "running", "The run finished. Every answer is archived."); return; }
+      if (clicked.closest("[data-run-prompts]")) { loadLiveRun(); await postPrompts("/prompt-runs", {}, "running", "The run finished. Every answer is archived."); loadLiveRun(); return; }
       const activate = clicked.closest("[data-activate-prompt]");
       if (activate) { await postPrompts("/prompts/activate", { promptIds:[activate.getAttribute("data-activate-prompt")] }, "saving", "Now tracked."); return; }
       const retire = clicked.closest("[data-retire-prompt]");
@@ -1287,6 +1333,7 @@ export function renderProductPhase2AppHtml(): string {
         loadAnswerEngine();
         return;
       }
+      if (target.closest("[data-stop-run]")) { stopRun(); return; }
       if (target.closest("[data-close-panel]")) { closeEvidence(); return; }
       const row = target.closest("[data-evidence]");
       if (row) openEvidence(row.getAttribute("data-evidence"), row.getAttribute("data-evidence-title") || "");

@@ -136,6 +136,11 @@ export async function handleTopicApi(input: {
     return true;
   }
 
+  if (method === "POST" && tail.length === 3 && tail[0] === "prompt-runs" && tail[2] === "cancel") {
+    await guard(() => runs.cancel(projectId, tail[1] || ""));
+    return true;
+  }
+
   if (method === "GET" && tail.length === 1 && tail[0] === "prompt-runs") {
     await guard(() => runs.listRuns(projectId), 404);
     return true;

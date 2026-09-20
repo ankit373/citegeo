@@ -12,7 +12,7 @@ import {
   PROMPT_ANSWER_SCHEMA_NAME,
   PROMPT_ANSWER_TOOL_DESCRIPTION,
 } from "./prompt-answer-protocol.js";
-import type { AnswerMention, PromptAnswer, PromptRun } from "./prompt-run-schema.js";
+import { isLive, type AnswerMention, type PromptAnswer, type PromptRun } from "./prompt-run-schema.js";
 import type { PromptRunFileStore } from "./prompt-run-store.js";
 import { readStructuredValue } from "./structured-value.js";
 import { activePrompts, type PromptIntent } from "./topic-schema.js";
@@ -47,8 +47,39 @@ export class PromptRunService {
     private readonly executor: RecognitionAnswerExecutor,
   ) {}
 
+  /** Ids asked to stop. In memory, because a cancel only means anything to the
+   * process actually running the loop. */
+  private readonly cancelled = new Set<string>();
+
   async listRuns(projectId: string): Promise<PromptRun[]> {
     return this.store.listRuns(projectId);
+  }
+
+  /** Stops after the answer in flight. A run cannot be torn out mid-request
+   * without losing the answer the provider is already paying for. */
+  async cancel(projectId: string, runId: string): Promise<PromptRun> {
+    const run = (await this.store.listRuns(projectId)).find((row) => row.id === runId);
+    if (!run) throw new PromptRunUnavailableError(`Run ${runId} does not exist.`);
+    if (!isLive(run.status)) return run;
+    this.cancelled.add(runId);
+    const next: PromptRun = { ...run, status: "cancelling" };
+    await this.store.saveRun(next);
+    return next;
+  }
+
+  /**
+   * Marks runs left "running" by a process that is gone. Nothing can be in
+   * flight when the server has only just started, so a live record at that
+   * moment is a lie the interface would otherwise keep telling.
+   */
+  async reconcileInterrupted(projectId: string): Promise<number> {
+    let count = 0;
+    for (const run of await this.store.listRuns(projectId)) {
+      if (!isLive(run.status)) continue;
+      await this.store.saveRun({ ...run, status: "interrupted", completedAt: nowIso() });
+      count += 1;
+    }
+    return count;
   }
 
   async listAnswers(projectId: string, runId?: string): Promise<PromptAnswer[]> {
@@ -58,6 +89,14 @@ export class PromptRunService {
   async start(input: StartPromptRunInput): Promise<PromptRun> {
     const project = await this.projects.get(input.projectId);
     if (!project) throw new PromptRunUnavailableError(`Project ${input.projectId} does not exist.`);
+
+    const live = (await this.store.listRuns(input.projectId)).find((row) => isLive(row.status));
+    if (live) {
+      throw new PromptRunUnavailableError(
+        `A run is already going (${live.answersCompleted} of ${live.answersRequested} answers). Stop it before starting another.`,
+      );
+    }
+
 
     const set = await this.topics.get(input.projectId);
     const wanted = input.promptIds ? new Set(input.promptIds) : null;
@@ -108,10 +147,20 @@ export class PromptRunService {
     };
     await this.store.saveRun(run);
 
+    let stopped = false;
     for (const prompt of prompts) {
+      if (stopped) break;
       for (const model of models) {
+        if (stopped) break;
         for (const market of regions) {
+          if (stopped) break;
           for (const tongue of languages) {
+            if (this.cancelled.has(run.id)) { stopped = true; break; }
+            // Written before the call so the interface can name what is in
+            // flight rather than only how many are done.
+            run.currentPromptText = prompt.text;
+            run.currentModelId = model.modelId;
+            await this.store.saveRun(run);
             const answer = await this.ask({ run, baseline, model, prompt, identities, market, tongue });
             await this.store.saveAnswer(answer);
             if (answer.status === "completed") run.answersCompleted += 1;
@@ -123,11 +172,16 @@ export class PromptRunService {
       }
     }
 
-    run.status = run.answersCompleted === 0
-      ? "failed"
-      : run.answersFailed > 0
-        ? "partial"
-        : "completed";
+    this.cancelled.delete(run.id);
+    run.currentPromptText = undefined;
+    run.currentModelId = undefined;
+    run.status = stopped
+      ? "cancelled"
+      : run.answersCompleted === 0
+        ? "failed"
+        : run.answersFailed > 0
+          ? "partial"
+          : "completed";
     run.completedAt = nowIso();
     await this.store.saveRun(run);
     return run;
