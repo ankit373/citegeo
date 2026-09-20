@@ -352,7 +352,7 @@ export function renderProductPhase2AppHtml(): string {
     </form>
   </aside>
   <script>
-    const state = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, runPollTimer:0 };
+    const state = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", rivals:null, rivalsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, runPollTimer:0 };
     const app = document.getElementById("app");
     const element = (id) => document.getElementById(id);
     const html = (value) => String(value).split("&").join("&amp;").split("<").join("&lt;").split(">").join("&gt;").split('"').join("&quot;").split("'").join("&#39;");
@@ -406,6 +406,25 @@ export function renderProductPhase2AppHtml(): string {
         state.topicState = "error";
       }
       render();
+    }
+
+    async function loadRivals() {
+      if (!state.selectedId || state.rivalsState === "loading") return;
+      state.rivalsState = "loading";
+      try {
+        state.rivals = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/competitors");
+        state.rivalsState = "ready";
+      } catch (error) {
+        state.rivalsState = "error";
+      }
+      render();
+    }
+
+    async function rivalAction(path, body, notice) {
+      await postPrompts(path, body, "saving", notice);
+      state.rivalsState = "idle";
+      state.answerEngineState = "idle";
+      loadRivals();
     }
 
     async function loadCited() {
@@ -1253,6 +1272,31 @@ export function renderProductPhase2AppHtml(): string {
         + '<section class="section-card"><div class="section-head"><div><h2>Questions you never appear in</h2><p class="subtle">Answered, and you were not named once.</p></div></div>' + absent + '</section></section>';
     }
 
+    function renderRivals(data) {
+      if (state.rivalsState === "idle") { loadRivals(); }
+      const tracked = data && data.trackedRivals ? data.trackedRivals : [];
+      const declared = state.rivals ? state.rivals.competitors.filter((row) => row.tracked) : [];
+      const body = tracked.length
+        ? '<div class="mtable"><div class="mhead mcols-aemodel"><span>Who</span><span>Answers</span><span>Share</span><span></span></div>'
+          + tracked.map((row) => '<div class="mrow mcols-aemodel">'
+            + '<div class="mname"><strong>' + html(row.name) + '</strong><span class="mono">' + html(row.domain || "no domain") + '</span></div>'
+            + '<span class="mcell ' + (row.appearances ? "" : "state-bad") + '">' + row.appearances + '</span>'
+            + '<span class="mcell">' + pct(row.shareOfAnswers) + '</span>'
+            + '<span class="mcell"><button type="button" class="linklike" data-retire-rival="' + html(declaredIdFor(row.name)) + '">Stop tracking</button></span></div>').join("") + '</div>'
+        : '<p class="subtle">No rival is tracked yet. Adopt the ones your site and your answers already name, or add one by hand.</p>';
+      return body
+        + '<div class="inline-actions" style="margin-top:14px"><button type="button" class="button" data-adopt-rivals>Adopt the ones already named</button></div>'
+        + '<form id="add-rival-form" class="inline-form"><input name="name" type="text" placeholder="Competitor name" aria-label="Competitor name"><input name="domain" type="text" placeholder="domain.com (optional)" aria-label="Competitor domain"><button type="submit" class="button">Add</button></form>'
+        + '<p class="subtle">A rival you track and never see reads as zero rather than disappearing, because that is the finding.</p>'
+        + (declared.length ? '' : '');
+    }
+
+    function declaredIdFor(name) {
+      const rows = state.rivals ? state.rivals.competitors : [];
+      const found = rows.find((row) => row.name.toLowerCase() === String(name).toLowerCase());
+      return found ? found.id : "";
+    }
+
     function renderCitedPages() {
       if (state.citedState === "idle") { loadCited(); }
       if (state.citedState !== "ready" || !state.cited) return '<p class="subtle">Reading the archived sources.</p>';
@@ -1318,6 +1362,7 @@ export function renderProductPhase2AppHtml(): string {
         + '<section class="section-card"><div class="section-head"><div><h2>Questions you never appear in</h2><p class="subtle">Answered, and you were not named once. This is the actionable list.</p></div></div>' + renderAbsent(data.absentFrom) + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>Movement</h2><p class="subtle">One point per run. A run where everything failed is left out rather than drawn as a drop.</p></div></div>' + renderPromptTrend(data.trend) + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>By market</h2><p class="subtle">The same questions, asked for a different buyer.</p></div></div>' + renderRegionRows(data.byRegion, data.regionCaveat) + '</section>'
+        + '<section class="section-card"><div class="section-head"><div><h2>Rivals you track</h2><p class="subtle">Declared, as opposed to whoever happened to be named.</p></div></div>' + renderRivals(data) + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>Sources</h2><p class="subtle">A domain says you are cited. A page says which one to write more of.</p></div></div>' + renderCitedPages() + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>By model</h2><p class="subtle">The same questions, answered differently.</p></div></div>' + renderModelRows(data.byModel) + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>Keep it running</h2><p class="subtle">A tracker that is run by hand is a snapshot.</p></div></div>' + renderSchedule() + '</section></section>';
@@ -1540,6 +1585,9 @@ export function renderProductPhase2AppHtml(): string {
         return;
       }
       if (target.closest("[data-stop-run]")) { stopRun(); return; }
+      if (target.closest("[data-adopt-rivals]")) { rivalAction("/competitors/adopt", {}, "Adopted."); return; }
+      const retireRival = target.closest("[data-retire-rival]");
+      if (retireRival) { rivalAction("/competitors/retire", { competitorIds: [retireRival.getAttribute("data-retire-rival")] }, "No longer tracked."); return; }
       if (target.closest("[data-storage-check]")) { storageAction("/check", "POST", "Connected."); return; }
       if (target.closest("[data-storage-save]")) { storageAction("", "PUT", "Saved."); return; }
       if (target.closest("[data-close-panel]")) { closeEvidence(); return; }
@@ -1568,6 +1616,12 @@ export function renderProductPhase2AppHtml(): string {
 
     document.addEventListener("submit", async (event) => {
       const form = event.target;
+      if (form && form.id === "add-rival-form") {
+        event.preventDefault();
+        const data = new FormData(form);
+        await rivalAction("/competitors", { name: data.get("name"), domain: data.get("domain") }, "Now tracked.");
+        return;
+      }
       if (form && form.id === "schedule-form") {
         event.preventDefault();
         const data = new FormData(form);

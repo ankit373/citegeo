@@ -21,6 +21,7 @@ import { PromptScheduleFileStore, PromptScheduleService } from "./topics/prompt-
 import { DemandReportFileStore } from "./demand/demand-store.js";
 import { BrandProfileFileStore, BrandProfileService } from "./discovery/brand-profile-service.js";
 import { StorageSettingsStore } from "./storage/storage-settings.js";
+import { CompetitorFileStore, CompetitorService } from "./topics/competitor-set.js";
 import { createObjectStore } from "./storage/storage-config.js";
 import { DeferredObjectStore, LocalObjectStore, type ObjectStore } from "./storage/object-store.js";
 import type { StructuredAsk } from "./topics/topic-service.js";
@@ -114,6 +115,7 @@ export interface ProductServices {
   promptSchedule: PromptScheduleService;
   demand: DemandReportFileStore;
   profiles: BrandProfileService;
+  competitors: CompetitorService;
   storageSettings: StorageSettingsStore;
   dataDir: string;
   /** Asks one structured question through the project's own saved models. */
@@ -156,6 +158,7 @@ export function createProductServices(dependencies: ProductServerDependencies = 
   const ask = createStructuredAsk({ baselines, executor });
   const promptSchedule = new PromptScheduleService(new PromptScheduleFileStore(projectStore), promptRuns);
   const demand = new DemandReportFileStore(projectStore);
+  const competitors = new CompetitorService(new CompetitorFileStore(projectStore));
   const storageSettings = new StorageSettingsStore(productDataDir());
   // A run left "running" by a process that is gone would otherwise show as
   // live forever, which is how three dead runs kept claiming to be working.
@@ -166,7 +169,7 @@ export function createProductServices(dependencies: ProductServerDependencies = 
   return {
     projects, catalog, selections, baselines, recognition, reports, insights,
     signals, crawlerLog, watchSets, measurements, stats, schedules,
-    topics, promptRuns, promptSchedule, demand, profiles, ask,
+    topics, promptRuns, promptSchedule, demand, profiles, competitors, ask,
     storageSettings, dataDir: productDataDir(),
     credentials: new CredentialService(new CredentialFileStore(productDataDir())),
     auth: authConfig(),

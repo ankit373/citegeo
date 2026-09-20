@@ -131,6 +131,15 @@ fenced.** Always read it through `readStructuredValue`. Assuming an object gives
 an object-shaped read of a string: every field is absent and a correct payload
 is discarded as empty.
 
+## Rivals
+
+**A rival you track and never see reads as zero, not as absent.** It was asked
+about and the answer is none; omitting it hides the finding. With nothing
+answered at all the share is `null`, because that is a different state again.
+
+Declared rivals are separate from whoever the models happened to name. Adopting
+takes both what the site names and what answers named more than once.
+
 ## Demand
 
 **A corpus figure is a historical sample and says so.** `src/product/demand`

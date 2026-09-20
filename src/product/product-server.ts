@@ -89,7 +89,7 @@ async function handle(req: IncomingMessage, res: ServerResponse, services: Produ
   if (await handleInsightsApi({ method, route, send: json, service: insights })) return;
   if (await handleCrawlerApi({ method, route, send: json, crawlerLog, insights })) return;
   if (await handleActionApi({ method, route, send: json, signals, insights })) return;
-  if (await handleTopicApi({ method, route, url, send: json, topics, runs: promptRuns, schedule: promptSchedule, demand, profiles, models: async (id) => (await selections.list(id)).length, ask: services.ask, readJson: body })) return;
+  if (await handleTopicApi({ method, route, url, send: json, topics, runs: promptRuns, schedule: promptSchedule, demand, profiles, models: async (id) => (await selections.list(id)).length, competitors: services.competitors, ask: services.ask, readJson: body })) return;
 
   if (await handleProductConfigurationApi({ method, route, projects, selections, baselines, catalog, readJson: () => readJson(req), send: (status, body) => send(res, status, body) })) return;
   if (await handleMeasurementApi({ method, route, readJson: () => readJson(req), send: (status, body) => send(res, status, body), projects, watchSets, measurements, stats })) return;

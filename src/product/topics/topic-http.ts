@@ -2,6 +2,7 @@ import { buildTopicInsights, type TopicInsights } from "./topic-insights.js";
 import { buildHomeSummary } from "../alerts/home-summary.js";
 import { buildAnswerDigest } from "../alerts/answer-digest.js";
 import { buildCitationAnalysis } from "./citation-analysis.js";
+import type { CompetitorService } from "./competitor-set.js";
 import { isPromptIntent } from "./topic-schema.js";
 import { REGIONS, REGION_CAVEAT } from "./region.js";
 import { LANGUAGES } from "./language.js";
@@ -52,10 +53,11 @@ export async function handleTopicApi(input: {
   profiles: BrandProfileService;
   /** How many models the project has saved, for the setup checklist. */
   models: (projectId: string) => Promise<number>;
+  competitors: CompetitorService;
   ask: StructuredAsk;
   readJson: () => Promise<Record<string, unknown>>;
 }): Promise<boolean> {
-  const { method, route, url, send, topics, runs, schedule, demand, profiles, models, ask, readJson } = input;
+  const { method, route, url, send, topics, runs, schedule, demand, profiles, models, competitors, ask, readJson } = input;
   if (route[0] !== "api" || route[1] !== "projects") return false;
   const projectId = route[2];
   if (!projectId) return false;
@@ -243,6 +245,46 @@ export async function handleTopicApi(input: {
     return true;
   }
 
+  if (method === "GET" && tail.length === 1 && tail[0] === "competitors") {
+    await guard(() => competitors.get(projectId), 404);
+    return true;
+  }
+
+  if (method === "POST" && tail.length === 1 && tail[0] === "competitors") {
+    const body = await readJson();
+    await guard(() => competitors.add(projectId, {
+      name: typeof body.name === "string" ? body.name : "",
+      domain: typeof body.domain === "string" ? body.domain : null,
+    }));
+    return true;
+  }
+
+  if (method === "POST" && tail.length === 2 && tail[0] === "competitors" && tail[1] === "retire") {
+    const body = await readJson();
+    await guard(() => competitors.retire(projectId, stringList(body.competitorIds)));
+    return true;
+  }
+
+  if (method === "POST" && tail.length === 2 && tail[0] === "competitors" && tail[1] === "adopt") {
+    // Everyone the site named plus everyone the models named, in one step.
+    await guard(async () => {
+      const [profile, answers, identity] = await Promise.all([
+        profiles.get(projectId),
+        runs.listAnswers(projectId),
+        topics.targetIdentity(projectId).catch(() => null),
+      ]);
+      const set = await topics.get(projectId);
+      const insights = buildTopicInsights({ projectId, set, answers, identityCaveat: identity?.caveat || null });
+      const fromSite = (profile?.competitors || []).map((row) => ({ name: row.name, domain: row.domain }));
+      const named = insights.leaderboard.filter((row) => !row.isTarget && row.appearances > 1).slice(0, 20)
+        .map((row) => ({ name: row.name, domain: row.domain }));
+      const site = await competitors.adopt(projectId, fromSite, "from_site");
+      const found = await competitors.adopt(projectId, named, "discovered");
+      return { set: found.set, added: site.added + found.added };
+    });
+    return true;
+  }
+
   if (method === "GET" && tail.length === 1 && tail[0] === "cited-pages") {
     await guard(async () => {
       const [answers, identity] = await Promise.all([
@@ -300,12 +342,14 @@ export async function handleTopicApi(input: {
         runs.listRuns(projectId),
         topics.targetIdentity(projectId).catch(() => null),
       ]);
+      const rivals = await competitors.get(projectId).catch(() => null);
       return buildTopicInsights({
         projectId,
         set,
         answers: sliced(answers, url),
         runs: runList,
         identityCaveat: identity?.caveat || null,
+        competitors: rivals?.competitors,
       });
     }, 404);
     return true;
