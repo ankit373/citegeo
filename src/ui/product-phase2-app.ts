@@ -82,10 +82,60 @@ export function renderProductPhase2AppHtml(): string {
     .card:hover,.card:focus-within { border-color:var(--line-strong); box-shadow:var(--shadow); }
     .mcols-project { grid-template-columns:minmax(0,1.1fr) minmax(0,1.2fr) 86px 148px auto; }
     .mcols-provider { grid-template-columns:minmax(0,1fr) 210px 124px minmax(0,1.5fr); align-items:start; }
-    .mcols-board { grid-template-columns:32px minmax(0,1.6fr) 150px 90px 110px; align-items:start; }
+    .mcols-board { grid-template-columns:28px minmax(0,1.3fr) minmax(190px,1fr) 96px; align-items:center; }
     .mcols-topic { grid-template-columns:minmax(0,1.3fr) 80px 110px 90px minmax(0,1.4fr); align-items:start; }
     .mcols-aemodel { grid-template-columns:minmax(0,1.6fr) 80px 110px 90px; align-items:start; }
     .mcols-prompt { grid-template-columns:minmax(0,1fr) 110px 120px; align-items:start; }
+    /* The score is the page's subject, so it is set as a header rather than as
+       one card among equals. */
+    .hero { display:grid; grid-template-columns:minmax(0,auto) minmax(0,1fr); gap:clamp(20px,3vw,44px); align-items:center; padding:clamp(18px,2.2vw,28px) 0 clamp(20px,2.4vw,30px); border-bottom:1px solid var(--line); }
+    .hero-figure { display:grid; gap:2px; }
+    .hero-figure .scorebig { line-height:.86; }
+    .hero-sub { display:flex; align-items:baseline; gap:10px; font-size:13px; color:var(--muted); }
+    .hero-delta { font-weight:600; font-variant-numeric:tabular-nums; }
+    .hero-spark { min-width:0; }
+    .hero-stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(118px,1fr)); gap:clamp(14px,2vw,30px); }
+    .hero-stat { display:grid; gap:3px; min-width:0; }
+    .hero-stat span { font-size:10px; letter-spacing:.09em; text-transform:uppercase; color:var(--weak); font-weight:600; }
+    .hero-stat strong { font-family:var(--font-display); font-size:21px; font-weight:500; letter-spacing:-0.015em; }
+    .hero-stat small { font-size:11px; color:var(--weak); }
+    @media (max-width:860px) { .hero { grid-template-columns:1fr; } }
+
+    /* Filters read as one control strip, not as a row of loose buttons. */
+    .segment { display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:12px 0; border-bottom:1px solid var(--line); margin-bottom:6px; }
+    .segment select { width:auto; min-width:120px; max-width:200px; }
+    .segment .spacer { flex:1 1 auto; }
+    .segment .applied { font-size:12px; color:var(--accent); }
+
+    /* A share is a length before it is a number. */
+    .sharebar { position:relative; display:block; width:100%; height:22px; border-radius:4px; background:var(--sunken); overflow:hidden; }
+    .sharebar > i { position:absolute; inset:0 auto 0 0; background:var(--line-strong); border-radius:4px; transition:width var(--motion-normal) var(--ease-standard); }
+    .sharebar.is-target > i { background:var(--accent); }
+    .sharebar > b { position:absolute; inset:0; display:flex; align-items:center; padding:0 8px; font-size:11px; font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap; }
+
+    .rowlink { display:block; width:100%; text-align:left; border:0; background:none; padding:0; cursor:pointer; }
+    .mrow.is-clickable { cursor:pointer; }
+    .mrow.is-clickable:hover { background:var(--raised); }
+    .chev { color:var(--weak); font-size:11px; }
+
+    /* Evidence opens beside the number rather than replacing the page. */
+    .panel-scrim { position:fixed; inset:0; z-index:8; background:rgba(20,18,14,.34); opacity:0; pointer-events:none; transition:opacity var(--motion-normal) var(--ease-standard); }
+    .panel { position:fixed; z-index:9; inset:0 0 0 auto; width:min(720px,100vw); background:var(--paper); border-left:1px solid var(--line); box-shadow:-12px 0 40px rgba(20,18,14,.16); transform:translateX(100%); transition:transform var(--motion-normal) var(--ease-standard); display:flex; flex-direction:column; }
+    body.panel-open .panel-scrim { opacity:1; pointer-events:auto; }
+    body.panel-open .panel { transform:translateX(0); }
+    .panel-head { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; padding:20px clamp(18px,2.4vw,28px); border-bottom:1px solid var(--line); }
+    .panel-body { flex:1 1 auto; overflow:auto; padding:clamp(16px,2.2vw,26px); display:grid; gap:14px; }
+    .evidence { border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); overflow:hidden; }
+    .evidence-head { display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center; padding:11px 15px; border-bottom:1px solid var(--line); background:var(--raised); font-size:12px; color:var(--muted); }
+    .evidence-text { padding:15px; font-size:13px; line-height:1.62; white-space:pre-wrap; max-height:300px; overflow:auto; }
+    .evidence-text mark { background:var(--accent-wash); color:var(--accent); padding:0 2px; border-radius:3px; font-weight:600; }
+    .evidence-foot { padding:11px 15px; border-top:1px solid var(--line); font-size:12px; color:var(--weak); display:grid; gap:5px; }
+    .evidence-foot a { overflow-wrap:anywhere; }
+    .pill { display:inline-flex; align-items:center; gap:5px; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:600; border:1px solid var(--line-strong); }
+    .pill.good { color:var(--confirmed-text); border-color:var(--confirmed); background:var(--confirmed-wash); }
+    .pill.bad { color:var(--failed-text); border-color:var(--failed); background:var(--failed-wash); }
+    .pill.flat { color:var(--muted); }
+
     .scorehead { display:flex; flex-direction:column; align-items:flex-end; gap:4px; }
     .scorebig { font-family:var(--font-display); font-size:clamp(44px,5.4vw,66px); font-weight:500; line-height:.92; letter-spacing:-0.035em; font-variant-numeric:tabular-nums; color:var(--text); }
     .statgrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:1px; margin-top:18px; background:var(--line); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; }
@@ -287,7 +337,7 @@ export function renderProductPhase2AppHtml(): string {
     </form>
   </aside>
   <script>
-    const state = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[] };
+    const state = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[] };
     const app = document.getElementById("app");
     const element = (id) => document.getElementById(id);
     const html = (value) => String(value).split("&").join("&amp;").split("<").join("&lt;").split(">").join("&gt;").split('"').join("&quot;").split("'").join("&#39;");
@@ -353,6 +403,7 @@ export function renderProductPhase2AppHtml(): string {
         ]);
         state.schedule = results[0];
         state.regions = results[1].regions || [];
+        state.languages = results[1].languages || [];
         state.scheduleState = "ready";
       } catch (error) {
         state.scheduleState = "error";
@@ -360,15 +411,53 @@ export function renderProductPhase2AppHtml(): string {
       render();
     }
 
+    function filterQuery() {
+      const parts = [];
+      for (const key of ["modelId", "regionId", "languageId", "topicId"]) {
+        if (state.filters[key]) parts.push(key + "=" + encodeURIComponent(state.filters[key]));
+      }
+      return parts.length ? "?" + parts.join("&") : "";
+    }
+
+    function filtersApplied() {
+      return ["modelId", "regionId", "languageId", "topicId"].filter((key) => state.filters[key]).length;
+    }
+
     async function loadAnswerEngine() {
       if (!state.selectedId || state.answerEngineState === "loading") return;
       state.answerEngineState = "loading";
       try {
-        state.answerEngine = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/prompt-insights");
+        state.answerEngine = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/prompt-insights" + filterQuery());
         state.answerEngineState = "ready";
       } catch (error) {
         state.answerEngineState = "error";
       }
+      render();
+    }
+
+    async function openEvidence(promptId, title) {
+      state.panel = { promptId: promptId, title: title };
+      state.panelState = "loading";
+      state.panelAnswers = [];
+      document.body.classList.add("panel-open");
+      render();
+      try {
+        const query = filterQuery();
+        const joiner = query ? "&" : "?";
+        const result = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/prompt-answers" + query + joiner + "promptId=" + encodeURIComponent(promptId));
+        state.panelAnswers = result.answers || [];
+        state.panelState = "ready";
+      } catch (error) {
+        state.panelState = "error";
+      }
+      render();
+    }
+
+    function closeEvidence() {
+      document.body.classList.remove("panel-open");
+      state.panel = null;
+      state.panelAnswers = [];
+      state.panelState = "idle";
       render();
     }
 
@@ -854,6 +943,143 @@ export function renderProductPhase2AppHtml(): string {
         + '<details class="technical-details"><summary>Markets to ask in</summary><div class="checkgrid">' + markets + '</div></details>';
     }
 
+    // A trend read at a glance: no axes, no grid, just the shape.
+    function sparkline(points, width, height) {
+      const usable = points.filter((point) => point.score.score !== null);
+      if (usable.length < 2) return '<span class="subtle">Run again to see movement</span>';
+      const values = usable.map((point) => point.score.score);
+      const max = Math.max(100, ...values);
+      const x = (index) => index * width / (usable.length - 1);
+      const y = (value) => height - 2 - (value / max) * (height - 4);
+      const path = usable.map((point, index) => (index ? "L " : "M ") + x(index).toFixed(1) + " " + y(point.score.score).toFixed(1)).join(" ");
+      const last = usable[usable.length - 1];
+      return '<svg viewBox="0 0 ' + width + ' ' + height + '" preserveAspectRatio="none" role="img" aria-label="score over time" style="width:100%;height:' + height + 'px;overflow:visible">'
+        + '<path d="' + path + '" fill="none" stroke="var(--accent)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>'
+        + '<circle cx="' + x(usable.length - 1).toFixed(1) + '" cy="' + y(last.score.score).toFixed(1) + '" r="2.75" fill="var(--accent)"/></svg>';
+    }
+
+    function deltaPill(trend) {
+      if (!trend || trend.change === null) return '<span class="pill flat">No movement yet</span>';
+      const cls = trend.change > 0 ? "good" : trend.change < 0 ? "bad" : "flat";
+      const arrow = trend.change > 0 ? "↑" : trend.change < 0 ? "↓" : "→";
+      return '<span class="pill ' + cls + '">' + arrow + " " + Math.abs(trend.change) + '</span>';
+    }
+
+    function renderHero(data) {
+      const rank = data.rank === null ? "Not named" : "#" + data.rank + " of " + data.leaderboard.length;
+      const leader = data.leaderboard.find((row) => !row.isTarget);
+      return '<div class="hero">'
+        + '<div class="hero-figure"><span class="scorebig">' + scoreText(data.overall.score) + '</span>'
+        + '<span class="hero-sub">' + deltaPill(data.trend) + '<span>' + html(rank) + '</span></span>'
+        + '<span class="hero-spark">' + sparkline(data.trend.points, 150, 26) + '</span></div>'
+        + '<div class="hero-stats">'
+        + '<div class="hero-stat"><span>Presence</span><strong>' + pct(data.overall.presenceRate) + '</strong><small>' + data.overall.appearances + ' of ' + data.overall.answers + ' answers</small></div>'
+        + '<div class="hero-stat"><span>Prominence</span><strong>' + pct(data.overall.prominence) + '</strong><small>how early you appear</small></div>'
+        + '<div class="hero-stat"><span>Sentiment</span><strong>' + pct(data.overall.sentiment) + '</strong><small>recommended or listed</small></div>'
+        + '<div class="hero-stat"><span>Ahead of you</span><strong>' + (leader ? html(leader.name) : "—") + '</strong><small>' + (leader ? leader.appearances + ' answers' : 'nobody named') + '</small></div>'
+        + '</div></div>';
+    }
+
+    function option(value, label, selected) {
+      return '<option value="' + html(value) + '"' + (selected === value ? " selected" : "") + '>' + html(label) + '</option>';
+    }
+
+    function renderSegment(data) {
+      const models = [option("", "All models", state.filters.modelId)].concat(data.byModel.map((row) => option(row.modelId, row.displayName, state.filters.modelId)));
+      const topics = [option("", "All topics", state.filters.topicId)].concat(data.topics.map((row) => option(row.topicId, row.name, state.filters.topicId)));
+      const markets = [option("", "All markets", state.filters.regionId)].concat((state.regions || []).map((row) => option(row.id, row.label, state.filters.regionId)));
+      const tongues = [option("", "All languages", state.filters.languageId)].concat((state.languages || []).map((row) => option(row.id, row.label, state.filters.languageId)));
+      const applied = filtersApplied();
+      return '<div class="segment">'
+        + '<select data-filter="topicId" aria-label="Topic">' + topics.join("") + '</select>'
+        + '<select data-filter="modelId" aria-label="Model">' + models.join("") + '</select>'
+        + '<select data-filter="regionId" aria-label="Market">' + markets.join("") + '</select>'
+        + '<select data-filter="languageId" aria-label="Language">' + tongues.join("") + '</select>'
+        + (applied ? '<button type="button" class="linklike applied" data-clear-filters>Clear ' + applied + '</button>' : '')
+        + '<span class="spacer"></span>'
+        + '<a class="button" href="/api/projects/' + html(state.selectedId) + '/prompt-export/scores.csv">Export CSV</a></div>';
+    }
+
+    function renderLeaderboard(rows) {
+      if (!rows || !rows.length) return '<p class="subtle">No organisation was named in any answer yet.</p>';
+      const top = rows.slice(0, 12);
+      const most = Math.max(1, ...top.map((row) => row.appearances));
+      return '<div class="mtable"><div class="mhead mcols-board"><span>#</span><span>Who</span><span>Answers naming them</span><span>Prominence</span></div>'
+        + top.map((row, index) => '<div class="mrow mcols-board">'
+          + '<span class="mcell mono">' + (index + 1) + '</span>'
+          + '<div class="mname"><strong>' + html(row.name) + (row.isTarget ? ' <span class="pill good">You</span>' : '') + '</strong><span class="mono">' + html(row.domain || "no domain given") + '</span></div>'
+          + '<span class="mcell"><span class="sharebar' + (row.isTarget ? " is-target" : "") + '"><i style="width:' + Math.round(row.appearances / most * 100) + '%"></i><b>' + row.appearances + ' · ' + pct(row.shareOfAnswers) + '</b></span></span>'
+          + '<span class="mcell">' + pct(row.prominence) + '</span></div>').join("")
+        + '</div>';
+    }
+
+    function renderTopicRows(topics) {
+      if (!topics || !topics.length) return '<p class="subtle">No topic has been answered yet.</p>';
+      return topics.map((topic) => {
+        const stateClass = topic.score.score === null ? "" : topic.score.score >= 50 ? "state-ok" : topic.score.score > 0 ? "state-flag" : "state-bad";
+        const prompts = topic.prompts.map((prompt) => '<div class="mrow mcols-prompt is-clickable" data-evidence="' + html(prompt.promptId) + '" data-evidence-title="' + html(prompt.text) + '" tabindex="0" role="button">'
+          + '<div class="mname"><strong>' + html(prompt.text) + '</strong><span class="subtle">' + intentLabel(prompt.intent) + ' · ' + prompt.score.answers + ' answer(s)' + (prompt.measuresVisibility ? '' : ' · names you') + '</span></div>'
+          + '<span class="mcell ' + (prompt.score.score === null ? "" : prompt.score.score > 0 ? "state-ok" : "state-bad") + '">' + scoreText(prompt.score.score) + '</span>'
+          + '<span class="mcell">' + (prompt.rank === null ? "Not named" : "#" + prompt.rank) + ' <span class="chev">›</span></span></div>').join("");
+        return '<section class="section-card"><div class="section-head"><div><h2>' + html(topic.name) + '</h2><p class="subtle">' + html(topic.description || "") + '</p></div>'
+          + '<div class="scorehead"><span style="font-family:var(--font-display);font-size:26px" class="' + stateClass + '">' + scoreText(topic.score.score) + '</span><span class="subtle">' + (topic.rank === null ? "Not named" : "rank #" + topic.rank) + '</span></div></div>'
+          + '<div class="mtable"><div class="mhead mcols-prompt"><span>Question</span><span>Score</span><span>Rank</span></div>' + prompts + '</div></section>';
+      }).join("");
+    }
+
+    // The mentions the model reported, marked in its own words. This is the
+    // receipt the whole product claims to keep.
+    function markMentions(text, mentions) {
+      const names = (mentions || []).map((row) => row.name).filter(Boolean).sort((a, b) => b.length - a.length);
+      let out = html(text);
+      for (const name of names) {
+        const needle = html(name);
+        const at = out.toLowerCase().indexOf(needle.toLowerCase());
+        if (at < 0) continue;
+        out = out.slice(0, at) + "<mark>" + out.slice(at, at + needle.length) + "</mark>" + out.slice(at + needle.length);
+      }
+      return out;
+    }
+
+    // Answers archived before markets and languages existed carry neither, and
+    // printing the raw field showed "undefined", which reads as a value.
+    function labelFor(rows, id, fallback) {
+      if (!id) return fallback;
+      const found = (rows || []).find((row) => row.id === id);
+      return found ? found.label : id;
+    }
+
+    function renderEvidence() {
+      if (!state.panel) return '<div class="panel-scrim" data-close-panel></div><aside class="panel" aria-hidden="true"></aside>';
+      const body = state.panelState === "loading"
+        ? '<p class="subtle">Reading the archived answers.</p>'
+        : state.panelState === "error"
+          ? '<p class="subtle">Could not read the answers for this question.</p>'
+          : !state.panelAnswers.length
+            ? '<p class="subtle">No answer has been archived for this question yet.</p>'
+            : state.panelAnswers.map((answer) => {
+                const target = (answer.mentions || []).find((row) => row.isTarget);
+                const badge = answer.status !== "completed"
+                  ? '<span class="pill bad">' + html(answer.status.split("_").join(" ")) + '</span>'
+                  : target
+                    ? '<span class="pill good">named you · ' + html(target.recommendation) + '</span>'
+                    : '<span class="pill flat">did not name you</span>';
+                const sources = (answer.citationUrls || []).length
+                  ? '<div class="evidence-foot">' + answer.citationUrls.slice(0, 8).map((url) => '<a href="' + html(url) + '" target="_blank" rel="noreferrer">' + html(url) + '</a>').join("") + '</div>'
+                  : '<div class="evidence-foot">This answer cited no sources.</div>';
+                return '<article class="evidence"><div class="evidence-head"><strong>' + html(answer.modelDisplayName) + '</strong>'
+                  + badge
+                  + '<span>' + html(labelFor(state.regions, answer.regionId, "No stated market")) + ' · ' + html(labelFor(state.languages, answer.languageId, "English")) + '</span>'
+                  + '<span class="spacer"></span><span>' + html((answer.createdAt || "").slice(0, 16).replace("T", " ")) + '</span></div>'
+                  + '<div class="evidence-text">' + (answer.text ? markMentions(answer.text, answer.mentions) + (answer.errorMessage ? '' : '') : html(answer.errorMessage || "This answer returned no text.")) + '</div>'
+                  + sources + '</article>';
+              }).join("");
+      return '<div class="panel-scrim" data-close-panel></div><aside class="panel" role="dialog" aria-label="Archived answers">'
+        + '<div class="panel-head"><div><h2>' + html(state.panel.title) + '</h2><p class="subtle">Every archived answer behind this number.</p></div>'
+        + '<button type="button" class="close" data-close-panel aria-label="Close">×</button></div>'
+        + '<div class="panel-body">' + body + '</div></aside>';
+    }
+
     function renderAnswerEngine() {
       const selected = project();
       if (!selected) return '<section class="view"><div class="empty"><div class="empty-copy"><h2>Select a project first</h2></div></div></section>';
@@ -869,13 +1095,16 @@ export function renderProductPhase2AppHtml(): string {
       const weights = data.weights || { prominenceFloor: 0, sentimentFloor: 0 };
       const failedNote = data.answersFailed ? '<div class="warning-box">' + data.answersFailed + ' answer(s) failed and are excluded. They are not counted as answers that did not name you.</div>' : '';
       const citationNote = data.citationsUnavailable ? '<div class="warning-box">No answer carried a citation, so there are no sources to analyse. That is a property of the models you ran, not evidence that nobody cites you. A provider with web search will produce them.</div>' : '';
-      return '<section class="view"><div class="heading"><div><h1>Answer engine</h1><p class="subtle">' + data.answers + ' answer(s) across ' + data.topics.length + ' topic(s) for ' + html(selected.normalizedDomain) + '.</p></div><div class="inline-actions"><button type="button" class="button" data-page="prompts">Prompts</button><button type="button" class="button primary" data-run-prompts>' + (state.promptRunState === "running" ? "Running…" : "Run prompts") + '</button></div></div>'
+      return '<section class="view"><div class="heading"><div><h1>Answer engine</h1><p class="subtle">' + data.answers + ' answer(s) across ' + data.topics.length + ' topic(s) for ' + html(selected.normalizedDomain) + '. Click any question to read the answers behind it.</p></div><div class="inline-actions"><button type="button" class="button" data-page="prompts">Prompts</button><button type="button" class="button primary" data-run-prompts>' + (state.promptRunState === "running" ? "Running…" : "Run prompts") + '</button></div></div>'
+        + renderHero(data)
+        + renderSegment(data)
         + failedNote + citationNote
-        + '<section class="section-card"><div class="section-head"><div><h2>Answer engine score</h2><p class="subtle">Presence scaled by where you appear and how you are described.</p></div><div class="scorehead"><span class="scorebig">' + scoreText(data.overall.score) + '</span><span class="subtle">' + (data.rank === null ? "Not named" : "Rank #" + data.rank + " of " + data.leaderboard.length) + '</span></div></div>'
+        + '<section class="section-card"><div class="section-head"><div><h2>How the score is built</h2><p class="subtle">Presence scaled by where you appear and how you are described.</p></div></div>'
         + renderScoreBreakdown(data.overall)
-        + '<details class="technical-details"><summary>How this number is built</summary><p class="subtle">score = presence × (' + weights.prominenceFloor + ' + ' + (1 - weights.prominenceFloor).toFixed(1) + ' × prominence) × (' + weights.sentimentFloor + ' + ' + (1 - weights.sentimentFloor).toFixed(1) + ' × sentiment) × 100.</p><p class="subtle">The two floors are a judgement, not a measurement: being named late and grudgingly is still better than not being named, so prominence and sentiment scale presence rather than replacing it. Every component above is reported separately so you can ignore the composite entirely.</p></details></section>'
+        + '<details class="technical-details"><summary>The formula, and the judgement in it</summary><p class="subtle">score = presence × (' + weights.prominenceFloor + ' + ' + (1 - weights.prominenceFloor).toFixed(1) + ' × prominence) × (' + weights.sentimentFloor + ' + ' + (1 - weights.sentimentFloor).toFixed(1) + ' × sentiment) × 100.</p><p class="subtle">The two floors are a judgement, not a measurement: being named late and grudgingly is still better than not being named, so prominence and sentiment scale presence rather than replacing it. Every component above is reported separately so you can ignore the composite entirely.</p></details></section>'
         + '<section class="section-card"><div class="section-head"><div><h2>Who the models name</h2><p class="subtle">Ranked by how many answers named them, then by how early.</p></div></div>' + renderLeaderboard(data.leaderboard) + '</section>'
-        + '<section class="section-card"><div class="section-head"><div><h2>Topics, weakest first</h2><p class="subtle">Where you are losing, in the order worth fixing.</p></div></div>' + renderTopicRows(data.topics) + '</section>'
+        + '<div class="section-head" style="margin-top:24px"><div><h2>Topics, weakest first</h2><p class="subtle">Where you are losing, in the order worth fixing. Every question opens its answers.</p></div></div>'
+        + renderTopicRows(data.topics)
         + '<section class="section-card"><div class="section-head"><div><h2>Questions you never appear in</h2><p class="subtle">Answered, and you were not named once. This is the actionable list.</p></div></div>' + renderAbsent(data.absentFrom) + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>Movement</h2><p class="subtle">One point per run. A run where everything failed is left out rather than drawn as a drop.</p></div></div>' + renderPromptTrend(data.trend) + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>By market</h2><p class="subtle">The same questions, asked for a different buyer.</p></div></div>' + renderRegionRows(data.byRegion, data.regionCaveat) + '</section>'
@@ -1014,7 +1243,7 @@ export function renderProductPhase2AppHtml(): string {
     function renderConfiguration() { const selected = project(); if (!selected) return '<section class="view"><div class="empty"><div class="empty-copy"><h2>Select a project first</h2><p class="subtle">A configuration belongs to a single project.</p></div></div></section>'; if (state.configurationState === "loading") return '<section class="view"><div class="heading"><div><h1>Configuration</h1><p class="subtle">Loading the current configuration…</p></div></div><div class="section-card inline-empty" aria-live="polite">Loading the domain, models and web search modes.</div></section>'; const configuration = monitoringConfiguration(); const hasModels = selectedRows().length > 0; const notice = state.monitoringNotice.text; const noticeKind = state.monitoringNotice.kind; const stateMessage = !hasModels ? "Select at least one available model before saving the configuration." : configuration.status === "no_version" ? "No configuration saved yet. Saving fixes the current domain, language, models and web search modes." : configuration.status === "changed" ? "The models or web search modes have changed. Saving creates a new configuration version." : "The current models and web search modes are saved."; const stateClass = !hasModels || configuration.status === "changed" ? "warning-box" : configuration.status === "unchanged" ? "success-box" : "warning-box"; return '<section class="view"><div class="heading"><div><h1>Configuration</h1><p class="subtle">Save the domain, output language and each model\\'s web search mode as reusable monitoring conditions.</p></div>' + saveConfigurationButton(configuration, hasModels) + '</div><div id="monitoring-configuration-status" data-testid="monitoring-configuration-status" class="form-status ' + html(noticeKind) + '" aria-live="polite">' + html(notice) + '</div><div class="section-stack"><section class="section-card"><div class="section-head"><div><h2>Current version</h2><p class="subtle">Target domain: <span class="mono">' + html(selected.normalizedDomain) + '</span></p></div><span class="tag ' + (configuration.status === "unchanged" ? "ready" : "warning") + '">' + (configuration.currentVersion ? "v" + configuration.currentVersion : "Not saved yet") + '</span></div><div class="' + stateClass + '" data-testid="monitoring-configuration-summary">' + html(stateMessage) + '</div></section><section class="section-card"><div class="section-head"><div><h2>Current model configuration</h2><p class="subtle">Each model stores its own web search mode.</p></div><button type="button" class="button" data-page="models">Adjust models</button></div>' + renderSelectedModels(true) + '</section>' + renderConfigurationDiff(configuration) + '<section class="section-card"><div class="section-head"><div><h2>Past configurations</h2><p class="subtle">Read-only snapshot. Saving a new version does not overwrite past configurations.</p></div></div>' + renderConfigurationRows(configuration) + '</section>' + renderTechnicalDetails(configuration) + '</div></section>'; }
     const brandMark = ${JSON.stringify(renderCiteGeoMarkSvg("phase2-brand-mark").split("\n").join(""))};
     const brandLockup = ${JSON.stringify(renderCiteGeoLockupInline())};
-    function render() { if (window.__citegeoPhase5Active) return; const selected = project(); const options = state.currentProjects.length ? state.currentProjects.map((item) => '<option value="' + html(item.id) + '">' + html(item.name) + ' · ' + html(item.normalizedDomain) + '</option>').join("") : '<option value="">No projects yet</option>'; let view = state.page === "models" ? renderModels() : state.page === "configuration" ? renderConfiguration() : state.page === "setup" ? renderSetup() : state.page === "visibility" ? renderVisibility() : state.page === "prompts" ? renderPrompts() : state.page === "answer-engine" ? renderAnswerEngine() : state.page === "dashboard" ? renderDashboard() : renderOverview(); app.innerHTML = '<div class="shell"><aside class="sidebar"><div class="brand">' + brandLockup + '</div><div class="project-label">Project</div><select id="project-select" class="project-select" aria-label="Switch project" data-testid="project-select">' + options + '</select><nav class="nav" aria-label="Project navigation"><button type="button" class="nav-item ' + (state.page === "dashboard" ? "active" : "") + '" data-page="dashboard"><span>Dashboard</span></button><div class="nav-label">Run a test</div><button type="button" class="nav-item ' + (state.page === "models" ? "active" : "") + '" data-page="models"><span class="nav-step">1</span><span>Choose models</span></button><button type="button" class="nav-item ' + (state.page === "recognition" || state.page === "reports" ? "active" : "") + '" data-page="recognition"><span class="nav-step">2</span><span>Results</span></button><button type="button" class="nav-item ' + (state.page === "visibility" ? "active" : "") + '" data-page="visibility"><span class="nav-step">3</span><span>Visibility</span></button><div class="nav-label">Answer engine</div><button type="button" class="nav-item ' + (state.page === "answer-engine" ? "active" : "") + '" data-page="answer-engine"><span>Scores</span></button><button type="button" class="nav-item ' + (state.page === "prompts" ? "active" : "") + '" data-page="prompts"><span>Prompts</span></button><div class="nav-label">Over time</div><a class="nav-item" href="?view=measurements"><span>Continuous measurement</span></a><div class="nav-label">Machine</div><button type="button" class="nav-item ' + (state.page === "overview" ? "active" : "") + '" data-page="overview"><span>Projects</span></button><button type="button" class="nav-item ' + (state.page === "configuration" ? "active" : "") + '" data-page="configuration"><span>Configuration history</span></button><button type="button" class="nav-item ' + (state.page === "setup" ? "active" : "") + '" data-page="setup"><span>Setup</span></button></nav><div class="sidebar-bottom">Domain recognition</div></aside><main class="workspace"><header class="topbar"><div class="crumb"><strong>${PRODUCT_NAME}</strong> / ' + html(selected ? selected.name : "Project") + '</div><div class="topbar-actions"><button type="button" class="theme-toggle" data-theme-toggle aria-label="Switch between light and dark">&#9681;</button><button id="new-project" type="button" class="button primary" data-testid="new-project">New project</button></div></header><section class="content">' + view + '</section></main></div>'; const select = element("project-select"); select.value = state.selectedId; document.title = selected ? selected.name + " | ${PRODUCT_TITLE}" : "${PRODUCT_TITLE}"; }
+    function render() { if (window.__citegeoPhase5Active) return; const selected = project(); const options = state.currentProjects.length ? state.currentProjects.map((item) => '<option value="' + html(item.id) + '">' + html(item.name) + ' · ' + html(item.normalizedDomain) + '</option>').join("") : '<option value="">No projects yet</option>'; let view = state.page === "models" ? renderModels() : state.page === "configuration" ? renderConfiguration() : state.page === "setup" ? renderSetup() : state.page === "visibility" ? renderVisibility() : state.page === "prompts" ? renderPrompts() : state.page === "answer-engine" ? renderAnswerEngine() : state.page === "dashboard" ? renderDashboard() : renderOverview(); app.innerHTML = renderEvidence() + '<div class="shell"><aside class="sidebar"><div class="brand">' + brandLockup + '</div><div class="project-label">Project</div><select id="project-select" class="project-select" aria-label="Switch project" data-testid="project-select">' + options + '</select><nav class="nav" aria-label="Project navigation"><button type="button" class="nav-item ' + (state.page === "dashboard" ? "active" : "") + '" data-page="dashboard"><span>Dashboard</span></button><div class="nav-label">Run a test</div><button type="button" class="nav-item ' + (state.page === "models" ? "active" : "") + '" data-page="models"><span class="nav-step">1</span><span>Choose models</span></button><button type="button" class="nav-item ' + (state.page === "recognition" || state.page === "reports" ? "active" : "") + '" data-page="recognition"><span class="nav-step">2</span><span>Results</span></button><button type="button" class="nav-item ' + (state.page === "visibility" ? "active" : "") + '" data-page="visibility"><span class="nav-step">3</span><span>Visibility</span></button><div class="nav-label">Answer engine</div><button type="button" class="nav-item ' + (state.page === "answer-engine" ? "active" : "") + '" data-page="answer-engine"><span>Scores</span></button><button type="button" class="nav-item ' + (state.page === "prompts" ? "active" : "") + '" data-page="prompts"><span>Prompts</span></button><div class="nav-label">Over time</div><a class="nav-item" href="?view=measurements"><span>Continuous measurement</span></a><div class="nav-label">Machine</div><button type="button" class="nav-item ' + (state.page === "overview" ? "active" : "") + '" data-page="overview"><span>Projects</span></button><button type="button" class="nav-item ' + (state.page === "configuration" ? "active" : "") + '" data-page="configuration"><span>Configuration history</span></button><button type="button" class="nav-item ' + (state.page === "setup" ? "active" : "") + '" data-page="setup"><span>Setup</span></button></nav><div class="sidebar-bottom">Domain recognition</div></aside><main class="workspace"><header class="topbar"><div class="crumb"><strong>${PRODUCT_NAME}</strong> / ' + html(selected ? selected.name : "Project") + '</div><div class="topbar-actions"><button type="button" class="theme-toggle" data-theme-toggle aria-label="Switch between light and dark">&#9681;</button><button id="new-project" type="button" class="button primary" data-testid="new-project">New project</button></div></header><section class="content">' + view + '</section></main></div>'; const select = element("project-select"); select.value = state.selectedId; document.title = selected ? selected.name + " | ${PRODUCT_TITLE}" : "${PRODUCT_TITLE}"; }
     async function setPage(page) { state.page = page; savePreference("page", page); if (page === "configuration") { await refreshConfiguration(); return; } if (page === "reports" && window.__citegeoPhase4 && typeof window.__citegeoPhase4.open === "function") { await window.__citegeoPhase4.open(); return; } render(); if (page === "models") { await refreshConfiguration(); await loadCatalog(); } }
     async function createDraft(event) { event.preventDefault(); const button = element("save-draft"); const session = state.drawerSession; setFormStatus("Creating project draft", "loading"); try { const response = await runAction(button, { loading:"Saving…", success:"Saved", error:"Save failed" }, () => request("/api/projects", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ domain:element("project-domain").value, name:element("project-name").value }) })); state.mode = "current"; state.page = "overview"; setSelectedProject(response.project.id); await refreshProjects(); state.selections = []; state.baselines = []; resetDraftSelections(); setFormStatus("Draft saved", "success"); render(); window.setTimeout(() => { if (state.drawerSession === session) closeDrawer(); }, 850); } catch (error) { setFormStatus(error instanceof Error ? error.message : String(error), "error"); } }
     async function saveProject(event) { event.preventDefault(); const selected = project(); if (!selected) return; const button = event.currentTarget.querySelector('button[type="submit"]'); try { await runAction(button, { loading:"Saving…", success:"Saved", error:"Save failed" }, () => request("/api/projects/" + encodeURIComponent(selected.id), { method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ domain:element("edit-domain").value, name:element("edit-name").value }) })); await refreshProjects(); render(); } catch (error) { window.alert(error instanceof Error ? error.message : String(error)); } }
@@ -1039,6 +1268,37 @@ export function renderProductPhase2AppHtml(): string {
         const ids = set.prompts.filter((prompt) => prompt.topicId === topicId && prompt.status === "proposed").map((prompt) => prompt.id);
         await postPrompts("/prompts/activate", { promptIds: ids }, "saving", ids.length + " prompt(s) now tracked.");
       }
+    });
+
+    document.addEventListener("change", (event) => {
+      const control = event.target && event.target.closest ? event.target.closest("[data-filter]") : null;
+      if (!control) return;
+      state.filters[control.getAttribute("data-filter")] = control.value;
+      state.answerEngineState = "idle";
+      loadAnswerEngine();
+    });
+
+    document.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!target || !target.closest) return;
+      if (target.closest("[data-clear-filters]")) {
+        state.filters = { modelId:"", regionId:"", languageId:"", topicId:"" };
+        state.answerEngineState = "idle";
+        loadAnswerEngine();
+        return;
+      }
+      if (target.closest("[data-close-panel]")) { closeEvidence(); return; }
+      const row = target.closest("[data-evidence]");
+      if (row) openEvidence(row.getAttribute("data-evidence"), row.getAttribute("data-evidence-title") || "");
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && state.panel) { closeEvidence(); return; }
+      if (event.key !== "Enter" && event.key !== " ") return;
+      const row = event.target && event.target.closest ? event.target.closest("[data-evidence]") : null;
+      if (!row) return;
+      event.preventDefault();
+      openEvidence(row.getAttribute("data-evidence"), row.getAttribute("data-evidence-title") || "");
     });
 
     document.addEventListener("click", (event) => {
@@ -1116,7 +1376,7 @@ export function renderProductPhase2AppHtml(): string {
     async function retryRecognition(modelRunId, button) { const selected = project(); const detail = state.recognitionDetail; if (!selected || !detail) return; try { await runAction(button, { loading:"Retrying…", success:"Started", error:"Retry failed" }, () => request("/api/projects/" + encodeURIComponent(selected.id) + "/recognition-runs/" + encodeURIComponent(detail.run.id) + "/model-runs/" + encodeURIComponent(modelRunId) + "/retry", { method:"POST" })); state.recognitionNotice = { text:"A new execution attempt was created for this model.", kind:"success" }; await refreshRecognition(); } catch (error) { state.recognitionNotice = { text:error instanceof Error ? error.message : expectedErrorText.request_failed, kind:"error" }; render(); } }
     async function reanalyzeRecognition(modelRunId, attemptId, button) { const selected = project(); const detail = state.recognitionDetail; if (!selected || !detail || !attemptId) return; try { await runAction(button, { loading:"Parsing the saved answer…", success:"Local parse complete", error:"Parsing failed" }, () => request("/api/projects/" + encodeURIComponent(selected.id) + "/recognition-runs/" + encodeURIComponent(detail.run.id) + "/model-runs/" + encodeURIComponent(modelRunId) + "/attempts/" + encodeURIComponent(attemptId) + "/reanalyze", { method:"POST" })); state.recognitionNotice = { text:"A new local parse was generated from the saved raw answer. No model was called.", kind:"success" }; await refreshRecognition(); } catch (error) { state.recognitionNotice = { text:error instanceof Error ? error.message : expectedErrorText.request_failed, kind:"error" }; render(); } }
     const phase2Render = render;
-    render = function renderWithRecognition() { if (window.__citegeoPhase5Active) return; if (state.page === "reports" && window.__citegeoPhase4 && typeof window.__citegeoPhase4.render === "function") return window.__citegeoPhase4.render(); if (state.page !== "recognition") return phase2Render(); const selected = project(); const options = state.currentProjects.length ? state.currentProjects.map((item) => '<option value="' + html(item.id) + '">' + html(item.name) + ' · ' + html(item.normalizedDomain) + '</option>').join("") : '<option value="">No projects yet</option>'; app.innerHTML = '<div class="shell"><aside class="sidebar"><div class="brand">' + brandLockup + '</div><div class="project-label">Project</div><select id="project-select" class="project-select" aria-label="Switch project" data-testid="project-select">' + options + '</select><nav class="nav" aria-label="Project navigation"><button type="button" class="nav-item" data-page="dashboard"><span>Dashboard</span></button><div class="nav-label">Run a test</div><button type="button" class="nav-item" data-page="models"><span class="nav-step">1</span><span>Choose models</span></button><button type="button" class="nav-item" data-page="recognition"><span class="nav-step">2</span><span>Results</span></button><button type="button" class="nav-item" data-page="visibility"><span class="nav-step">3</span><span>Visibility</span></button><div class="nav-label">Answer engine</div><button type="button" class="nav-item" data-page="answer-engine"><span>Scores</span></button><button type="button" class="nav-item" data-page="prompts"><span>Prompts</span></button><div class="nav-label">Over time</div><a class="nav-item" href="?view=measurements"><span>Continuous measurement</span></a><div class="nav-label">Machine</div><button type="button" class="nav-item" data-page="overview"><span>Projects</span></button><button type="button" class="nav-item" data-page="configuration"><span>Configuration history</span></button><button type="button" class="nav-item" data-page="setup"><span>Setup</span></button></nav><div class="sidebar-bottom">Domain recognition</div></aside><main class="workspace"><header class="topbar"><div class="crumb"><strong>${PRODUCT_NAME}</strong> / ' + html(selected ? selected.name : "Project") + '</div><div class="topbar-actions"><button type="button" class="theme-toggle" data-theme-toggle aria-label="Switch between light and dark">&#9681;</button><button id="new-project" type="button" class="button primary" data-testid="new-project">New project</button></div></header><section class="content">' + renderRecognitionPage() + '</section></main></div>'; const select = element("project-select"); if (select) select.value = state.selectedId; document.title = selected ? selected.name + " | ${PRODUCT_TITLE}" : "${PRODUCT_TITLE}"; };
+    render = function renderWithRecognition() { if (window.__citegeoPhase5Active) return; if (state.page === "reports" && window.__citegeoPhase4 && typeof window.__citegeoPhase4.render === "function") return window.__citegeoPhase4.render(); if (state.page !== "recognition") return phase2Render(); const selected = project(); const options = state.currentProjects.length ? state.currentProjects.map((item) => '<option value="' + html(item.id) + '">' + html(item.name) + ' · ' + html(item.normalizedDomain) + '</option>').join("") : '<option value="">No projects yet</option>'; app.innerHTML = renderEvidence() + '<div class="shell"><aside class="sidebar"><div class="brand">' + brandLockup + '</div><div class="project-label">Project</div><select id="project-select" class="project-select" aria-label="Switch project" data-testid="project-select">' + options + '</select><nav class="nav" aria-label="Project navigation"><button type="button" class="nav-item" data-page="dashboard"><span>Dashboard</span></button><div class="nav-label">Run a test</div><button type="button" class="nav-item" data-page="models"><span class="nav-step">1</span><span>Choose models</span></button><button type="button" class="nav-item" data-page="recognition"><span class="nav-step">2</span><span>Results</span></button><button type="button" class="nav-item" data-page="visibility"><span class="nav-step">3</span><span>Visibility</span></button><div class="nav-label">Answer engine</div><button type="button" class="nav-item" data-page="answer-engine"><span>Scores</span></button><button type="button" class="nav-item" data-page="prompts"><span>Prompts</span></button><div class="nav-label">Over time</div><a class="nav-item" href="?view=measurements"><span>Continuous measurement</span></a><div class="nav-label">Machine</div><button type="button" class="nav-item" data-page="overview"><span>Projects</span></button><button type="button" class="nav-item" data-page="configuration"><span>Configuration history</span></button><button type="button" class="nav-item" data-page="setup"><span>Setup</span></button></nav><div class="sidebar-bottom">Domain recognition</div></aside><main class="workspace"><header class="topbar"><div class="crumb"><strong>${PRODUCT_NAME}</strong> / ' + html(selected ? selected.name : "Project") + '</div><div class="topbar-actions"><button type="button" class="theme-toggle" data-theme-toggle aria-label="Switch between light and dark">&#9681;</button><button id="new-project" type="button" class="button primary" data-testid="new-project">New project</button></div></header><section class="content">' + renderRecognitionPage() + '</section></main></div>'; const select = element("project-select"); if (select) select.value = state.selectedId; document.title = selected ? selected.name + " | ${PRODUCT_TITLE}" : "${PRODUCT_TITLE}"; };
     document.addEventListener("click", async (event) => { const target = event.target; if (!(target instanceof Element)) return; if (target.id === "start-recognition") { await startRecognition(); return; } const evidenceButton = target.closest("[data-evidence-target]"); if (evidenceButton) { const card = evidenceButton.closest("[data-testid=recognition-model-run]"); const details = card ? card.querySelector("details.evidence-details") : null; if (details) details.open = true; const evidenceTarget = evidenceButton.getAttribute("data-evidence-target"); window.setTimeout(() => { const marked = evidenceTarget ? element(evidenceTarget) : null; if (marked) marked.scrollIntoView({ block:"center", behavior:"smooth" }); }, 0); return; } const runButton = target.closest("[data-recognition-run]"); if (runButton) { state.recognitionSelectedRunId = runButton.getAttribute("data-recognition-run") || ""; await refreshRecognition(); return; } const reanalyzeButton = target.closest("[data-recognition-reanalyze]"); if (reanalyzeButton) { await reanalyzeRecognition(reanalyzeButton.getAttribute("data-recognition-reanalyze") || "", reanalyzeButton.getAttribute("data-recognition-attempt") || "", reanalyzeButton); return; } const retryButton = target.closest("[data-recognition-retry]"); if (retryButton) { await retryRecognition(retryButton.getAttribute("data-recognition-retry") || "", retryButton); return; } const pageButton = target.closest("[data-page]"); if (pageButton && pageButton.getAttribute("data-page") === "recognition") { window.setTimeout(() => refreshRecognition().catch((error) => { state.recognitionNotice = { text:error instanceof Error ? error.message : expectedErrorText.request_failed, kind:"error" }; render(); }), 0); } if (pageButton && pageButton.getAttribute("data-page") !== "recognition") window.clearTimeout(state.recognitionRefreshTimer); });
     document.addEventListener("change", (event) => { const target = event.target; if (target instanceof HTMLSelectElement && target.id === "project-select") { state.recognitionSelectedRunId = ""; window.setTimeout(() => { if (state.page === "recognition") refreshRecognition().catch(() => {}); }, 0); } });
     window.__citegeoPhase2 = { state, app, html, element, project, formatTime, brandMark, brandLockup, request, refreshRecognition, phase2Render, render: () => render() };

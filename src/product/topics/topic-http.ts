@@ -3,6 +3,7 @@ import { isPromptIntent } from "./topic-schema.js";
 import { REGIONS, REGION_CAVEAT } from "./region.js";
 import { LANGUAGES } from "./language.js";
 import { promptExportNames, promptExportTable } from "./topic-export.js";
+import type { PromptAnswer } from "./prompt-run-schema.js";
 import type { PromptRunService } from "./prompt-run-service.js";
 import type { PromptScheduleService } from "./prompt-schedule.js";
 import type { DemandReportFileStore } from "../demand/demand-store.js";
@@ -19,9 +20,26 @@ function stringList(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 }
 
+/** Server-side slicing, so a filtered view is the same computation as the
+ * whole one rather than a second, divergent one in the browser. */
+function sliced(answers: PromptAnswer[], url: URL | undefined): PromptAnswer[] {
+  if (!url) return answers;
+  const want = (key: string) => url.searchParams.get(key) || "";
+  const modelId = want("modelId");
+  const regionId = want("regionId");
+  const languageId = want("languageId");
+  const topicId = want("topicId");
+  return answers.filter((answer) =>
+    (!modelId || answer.modelId === modelId)
+    && (!regionId || answer.regionId === regionId)
+    && (!languageId || answer.languageId === languageId)
+    && (!topicId || answer.topicId === topicId));
+}
+
 export async function handleTopicApi(input: {
   method: string;
   route: string[];
+  url?: URL | undefined;
   send: TopicJsonSender;
   topics: TopicService;
   runs: PromptRunService;
@@ -30,7 +48,7 @@ export async function handleTopicApi(input: {
   ask: StructuredAsk;
   readJson: () => Promise<Record<string, unknown>>;
 }): Promise<boolean> {
-  const { method, route, send, topics, runs, schedule, demand, ask, readJson } = input;
+  const { method, route, url, send, topics, runs, schedule, demand, ask, readJson } = input;
   if (route[0] !== "api" || route[1] !== "projects") return false;
   const projectId = route[2];
   if (!projectId) return false;
@@ -153,6 +171,18 @@ export async function handleTopicApi(input: {
     return true;
   }
 
+  if (method === "GET" && tail.length === 1 && tail[0] === "prompt-answers") {
+    try {
+      const answers = sliced(await runs.listAnswers(projectId), url);
+      const promptId = url?.searchParams.get("promptId") || "";
+      const mine = promptId ? answers.filter((answer) => answer.promptId === promptId) : answers;
+      send(200, { answers: mine.slice(0, 60) });
+    } catch (error) {
+      send(404, { error: message(error) });
+    }
+    return true;
+  }
+
   if (method === "GET" && tail.length === 2 && tail[0] === "prompt-export") {
     try {
       const [set, answers, runList] = await Promise.all([
@@ -188,7 +218,7 @@ export async function handleTopicApi(input: {
         runs.listAnswers(projectId),
         runs.listRuns(projectId),
       ]);
-      return buildTopicInsights({ projectId, set, answers, runs: runList });
+      return buildTopicInsights({ projectId, set, answers: sliced(answers, url), runs: runList });
     }, 404);
     return true;
   }

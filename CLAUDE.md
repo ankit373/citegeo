@@ -193,8 +193,12 @@ the source to see.
 ## Before opening a pull request
 
 ```bash
-npm run check:all      # typecheck, 422 tests, emitted scripts, doc links
+rm -rf dist && npm run check:all   # typecheck, tests, emitted scripts, doc links
 ```
+
+**Delete `dist/` first.** The checks run against build output, and a file from
+a branch you switched away from stays there and fails, or passes, for reasons
+that are not in your working tree. It has produced three false failures.
 
 If the UI changed, **open it in a browser**. Several real bugs here were
 invisible to the test suite and obvious in a screenshot: a duplicated nav
