@@ -135,7 +135,7 @@ export function renderProductPhase2AppHtml(): string {
     .section-card { padding:20px; }
     .section-head { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; margin-bottom:14px; }
     .protocol-list { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:8px; padding:0; margin:15px 0 0; list-style:none; }
-    .protocol-list li { border:1px solid var(--line); background:var(--sidebar); border-radius:7px; padding:10px; color:var(--muted); font-size:13px; }
+    .protocol-list li { border:1px solid var(--line); background:var(--sidebar); border-radius:7px; padding:10px; color:var(--muted); font-size:13px; min-width:0; overflow-wrap:anywhere; }
     .model-search { margin:18px 0 12px; }
     .model-catalog-controls { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:10px; margin-bottom:12px; }
     .model-catalog-controls label { display:grid; gap:6px; color:var(--weak); font-size:12px; }
@@ -667,7 +667,8 @@ export function renderProductPhase2AppHtml(): string {
         const mode = provider.runnableNow ? "done" : provider.configured ? "warn" : "todo";
         const counts = provider.modelCount + ' models'
           + (provider.freeModels ? ' \\u00b7 ' + provider.freeModels + ' free to run' : '')
-          + (provider.nativeWebSearchModels ? ' \\u00b7 ' + provider.nativeWebSearchModels + ' with web search' : '');
+          + (provider.nativeWebSearchModels ? ' \\u00b7 ' + provider.nativeWebSearchModels + ' with web search' : '')
+          + (provider.configured && !provider.citationCapable ? ' \\u00b7 no citations' : '');
         const stateClass = mode === "done" ? "state-ok" : mode === "warn" ? "state-flag" : "";
         return '<div class="mrow mcols-provider" data-state="' + mode + '">'
           + '<div class="mname"><strong>' + html(provider.label) + '</strong><span class="mono">' + html(provider.endpoint || "not set") + '</span></div>'
@@ -679,11 +680,14 @@ export function renderProductPhase2AppHtml(): string {
       const banner = runnable.length
         ? ''
         : '<div class="warning-box">Nothing can run right now. Every configured provider is either out of credit, unreachable or has no models. A run started now would fail once per selected model.</div>';
-      const envRows = state.providers.map((provider) => '<li>' + html(provider.label) + ': <span class="mono">' + html(provider.envKeys.join(", ")) + '</span></li>').join("");
+      const envRows = state.providers.map((provider) => {
+        const keys = provider.envKeys.concat(provider.settingsEnvKeys || []);
+        return '<li>' + html(provider.label) + ': <span class="mono">' + html(keys.join(", ")) + '</span></li>';
+      }).join("");
       return '<section class="view"><div class="heading"><div><h1>Setup</h1><p class="subtle">Which providers this machine can actually run, and what each one costs you.</p></div><div class="inline-actions"><button type="button" class="button" data-reload-providers>Re-check</button></div></div>'
         + banner
         + '<section class="section-card"><div class="section-head"><div><h2>Providers</h2><p class="subtle">A provider appears in the model picker only when it is configured and answering.</p></div></div><div class="mtable"><div class="mhead mcols-provider"><span>Provider</span><span>Catalog</span><span>Status</span><span>What this means</span></div>' + rows + '</div></section>'
-        + renderCredentials() + '<section class="section-card"><div class="section-head"><div><h2>Where these come from</h2><p class="subtle">Set in .env at the repository root, then restart the server.</p></div></div><ul class="protocol-list">' + envRows + '<li>Local gateway endpoint: <span class="mono">OPENAI_COMPATIBLE_BASE_URL</span></li></ul></section></section>';
+        + renderCredentials() + '<section class="section-card"><div class="section-head"><div><h2>Where these come from</h2><p class="subtle">Set in .env at the repository root, then restart the server.</p></div></div><ul class="protocol-list">' + envRows + '</ul></section></section>';
     }
 
     function resultsSwitch(active) {

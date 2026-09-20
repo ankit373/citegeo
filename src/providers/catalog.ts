@@ -42,6 +42,8 @@ export const PROVIDER_DEFINITIONS: ProviderDefinition[] = [
       { model: "gpt-4o", nativeWebSearchSupported: false },
     ],
     analysisModel: "gpt-4o-mini",
+    // Discovered from the provider's own /v1/models listing.
+    supportsAnyModel: true,
     supportsNativeCitations: true,
     supportsWebSearch: true,
     nativeWebSearch: {
@@ -61,6 +63,8 @@ export const PROVIDER_DEFINITIONS: ProviderDefinition[] = [
       { model: "claude-3-5-sonnet-latest", nativeWebSearchSupported: false },
     ],
     analysisModel: "claude-3-5-haiku-latest",
+    // Discovered from the provider's own /v1/models listing.
+    supportsAnyModel: true,
     supportsNativeCitations: true,
     supportsWebSearch: true,
     nativeWebSearch: {
@@ -74,12 +78,19 @@ export const PROVIDER_DEFINITIONS: ProviderDefinition[] = [
     label: "Google Gemini",
     sourceType: "api",
     envKeys: ["GEMINI_API_KEY"],
-    defaultModels: ["gemini-1.5-flash", "gemini-1.5-pro"],
+    defaultModels: ["gemini-3.5-flash", "gemini-2.5-flash", "gemini-2.5-pro"],
     defaultModelCapabilities: [
-      { model: "gemini-1.5-flash", nativeWebSearchSupported: false },
-      { model: "gemini-1.5-pro", nativeWebSearchSupported: false },
+      // Grounding with Google Search is a per-account entitlement, not a per
+      // model one: these models accept the tool, and a free-tier key is told so
+      // by the API rather than by us.
+      { model: "gemini-3.5-flash", nativeWebSearchSupported: true },
+      { model: "gemini-2.5-flash", nativeWebSearchSupported: true },
+      { model: "gemini-2.5-pro", nativeWebSearchSupported: true },
     ],
-    analysisModel: "gemini-1.5-flash",
+    analysisModel: "gemini-2.5-flash",
+    // The models endpoint is the authority on what a key can reach, so a model
+    // discovered there is valid even though it is not named above.
+    supportsAnyModel: true,
     supportsNativeCitations: true,
     supportsWebSearch: true,
     nativeWebSearch: {
@@ -166,6 +177,13 @@ export const PROVIDER_MODEL_CAPABILITIES = new ProviderModelCapabilityCatalog(PR
     })),
   },
 ]);
+
+// Only an aggregator routes by "vendor/model". A direct provider given one
+// answers 404 in the middle of a run, which reads as the model being gone
+// rather than as an id pasted into the wrong provider. The two user-supplied
+// endpoints are exempt: their ids follow whatever the gateway behind them uses.
+const ROUTED_ID_PROVIDERS = new Set(["openrouter"]);
+const USER_SUPPLIED_ENDPOINTS = new Set(["azure-openai", "openai-compatible"]);
 
 function definition(id: string): ProviderDefinition {
   const found = PROVIDER_DEFINITIONS.find((item) => item.id === id);
@@ -258,6 +276,11 @@ export class ProviderCatalog {
 
   validate(providerId: string, model: string): void {
     const provider = this.get(providerId);
+    if (ROUTED_ID_PROVIDERS.has(providerId) === false && USER_SUPPLIED_ENDPOINTS.has(providerId) === false && model.includes("/")) {
+      throw new Error(
+        `Model "${model}" is a routed id, which only an aggregator accepts. Provider "${providerId}" wants a bare model id.`,
+      );
+    }
     if (provider.definition.supportsAnyModel) return;
     if (!provider.definition.defaultModels.includes(model)) {
       throw new Error(

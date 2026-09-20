@@ -1,3 +1,6 @@
+import { providerEnvKeys } from "../../config/env.js";
+import { PROVIDER_ACCESS } from "../configuration/provider-access.js";
+
 // Everything this product can hold a credential for. Model providers answer
 // questions; integrations reach outward to do something with the answers. They
 // share a store because they share the same rules: encrypted at rest, never
@@ -19,36 +22,21 @@ export interface IntegrationDefinition {
   settings?: Array<{ key: string; label: string; envKey: string }>;
 }
 
-export const INTEGRATIONS: IntegrationDefinition[] = [
-  {
-    id: "openrouter",
-    label: "OpenRouter",
-    kind: "model_provider",
-    purpose: "Ask hosted models what they know about your domain.",
-    envKeys: ["OPENROUTER_API_KEY", "OPENROUTER_KEY"],
-    help: "openrouter.ai/keys",
-  },
-  {
-    id: "openai-compatible",
-    label: "Local gateway",
-    kind: "model_provider",
-    purpose: "Ask models running on this machine, at no cost.",
-    envKeys: ["OPENAI_COMPATIBLE_API_KEY"],
-    help: "Any OpenAI-compatible endpoint. The key may be a placeholder.",
-    settings: [{ key: "baseUrl", label: "Base URL", envKey: "OPENAI_COMPATIBLE_BASE_URL" }],
-  },
-  {
-    id: "azure-openai",
-    label: "Azure OpenAI",
-    kind: "model_provider",
-    purpose: "Ask your own Azure deployments, billed to your subscription.",
-    envKeys: ["AZURE_OPENAI_API_KEY"],
-    help: "Azure portal, under Keys and Endpoint.",
-    settings: [
-      { key: "endpoint", label: "Endpoint", envKey: "AZURE_OPENAI_ENDPOINT" },
-      { key: "deployments", label: "Deployments", envKey: "AZURE_OPENAI_DEPLOYMENTS" },
-    ],
-  },
+// Model providers describe themselves once, in the access table, so a provider
+// added there is immediately addable through the UI. Listing them again here is
+// how the credentials form came to offer three providers while the catalogue
+// implemented eight.
+const MODEL_PROVIDERS: IntegrationDefinition[] = PROVIDER_ACCESS.map((access) => ({
+  id: access.id,
+  label: access.label,
+  kind: "model_provider" as const,
+  purpose: access.cost_note,
+  envKeys: providerEnvKeys(access.id),
+  help: access.setup_note,
+  ...(access.settings ? { settings: access.settings } : {}),
+}));
+
+const OUTWARD_INTEGRATIONS: IntegrationDefinition[] = [
   {
     id: "github",
     label: "GitHub",
@@ -68,6 +56,8 @@ export const INTEGRATIONS: IntegrationDefinition[] = [
     settings: [{ key: "siteUrl", label: "Property URL", envKey: "GOOGLE_SEARCH_CONSOLE_SITE" }],
   },
 ];
+
+export const INTEGRATIONS: IntegrationDefinition[] = [...MODEL_PROVIDERS, ...OUTWARD_INTEGRATIONS];
 
 export function integration(id: string): IntegrationDefinition | null {
   return INTEGRATIONS.find((row) => row.id === id) || null;

@@ -1,11 +1,6 @@
-import {
-  azureOpenAIEndpoint,
-  hasProviderKey,
-  openAICompatibleBaseUrl,
-  providerEnvKeys,
-  resolveProviderKey,
-} from "../../config/env.js";
+import { hasProviderKey, providerEnvKeys, resolveProviderKey } from "../../config/env.js";
 import { openRouterAccountBalance, type OpenRouterAccountBalance } from "../../providers/openrouter-account.js";
+import { accessEndpoint, canCite, PROVIDER_ACCESS, type ProviderAccess } from "./provider-access.js";
 import type { ProductModelCatalog, ProviderModelCatalogItem } from "./model-selection-schema.js";
 import type { ProductProviderId } from "./provider-id.js";
 
@@ -14,6 +9,8 @@ export interface ProviderStatus {
   label: string;
   configured: boolean;
   envKeys: string[];
+  /** Non-secret variables this provider also needs, such as an endpoint. */
+  settingsEnvKeys: string[];
   endpoint: string | null;
   modelCount: number;
   nativeWebSearchModels: number;
@@ -22,8 +19,16 @@ export interface ProviderStatus {
   reachable: boolean;
   /** False when a run would fail right now for a reason we can already see. */
   runnableNow: boolean;
+  /**
+   * False when answers from here carry no sources. The citation gap, cited
+   * domains and query fanout are all built from citations, so a provider that
+   * cannot search still powers visibility and share of voice and nothing else.
+   */
+  citationCapable: boolean;
   balance: OpenRouterAccountBalance | null;
   detail: string;
+  /** Where to get a key, and what will surprise them after they do. */
+  setupNote: string;
 }
 
 export interface ProviderStatusOptions {
@@ -35,11 +40,11 @@ function money(value: number): string {
   return value < 0 ? `-$${rounded}` : `$${rounded}`;
 }
 
-// OpenRouter marks no-cost models with this suffix; nothing else advertises one.
-function isFreeToRun(providerId: ProductProviderId, item: ProviderModelCatalogItem): boolean {
-  if (providerId === "openai-compatible") return true;
-  if (providerId === "openrouter") return item.modelId.endsWith(":free");
-  return false;
+// OpenRouter marks no-cost models with this suffix; nothing else advertises one,
+// so a free-by-posture provider counts all of its models and the rest count none.
+function freeModelCount(access: ProviderAccess, models: ProviderModelCatalogItem[]): number {
+  if (access.id === "openrouter") return models.filter((item) => item.modelId.endsWith(":free")).length;
+  return access.cost === "free" ? models.length : 0;
 }
 
 // One place that answers "can I actually run anything, and with what?".
@@ -57,33 +62,30 @@ export async function providerStatuses(
   const readBalance = options.balance || openRouterAccountBalance;
 
   const rows: ProviderStatus[] = [];
-  for (const providerId of ["openrouter", "openai-compatible", "azure-openai"] as ProductProviderId[]) {
-    const mine = models.filter((item) => item.providerId === providerId);
-    const configured = hasProviderKey(providerId);
-    const freeModels = mine.filter((item) => isFreeToRun(providerId, item)).length;
-    const balance = providerId === "openrouter" && configured ? await safeBalance(readBalance) : null;
+  for (const access of PROVIDER_ACCESS) {
+    const mine = models.filter((item) => item.providerId === access.id);
+    const configured = hasProviderKey(access.id);
+    const freeModels = freeModelCount(access, mine);
+    const balance = access.id === "openrouter" && configured ? await safeBalance(readBalance) : null;
     rows.push({
-      providerId,
-      label: providerId === "openrouter" ? "OpenRouter" : providerId === "azure-openai" ? "Azure OpenAI" : "Local gateway",
+      providerId: access.id,
+      label: access.label,
       configured,
-      envKeys: providerEnvKeys(providerId),
-      endpoint: endpointFor(providerId),
+      envKeys: providerEnvKeys(access.id),
+      settingsEnvKeys: (access.settings || []).map((setting) => setting.envKey),
+      endpoint: accessEndpoint(access),
       modelCount: mine.length,
       nativeWebSearchModels: mine.filter((item) => item.nativeWebSearchSupported).length,
       freeModels,
       reachable: mine.length > 0,
       runnableNow: configured && mine.length > 0 && (balance === null || balance.paidModelsRunnable || freeModels > 0),
+      citationCapable: canCite(access),
       balance,
-      detail: detailFor({ providerId, configured, models: mine.length, freeModels, balance }),
+      detail: detailFor(access, { configured, models: mine.length, freeModels, balance }),
+      setupNote: access.setup_note,
     });
   }
   return rows;
-}
-
-function endpointFor(providerId: ProductProviderId): string | null {
-  if (providerId === "openai-compatible") return openAICompatibleBaseUrl() || null;
-  if (providerId === "azure-openai") return azureOpenAIEndpoint() || null;
-  return "https://openrouter.ai/api/v1";
 }
 
 async function safeBalance(
@@ -96,38 +98,49 @@ async function safeBalance(
   }
 }
 
-function detailFor(input: {
-  providerId: ProductProviderId;
+function missingConfiguration(access: ProviderAccess): string {
+  const keys = providerEnvKeys(access.id).join(" or ");
+  if (access.id === "azure-openai") {
+    return `No Azure key set. Add ${keys}, AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_DEPLOYMENTS.`;
+  }
+  if (access.id === "openai-compatible") {
+    return "No local gateway set. Point OPENAI_COMPATIBLE_BASE_URL at an OpenAI-compatible endpoint.";
+  }
+  return `No key set. Add ${keys} to use ${access.label}.`;
+}
+
+function detailFor(access: ProviderAccess, state: {
   configured: boolean;
   models: number;
   freeModels: number;
   balance: OpenRouterAccountBalance | null;
 }): string {
-  if (input.providerId === "azure-openai") {
-    if (!input.configured) return "No Azure key set. Add AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_DEPLOYMENTS to .env.";
-    if (!input.models) return "Key set, but no deployments declared. List them in AZURE_OPENAI_DEPLOYMENTS.";
-    return "Your Azure deployments. Billed to your Azure subscription. No provider-native web search.";
+  if (!state.configured) return `${missingConfiguration(access)} ${access.setup_note}`;
+  if (!state.models) {
+    return access.id === "azure-openai"
+      ? "Key set, but no deployments declared. List them in AZURE_OPENAI_DEPLOYMENTS."
+      : "Configured, but the provider listed no models. It may be unreachable, or the key may have no access.";
   }
-  if (!input.configured) {
-    return input.providerId === "openrouter"
-      ? "No API key set. Add OPENROUTER_API_KEY to .env to use hosted models."
-      : "No local gateway set. Point OPENAI_COMPATIBLE_BASE_URL at an OpenAI-compatible endpoint to use local models.";
-  }
-  if (!input.models) return "Configured, but the endpoint returned no models. It may be unreachable.";
-  if (input.providerId === "openai-compatible") {
-    return "Local models. Runs cost nothing and never leave this machine. No provider-native web search.";
-  }
-  if (input.balance && !input.balance.paidModelsRunnable) {
-    const head = input.balance.purchased === 0
+  if (state.balance && !state.balance.paidModelsRunnable) {
+    const head = state.balance.purchased === 0
       ? "This account has never purchased credits"
-      : `This account's balance is ${money(input.balance.remaining)}`;
-    const fallback = input.freeModels
-      ? ` The ${input.freeModels} models ending in :free still run, and local models cost nothing.`
-      : " Local models cost nothing and still run.";
+      : `This account's balance is ${money(state.balance.remaining)}`;
+    const fallback = state.freeModels
+      ? ` The ${state.freeModels} models ending in :free still run.`
+      : "";
     return `${head}, so every paid model answers HTTP 402 and no run can finish.${fallback} Native web search is only sold on paid models.`;
   }
-  if (input.balance) {
-    return `${money(input.balance.remaining)} of credit left. Runs are billed to your OpenRouter account and fail once it reaches zero.`;
+  if (state.balance) {
+    return `${money(state.balance.remaining)} of credit left. ${access.cost_note}`;
   }
-  return "Hosted models. Runs are billed to your OpenRouter account, and a run fails if the balance is empty.";
+  return `${access.cost_note} ${searchNote(access)}`;
+}
+
+function searchNote(access: ProviderAccess): string {
+  if (access.search === "always") return "Every answer is grounded, so the citation gap works here.";
+  if (access.search === "optional") return "Web search is available, so the citation gap works here.";
+  if (access.search === "paid_plan_only") {
+    return "Grounding needs a paid plan, so free answers measure visibility but carry no citations.";
+  }
+  return "No web search, so this measures visibility and share of voice but produces no citations.";
 }

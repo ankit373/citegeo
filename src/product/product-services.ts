@@ -3,6 +3,8 @@ import { PROVIDER_MODEL_CAPABILITIES } from "../providers/catalog.js";
 import { ProductConfigurationFileStore } from "./configuration/configuration-store.js";
 import { OpenRouterProductModelCatalog } from "./configuration/model-catalog.js";
 import { AzureOpenAiProductModelCatalog, CompositeProductModelCatalog, OpenAiCompatibleProductModelCatalog } from "./configuration/local-model-catalog.js";
+import { DirectProviderModelCatalog } from "./configuration/direct-model-catalog.js";
+import type { ProductProviderId } from "./configuration/provider-id.js";
 import { hasProviderKey } from "../config/env.js";
 import { ProductModelSelectionService } from "./configuration/model-selection-service.js";
 import type { ProductModelCatalog } from "./configuration/model-selection-schema.js";
@@ -45,15 +47,23 @@ export interface ProductServerDependencies {
 
 
 
-// OpenRouter needs a funded key; the local gateway needs only a base URL. Offer
-// whichever is actually configured so a machine with neither is not shown models
-// it cannot call.
+// Providers whose models are read from the provider's own listing endpoint, or
+// from its declared models where it publishes no listing.
+const DIRECT_PROVIDERS: ProductProviderId[] = ["openai", "anthropic", "gemini", "perplexity", "deepseek"];
+
+// Offer whichever providers are actually configured, so a machine is never
+// shown models it cannot call. OpenRouter keeps its own catalogue because only
+// that one carries per-model web search pricing.
 function defaultProductCatalog(): ProductModelCatalog {
   const catalogs: ProductModelCatalog[] = [];
   if (hasProviderKey("openrouter")) catalogs.push(new OpenRouterProductModelCatalog(PROVIDER_MODEL_CAPABILITIES));
+  for (const providerId of DIRECT_PROVIDERS) {
+    if (hasProviderKey(providerId)) catalogs.push(new DirectProviderModelCatalog(providerId));
+  }
   if (hasProviderKey("openai-compatible")) catalogs.push(new OpenAiCompatibleProductModelCatalog());
   if (hasProviderKey("azure-openai")) catalogs.push(new AzureOpenAiProductModelCatalog());
-  if (!catalogs.length) catalogs.push(new OpenRouterProductModelCatalog(PROVIDER_MODEL_CAPABILITIES));
+  // With nothing configured the product still has to render a provider page, and
+  // an empty catalogue says "nothing is set up" more clearly than an error does.
   return new CompositeProductModelCatalog(catalogs);
 }
 

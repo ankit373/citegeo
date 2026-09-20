@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { providerStatuses } from "../src/product/configuration/provider-status.js";
 import { hasProviderKey, providerEnvKeys } from "../src/config/env.js";
 import type { ProductModelCatalog, ProviderModelCatalogItem } from "../src/product/configuration/model-selection-schema.js";
+import { PRODUCT_PROVIDER_IDS } from "../src/product/configuration/provider-id.js";
 import type { ProductProviderId } from "../src/product/configuration/provider-id.js";
 import type { OpenRouterAccountBalance } from "../src/providers/openrouter-account.js";
 
@@ -111,12 +112,10 @@ test("every local gateway model counts as free to run", async () => {
   }
 });
 
-const PRODUCT_PROVIDERS: ProductProviderId[] = ["openrouter", "openai-compatible", "azure-openai"];
-
 test("every product provider registers the env keys its configuration check reads", () => {
   // hasProviderKey ends in [].some(...), which is false for an unregistered
   // provider no matter how completely the user configured it.
-  for (const providerId of PRODUCT_PROVIDERS) {
+  for (const providerId of PRODUCT_PROVIDER_IDS) {
     assert.ok(providerEnvKeys(providerId).length > 0, `${providerId} registers no env key`);
   }
 });

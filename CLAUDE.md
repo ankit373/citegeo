@@ -66,6 +66,29 @@ in-flight set was always empty. Fixing it took one request from 60ms to 1.2ms.
 A service that holds state across calls only works if something holds the
 service.
 
+## Providers
+
+**A provider describes itself once, in `src/product/configuration/provider-access.ts`.**
+Its label, cost posture, search posture, endpoint and setup note all live on one
+row. The credentials form, the Setup page and the status builder are all derived
+from that table.
+
+This exists because the list used to be repeated in four places and only one of
+them was ever updated: the shared catalogue implemented eight providers while
+the product offered three, so an empty balance at a single aggregator stopped
+the whole tool.
+
+**Models come from the provider, not from us.** A hardcoded model list goes
+stale silently. The catalogue still named `gemini-1.5-flash` long after Google
+had retired it, and nothing in the product could tell. Where a provider
+publishes a listing endpoint, read it and mark the provider `supportsAnyModel`.
+Only where none exists does a declared list apply.
+
+**Web search is the dividing line, and it is stated per provider.** The citation
+gap, cited domains and query fanout are built from citations; visibility, share
+of voice and sentiment are not. A provider that cannot search still powers the
+second half, so say which half it powers rather than calling it unsupported.
+
 ## Storage
 
 File-backed, one directory per project. Every write is **temp file then

@@ -30,7 +30,11 @@ export interface ProviderModelCatalogItem {
   unavailableReason: string | null;
   nativeWebSearchSupported: boolean;
   checkedAt: string;
-  source: "openrouter_catalog" | "local_capability_registry";
+  /**
+   * Where this row came from. "provider_catalog" is the provider's own listing
+   * endpoint, which is the only source that cannot go stale behind our back.
+   */
+  source: "openrouter_catalog" | "provider_catalog" | "local_capability_registry";
 }
 
 export interface ProductModelCatalog {
