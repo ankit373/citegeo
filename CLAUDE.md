@@ -137,6 +137,25 @@ hand: `indexOf`, `split`, `startsWith`.
 **No new dependency for a handful of calls.** The GitHub integration calls four
 endpoints directly rather than taking an SDK and its supply chain.
 
+## Design
+
+**One theme, in `src/ui/theme.ts`.** Tokens used to be redeclared in four files,
+the login page, the project app, the workbench and the product shell, and they
+drifted because nothing made them move together. Never write a colour, a font
+or a radius as a literal in a surface; add a token.
+
+The language is Claude's: warm paper, a single terracotta accent, a text serif
+for headings against a neutral sans, hairline rules instead of boxes. Light is
+the default and dark follows the system, overridden by `data-theme` on the root
+and applied by an inline script before first paint.
+
+**A hardcoded hex survives a theme change and then looks broken.** The alert
+boxes stayed black on paper for exactly this reason. State colours have `--x`,
+`--x-text` and `--x-wash` so a badge never needs one.
+
+**An image asset cannot change colour.** The brand lockup was light ink baked
+into a file and vanished on paper. It is drawn inline and takes `currentColor`.
+
 ## The emitted-HTML shells
 
 `src/ui/*-app.ts` return giant HTML strings with inline `<script>`. TypeScript
