@@ -1796,7 +1796,9 @@ export function renderProductPhase2AppHtml(): string {
               }).join("");
       return '<div class="panel-scrim" data-close-panel></div><aside class="panel" role="dialog" aria-label="Archived answers">'
         + '<div class="panel-head"><div><h2>' + html(state.panel.title) + '</h2><p class="subtle">What the models rewarded here, and every archived answer behind it.</p></div>'
-        + '<button type="button" class="close" data-close-panel aria-label="Close">×</button></div>'
+        + '<div class="panel-actions">'
+        + (state.brief ? '<a class="button" href="/api/projects/' + html(state.selectedId) + '/prompt-brief.md?promptId=' + encodeURIComponent(state.panel.promptId) + '" download>Take the brief</a>' : '')
+        + '<button type="button" class="close" data-close-panel aria-label="Close">×</button></div></div>'
         + '<div class="panel-body">' + renderBrief() + '<h3 class="panel-section">The answers themselves</h3>' + body + '</div></aside>';
     }
 
