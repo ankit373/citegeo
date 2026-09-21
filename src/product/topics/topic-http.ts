@@ -370,7 +370,13 @@ export async function handleTopicApi(input: {
       const prompt = set.prompts.find((row) => row.id === promptId);
       if (!prompt) throw new Error(`No question ${promptId} in this project.`);
       const answers = await runs.listAnswers(projectId);
-      return buildPromptBrief({ prompt, answers: sliced(answers, url), allAnswers: answers });
+      const report = await demand.load(projectId).catch(() => null);
+      return buildPromptBrief({
+        prompt,
+        answers: sliced(answers, url),
+        allAnswers: answers,
+        demand: report?.prompts.find((row) => row.promptId === promptId) || null,
+      });
     }, 404);
     return true;
   }
