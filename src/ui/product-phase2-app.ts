@@ -149,6 +149,17 @@ export function renderProductPhase2AppHtml(): string {
     .evidence-foot { padding:11px 15px; border-top:1px solid var(--line); font-size:12px; color:var(--weak); display:grid; gap:5px; }
     .evidence-foot a { overflow-wrap:anywhere; }
     .evidence.is-live { border-color:var(--accent); background:var(--accent-wash); }
+    .brief { border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); padding:16px 18px; display:grid; gap:10px; }
+    .brief h3 { margin:6px 0 0; font-size:13px; }
+    .brief .why { margin:0; font-size:14px; font-weight:550; color:var(--text); }
+    .brief .evidence-note { margin:0; font-size:12px; color:var(--weak); line-height:1.55; }
+    .brief .evidence-foot { border:0; padding:0; }
+    .voice { border-left:2px solid var(--line-strong); padding:2px 0 2px 12px; display:grid; gap:5px; }
+    .voice.is-you { border-left-color:var(--accent); }
+    .voice-top { display:flex; gap:9px; align-items:baseline; flex-wrap:wrap; }
+    .voice-top strong { font-size:13px; font-weight:600; }
+    .quotes { margin:0; padding-left:16px; display:grid; gap:4px; font-size:12px; color:var(--muted); line-height:1.55; }
+    .panel-section { margin:8px 0 -4px; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--weak); }
     .panel-actions { display:flex; align-items:flex-start; gap:10px; }
     .runpane-progress { display:grid; gap:6px; margin-top:8px; font-size:12px; color:var(--muted); }
     .runpane-progress .bar { margin:0; }
@@ -273,6 +284,8 @@ export function renderProductPhase2AppHtml(): string {
     .section-head { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; margin-bottom:4px; flex-wrap:wrap; }
     .protocol-list { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:8px; padding:0; margin:15px 0 0; list-style:none; }
     .protocol-list li { border:1px solid var(--line); background:var(--sunken); border-radius:7px; padding:10px; color:var(--muted); font-size:13px; min-width:0; overflow-wrap:anywhere; }
+    .protocol-list li.is-clickable { cursor:pointer; }
+    .protocol-list li.is-clickable:hover { border-color:var(--accent); }
     .model-search { margin:18px 0 12px; }
     .model-catalog-controls { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:10px; margin-bottom:12px; }
     .model-catalog-controls label { display:grid; gap:6px; color:var(--weak); font-size:12px; }
@@ -399,7 +412,7 @@ export function renderProductPhase2AppHtml(): string {
     </form>
   </aside>
   <script>
-    const state = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", promptFilters:{ query:"", topicId:"", intent:"", status:"" }, promptSelection:[], answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", rivals:null, rivalsState:"idle", segments:null, segmentsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, lastRun:null, runPollTimer:0, runFeed:[], runFeedState:"idle", runFeedTimer:0, rankPlan:null, rankPlanState:"idle" };
+    const state = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", promptFilters:{ query:"", topicId:"", intent:"", status:"" }, promptSelection:[], answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", rivals:null, rivalsState:"idle", segments:null, segmentsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, lastRun:null, runPollTimer:0, runFeed:[], runFeedState:"idle", runFeedTimer:0, rankPlan:null, rankPlanState:"idle", brief:null, briefState:"idle" };
     const app = document.getElementById("app");
     const element = (id) => document.getElementById(id);
     const html = (value) => String(value).split("&").join("&amp;").split("<").join("&lt;").split(">").join("&gt;").split('"').join("&quot;").split("'").join("&#39;");
@@ -669,6 +682,7 @@ export function renderProductPhase2AppHtml(): string {
       state.panelAnswers = [];
       document.body.classList.add("panel-open");
       render();
+      loadBrief(promptId);
       try {
         const query = filterQuery();
         const joiner = query ? "&" : "?";
@@ -688,6 +702,8 @@ export function renderProductPhase2AppHtml(): string {
       state.panelState = "idle";
       state.runFeed = [];
       state.runFeedState = "idle";
+      state.brief = null;
+      state.briefState = "idle";
       window.clearTimeout(state.runFeedTimer);
       render();
     }
@@ -1088,9 +1104,9 @@ export function renderProductPhase2AppHtml(): string {
 
     function renderAbsent(rows) {
       if (!rows || !rows.length) return '<p class="subtle">Every prompt with an answer named you at least once.</p>';
-      return '<ul class="protocol-list">' + rows.slice(0, 12).map((row) => '<li><strong>' + html(row.text) + '</strong><br><span class="subtle">' + row.score.answers + ' answer(s), none named you. '
+      return '<ul class="protocol-list">' + rows.slice(0, 12).map((row) => '<li class="is-clickable" data-evidence="' + html(row.promptId) + '" data-evidence-title="' + html(row.text) + '" tabindex="0" role="button"><strong>' + html(row.text) + '</strong><br><span class="subtle">' + row.score.answers + ' answer(s), none named you. '
         + (row.ahead.length ? 'Named instead: ' + row.ahead.map((entity) => html(entity.name)).join(", ") + '.' : 'No competitor was named either, so this question may not be about a product at all.')
-        + '</span></li>').join("") + '</ul>';
+        + '</span><br><span class="linklike">Open the brief</span></li>').join("") + '</ul>';
     }
 
     function renderModelRows(rows) {
@@ -1426,6 +1442,57 @@ export function renderProductPhase2AppHtml(): string {
         + '<details class="technical-details" style="margin-top:14px"><summary>Would tracking more questions make me rank higher?</summary><p class="subtle">' + html(plan.promptsNote) + '</p></details>';
     }
 
+    async function loadBrief(promptId) {
+      state.briefState = "loading";
+      state.brief = null;
+      try {
+        const query = filterQuery();
+        const joiner = query ? "&" : "?";
+        state.brief = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/prompt-brief" + query + joiner + "promptId=" + encodeURIComponent(promptId));
+        state.briefState = "ready";
+      } catch (error) {
+        state.briefState = "error";
+      }
+      render();
+    }
+
+    function briefVoice(voice) {
+      const spread = voice.answers + ' answer(s)'
+        + (voice.positive ? ' · ' + voice.positive + ' recommended' : '')
+        + (voice.negative ? ' · ' + voice.negative + ' warned against' : '')
+        + (voice.prominence === null ? '' : ' · named ' + pct(voice.prominence) + ' of the way to first');
+      const quotes = voice.quotes.length
+        ? '<ul class="quotes">' + voice.quotes.map((quote) => '<li>' + html(quote) + '</li>').join("") + '</ul>'
+        : '<p class="subtle">Named without a reason given.</p>';
+      return '<div class="voice' + (voice.isTarget ? ' is-you' : '') + '"><div class="voice-top"><strong>' + html(voice.name) + '</strong>'
+        + (voice.isTarget ? '<span class="pill good">You</span>' : '') + '<span class="subtle">' + html(spread) + '</span></div>' + quotes + '</div>';
+    }
+
+    function renderBrief() {
+      if (state.briefState === "loading") return '<p class="subtle">Reading what the models credited here.</p>';
+      if (state.briefState === "error" || !state.brief) return '';
+      const brief = state.brief;
+      if (!brief.answers) return '<div class="brief"><p class="why">' + html(brief.verdict) + '</p></div>';
+      const rivals = brief.voices.filter((voice) => !voice.isTarget).slice(0, 5);
+      const you = brief.voices.find((voice) => voice.isTarget);
+      const coverage = brief.namedBy.length
+        ? '<p class="evidence-note">Named you: ' + html(brief.namedBy.join(", ")) + '.'
+          + (brief.missedBy.length ? ' Did not: ' + html(brief.missedBy.join(", ")) + '.' : '') + '</p>'
+        : '<p class="evidence-note">Not named by ' + html(brief.missedBy.join(", ")) + '.'
+          + (brief.namesYouElsewhere.length ? ' These name you elsewhere: ' + html(brief.namesYouElsewhere.join(", ")) + '.' : '') + '</p>';
+      const sources = brief.sources.length
+        ? '<h3>What these answers read</h3><div class="evidence-foot">' + brief.sources.slice(0, 8).map((url) => '<a href="' + html(url) + '" target="_blank" rel="noreferrer">' + html(url) + '</a>').join("") + '</div>'
+        : '<p class="evidence-note">These answers cited no source, so nothing here says which page to write. That is a property of the models that ran.</p>';
+      return '<div class="brief"><p class="why">' + html(brief.verdict) + '</p>' + coverage
+        + (rivals.length
+          ? '<h3>What the models credited, in their own words</h3>'
+            + '<p class="evidence-note">This is the standard this question is answered against. A model repeats what its sources say about a product, so these lines are the claims you would have to be credited with, somewhere it reads.</p>'
+            + rivals.map(briefVoice).join("")
+          : '')
+        + (you && you.quotes.length ? '<h3>What they said about you</h3>' + briefVoice(you) : '')
+        + sources + '</div>';
+    }
+
     function renderRunPane() {
       return '<div class="panel-scrim" data-close-panel></div><aside class="panel" role="dialog" aria-label="Live run">'
         + '<div class="panel-head"><div><h2>' + (runIsLive() ? "Live run" : "Finished run") + '</h2>'
@@ -1464,9 +1531,9 @@ export function renderProductPhase2AppHtml(): string {
                   + sources + '</article>';
               }).join("");
       return '<div class="panel-scrim" data-close-panel></div><aside class="panel" role="dialog" aria-label="Archived answers">'
-        + '<div class="panel-head"><div><h2>' + html(state.panel.title) + '</h2><p class="subtle">Every archived answer behind this number.</p></div>'
+        + '<div class="panel-head"><div><h2>' + html(state.panel.title) + '</h2><p class="subtle">What the models rewarded here, and every archived answer behind it.</p></div>'
         + '<button type="button" class="close" data-close-panel aria-label="Close">×</button></div>'
-        + '<div class="panel-body">' + body + '</div></aside>';
+        + '<div class="panel-body">' + renderBrief() + '<h3 class="panel-section">The answers themselves</h3>' + body + '</div></aside>';
     }
 
     function alertPill(severity) {
@@ -1617,7 +1684,7 @@ export function renderProductPhase2AppHtml(): string {
         + '<section class="section-card"><div class="section-head"><div><h2>Rivals you name</h2><p class="subtle">Name a competitor here and it is tracked whether or not an answer mentions it. A tracked rival nobody named reads as zero, which is a finding; leaving it out would hide it.</p></div></div>' + renderRivals(data) + '</section>'
         + '<div class="section-head" style="margin-top:24px"><div><h2>Topics, weakest first</h2><p class="subtle">Where you are losing, in the order worth fixing. Every question opens its answers.</p></div></div>'
         + renderTopicRows(data.topics)
-        + '<section class="section-card"><div class="section-head"><div><h2>Questions you never appear in</h2><p class="subtle">Answered, and you were not named once. This is the actionable list.</p></div></div>' + renderAbsent(data.absentFrom) + '</section>'
+        + '<section class="section-card"><div class="section-head"><div><h2>Questions you never appear in</h2><p class="subtle">Answered, and you were not named once. Open one to read what the models credited the winners with, which is the standard that question is answered against.</p></div></div>' + renderAbsent(data.absentFrom) + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>Movement</h2><p class="subtle">One point per run. A run where everything failed is left out rather than drawn as a drop.</p></div></div>' + renderPromptTrend(data.trend) + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>By market</h2><p class="subtle">The same questions, asked for a different buyer.</p></div></div>' + renderRegionRows(data.byRegion, data.regionCaveat) + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>Sources</h2><p class="subtle">A domain says you are cited. A page says which one to write more of.</p></div></div>' + renderCitedPages() + '</section>'

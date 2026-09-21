@@ -3,6 +3,7 @@ import { buildHomeSummary } from "../alerts/home-summary.js";
 import { buildAnswerDigest } from "../alerts/answer-digest.js";
 import { buildCitationAnalysis } from "./citation-analysis.js";
 import { buildRankingPlan, type RankingPlan } from "./ranking-plan.js";
+import { buildPromptBrief, type PromptBrief } from "./prompt-brief.js";
 import type { CompetitorService } from "./competitor-set.js";
 import type { SegmentService } from "./segment-set.js";
 import { isPromptIntent } from "./topic-schema.js";
@@ -355,6 +356,18 @@ export async function handleTopicApi(input: {
         runs: runList,
         modelCount: selections,
       });
+    }, 404);
+    return true;
+  }
+
+  if (method === "GET" && tail.length === 1 && tail[0] === "prompt-brief") {
+    await guard(async (): Promise<PromptBrief> => {
+      const promptId = url?.searchParams.get("promptId") || "";
+      const set = await topics.get(projectId);
+      const prompt = set.prompts.find((row) => row.id === promptId);
+      if (!prompt) throw new Error(`No question ${promptId} in this project.`);
+      const answers = await runs.listAnswers(projectId);
+      return buildPromptBrief({ prompt, answers: sliced(answers, url), allAnswers: answers });
     }, 404);
     return true;
   }
