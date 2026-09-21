@@ -33,7 +33,7 @@ function normalizeDomain(value: string): string {
 }
 
 /** Collapses runs of whitespace without a regex, which this codebase bans. */
-function squash(value: string): string {
+export function squash(value: string): string {
   const out: string[] = [];
   let space = false;
   for (const character of value) {
@@ -46,12 +46,15 @@ function squash(value: string): string {
   return out.join("").trim();
 }
 
-function readPage(url: string, html: string): SitePage {
+export function readPage(url: string, html: string): SitePage {
   const document = load(html);
   const meta = (name: string) =>
     squash(document(`meta[name="${name}"]`).attr("content") || document(`meta[property="${name}"]`).attr("content") || "");
   // Scripts and styles are not prose, and they dominate a naive text read.
   document("script,style,noscript,svg").remove();
+  // Adjacent blocks concatenate with no separator, so "</h2><p>Chartink" reads
+  // as one word and the name on the page is never found.
+  document("p,div,li,h1,h2,h3,h4,h5,h6,br,tr,td,th,section,article,header,footer,nav,blockquote,pre,figcaption").after(" ");
   const headings: string[] = [];
   document("h1,h2,h3").each((_, node) => {
     const text = squash(document(node).text());
