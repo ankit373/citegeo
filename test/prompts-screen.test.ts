@@ -117,3 +117,16 @@ test("no button is inert: every one can be reached by a handler", () => {
   }
   assert.deepEqual(inert, [], "these buttons cannot be clicked to any effect");
 });
+
+test("the model search repaints the rows, not the page", () => {
+  const html = productAppSource();
+  // The fast path looks for .model-list. The markup wrapped the rows in
+  // .mtable and nothing else, so the query never matched and every keystroke
+  // re-rendered seventy kilobytes of page instead.
+  assert.equal(html.includes('const list = document.querySelector(".model-list")'), true);
+  assert.equal(html.includes("'<div class=\"model-list\">' + renderCatalogModelRows(results)"), true);
+  // It must wrap only the rows: the header is a sibling, or innerHTML eats it.
+  const at = html.indexOf('<div class="model-list">');
+  const header = html.lastIndexOf("catalogHead()", at);
+  assert.ok(header > 0 && header < at, "the column header is inside the repainted region");
+});
