@@ -46,6 +46,7 @@ import { ProductScheduleService } from "./scheduling/schedule-service.js";
 import { EngineService } from "./engines/engine-service.js";
 import { ActionLogService, ActionLogStore } from "./topics/action-log.js";
 import { SourcePageService } from "./citations/source-service.js";
+import { SearchConsoleService } from "./search-console/search-console-service.js";
 // The composition root. The graph is built once per server, not per request:
 // rebuilding it per call silently discarded anything a service held between
 // calls, so the insights cache cached nothing and cost 60ms every time.
@@ -124,6 +125,7 @@ export interface ProductServices {
   engines: EngineService;
   actions: ActionLogService;
   sourcePages: SourcePageService;
+  searchConsole: SearchConsoleService;
   storageSettings: StorageSettingsStore;
   dataDir: string;
   /** Asks one structured question through the project's own saved models. */
@@ -177,6 +179,14 @@ export function createProductServices(dependencies: ProductServerDependencies = 
   const segments = new SegmentService(new SegmentFileStore(projectStore));
   const actions = new ActionLogService(new ActionLogStore(projectStore));
   const sourcePages = new SourcePageService(projectStore);
+  const credentials = new CredentialService(new CredentialFileStore(productDataDir()));
+  // The environment owns a credential when it sets one, the same rule every
+  // other integration here follows.
+  const searchConsole = new SearchConsoleService(
+    projectStore,
+    async () => process.env.GOOGLE_SERVICE_ACCOUNT_JSON || await credentials.resolve("google"),
+    () => process.env.GOOGLE_SEARCH_CONSOLE_SITE || null,
+  );
   const storageSettings = new StorageSettingsStore(productDataDir());
   // A run left "running" by a process that is gone would otherwise show as
   // live forever, which is how three dead runs kept claiming to be working.
@@ -187,9 +197,9 @@ export function createProductServices(dependencies: ProductServerDependencies = 
   return {
     projects, catalog, selections, baselines, recognition, reports, insights,
     signals, crawlerLog, watchSets, measurements, stats, schedules,
-    topics, promptRuns, promptSchedule, demand, profiles, competitors, segments, ask, engines, actions, sourcePages,
+    topics, promptRuns, promptSchedule, demand, profiles, competitors, segments, ask, engines, actions, sourcePages, searchConsole,
     storageSettings, dataDir: productDataDir(),
-    credentials: new CredentialService(new CredentialFileStore(productDataDir())),
+    credentials,
     auth: authConfig(),
   };
 }
