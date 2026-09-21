@@ -78,3 +78,19 @@ test("the two lists on the scores page say which is a competitor and which is an
   assert.equal(html.includes("Rival you track"), true);
   assert.equal(html.includes("Named by the models"), true);
 });
+
+test("a selection the server will refuse can be cleared from the page", () => {
+  const html = productAppSource();
+  // The catalogue checkbox for an unavailable model is disabled, so without
+  // this control the save stays rejected with no way to fix it.
+  assert.equal(html.includes("function blockedSelection(row: any) { return !row.inCatalog || (row.model && row.model.available === false); }"), true);
+  assert.equal(html.includes('"data-drop-selection": row.modelId'), true);
+  assert.equal(html.includes("function dropSelection(modelId: any) { state.draftSelections.delete(modelId);"), true);
+});
+
+test("a failed request reports what the server said, not a category", () => {
+  const html = productAppSource();
+  // "Invalid configuration" does not say which model, and the server does.
+  assert.equal(html.includes('requestError(typeof body.code === "string" ? body.code : "request_failed", typeof body.error === "string" ? body.error : undefined)'), true);
+  assert.equal(html.includes("const error = new Error(detail || expectedErrorText[code]"), true);
+});
