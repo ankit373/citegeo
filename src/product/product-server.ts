@@ -1,6 +1,10 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { formOrJsonBody, httpsRequest, readJson, send, sendAsset } from "./http-io.js";
 import { createServer } from "node:http";
+import { Lifecycle } from "../runtime/lifecycle.js";
+import { log } from "../runtime/logger.js";
+import { catchErrors, compose, exchangeFor, lifecycleGate, observability, probes } from "../runtime/middleware.js";
+import { startExporter } from "../runtime/otlp.js";
 import { stat } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { resolve, sep } from "node:path";
@@ -120,16 +124,36 @@ async function handle(req: IncomingMessage, res: ServerResponse, services: Produ
 
 export function createProductServer(dependencies: ProductServerDependencies = {}) {
   const services = createProductServices(dependencies);
-  return createServer((req, res) => {
-    handle(req, res, services).catch((error) => send(res, 500, { error: error instanceof Error ? error.message : String(error) }));
+  const lifecycle = new Lifecycle();
+  // One pipeline, composed once. Ordering is the design: errors outermost so
+  // every layer is covered, probes before the gate so a draining instance can
+  // still answer one, and the gate before the router so in-flight work is
+  // counted whatever the route does.
+  const pipeline = compose([
+    catchErrors(),
+    observability(),
+    probes(lifecycle),
+    lifecycleGate(lifecycle),
+    async (exchange) => { await handle(exchange.req, exchange.res, services); },
+  ]);
+  const server = createServer((req, res) => {
+    const exchange = exchangeFor(req, res, `http://${req.headers.host || "localhost"}`);
+    void pipeline(exchange);
   });
+  lifecycle.onClose(() => new Promise<void>((resolve) => server.close(() => resolve())));
+  lifecycle.markReady();
+  return Object.assign(server, { lifecycle });
 }
 
 const entrypoint = process.argv[1] ? pathToFileURL(process.argv[1]).href : "";
 if (import.meta.url === entrypoint) {
   const port = Number(process.env.PORT || 8787);
   const host = serverHost();
-  createProductServer().listen(port, host, () => {
-    console.log(`citegeo product server listening on http://${host === "0.0.0.0" ? "localhost" : host}:${port} (bound to ${host})`);
+  const server = createProductServer();
+  const exporter = startExporter();
+  if (exporter) server.lifecycle.onClose(() => exporter.stop());
+  server.lifecycle.install();
+  server.listen(port, host, () => {
+    log.info("listening", { url: `http://${host === "0.0.0.0" ? "localhost" : host}:${port}`, host, port });
   });
 }
