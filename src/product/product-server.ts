@@ -23,6 +23,7 @@ import { renderProductPhase4AppHtml } from "../ui/product-phase4-app.js";
 import { handleMeasurementApi } from "./measurements/measurement-http.js";
 import { handleScheduleApi } from "./scheduling/schedule-http.js";
 import { handleTopicApi } from "./topics/topic-http.js";
+import { handleEngineApi } from "./engines/engine-http.js";
 import { handleStorageApi } from "./storage/storage-http.js";
 import { renderProductPhase5AppHtml } from "../ui/product-phase5-app.js";
 import { createProductServices } from "./product-services.js";
@@ -89,6 +90,7 @@ async function handle(req: IncomingMessage, res: ServerResponse, services: Produ
   if (await handleInsightsApi({ method, route, send: json, service: insights })) return;
   if (await handleCrawlerApi({ method, route, send: json, crawlerLog, insights })) return;
   if (await handleActionApi({ method, route, send: json, signals, insights })) return;
+  if (await handleEngineApi({ method, route, send: json, engines: services.engines, readJson: body })) return;
   if (await handleTopicApi({ method, route, url, send: json, topics, runs: promptRuns, schedule: promptSchedule, demand, profiles, models: async (id) => (await selections.list(id)).length, competitors: services.competitors, segments: services.segments, ask: services.ask, readJson: body })) return;
 
   if (await handleProductConfigurationApi({ method, route, projects, selections, baselines, catalog, readJson: () => readJson(req), send: (status, body) => send(res, status, body) })) return;

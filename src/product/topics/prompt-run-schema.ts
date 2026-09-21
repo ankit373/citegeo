@@ -1,4 +1,4 @@
-import type { ProductProviderId } from "../configuration/provider-id.js";
+import type { AnswerSourceId, ProductProviderId } from "../configuration/provider-id.js";
 import type { DiscoveryRecommendation, FirstPositionState } from "../measurements/measurement-schema.js";
 import type { PromptIntent } from "./topic-schema.js";
 
@@ -41,7 +41,7 @@ export interface PromptAnswer {
   topicId: string;
   promptText: string;
   intent: PromptIntent;
-  providerId: ProductProviderId;
+  providerId: AnswerSourceId;
   modelId: string;
   modelDisplayName: string;
   /** The market stated to the model. "global" means none was. */

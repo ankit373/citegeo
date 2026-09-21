@@ -37,6 +37,35 @@ questions and at least one completed run.
   that ran can search the web, so nothing here points at a page. Add a
   provider with web search before treating the source list as a finding.
 
+## Turning citations on
+
+Every figure about sources is empty until something that searches the web
+answers. Two ways to get there.
+
+A provider whose answers are grounded. Perplexity always is; most others
+search only when the model supports it and the mode is set per model on
+**Choose models**. A provider whose account has no credit fails the call
+rather than answering without sources, and the run says so per answer.
+
+Or the answer surfaces themselves, on **Choose models** under *Answer
+surfaces*. These read the products a buyer actually opens, through a browser
+you are already signed in to, so they are grounded by construction. Start
+Chrome with a debugging port and leave it signed in:
+
+```
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+  --remote-debugging-port=9222 --user-data-dir="$HOME/.citegeo-browser"
+```
+
+Sign in to the surfaces you want read, in that window. Set
+`BROWSER_DEBUG_ENDPOINT` if it listens anywhere other than
+`http://127.0.0.1:9222`. Nothing signs in on your behalf and nothing works
+around a sign-in wall: a surface that asks you to sign in is reported as
+unavailable, not as an answer nobody appeared in.
+
+A surface whose page has changed shape reports unreadable. That is also not
+an answer, and it is not a zero.
+
 ## What does not work
 
 - Adding questions. It widens what is measured. A new question is a new place
