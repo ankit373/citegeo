@@ -316,3 +316,136 @@
 @utility stat {
   @apply grid gap-1 bg-surface px-[18px] py-4;
 }
+
+
+/* Column shapes. A table's layout is the one thing genuinely per table,
+   so each is a utility rather than a string repeated at every row. */
+@utility mcols-project {
+  @apply grid-cols-[minmax(0,1.1fr)_minmax(0,1.2fr)_86px_148px_auto];
+}
+@utility mcols-provider {
+  @apply grid-cols-[minmax(0,1fr)_210px_124px_minmax(0,1.5fr)] items-start;
+}
+@utility mcols-promptrow {
+  @apply grid-cols-[20px_minmax(0,1fr)_96px_82px_104px] items-start;
+}
+@utility mcols-engine {
+  @apply grid-cols-[20px_minmax(0,1fr)_150px] items-start;
+}
+@utility mcols-source {
+  @apply grid-cols-[minmax(0,1fr)_110px_100px] items-start;
+}
+@utility mcols-search {
+  @apply grid-cols-[minmax(0,1fr)_104px_74px_92px] items-start;
+}
+@utility mcols-persona {
+  @apply grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)_110px] items-start;
+}
+@utility mcols-selected {
+  @apply grid-cols-[minmax(0,1fr)_104px_92px_178px];
+}
+@utility mcols-readonly {
+  @apply grid-cols-[minmax(0,1fr)_104px_178px];
+}
+@utility mcols-catalog {
+  @apply grid-cols-[20px_minmax(0,1fr)_116px_96px_178px];
+}
+@utility mcols-board {
+  @apply grid-cols-[28px_minmax(0,1.3fr)_minmax(190px,1fr)_96px] items-center;
+}
+@utility mcols-topic {
+  @apply grid-cols-[minmax(0,1.3fr)_80px_110px_90px_minmax(0,1.4fr)] items-start;
+}
+@utility mcols-aemodel {
+  @apply grid-cols-[minmax(0,1.6fr)_80px_110px_90px] items-start;
+}
+@utility mcols-prompt {
+  @apply grid-cols-[minmax(0,1fr)_110px_120px] items-start;
+}
+@utility mcols-step {
+  @apply grid-cols-[28px_minmax(0,1fr)_90px] items-center;
+}
+@utility mcols-vis {
+  @apply grid-cols-[minmax(0,1fr)_120px_110px];
+}
+@utility mcols-voice {
+  @apply grid-cols-[minmax(0,1fr)_110px_120px];
+}
+@utility mcols-cited {
+  @apply grid-cols-[minmax(0,1fr)_100px_minmax(0,1fr)];
+}
+@utility mcols-crawler {
+  @apply grid-cols-[minmax(0,1fr)_92px_84px_84px_108px];
+}
+@utility mcols-signal {
+  @apply grid-cols-[130px_minmax(0,1fr)] items-start;
+}
+@utility mcols-credential {
+  @apply grid-cols-[minmax(0,1fr)_120px_minmax(0,1.3fr)];
+}
+@utility mcols-rank {
+  @apply grid-cols-[minmax(0,1fr)_92px_84px];
+}
+
+/* The frame. One shell, one rail, one header, one footer. */
+
+@utility shell {
+  @apply grid min-h-screen grid-cols-[244px_minmax(0,1fr)];
+  background: linear-gradient(to right, var(--sunken) 0 244px, var(--paper) 244px);
+}
+
+@utility sidebar {
+  @apply sticky top-0 flex h-screen flex-col overflow-y-auto border-r border-line bg-transparent px-[14px] py-[22px];
+}
+
+@utility workspace {
+  @apply flex min-h-screen min-w-0 flex-col px-[var(--gutter)] pb-6;
+}
+
+@utility topbar {
+  @apply sticky top-0 z-[3] flex items-center justify-between gap-[16px] border-b border-line px-0 py-[16px];
+  background: color-mix(in srgb, var(--paper) 86%, transparent);
+  backdrop-filter: saturate(180%) blur(14px);
+}
+
+@utility nav {
+  @apply mt-5 grid gap-px;
+}
+
+/* The rail's two small-caps labels. A compound rule used to set these and a
+   bare one used to override it; both are here now so neither can win by
+   accident of source order. */
+/* The effective style was the union of a compound rule and a bare one that
+   overrode part of it: size and spacing from the bare, weight from the
+   compound. Copying either alone changed the height of every label. */
+@utility nav-label {
+  @apply mx-[8px] mb-[6px] mt-[16px] text-[11px] font-semibold uppercase tracking-[.08em] text-weak;
+}
+
+@utility project-label {
+  @apply mx-[10px] mb-[6px] mt-[18px] text-[10px] font-semibold uppercase tracking-[.1em] text-weak;
+}
+
+@utility sidebar-bottom {
+  @apply mt-auto px-[8px] pb-0 pt-[16px] text-[12px] text-weak;
+}
+
+@utility appfoot {
+  @apply mt-auto flex flex-wrap justify-between gap-[16px] border-t border-line px-0 pb-[6px] pt-[18px] text-[12px] text-weak;
+}
+
+@utility crumb {
+  @apply text-[13px] text-weak;
+}
+
+@utility crumb-home {
+  @apply cursor-pointer border-0 bg-transparent p-0 font-[inherit] font-bold text-text;
+}
+
+@utility rowlink {
+  @apply block w-full cursor-pointer border-0 bg-transparent p-0 text-left;
+}
+
+@utility runfield {
+  @apply grid grid-cols-[104px_minmax(0,1fr)] items-start gap-3 border-t border-line px-[15px] py-[11px];
+}
