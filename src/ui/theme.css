@@ -1,0 +1,233 @@
+@import "tailwindcss";
+
+/* The design tokens are the Tailwind scale. Declaring them here means a token
+   and its utility cannot drift, because they are the same declaration. */
+@theme {
+  --color-paper: #F7F6F3;
+  --color-surface: #FFFFFF;
+  --color-raised: #F2F0EA;
+  --color-sunken: #EDEBE4;
+  --color-line: #E4E1D8;
+  --color-line-strong: #D2CEC2;
+  --color-text: #1A1916;
+  --color-muted: #6D6A62;
+  --color-weak: #959187;
+  --color-accent: #C15F3C;
+  --color-accent-hover: #A94F30;
+  --color-accent-ink: #FFFFFF;
+  --color-accent-wash: rgba(193,95,60,.09);
+  --color-confirmed: #3F7D58;
+  --color-confirmed-text: #356B4B;
+  --color-confirmed-wash: rgba(63,125,88,.10);
+  --color-unknown: #9A6B18;
+  --color-unknown-text: #8A5F15;
+  --color-unknown-wash: rgba(154,107,24,.10);
+  --color-failed: #A8402F;
+  --color-failed-text: #96392A;
+  --color-failed-wash: rgba(168,64,47,.10);
+  --color-skeleton: #ECE9E1;
+  --color-skeleton-sheen: rgba(255,255,255,.70);
+  --font-display: "Newsreader",ui-serif,Georgia,"Times New Roman",serif;
+  --font-ui: "Instrument Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono: "JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --figures: tabular-nums;
+  --text-micro: 10px;
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-md: 13px;
+  --text-base: 14px;
+  --text-lg: 16px;
+  --text-xl: 20px;
+  --text-2xl: 26px;
+  --text-hero: clamp(30px,3.2vw,40px);
+  --leading-tight: 1.14;
+  --leading-snug: 1.34;
+  --leading-normal: 1.55;
+  --tracking-tight: -0.018em;
+  --tracking-snug: -0.006em;
+  --tracking-wide: 0.085em;
+  --spacing-2xs: 2px;
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 20px;
+  --spacing-xl: 32px;
+  --spacing-2xl: 48px;
+  --radius: 8px;
+  --radius-sm: 5px;
+  --radius-xs: 3px;
+  --radius-pill: 999px;
+  --gutter: clamp(20px,3.6vw,56px);
+  --hairline: 1px solid var(--line);
+  --hairline-strong: 1px solid var(--line-strong);
+  --shadow-sm: 0 1px 2px rgba(26,25,22,.04);
+  --shadow: 0 1px 3px rgba(26,25,22,.05),0 1px 1px rgba(26,25,22,.03);
+  --motion-fast: 140ms;
+  --motion-normal: 260ms;
+  --motion-shimmer: 1500ms;
+  --ease-standard: cubic-bezier(.22,1,.36,1);
+  --ease-press: cubic-bezier(.2,.8,.2,1);
+}
+
+/* The short names every existing surface still uses, pointing at the same
+   declarations, so a token has one value and two spellings. */
+:root {
+  --paper: var(--color-paper);
+  --surface: var(--color-surface);
+  --raised: var(--color-raised);
+  --sunken: var(--color-sunken);
+  --line: var(--color-line);
+  --line-strong: var(--color-line-strong);
+  --text: var(--color-text);
+  --muted: var(--color-muted);
+  --weak: var(--color-weak);
+  --accent: var(--color-accent);
+  --accent-hover: var(--color-accent-hover);
+  --accent-ink: var(--color-accent-ink);
+  --accent-wash: var(--color-accent-wash);
+  --confirmed: var(--color-confirmed);
+  --confirmed-text: var(--color-confirmed-text);
+  --confirmed-wash: var(--color-confirmed-wash);
+  --unknown: var(--color-unknown);
+  --unknown-text: var(--color-unknown-text);
+  --unknown-wash: var(--color-unknown-wash);
+  --failed: var(--color-failed);
+  --failed-text: var(--color-failed-text);
+  --failed-wash: var(--color-failed-wash);
+  --skeleton: var(--color-skeleton);
+  --skeleton-sheen: var(--color-skeleton-sheen);
+  --font-display: var(--font-display);
+  --font-ui: var(--font-ui);
+  --font-mono: var(--font-mono);
+  --type-micro: var(--text-micro);
+  --type-xs: var(--text-xs);
+  --type-sm: var(--text-sm);
+  --type-md: var(--text-md);
+  --type-base: var(--text-base);
+  --type-lg: var(--text-lg);
+  --type-xl: var(--text-xl);
+  --type-2xl: var(--text-2xl);
+  --type-hero: var(--text-hero);
+  --space-2xs: var(--spacing-2xs);
+  --space-xs: var(--spacing-xs);
+  --space-sm: var(--spacing-sm);
+  --space-md: var(--spacing-md);
+  --space-lg: var(--spacing-lg);
+  --space-xl: var(--spacing-xl);
+  --space-2xl: var(--spacing-2xl);
+  --radius-sm: var(--radius-sm);
+  --radius-xs: var(--radius-xs);
+  --radius-pill: var(--radius-pill);
+}
+
+/* Dark follows the system and is overridden by data-theme on the root, applied
+   by an inline script before first paint. */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --color-paper: #1E1D1B;
+      --paper: #1E1D1B;
+      --color-surface: #262523;
+      --surface: #262523;
+      --color-raised: #2E2D2A;
+      --raised: #2E2D2A;
+      --color-sunken: #1A1917;
+      --sunken: #1A1917;
+      --color-line: #38362F;
+      --line: #38362F;
+      --color-line-strong: #4A4740;
+      --line-strong: #4A4740;
+
+      --color-text: #F4F2EC;
+      --text: #F4F2EC;
+      --color-muted: #A8A49B;
+      --muted: #A8A49B;
+      --color-weak: #77736B;
+      --weak: #77736B;
+
+      --color-accent: #D97757;
+      --accent: #D97757;
+      --color-accent-hover: #E08D70;
+      --accent-hover: #E08D70;
+      --color-accent-ink: #1A1108;
+      --accent-ink: #1A1108;
+      --color-accent-wash: rgba(217,119,87,.14);
+      --accent-wash: rgba(217,119,87,.14);
+
+      --color-confirmed: #6FBF8F;
+      --confirmed: #6FBF8F;
+      --color-confirmed-text: #7FCE9E;
+      --confirmed-text: #7FCE9E;
+      --color-confirmed-wash: rgba(111,191,143,.13);
+      --confirmed-wash: rgba(111,191,143,.13);
+      --color-unknown: #D9A94E;
+      --unknown: #D9A94E;
+      --color-unknown-text: #E2B865;
+      --unknown-text: #E2B865;
+      --color-unknown-wash: rgba(217,169,78,.13);
+      --unknown-wash: rgba(217,169,78,.13);
+      --color-failed: #DE8271;
+      --failed: #DE8271;
+      --color-failed-text: #E89583;
+      --failed-text: #E89583;
+      --color-failed-wash: rgba(222,130,113,.13);
+      --failed-wash: rgba(222,130,113,.13);
+
+      --color-skeleton: #2C2B28;
+      --skeleton: #2C2B28;
+      --color-skeleton-sheen: rgba(255,255,255,.06);
+      --skeleton-sheen: rgba(255,255,255,.06);
+
+      --shadow-sm:0 1px 2px rgba(0,0,0,.28);
+      --shadow:0 1px 3px rgba(0,0,0,.32),0 1px 1px rgba(0,0,0,.22);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --color-paper: #1E1D1B; --surface:#262523; --raised:#2E2D2A; --sunken:#1A1917;
+    --paper: #1E1D1B; --surface:#262523; --raised:#2E2D2A; --sunken:#1A1917;
+    --color-line: #38362F; --line-strong:#4A4740;
+    --line: #38362F; --line-strong:#4A4740;
+    --color-text: #F4F2EC; --muted:#A8A49B; --weak:#77736B;
+    --text: #F4F2EC; --muted:#A8A49B; --weak:#77736B;
+    --color-accent: #D97757; --accent-hover:#E08D70; --accent-ink:#1A1108; --accent-wash:rgba(217,119,87,.14);
+    --accent: #D97757; --accent-hover:#E08D70; --accent-ink:#1A1108; --accent-wash:rgba(217,119,87,.14);
+    --color-confirmed: #6FBF8F; --confirmed-text:#7FCE9E; --confirmed-wash:rgba(111,191,143,.13);
+    --confirmed: #6FBF8F; --confirmed-text:#7FCE9E; --confirmed-wash:rgba(111,191,143,.13);
+    --color-unknown: #D9A94E; --unknown-text:#E2B865; --unknown-wash:rgba(217,169,78,.13);
+    --unknown: #D9A94E; --unknown-text:#E2B865; --unknown-wash:rgba(217,169,78,.13);
+    --color-failed: #DE8271; --failed-text:#E89583; --failed-wash:rgba(222,130,113,.13);
+    --failed: #DE8271; --failed-text:#E89583; --failed-wash:rgba(222,130,113,.13);
+    --color-skeleton: #2C2B28; --skeleton-sheen:rgba(255,255,255,.06);
+    --skeleton: #2C2B28; --skeleton-sheen:rgba(255,255,255,.06);
+    --shadow-sm:0 1px 2px rgba(0,0,0,.28);
+    --shadow:0 1px 3px rgba(0,0,0,.32),0 1px 1px rgba(0,0,0,.22);
+  }
+
+@layer base {
+
+  * { box-sizing:border-box; }
+  body {
+    margin:0; min-height:100vh; background:var(--paper); color:var(--text);
+    font-family:var(--font-ui); font-size:var(--type-base); line-height:var(--leading-normal);
+    font-variant-numeric:var(--figures); -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3 { font-family:var(--font-display); font-weight:500; letter-spacing:var(--tracking-tight); margin:0; text-wrap:balance; }
+  h1 { font-size:var(--type-hero); line-height:var(--leading-tight); }
+  h2 { font-size:var(--type-xl); line-height:var(--leading-snug); }
+  h3 { font-size:var(--type-lg); line-height:var(--leading-snug); letter-spacing:var(--tracking-snug); }
+  h4 { font-family:var(--font-ui); font-size:var(--type-md); font-weight:600; line-height:var(--leading-snug); letter-spacing:var(--tracking-snug); margin:0; }
+  p { margin:0; }
+  a { color:var(--accent); text-underline-offset:2px; }
+  hr { border:0; border-top:var(--hairline); margin:0; }
+  .mono,.domain,code { font-family:var(--font-mono); font-size:.92em; font-variant-numeric:var(--figures); }
+  th,td,.num,time { font-variant-numeric:var(--figures); }
+  .subtle,.field-help,.model-meta { color:var(--muted); font-size:var(--type-md); }
+  button,input,select,textarea { font:inherit; color:inherit; font-variant-numeric:var(--figures); }
+  button { cursor:pointer; background:none; border:0; }
+  button:disabled { cursor:not-allowed; opacity:.5; }
+  :focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:var(--radius-xs); }
+  ::selection { background:var(--accent-wash); }
+  @media (prefers-reduced-motion: reduce) {
+    *,*::before,*::after { animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; scroll-behavior:auto !important; }
+  }
+}

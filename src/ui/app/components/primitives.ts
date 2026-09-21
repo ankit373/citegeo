@@ -27,11 +27,16 @@ export interface TileInput {
   tone?: string;
 }
 
+/** One row of figures. The utilities are the styling; there is no .dtile rule
+ * behind this any more, so nothing can style it from a distance. */
 export function tiles(rows: TileInput[]): string {
-  return `<div class="dtiles">${rows.map((row) => join([
-    '<div class="dtile"><span>', html(row.label), "</span>",
-    `<strong class="${html(row.tone || "")}">`, html(row.value), "</strong>",
-    "<small>", html(row.note), "</small>",
+  const shell = "grid auto-rows-min gap-1 bg-surface px-[17px] py-[15px]";
+  const caption = "text-[10px] font-semibold uppercase tracking-[.09em] text-weak";
+  const figure = "font-display text-[26px] font-medium leading-[1.1] tracking-[-0.02em]";
+  return `<div class="my-[18px] grid grid-cols-[repeat(auto-fit,minmax(186px,1fr))] gap-px overflow-hidden rounded-[var(--radius)] border border-line bg-line">${rows.map((row) => join([
+    `<div class="${shell}"><span class="${caption}">`, html(row.label), "</span>",
+    `<strong class="${figure} ${html(row.tone || "")}">`, html(row.value), "</strong>",
+    `<small class="text-xs leading-[1.45] text-weak">`, html(row.note), "</small>",
     bar(row.fraction),
     "</div>",
   ])).join("")}</div>`;

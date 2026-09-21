@@ -1,4 +1,6 @@
 import { CONFIG } from "./config.js";
+import { dashboardBody, heroStats, type DashboardData } from "./pages/dashboard-view.js";
+import { emptyState, notice } from "./components/primitives.js";
 import type {
   AnswerRow, CatalogModel, InsightsShape, LoadState, Notice, Panel, Payload,
   ProjectRow, RunRow, SelectionRow, TopicSetShape, Unshaped,
@@ -1508,58 +1510,74 @@ export function boot(): void {
       return severity === "critical" ? "bad" : severity === "warning" ? "flat" : "flat";
     }
 
+    /** The dashboard is assembled by a module of its own, from the same
+     * figures the answer engine reports, so two screens cannot disagree. */
     function renderHome() {
       const selected = project();
-      if (!selected) return '<section class="view"><div class="empty"><div class="empty-copy"><h2>Create a project first</h2><p class="subtle">Everything here reports on one domain.</p></div></div></section>';
+      if (!selected) return '<section class="view">' + emptyState("Create a project first", "Everything here reports on one domain.") + '</section>';
       if (state.homeState === "idle") { loadHome(); }
-      if (state.homeState !== "ready" || !state.home) {
-        return '<section class="view"><div class="heading"><div><h1>' + html(selected.name) + '</h1></div></div><div class="empty"><div class="empty-copy"><h2>' + (state.homeState === "error" ? "Could not read this project" : "Reading this project") + '</h2></div></div></section>';
-      }
-      const home = state.home;
+      if (state.answerEngineState === "idle") { loadAnswerEngine(); }
+      if (state.outreachState === "idle") { loadOutreach(); }
+      if (state.rankPlanState === "idle") { loadRankingPlan(); }
 
+      const heading = (body: string): string => '<section class="view"><div class="heading"><div class="headmain"><h1>'
+        + html(selected.name) + '</h1><p class="subtle">' + html(String((state.home && state.home.domain) || selected.normalizedDomain)) + '</p></div>'
+        + '<div class="inline-actions"><button type="button" class="button" data-page="answer-engine">Full report</button>'
+        + runActionButton("Run prompts") + '</div></div>' + renderLiveRun() + body + '</section>';
+
+      if (state.homeState === "error") return heading(notice("Could not read this project.", "error"));
+      if (state.homeState !== "ready" || !state.home) return heading(dashboardBody({ status: "loading" }));
+
+      const home = state.home;
       if (home.showSetupOnly) {
-        const steps = home.setup.map((step: any, index: any) => '<div class="mrow mcols-step" data-state="' + (step.done ? "done" : "todo") + '">'
-          + '<span class="mcell mono">' + (step.done ? "✓" : String(index + 1)) + '</span>'
+        const steps = (home.setup as any[]).map((step: any, index: number) => '<div class="mrow mcols-step" data-state="' + (step.done ? "done" : "todo") + '">'
+          + '<span class="mcell mono">' + (step.done ? "\u2713" : String(index + 1)) + '</span>'
           + '<div class="mname"><strong>' + html(step.label) + '</strong><span class="subtle">' + html(step.detail) + '</span></div>'
           + '<span class="mcell">' + (step.done ? '<span class="state-ok">Done</span>' : '<button type="button" class="linklike" data-page="' + (step.id === "models" ? "models" : "prompts") + '">Open</button>') + '</span></div>').join("");
-        return '<section class="view"><div class="heading"><div><h1>' + html(selected.name) + '</h1><p class="subtle">' + html(home.domain) + '. Three things and it starts measuring.</p></div></div>'
-          + '<section class="section-card"><div class="mtable"><div class="mhead mcols-step"><span></span><span>Step</span><span></span></div>' + steps + '</div></section></section>';
+        return heading('<section class="section-card"><div class="mtable"><div class="mhead mcols-step"><span></span><span>Step</span><span></span></div>' + steps + '</div></section>');
       }
 
-      const change = home.change === null
-        ? '<span class="pill flat">First run</span>'
-        : '<span class="pill ' + (home.change > 0 ? "good" : home.change < 0 ? "bad" : "flat") + '">' + (home.change > 0 ? "↑ " : home.change < 0 ? "↓ " : "") + Math.abs(home.change) + '</span>';
+      const data = state.answerEngine;
+      const outreach = state.outreach;
+      const plan = state.rankPlan;
+      const questions = data ? data.topics.reduce((total: number, topic: any) => total + topic.prompts.length, 0) : 0;
+      const measurable = data ? data.topics.reduce((total: number, topic: any) => total + topic.prompts.filter((p: any) => p.measuresVisibility).length, 0) : 0;
 
-      const alerts = home.alerts.length
-        ? '<div class="alertlist">' + home.alerts.map((alert: any) => '<div class="alertrow"><span class="pill ' + alertPill(alert.severity) + '">' + html(alert.severity) + '</span><div><strong>' + html(alert.headline) + '</strong><p class="subtle">' + html(alert.detail) + '</p></div></div>').join("") + '</div>'
+      const view: DashboardData = {
+        domain: String(home.domain || selected.normalizedDomain),
+        score: home.score ?? null,
+        change: home.change ?? null,
+        rank: home.rank ?? null,
+        overall: data ? data.overall : { score: null, presenceRate: null, prominence: null, sentiment: null, answers: 0, appearances: 0 },
+        leaderboard: data ? data.leaderboard : [],
+        byModel: data ? data.byModel.map((row: any) => ({ label: row.displayName, score: row.score.score, answers: row.score.answers, rank: null })) : [],
+        byRegion: data ? data.byRegion.map((row: any) => ({ label: row.label, score: row.score.score, answers: row.score.answers, rank: row.rank })) : [],
+        byPersona: data ? data.byPersona.map((row: any) => ({ label: row.label, score: row.score.score, answers: row.score.answers, rank: row.rank })) : [],
+        questions,
+        measurable,
+        absent: data ? data.absentFrom.length : 0,
+        assistants: data ? data.byModel.length : 0,
+        assistantsNaming: data ? data.byModel.filter((row: any) => row.score.appearances > 0).length : 0,
+        moves: plan ? (plan.moves as any[]).filter((m: any) => m.effect === "raises_visibility") : [],
+        citationsUnavailable: data ? data.citationsUnavailable : false,
+        citedPages: outreach ? outreach.cited : null,
+        missingFrom: outreach ? (outreach.targets as any[]).filter((t: any) => !t.namesYou).length : null,
+        spark: data ? sparkline(data.trend.points, 170, 30) : "",
+        alerts: (home.alerts as any[]).length,
+      };
+
+      const hero = '<div class="hero"><div class="hero-figure"><span class="scorebig">' + scoreText(home.score) + '</span>'
+        + '<span class="hero-sub">' + deltaPill(data ? data.trend : { change: home.change }) + '<span>'
+        + (home.rank === null || home.rank === undefined ? "Not named" : "#" + home.rank + " of " + ((home.rivals || 0) + 1)) + '</span></span>'
+        + '<span class="hero-spark">' + view.spark + '</span></div>' + heroStats(view.overall) + '</div>';
+
+      const alerts = (home.alerts as any[]).length
+        ? '<div class="alertlist">' + (home.alerts as any[]).map((alert: any) => '<div class="alertrow"><span class="pill ' + alertPill(alert.severity) + '">' + html(alert.severity) + '</span><div><strong>' + html(alert.headline) + '</strong><p class="subtle">' + html(alert.detail) + '</p></div></div>').join("") + '</div>'
         : '<p class="subtle">Nothing moved since the previous run.</p>';
 
-      const weak = home.weakestTopics.length
-        ? '<div class="mtable"><div class="mhead mcols-aemodel"><span>Topic</span><span>Score</span><span>Rank</span><span></span></div>'
-          + home.weakestTopics.map((topic: any) => '<div class="mrow mcols-aemodel"><div class="mname"><strong>' + html(topic.name) + '</strong></div>'
-            + '<span class="mcell ' + (topic.score === null ? "" : topic.score > 0 ? "state-ok" : "state-bad") + '">' + scoreText(topic.score) + '</span>'
-            + '<span class="mcell">' + (topic.rank === null ? "Not named" : "#" + topic.rank) + '</span>'
-            + '<span class="mcell"><button type="button" class="linklike" data-page="answer-engine">Open</button></span></div>').join("") + '</div>'
-        : '<p class="subtle">No topic has been answered yet.</p>';
-
-      const absent = home.absentFrom.length
-        ? '<ul class="protocol-list">' + home.absentFrom.map((row: any) => '<li><strong>' + html(row.text) + '</strong><br><span class="subtle">' + (row.namedInstead.length ? 'Named instead: ' + row.namedInstead.map(html).join(", ") : 'No competitor named either') + '</span></li>').join("") + '</ul>'
-        : '<p class="subtle">Every answered question named you at least once.</p>';
-
-      const run = home.lastRun
-        ? html(home.lastRun.status) + ' · ' + home.lastRun.completed + ' of ' + home.lastRun.requested + ' answers · ' + html(home.lastRun.at.slice(0, 16).replace("T", " "))
-        : "No run yet";
-
-      return '<section class="view"><div class="heading"><div><h1>' + html(selected.name) + '</h1><p class="subtle">' + html(home.domain) + ' · ' + home.answers + ' archived answer(s) · last run ' + run + '</p></div><div class="inline-actions"><button type="button" class="button" data-page="answer-engine">Full report</button>' + runActionButton("Run prompts") + '</div></div>'
-        + renderLiveRun()
-        + (home.ready ? '' : '<div class="warning-box">' + html(home.setup.filter((step: any) => !step.done).map((step: any) => step.label + ': ' + step.detail).join('. ')) + '.</div>')
-        + '<div class="hero"><div class="hero-figure"><span class="scorebig">' + scoreText(home.score) + '</span><span class="hero-sub">' + change + '<span>' + (home.rank === null ? "Not named" : "#" + home.rank + " of " + (home.rivals + 1)) + '</span></span></div>'
-        + '<div class="hero-stats"><div class="hero-stat"><span>Rivals named</span><strong>' + home.rivals + '</strong><small>organisations the models named</small></div>'
-        + '<div class="hero-stat"><span>Answers</span><strong>' + home.answers + '</strong><small>archived and readable</small></div>'
-        + '<div class="hero-stat"><span>Needs attention</span><strong>' + home.alerts.length + '</strong><small>' + (home.alerts.length ? "see below" : "nothing right now") + '</small></div></div></div>'
-        + '<section class="section-card"><div class="section-head"><div><h2>Needs attention</h2><p class="subtle">Only what moved, and only where both runs could be measured.</p></div></div>' + alerts + '</section>'
-        + '<section class="section-card"><div class="section-head"><div><h2>Weakest topics</h2><p class="subtle">Where you are losing, worst first.</p></div></div>' + weak + '</section>'
-        + '<section class="section-card"><div class="section-head"><div><h2>Questions you never appear in</h2><p class="subtle">Answered, and you were not named once.</p></div></div>' + absent + '</section></section>';
+      return heading(hero
+        + dashboardBody({ status: "ready", value: view })
+        + '<section class="section-card"><div class="section-head"><div class="headmain"><h2>Needs attention</h2><p class="subtle">Only what moved, and only where both runs could be measured.</p></div></div>' + alerts + '</section>');
     }
 
     function renderRivals(data: any) {

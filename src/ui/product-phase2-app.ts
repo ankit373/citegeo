@@ -18,7 +18,8 @@ export function renderProductPhase2AppHtml(): string {
       if (saved === "light" || saved === "dark") document.documentElement.setAttribute("data-theme", saved);
     } catch (error) { /* private browsing denies storage; the system theme is a fine default */ }
   </script>
-  <style>${THEME_TOKENS}${THEME_BASE}
+  <link rel="stylesheet" href="/app/app.css">
+  <style>
     /* The sidebar is sticky and one viewport tall, so below the fold its grid
        column fell back to the page background and the rail appeared to stop. */
     .shell { min-height:100vh; display:grid; grid-template-columns:244px minmax(0,1fr); background:linear-gradient(to right, var(--sunken) 0 244px, var(--paper) 244px); }
@@ -107,6 +108,35 @@ export function renderProductPhase2AppHtml(): string {
     .coverage .tag { cursor:pointer; background:transparent; color:var(--muted); font:inherit; font-size:12px; }
     .coverage .tag:hover,.coverage .tag.active { border-color:var(--accent); color:var(--accent); }
     .headmain { flex:1 1 300px; min-width:0; }
+    .dtiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(186px,1fr)); gap:1px; margin:18px 0; background:var(--line); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; }
+    .dtile { background:var(--surface); padding:15px 17px; display:grid; gap:4px; align-content:start; }
+    .dtile > span { font-size:var(--type-micro); letter-spacing:.09em; text-transform:uppercase; color:var(--weak); font-weight:600; }
+    .dtile strong { font-family:var(--font-display); font-size:26px; font-weight:500; letter-spacing:-0.02em; line-height:1.1; }
+    .dtile small { font-size:var(--type-xs); color:var(--weak); line-height:1.45; }
+    .dgrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(322px,1fr)); gap:12px; margin-bottom:12px; }
+    .dgrid > .section-card { margin:0; }
+    .dbars { display:grid; gap:9px; margin-top:14px; }
+    .dbar { display:grid; gap:3px; font-size:var(--type-sm); }
+    .dbar-name { color:var(--text); font-weight:550; overflow-wrap:anywhere; }
+    .dbar-track { display:block; height:7px; border-radius:4px; background:var(--sunken); overflow:hidden; }
+    .dbar-track i { display:block; height:100%; background:var(--line-strong); }
+    .dbar.is-you .dbar-track i { background:var(--accent); }
+    .dbar-value { font-size:var(--type-xs); color:var(--weak); }
+    .dmoves { margin:14px 0 0; padding-left:18px; display:grid; gap:10px; font-size:var(--type-sm); }
+    .dmoves strong { display:block; color:var(--text); }
+    .dmoves .subtle { display:block; font-size:var(--type-xs); color:var(--weak); margin-top:2px; }
+    /* A loader is the shadow of what is arriving, so the layout does not jump. */
+    .sk { display:grid; gap:9px; margin-top:14px; }
+    .sk-row { display:grid; gap:12px; align-items:center; }
+    .sk-line { display:block; height:11px; border-radius:5px; background:var(--skeleton); position:relative; overflow:hidden; }
+    .sk-line::after { content:""; position:absolute; inset:0; transform:translateX(-100%); background:linear-gradient(90deg,transparent,var(--skeleton-sheen),transparent); animation:sheen var(--motion-shimmer) infinite; }
+    .sk-tilerow { display:grid; grid-template-columns:repeat(auto-fit,minmax(186px,1fr)); gap:12px; margin:18px 0; }
+    .sk-tile { display:grid; gap:8px; padding:15px 17px; border:1px solid var(--line); border-radius:var(--radius); }
+    .sk-head { display:grid; gap:8px; margin-bottom:6px; }
+    .sk-wrap { display:block; }
+    .visually-hidden { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+    @keyframes sheen { to { transform:translateX(100%); } }
+    @media (prefers-reduced-motion:reduce) { .sk-line::after { animation:none; } }
     .headaside { display:flex; align-items:center; gap:14px; flex-wrap:wrap; justify-content:flex-end; margin-left:auto; }
     .scoremid { font-family:var(--font-display); font-size:26px; line-height:1; }
     textarea { width:100%; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--surface); color:var(--text); padding:9px 10px; font:inherit; font-size:13px; line-height:1.5; resize:vertical; }

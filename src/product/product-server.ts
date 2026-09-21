@@ -85,12 +85,19 @@ async function handle(req: IncomingMessage, res: ServerResponse, services: Produ
   // The application, compiled. Served from the build output so the browser
   // runs exactly what the type checker read, rather than a copy in a string.
   if (method === "GET" && route[0] === "app" && route.length > 1) {
+    const wanted = route.slice(1).join("/");
+    // The stylesheet is generated beside the compiled modules, so one root
+    // serves both and the container image cannot copy one without the other.
+    const isCss = wanted.endsWith(".css");
     const root = resolve("dist", "src", "ui", "app");
-    const path = resolve(root, route.slice(1).join("/"));
-    if (!path.startsWith(root + sep) || !path.endsWith(".js") || !existsSync(path)) {
+    const path = resolve(root, wanted);
+    if (!path.startsWith(root + sep) || !(isCss || path.endsWith(".js")) || !existsSync(path)) {
       return send(res, 404, { error: "not found" });
     }
-    res.writeHead(200, { "Content-Type": "text/javascript; charset=utf-8", "Cache-Control": "no-cache" });
+    res.writeHead(200, {
+      "Content-Type": isCss ? "text/css; charset=utf-8" : "text/javascript; charset=utf-8",
+      "Cache-Control": "no-cache",
+    });
     res.end(await readFile(path, "utf8"));
     return;
   }

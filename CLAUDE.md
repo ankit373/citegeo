@@ -208,10 +208,23 @@ endpoints directly rather than taking an SDK and its supply chain.
 
 ## Design
 
-**One theme, in `src/ui/theme.ts`.** Tokens used to be redeclared in four files,
-the login page, the project app, the workbench and the product shell, and they
-drifted because nothing made them move together. Never write a colour, a font
-or a radius as a literal in a surface; add a token.
+**One theme, in `src/ui/theme.css`.** Tokens used to be redeclared in four
+files, the login page, the project app, the workbench and the product shell,
+and they drifted because nothing made them move together.
+
+The product app is styled with Tailwind utilities, and the `@theme` block in
+that file **is** the Tailwind scale: `--color-accent` produces `bg-accent` and
+`text-accent` from the same declaration, so a token and its utility cannot
+disagree. Never write a colour, a font or a radius as a literal in a surface.
+Use the utility, and if there is no utility for it, add the token.
+
+Dark has to override **both spellings**, `--color-x` and `--x`. Utilities read
+the first and the older surfaces read the second, and setting only one leaves
+half the page on its light value. A test holds this.
+
+The generated stylesheet is written to `dist/src/ui/app/app.css`, beside the
+compiled modules, because the container image copies `dist/src` and nothing
+else. Anywhere else is a 404 in production and nowhere else.
 
 Warm paper, a single terracotta accent, a text serif for headings against a
 neutral sans, hairline rules instead of boxes. Light is the default and dark

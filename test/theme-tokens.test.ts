@@ -1,5 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { THEME_BASE, THEME_FONT_LINKS, THEME_TOKENS } from "../src/ui/theme.js";
 
 // The theme is CSS inside a string, so nothing type-checks it. A token defined
@@ -147,4 +149,34 @@ test("the base sets no colour, radius or font literal of its own", () => {
     if (text.startsWith("font-family:") && !text.includes("var(--font-")) offenders.push(text);
   }
   assert.deepEqual(offenders, []);
+});
+
+test("a Tailwind utility and the token behind it are one declaration, not two", () => {
+  const css = readFileSync(join(process.cwd(), "src", "ui", "theme.css"), "utf8");
+  const theme = css.slice(css.indexOf("@theme {"), css.indexOf("}", css.indexOf("@theme {")));
+  // Tailwind reads --color-x to build bg-x and text-x. The short name every
+  // existing surface uses has to point at the same declaration.
+  for (const name of ["paper", "surface", "line", "text", "accent", "weak", "muted"]) {
+    assert.ok(theme.includes(`--color-${name}:`), `--color-${name} missing from @theme`);
+    assert.ok(css.includes(`--${name}: var(--color-${name});`), `--${name} is not aliased to the scale`);
+  }
+});
+
+test("dark overrides both spellings, or a utility keeps its light value", () => {
+  const css = readFileSync(join(process.cwd(), "src", "ui", "theme.css"), "utf8");
+  const dark = css.slice(css.indexOf("prefers-color-scheme"));
+  for (const name of ["paper", "surface", "line", "text", "accent"]) {
+    assert.ok(dark.includes(`--color-${name}:`), `dark does not set --color-${name}, so bg-${name} stays light`);
+    assert.ok(dark.includes(`--${name}:`), `dark does not set --${name}, so var(--${name}) stays light`);
+  }
+});
+
+test("the generated stylesheet lands where the container image copies from", () => {
+  const pkg = JSON.parse(readFileSync(join(process.cwd(), "package.json"), "utf8")) as { scripts: Record<string, string> };
+  // The image copies dist/src only. A stylesheet written anywhere else is a
+  // 404 in production and nowhere else.
+  assert.ok(pkg.scripts["build:css"]?.includes("dist/src/ui/app/app.css"));
+  assert.ok(pkg.scripts["build"]?.includes("build:css"), "the stylesheet has to be built by the build");
+  const dockerfile = readFileSync(join(process.cwd(), "Dockerfile"), "utf8");
+  assert.ok(dockerfile.includes("/app/dist/src"));
 });
