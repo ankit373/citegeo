@@ -1541,10 +1541,20 @@ export function renderProductPhase2AppHtml(): string {
           + (brief.missedBy.length ? ' Did not: ' + html(brief.missedBy.join(", ")) + '.' : '') + '</p>'
         : '<p class="evidence-note">Not named by ' + html(brief.missedBy.join(", ")) + '.'
           + (brief.namesYouElsewhere.length ? ' These name you elsewhere: ' + html(brief.namesYouElsewhere.join(", ")) + '.' : '') + '</p>';
+      const contest = brief.contest;
+      const contestClass = contest.state === "open" ? "ready" : contest.state === "settled" ? "warning" : "";
+      const contestLine = '<p class="evidence-note"><span class="tag ' + contestClass + '">'
+        + (contest.state === "open" ? "Open field" : contest.state === "settled" ? "Settled field" : "Contested field")
+        + '</span> ' + html(contest.reason)
+        + ' Being absent from a settled question is a harder problem than being absent from an open one.</p>';
+      const demand = brief.demand
+        ? '<p class="evidence-note">Asked ' + brief.demand.match.exactTerms + ' time(s) in the indexed corpus, '
+          + brief.demand.match.relatedTerms + ' loosely. A historical sample of real conversations, not live volume.</p>'
+        : '<p class="evidence-note">No corpus is indexed, so how often anyone asks this is unknown. That is not zero demand.</p>';
       const sources = brief.sources.length
         ? '<h3>What these answers read</h3><div class="evidence-foot">' + brief.sources.slice(0, 8).map((url) => '<a href="' + html(url) + '" target="_blank" rel="noreferrer">' + html(url) + '</a>').join("") + '</div>'
         : '<p class="evidence-note">These answers cited no source, so nothing here says which page to write. That is a property of the models that ran.</p>';
-      return '<div class="brief"><p class="why">' + html(brief.verdict) + '</p>' + coverage
+      return '<div class="brief"><p class="why">' + html(brief.verdict) + '</p>' + coverage + contestLine + demand
         + (rivals.length
           ? '<h3>What the models credited, in their own words</h3>'
             + '<p class="evidence-note">This is the standard this question is answered against. A model repeats what its sources say about a product, so these lines are the claims you would have to be credited with, somewhere it reads.</p>'

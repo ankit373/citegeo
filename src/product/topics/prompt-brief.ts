@@ -1,6 +1,8 @@
 import { tokenize } from "./prompt-identity.js";
 import type { PromptAnswer } from "./prompt-run-schema.js";
 import type { Prompt } from "./topic-schema.js";
+import { buildQuestionContest, type QuestionContest } from "./question-contest.js";
+import type { PromptDemand } from "../demand/corpus-schema.js";
 
 // What the models rewarded on one question, in their own words. A score says
 // you lost it; the quotes say what the winners were credited with.
@@ -36,6 +38,11 @@ export interface PromptBrief {
   /** What the models said about the brand here, including the unkind ones. */
   yourQuotes: string[];
   sources: string[];
+  /** How settled the field is here, read from the answers themselves. */
+  contest: QuestionContest;
+  /** How often anyone asked something like this in an openly licensed corpus.
+   * Null when no corpus has been indexed, which is not zero demand. */
+  demand: PromptDemand | null;
   /** One sentence naming the state this question is in. */
   verdict: string;
 }
@@ -54,7 +61,7 @@ function entityKey(name: string, domain: string | null): string {
   return tokenize(name).join(" ") || (domain || "");
 }
 
-export function buildPromptBrief(input: { prompt: Prompt; answers: PromptAnswer[]; allAnswers?: PromptAnswer[] }): PromptBrief {
+export function buildPromptBrief(input: { prompt: Prompt; answers: PromptAnswer[]; allAnswers?: PromptAnswer[]; demand?: PromptDemand | null | undefined }): PromptBrief {
   const mine = input.answers.filter((answer) => answer.promptId === input.prompt.id);
   const completed = mine.filter((answer) => answer.status === "completed");
   const failed = mine.length - completed.length;
@@ -153,6 +160,8 @@ export function buildPromptBrief(input: { prompt: Prompt; answers: PromptAnswer[
     voices,
     yourQuotes: you ? you.quotes : [],
     sources: [...sources],
+    contest: buildQuestionContest({ prompt: input.prompt, answers: mine }),
+    demand: input.demand || null,
     verdict,
   };
 }
