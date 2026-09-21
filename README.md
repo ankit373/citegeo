@@ -93,6 +93,7 @@ A handful of runs over a few minutes is not a trend. Treat it as a baseline.
 
 - [How it works](docs/how-it-works.md) · [Architecture](docs/ARCHITECTURE.md)
 - [Measurement methodology](docs/measurement-methodology.md) · [Sources and evidence](docs/evidence-model.md)
+- [Raising your standing](docs/ranking-process.md)
 - [Deployment](docs/deployment/docker.md) · [Backups and upgrades](docs/upgrade.md)
 - [Known issues](docs/known-issues.md) · [Limitations](docs/limitations.md)
 - [Design system](DESIGN.md) · [Brand](docs/brand.md)

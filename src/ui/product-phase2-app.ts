@@ -139,13 +139,51 @@ export function renderProductPhase2AppHtml(): string {
     body.panel-open .panel-scrim { opacity:1; pointer-events:auto; }
     body.panel-open .panel { transform:translateX(0); }
     .panel-head { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; padding:20px clamp(18px,2.4vw,28px); border-bottom:1px solid var(--line); }
-    .panel-body { flex:1 1 auto; overflow:auto; padding:clamp(16px,2.2vw,26px); display:grid; gap:14px; }
+    /* Rows must size to their content: auto tracks let a card with overflow:hidden
+       shrink below its own text, which silently clipped every answer. */
+    .panel-body { flex:1 1 auto; overflow:auto; padding:clamp(16px,2.2vw,26px); display:grid; gap:14px; grid-auto-rows:max-content; align-content:start; }
     .evidence { border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); overflow:hidden; }
     .evidence-head { display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center; padding:11px 15px; border-bottom:1px solid var(--line); background:var(--raised); font-size:12px; color:var(--muted); }
     .evidence-text { padding:15px; font-size:13px; line-height:1.62; white-space:pre-wrap; max-height:300px; overflow:auto; }
     .evidence-text mark { background:var(--accent-wash); color:var(--accent); padding:0 2px; border-radius:3px; font-weight:600; }
     .evidence-foot { padding:11px 15px; border-top:1px solid var(--line); font-size:12px; color:var(--weak); display:grid; gap:5px; }
     .evidence-foot a { overflow-wrap:anywhere; }
+    .evidence.is-live { border-color:var(--accent); background:var(--accent-wash); }
+    .brief { border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); padding:16px 18px; display:grid; gap:10px; }
+    .brief h3 { margin:6px 0 0; font-size:13px; }
+    .brief .why { margin:0; font-size:14px; font-weight:550; color:var(--text); }
+    .brief .evidence-note { margin:0; font-size:12px; color:var(--weak); line-height:1.55; }
+    .brief .evidence-foot { border:0; padding:0; }
+    .voice { border-left:2px solid var(--line-strong); padding:2px 0 2px 12px; display:grid; gap:5px; }
+    .voice.is-you { border-left-color:var(--accent); }
+    .voice-top { display:flex; gap:9px; align-items:baseline; flex-wrap:wrap; }
+    .voice-top strong { font-size:13px; font-weight:600; }
+    .quotes { margin:0; padding-left:16px; display:grid; gap:4px; font-size:12px; color:var(--muted); line-height:1.55; }
+    .panel-section { margin:8px 0 -4px; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--weak); }
+    .panel-actions { display:flex; align-items:flex-start; gap:10px; }
+    .runpane-progress { display:grid; gap:6px; margin-top:8px; font-size:12px; color:var(--muted); }
+    .runpane-progress .bar { margin:0; }
+    .runfield { display:grid; grid-template-columns:104px minmax(0,1fr); gap:12px; padding:11px 15px; border-top:1px solid var(--line); align-items:start; }
+    .runfield > span:first-child { font-size:10px; letter-spacing:.09em; text-transform:uppercase; color:var(--weak); font-weight:600; padding-top:2px; }
+    .runtext { margin:0; font-size:13px; line-height:1.6; white-space:pre-wrap; max-height:220px; overflow:auto; }
+    .runtext mark { background:var(--accent-wash); color:var(--accent); padding:0 2px; border-radius:3px; font-weight:600; }
+    .namechips { display:flex; flex-wrap:wrap; gap:6px; }
+    .namechip { display:inline-flex; align-items:baseline; gap:5px; border:1px solid var(--line); border-radius:999px; padding:2px 9px; font-size:12px; color:var(--muted); }
+    .namechip b { font-family:var(--font-mono); font-size:10px; color:var(--weak); font-weight:500; }
+    .namechip i { font-style:normal; font-size:11px; color:var(--weak); }
+    .namechip.is-you { border-color:var(--accent); color:var(--accent); background:var(--accent-wash); }
+    .liverun.is-clickable { cursor:pointer; }
+    .liverun.is-clickable:hover { border-color:var(--accent-hover); }
+    .plan { display:grid; gap:10px; margin-top:16px; }
+    .move { border:1px solid var(--line); border-left:3px solid var(--line-strong); border-radius:var(--radius-sm); background:var(--sunken); padding:13px 15px; display:grid; gap:5px; }
+    .move.raises_visibility { border-left-color:var(--accent); }
+    .move.unblocks_measurement { border-left-color:var(--unknown); }
+    .move.widens_measurement { border-left-color:var(--line-strong); }
+    .move-top { display:flex; gap:10px; align-items:baseline; flex-wrap:wrap; }
+    .move-top strong { font-size:14px; font-weight:600; color:var(--text); }
+    .move p { margin:0; font-size:13px; color:var(--muted); }
+    .move .why { color:var(--text); }
+    .move .evidence-note { font-size:12px; color:var(--weak); }
     .pill { display:inline-flex; align-items:center; gap:5px; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:600; border:1px solid var(--line-strong); }
     .pill.good { color:var(--confirmed-text); border-color:var(--confirmed); background:var(--confirmed-wash); }
     .pill.bad { color:var(--failed-text); border-color:var(--failed); background:var(--failed-wash); }
@@ -246,6 +284,8 @@ export function renderProductPhase2AppHtml(): string {
     .section-head { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; margin-bottom:4px; flex-wrap:wrap; }
     .protocol-list { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:8px; padding:0; margin:15px 0 0; list-style:none; }
     .protocol-list li { border:1px solid var(--line); background:var(--sunken); border-radius:7px; padding:10px; color:var(--muted); font-size:13px; min-width:0; overflow-wrap:anywhere; }
+    .protocol-list li.is-clickable { cursor:pointer; }
+    .protocol-list li.is-clickable:hover { border-color:var(--accent); }
     .model-search { margin:18px 0 12px; }
     .model-catalog-controls { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:10px; margin-bottom:12px; }
     .model-catalog-controls label { display:grid; gap:6px; color:var(--weak); font-size:12px; }
@@ -264,6 +304,9 @@ export function renderProductPhase2AppHtml(): string {
     .mname { min-width:0; }
     .mname strong { display:block; font-size:13px; line-height:1.4; font-weight:550; color:var(--text); }
     .mname span { display:block; font-size:12px; color:var(--weak); overflow-wrap:anywhere; margin-top:2px; }
+    /* A badge is part of the name line, so it must not take the block
+       display the rule above gives every other span in the cell. */
+    .mname .pill,.mname .tag { display:inline-flex; width:auto; margin-top:0; }
     .mname .subtle { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; font-size:12px; color:var(--weak); margin-top:3px; }
     .mcell { font-size:13px; color:var(--muted); min-width:0; overflow-wrap:anywhere; }
     .state-ok { color:var(--confirmed-text); font-weight:500; }
@@ -348,6 +391,7 @@ export function renderProductPhase2AppHtml(): string {
       .mhead { display:none; }
       .mcols-selected,.mcols-readonly,.mcols-project,.mcols-provider { grid-template-columns:minmax(0,1fr); gap:6px; }
       .mcols-catalog,.mcols-promptrow { grid-template-columns:20px minmax(0,1fr); gap:6px 10px; }
+      .runfield { grid-template-columns:minmax(0,1fr); gap:5px; }
       .mcols-catalog > *:nth-child(n+3),.mcols-promptrow > *:nth-child(n+3) { grid-column:2; }
       .promptbar .prompt-result-summary { margin-left:0; }
       .card-actions { margin-top:2px; }
@@ -368,7 +412,7 @@ export function renderProductPhase2AppHtml(): string {
     </form>
   </aside>
   <script>
-    const state = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", promptFilters:{ query:"", topicId:"", intent:"", status:"" }, promptSelection:[], answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", rivals:null, rivalsState:"idle", segments:null, segmentsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, runPollTimer:0 };
+    const state = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", promptFilters:{ query:"", topicId:"", intent:"", status:"" }, promptSelection:[], answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", rivals:null, rivalsState:"idle", segments:null, segmentsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, lastRun:null, runPollTimer:0, runFeed:[], runFeedState:"idle", runFeedTimer:0, rankPlan:null, rankPlanState:"idle", brief:null, briefState:"idle" };
     const app = document.getElementById("app");
     const element = (id) => document.getElementById(id);
     const html = (value) => String(value).split("&").join("&amp;").split("<").join("&lt;").split(">").join("&gt;").split('"').join("&quot;").split("'").join("&#39;");
@@ -376,7 +420,7 @@ export function renderProductPhase2AppHtml(): string {
     const formatTime = (value) => new Date(value).toLocaleString();
     const modeText = (mode) => mode === "provider_native" ? "Provider Native web search" : "Offline";
     const statusText = (status) => status === "draft" ? "Draft" : status === "active" ? "Running" : status === "archived" ? "Archived" : "Deleted";
-    function setSelectedProject(projectId) { if (projectId !== state.selectedId) { state.insights = null; state.insightsState = "idle"; state.plan = null; state.planState = "idle"; state.crawlers = null; state.crawlersState = "idle"; state.signals = null; state.signalsState = "idle"; } state.selectedId = projectId || ""; if (state.selectedId) localStorage.setItem("citegeo.product.projectId", state.selectedId); else localStorage.removeItem("citegeo.product.projectId"); const next = new URL(window.location.href); if (state.selectedId) next.searchParams.set("projectId", state.selectedId); else next.searchParams.delete("projectId"); window.history.replaceState({ projectId:state.selectedId }, "", next); }
+    function setSelectedProject(projectId) { if (projectId !== state.selectedId) { state.liveRun = null; state.lastRun = null; state.insights = null; state.insightsState = "idle"; state.plan = null; state.planState = "idle"; state.rankPlan = null; state.rankPlanState = "idle"; state.crawlers = null; state.crawlersState = "idle"; state.signals = null; state.signalsState = "idle"; } state.selectedId = projectId || ""; if (state.selectedId) localStorage.setItem("citegeo.product.projectId", state.selectedId); else localStorage.removeItem("citegeo.product.projectId"); const next = new URL(window.location.href); if (state.selectedId) next.searchParams.set("projectId", state.selectedId); else next.searchParams.delete("projectId"); window.history.replaceState({ projectId:state.selectedId }, "", next); }
     function setDrawer(open) { document.body.classList.toggle("drawer-open", open); element("project-drawer").setAttribute("aria-hidden", String(!open)); }
     function openDrawer() { state.drawerSession += 1; setFormStatus("", ""); setDrawer(true); window.setTimeout(() => element("project-domain").focus(), 0); }
     function closeDrawer() { state.drawerSession += 1; setDrawer(false); }
@@ -582,9 +626,13 @@ export function renderProductPhase2AppHtml(): string {
         const live = rows.find ? rows.find((row) => row.status === "running" || row.status === "cancelling") : null;
         const had = Boolean(state.liveRun);
         state.liveRun = live || null;
+        state.lastRun = rows.length ? rows[0] : null;
         window.clearTimeout(state.runPollTimer);
         if (live) state.runPollTimer = window.setTimeout(loadLiveRun, 4000);
-        else if (had) { state.answerEngineState = "idle"; loadAnswerEngine(); }
+        // A start takes a moment to appear, and one missed poll used to leave
+        // the page claiming nothing was running for the length of the run.
+        else if (state.promptRunState === "running") state.runPollTimer = window.setTimeout(loadLiveRun, 1500);
+        else if (had) { state.answerEngineState = "idle"; state.rankPlanState = "idle"; loadAnswerEngine(); if (state.panel && state.panel.kind === "run") loadRunFeed(); }
         render();
       } catch (error) {
         state.liveRun = null;
@@ -628,11 +676,13 @@ export function renderProductPhase2AppHtml(): string {
     }
 
     async function openEvidence(promptId, title) {
-      state.panel = { promptId: promptId, title: title };
+      window.clearTimeout(state.runFeedTimer);
+      state.panel = { kind:"evidence", promptId: promptId, title: title };
       state.panelState = "loading";
       state.panelAnswers = [];
       document.body.classList.add("panel-open");
       render();
+      loadBrief(promptId);
       try {
         const query = filterQuery();
         const joiner = query ? "&" : "?";
@@ -650,6 +700,11 @@ export function renderProductPhase2AppHtml(): string {
       state.panel = null;
       state.panelAnswers = [];
       state.panelState = "idle";
+      state.runFeed = [];
+      state.runFeedState = "idle";
+      state.brief = null;
+      state.briefState = "idle";
+      window.clearTimeout(state.runFeedTimer);
       render();
     }
 
@@ -1047,46 +1102,18 @@ export function renderProductPhase2AppHtml(): string {
         + '</div>';
     }
 
-    function renderLeaderboard(rows) {
-      if (!rows || !rows.length) return '<p class="subtle">No organisation was named in any answer yet.</p>';
-      return '<div class="mtable"><div class="mhead mcols-board"><span>#</span><span>Who</span><span>Answers naming them</span><span>Share</span><span>Prominence</span></div>'
-        + rows.slice(0, 12).map((row, index) => '<div class="mrow mcols-board" data-state="' + (row.isTarget ? "done" : "") + '">'
-          + '<span class="mcell mono">' + (index + 1) + '</span>'
-          + '<div class="mname"><strong>' + html(row.name) + (row.isTarget ? ' <span class="tag ready">You</span>' : '') + '</strong><span class="mono">' + html(row.domain || "no domain given") + '</span></div>'
-          + '<span class="mcell">' + row.appearances + '</span>'
-          + '<span class="mcell">' + pct(row.shareOfAnswers) + '</span>'
-          + '<span class="mcell">' + pct(row.prominence) + '</span></div>').join("")
-        + '</div>';
-    }
-
-    function renderTopicRows(topics) {
-      if (!topics || !topics.length) return '<p class="subtle">No topic has been answered yet.</p>';
-      return '<div class="mtable"><div class="mhead mcols-topic"><span>Topic</span><span>Score</span><span>Presence</span><span>Rank</span><span>Weakest prompt</span></div>'
-        + topics.map((topic) => {
-          const worst = topic.prompts[0];
-          const stateClass = topic.score.score === null ? "" : topic.score.score >= 50 ? "state-ok" : topic.score.score > 0 ? "state-flag" : "state-bad";
-          return '<div class="mrow mcols-topic">'
-            + '<div class="mname"><strong>' + html(topic.name) + '</strong><span class="subtle">' + html(topic.description || topic.prompts.length + " prompt(s)") + '</span></div>'
-            + '<span class="mcell ' + stateClass + '">' + scoreText(topic.score.score) + '</span>'
-            + '<span class="mcell">' + pct(topic.score.presenceRate) + '</span>'
-            + '<span class="mcell">' + (topic.rank === null ? "Not named" : "#" + topic.rank) + '</span>'
-            + '<span class="mcell">' + (worst ? html(worst.text) : "") + '</span></div>';
-        }).join("")
-        + '</div>';
-    }
-
     function renderAbsent(rows) {
       if (!rows || !rows.length) return '<p class="subtle">Every prompt with an answer named you at least once.</p>';
-      return '<ul class="protocol-list">' + rows.slice(0, 12).map((row) => '<li><strong>' + html(row.text) + '</strong><br><span class="subtle">' + row.score.answers + ' answer(s), none named you. '
+      return '<ul class="protocol-list">' + rows.slice(0, 12).map((row) => '<li class="is-clickable" data-evidence="' + html(row.promptId) + '" data-evidence-title="' + html(row.text) + '" tabindex="0" role="button"><strong>' + html(row.text) + '</strong><br><span class="subtle">' + row.score.answers + ' answer(s), none named you. '
         + (row.ahead.length ? 'Named instead: ' + row.ahead.map((entity) => html(entity.name)).join(", ") + '.' : 'No competitor was named either, so this question may not be about a product at all.')
-        + '</span></li>').join("") + '</ul>';
+        + '</span><br><span class="linklike">Open the brief</span></li>').join("") + '</ul>';
     }
 
     function renderModelRows(rows) {
       if (!rows || !rows.length) return '<p class="subtle">No model has answered yet.</p>';
-      return '<div class="mtable"><div class="mhead mcols-aemodel"><span>Model</span><span>Score</span><span>Presence</span><span>Answers</span></div>'
+      return '<div class="mtable"><div class="mhead mcols-aemodel"><span>AI assistant</span><span>Score</span><span>Presence</span><span>Answers</span></div>'
         + rows.map((row) => '<div class="mrow mcols-aemodel">'
-          + '<div class="mname"><strong>' + html(row.displayName) + '</strong><span class="mono">' + html(row.modelId) + '</span></div>'
+          + '<div class="mname"><strong>' + html(row.displayName) + '</strong><span class="mono">' + html(row.providerId) + ' · ' + html(row.modelId) + '</span></div>'
           + '<span class="mcell">' + scoreText(row.score.score) + '</span>'
           + '<span class="mcell">' + pct(row.score.presenceRate) + '</span>'
           + '<span class="mcell">' + row.score.answers + '</span></div>').join("")
@@ -1165,14 +1192,14 @@ export function renderProductPhase2AppHtml(): string {
       const doing = run.currentPromptText
         ? 'Asking ' + html(run.currentModelId || "a model") + ': \u201c' + html(run.currentPromptText) + '\u201d'
         : "Starting up";
-      return '<div class="liverun"><div class="liverun-top"><strong>' + (run.status === "cancelling" ? "Stopping" : "Running") + '</strong>'
+      return '<div class="liverun is-clickable" data-open-run="' + html(run.id) + '" role="button" tabindex="0"><div class="liverun-top"><strong>' + (run.status === "cancelling" ? "Stopping" : "Running") + '</strong>'
         + '<span>' + done + ' of ' + run.answersRequested + ' answers</span>'
         + '<span class="spacer"></span>'
         + (run.status === "cancelling"
           ? '<span class="subtle">Finishing the answer in flight.</span>'
           : '<button type="button" class="button danger" data-stop-run>Stop</button>')
         + '</div><div class="bar"><i style="width:' + pctDone + '%"></i></div>'
-        + '<p class="subtle">' + doing + '. These run on this machine, through the provider you configured in Setup.</p></div>';
+        + '<p class="subtle">' + doing + '. Open this to watch each question and answer as it lands.</p></div>';
     }
 
     function renderHero(data) {
@@ -1223,10 +1250,10 @@ export function renderProductPhase2AppHtml(): string {
       if (!rows || !rows.length) return '<p class="subtle">No organisation was named in any answer yet.</p>';
       const top = rows.slice(0, 12);
       const most = Math.max(1, ...top.map((row) => row.appearances));
-      return '<div class="mtable"><div class="mhead mcols-board"><span>#</span><span>Who</span><span>Answers naming them</span><span>Prominence</span></div>'
+      return '<div class="mtable"><div class="mhead mcols-board"><span>#</span><span>Organisation</span><span>Answers naming them</span><span>Prominence</span></div>'
         + top.map((row, index) => '<div class="mrow mcols-board">'
           + '<span class="mcell mono">' + (index + 1) + '</span>'
-          + '<div class="mname"><strong>' + html(row.name) + (row.isTarget ? ' <span class="pill good">You</span>' : '') + '</strong><span class="mono">' + html(row.domain || "no domain given") + '</span></div>'
+          + '<div class="mname"><strong>' + html(row.name) + (row.isTarget ? ' <span class="pill good">You</span>' : row.isTracked ? ' <span class="tag">Rival you track</span>' : ' <span class="tag">Named by the models</span>') + '</strong><span class="mono">' + html(row.domain || "no domain given") + '</span></div>'
           + '<span class="mcell"><span class="sharebar' + (row.isTarget ? " is-target" : "") + '"><i style="width:' + Math.round(row.appearances / most * 100) + '%"></i><b>' + row.appearances + ' · ' + pct(row.shareOfAnswers) + '</b></span></span>'
           + '<span class="mcell">' + pct(row.prominence) + '</span></div>').join("")
         + '</div>';
@@ -1268,8 +1295,218 @@ export function renderProductPhase2AppHtml(): string {
       return found ? found.label : id;
     }
 
+    // A second run is refused by the server, so the page must not offer one.
+    function runActionButton(label, enabled) {
+      if (state.liveRun) return '<button type="button" class="button primary" data-open-run="' + html(state.liveRun.id) + '">Watch the run</button>';
+      const busy = state.promptRunState === "running";
+      const last = state.lastRun ? '<button type="button" class="button" data-open-run="' + html(state.lastRun.id) + '">Last run</button>' : '';
+      return last + '<button type="button" class="button primary" data-run-prompts' + (busy || enabled === false ? ' disabled' : '') + '>' + (busy ? "Starting…" : html(label)) + '</button>';
+    }
+
+    function openRunPane(runId) {
+      const id = runId || (state.liveRun ? state.liveRun.id : state.lastRun ? state.lastRun.id : "");
+      if (!id) return;
+      state.panel = { kind:"run", runId:id, promptId:"", title:"Run" };
+      state.runFeed = [];
+      state.runFeedState = "loading";
+      document.body.classList.add("panel-open");
+      render();
+      loadRunFeed();
+    }
+
+    async function loadRunFeed() {
+      const open = state.panel;
+      if (!open || open.kind !== "run" || !state.selectedId) return;
+      try {
+        const result = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/prompt-answers?runId=" + encodeURIComponent(open.runId));
+        state.runFeed = result.answers || [];
+        state.runFeedState = "ready";
+      } catch (error) {
+        state.runFeedState = "error";
+      }
+      window.clearTimeout(state.runFeedTimer);
+      if (runIsLive()) state.runFeedTimer = window.setTimeout(loadRunFeed, 3000);
+      // Patch in place: a full render would throw away the reader's scroll.
+      const body = document.querySelector(".panel-body");
+      const head = document.querySelector(".runpane-progress");
+      if (!body) { render(); return; }
+      const top = body.scrollTop;
+      body.innerHTML = runFeedBody();
+      body.scrollTop = top;
+      if (head) head.innerHTML = runPaneProgress();
+    }
+
+    function paneRun() {
+      const open = state.panel;
+      if (!open || open.kind !== "run") return null;
+      if (state.liveRun && state.liveRun.id === open.runId) return state.liveRun;
+      return state.lastRun && state.lastRun.id === open.runId ? state.lastRun : null;
+    }
+
+    function runIsLive() {
+      const run = paneRun();
+      return Boolean(run && (run.status === "running" || run.status === "cancelling"));
+    }
+
+    function runPaneProgress() {
+      const run = paneRun();
+      if (!run) return '<span class="subtle">Every answer below is archived.</span>';
+      if (run.status !== "running" && run.status !== "cancelling") {
+        return '<span>' + html(run.status) + ' · ' + run.answersCompleted + ' answered, ' + run.answersFailed + ' failed, of ' + run.answersRequested + ' asked</span>';
+      }
+      const done = run.answersCompleted + run.answersFailed;
+      const share = run.answersRequested ? Math.round(done / run.answersRequested * 100) : 0;
+      return '<span>' + done + ' of ' + run.answersRequested + ' answers · ' + run.answersFailed + ' failed</span>'
+        + '<div class="bar"><i style="width:' + share + '%"></i></div>';
+    }
+
+    function mentionChips(answer) {
+      const rows = (answer.mentions || []).slice().sort((left, right) => (left.firstMentionOffset === null ? 1 : 0) - (right.firstMentionOffset === null ? 1 : 0) || (left.firstMentionOffset || 0) - (right.firstMentionOffset || 0));
+      if (!rows.length) return '<span class="subtle">No organisation was named.</span>';
+      return rows.map((row, index) => '<span class="namechip' + (row.isTarget ? ' is-you' : '') + '">'
+        + '<b>' + (index + 1) + '</b>' + html(row.name)
+        + (row.recommendation && row.recommendation !== "unknown" ? ' <i>' + html(row.recommendation) + '</i>' : '')
+        + '</span>').join("");
+    }
+
+    function runAnswerCard(answer) {
+      const failed = answer.status !== "completed";
+      const target = (answer.mentions || []).find((row) => row.isTarget);
+      const badge = failed
+        ? '<span class="pill bad">' + html(answer.status.split("_").join(" ")) + '</span>'
+        : target ? '<span class="pill good">named you</span>' : '<span class="pill flat">did not name you</span>';
+      const came = failed
+        ? '<p class="runtext state-bad">' + html(answer.errorMessage || answer.errorCode || "The model returned nothing usable.") + '</p>'
+        : '<p class="runtext">' + (answer.text ? markMentions(answer.text, answer.mentions) : html("This answer returned no text.")) + '</p>';
+      const sources = (answer.citationUrls || []).length
+        ? answer.citationUrls.slice(0, 6).map((url) => '<a href="' + html(url) + '" target="_blank" rel="noreferrer">' + html(url) + '</a>').join("")
+        : '<span class="subtle">No source was cited.</span>';
+      return '<article class="evidence"><div class="evidence-head"><strong>' + html(answer.modelDisplayName || answer.modelId) + '</strong>' + badge
+        + '<span>' + html(labelFor(state.regions, answer.regionId, "No stated market")) + ' · ' + html(labelFor(state.languages, answer.languageId, "English")) + '</span>'
+        + '<span class="spacer"></span><span>' + (answer.latencyMs === null || answer.latencyMs === undefined ? "no timing" : Math.round(answer.latencyMs / 100) / 10 + 's') + '</span></div>'
+        + '<div class="runfield"><span>Sent</span><p class="runtext">' + html(answer.promptText) + '</p></div>'
+        + '<div class="runfield"><span>Came back</span>' + came + '</div>'
+        + '<div class="runfield"><span>Named, in order</span><div class="namechips">' + mentionChips(answer) + '</div></div>'
+        + '<div class="evidence-foot">' + sources + '</div></article>';
+    }
+
+    function runInFlightCard() {
+      const run = runIsLive() ? paneRun() : null;
+      if (!run || !run.currentPromptText) return "";
+      return '<article class="evidence is-live"><div class="evidence-head"><strong>' + html(run.currentModelId || "a model") + '</strong>'
+        + '<span class="pill flat">asking now</span><span class="spacer"></span><span>waiting for the answer</span></div>'
+        + '<div class="runfield"><span>Sent</span><p class="runtext">' + html(run.currentPromptText) + '</p></div></article>';
+    }
+
+    function runFeedBody() {
+      if (state.runFeedState === "loading" && !state.runFeed.length) return '<p class="subtle">Reading what this run has archived so far.</p>';
+      if (state.runFeedState === "error") return '<p class="subtle">Could not read this run.</p>';
+      const cards = state.runFeed.map(runAnswerCard).join("");
+      const flight = runInFlightCard();
+      if (!cards && !flight) return '<p class="subtle">No answer has come back yet. The first one appears here as soon as it does.</p>';
+      return flight + cards;
+    }
+
+    async function loadRankingPlan() {
+      if (!state.selectedId || state.rankPlanState === "loading") return;
+      state.rankPlanState = "loading";
+      try {
+        state.rankPlan = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/ranking-plan" + filterQuery());
+        state.rankPlanState = "ready";
+      } catch (error) {
+        state.rankPlanState = "error";
+      }
+      render();
+    }
+
+    function effectLabel(effect) {
+      return effect === "raises_visibility" ? "Raises the score"
+        : effect === "unblocks_measurement" ? "Unblocks measurement"
+        : "Widens what is measured";
+    }
+
+    function renderRankingPlan() {
+      if (state.rankPlanState === "idle") { loadRankingPlan(); }
+      if (state.rankPlanState !== "ready" || !state.rankPlan) {
+        return '<p class="subtle">' + (state.rankPlanState === "error" ? "Could not build a plan from the archived answers." : "Reading the answers to work out what would move this.") + '</p>';
+      }
+      const plan = state.rankPlan;
+      const moves = plan.moves.length
+        ? '<div class="plan">' + plan.moves.map((move) => '<div class="move ' + html(move.effect) + '">'
+            + '<div class="move-top"><strong>' + html(move.title) + '</strong><span class="tag">' + html(effectLabel(move.effect)) + '</span>'
+            + (move.answers === null ? '' : '<span class="subtle">' + move.answers + ' answer(s)</span>') + '</div>'
+            + '<p class="why">' + html(move.why) + '</p>'
+            + '<p class="evidence-note">' + html(move.evidence) + '</p></div>').join("") + '</div>'
+        : '<p class="subtle">Nothing in the archived answers points at a specific move.</p>';
+      return '<p class="subtle"><strong>' + html(plan.verdict) + '</strong></p>' + moves
+        + '<details class="technical-details" style="margin-top:14px"><summary>Would tracking more questions make me rank higher?</summary><p class="subtle">' + html(plan.promptsNote) + '</p></details>';
+    }
+
+    async function loadBrief(promptId) {
+      state.briefState = "loading";
+      state.brief = null;
+      try {
+        const query = filterQuery();
+        const joiner = query ? "&" : "?";
+        state.brief = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/prompt-brief" + query + joiner + "promptId=" + encodeURIComponent(promptId));
+        state.briefState = "ready";
+      } catch (error) {
+        state.briefState = "error";
+      }
+      render();
+    }
+
+    function briefVoice(voice) {
+      const spread = voice.answers + ' answer(s)'
+        + (voice.positive ? ' · ' + voice.positive + ' recommended' : '')
+        + (voice.negative ? ' · ' + voice.negative + ' warned against' : '')
+        + (voice.prominence === null ? '' : ' · named ' + pct(voice.prominence) + ' of the way to first');
+      const quotes = voice.quotes.length
+        ? '<ul class="quotes">' + voice.quotes.map((quote) => '<li>' + html(quote) + '</li>').join("") + '</ul>'
+        : '<p class="subtle">Named without a reason given.</p>';
+      return '<div class="voice' + (voice.isTarget ? ' is-you' : '') + '"><div class="voice-top"><strong>' + html(voice.name) + '</strong>'
+        + (voice.isTarget ? '<span class="pill good">You</span>' : '') + '<span class="subtle">' + html(spread) + '</span></div>' + quotes + '</div>';
+    }
+
+    function renderBrief() {
+      if (state.briefState === "loading") return '<p class="subtle">Reading what the models credited here.</p>';
+      if (state.briefState === "error" || !state.brief) return '';
+      const brief = state.brief;
+      if (!brief.answers) return '<div class="brief"><p class="why">' + html(brief.verdict) + '</p></div>';
+      const rivals = brief.voices.filter((voice) => !voice.isTarget).slice(0, 5);
+      const you = brief.voices.find((voice) => voice.isTarget);
+      const coverage = brief.namedBy.length
+        ? '<p class="evidence-note">Named you: ' + html(brief.namedBy.join(", ")) + '.'
+          + (brief.missedBy.length ? ' Did not: ' + html(brief.missedBy.join(", ")) + '.' : '') + '</p>'
+        : '<p class="evidence-note">Not named by ' + html(brief.missedBy.join(", ")) + '.'
+          + (brief.namesYouElsewhere.length ? ' These name you elsewhere: ' + html(brief.namesYouElsewhere.join(", ")) + '.' : '') + '</p>';
+      const sources = brief.sources.length
+        ? '<h3>What these answers read</h3><div class="evidence-foot">' + brief.sources.slice(0, 8).map((url) => '<a href="' + html(url) + '" target="_blank" rel="noreferrer">' + html(url) + '</a>').join("") + '</div>'
+        : '<p class="evidence-note">These answers cited no source, so nothing here says which page to write. That is a property of the models that ran.</p>';
+      return '<div class="brief"><p class="why">' + html(brief.verdict) + '</p>' + coverage
+        + (rivals.length
+          ? '<h3>What the models credited, in their own words</h3>'
+            + '<p class="evidence-note">This is the standard this question is answered against. A model repeats what its sources say about a product, so these lines are the claims you would have to be credited with, somewhere it reads.</p>'
+            + rivals.map(briefVoice).join("")
+          : '')
+        + (you && you.quotes.length ? '<h3>What they said about you</h3>' + briefVoice(you) : '')
+        + sources + '</div>';
+    }
+
+    function renderRunPane() {
+      return '<div class="panel-scrim" data-close-panel></div><aside class="panel" role="dialog" aria-label="Live run">'
+        + '<div class="panel-head"><div><h2>' + (runIsLive() ? "Live run" : "Finished run") + '</h2>'
+        + '<p class="subtle">What went to each model and what came back, newest first.</p>'
+        + '<div class="runpane-progress">' + runPaneProgress() + '</div></div>'
+        + '<div class="panel-actions">'
+        + (runIsLive() && state.liveRun && state.liveRun.status !== "cancelling" ? '<button type="button" class="button danger" data-stop-run>Stop</button>' : '')
+        + '<button type="button" class="close" data-close-panel aria-label="Close">×</button></div></div>'
+        + '<div class="panel-body">' + runFeedBody() + '</div></aside>';
+    }
+
     function renderEvidence() {
       if (!state.panel) return '<div class="panel-scrim" data-close-panel></div><aside class="panel" aria-hidden="true"></aside>';
+      if (state.panel.kind === "run") return renderRunPane();
       const body = state.panelState === "loading"
         ? '<p class="subtle">Reading the archived answers.</p>'
         : state.panelState === "error"
@@ -1294,9 +1531,9 @@ export function renderProductPhase2AppHtml(): string {
                   + sources + '</article>';
               }).join("");
       return '<div class="panel-scrim" data-close-panel></div><aside class="panel" role="dialog" aria-label="Archived answers">'
-        + '<div class="panel-head"><div><h2>' + html(state.panel.title) + '</h2><p class="subtle">Every archived answer behind this number.</p></div>'
+        + '<div class="panel-head"><div><h2>' + html(state.panel.title) + '</h2><p class="subtle">What the models rewarded here, and every archived answer behind it.</p></div>'
         + '<button type="button" class="close" data-close-panel aria-label="Close">×</button></div>'
-        + '<div class="panel-body">' + body + '</div></aside>';
+        + '<div class="panel-body">' + renderBrief() + '<h3 class="panel-section">The answers themselves</h3>' + body + '</div></aside>';
     }
 
     function alertPill(severity) {
@@ -1345,7 +1582,7 @@ export function renderProductPhase2AppHtml(): string {
         ? html(home.lastRun.status) + ' · ' + home.lastRun.completed + ' of ' + home.lastRun.requested + ' answers · ' + html(home.lastRun.at.slice(0, 16).replace("T", " "))
         : "No run yet";
 
-      return '<section class="view"><div class="heading"><div><h1>' + html(selected.name) + '</h1><p class="subtle">' + html(home.domain) + ' · ' + home.answers + ' archived answer(s) · last run ' + run + '</p></div><div class="inline-actions"><button type="button" class="button" data-page="answer-engine">Full report</button><button type="button" class="button primary" data-run-prompts>' + (state.promptRunState === "running" ? "Running…" : "Run prompts") + '</button></div></div>'
+      return '<section class="view"><div class="heading"><div><h1>' + html(selected.name) + '</h1><p class="subtle">' + html(home.domain) + ' · ' + home.answers + ' archived answer(s) · last run ' + run + '</p></div><div class="inline-actions"><button type="button" class="button" data-page="answer-engine">Full report</button>' + runActionButton("Run prompts") + '</div></div>'
         + renderLiveRun()
         + (home.ready ? '' : '<div class="warning-box">' + html(home.setup.filter((step) => !step.done).map((step) => step.label + ': ' + step.detail).join('. ')) + '.</div>')
         + '<div class="hero"><div class="hero-figure"><span class="scorebig">' + scoreText(home.score) + '</span><span class="hero-sub">' + change + '<span>' + (home.rank === null ? "Not named" : "#" + home.rank + " of " + (home.rivals + 1)) + '</span></span></div>'
@@ -1433,7 +1670,7 @@ export function renderProductPhase2AppHtml(): string {
       const failedNote = data.answersFailed ? '<div class="warning-box">' + data.answersFailed + ' answer(s) failed and are excluded. They are not counted as answers that did not name you.</div>' : '';
       const identityNote = data.identityCaveat ? '<div class="warning-box"><strong>Your name is a word in your own category.</strong> ' + html(data.identityCaveat) + '</div>' : '';
       const citationNote = data.citationsUnavailable ? '<div class="warning-box">No answer carried a citation, so there are no sources to analyse. That is a property of the models you ran, not evidence that nobody cites you. A provider with web search will produce them.</div>' : '';
-      return '<section class="view"><div class="heading"><div><h1>Answer engine</h1><p class="subtle">' + data.answers + ' answer(s) across ' + data.topics.length + ' topic(s) for ' + html(selected.normalizedDomain) + '. Click any question to read the answers behind it.</p></div><div class="inline-actions"><button type="button" class="button" data-page="prompts">Prompts</button><button type="button" class="button primary" data-run-prompts>' + (state.promptRunState === "running" ? "Running…" : "Run prompts") + '</button></div></div>'
+      return '<section class="view"><div class="heading"><div><h1>Answer engine</h1><p class="subtle">' + data.answers + ' answer(s) across ' + data.topics.length + ' topic(s) for ' + html(selected.normalizedDomain) + '. Click any question to read the answers behind it.</p></div><div class="inline-actions"><button type="button" class="button" data-page="prompts">Prompts</button>' + runActionButton("Run prompts") + '</div></div>'
         + renderLiveRun()
         + renderHero(data)
         + renderSavedViews()
@@ -1442,15 +1679,16 @@ export function renderProductPhase2AppHtml(): string {
         + '<section class="section-card"><div class="section-head"><div><h2>How the score is built</h2><p class="subtle">Presence scaled by where you appear and how you are described.</p></div></div>'
         + renderScoreBreakdown(data.overall)
         + '<details class="technical-details"><summary>The formula, and the judgement in it</summary><p class="subtle">score = presence × (' + weights.prominenceFloor + ' + ' + (1 - weights.prominenceFloor).toFixed(1) + ' × prominence) × (' + weights.sentimentFloor + ' + ' + (1 - weights.sentimentFloor).toFixed(1) + ' × sentiment) × 100.</p><p class="subtle">The two floors are a judgement, not a measurement: being named late and grudgingly is still better than not being named, so prominence and sentiment scale presence rather than replacing it. Every component above is reported separately so you can ignore the composite entirely.</p></details></section>'
-        + '<section class="section-card"><div class="section-head"><div><h2>Who the models name</h2><p class="subtle">Ranked by how many answers named them, then by how early.</p></div></div>' + renderLeaderboard(data.leaderboard) + '</section>'
+        + '<section class="section-card"><div class="section-head"><div><h2>What would move this</h2><p class="subtle">Read off the archived answers, strongest lever first. None of it is an opinion about your marketing.</p></div></div>' + renderRankingPlan() + '</section>'
+        + '<section class="section-card"><div class="section-head"><div><h2>Competitors named in the answers</h2><p class="subtle">Organisations the assistants named while answering your questions. Not the assistants themselves. Ranked by how many answers named them, then by how early.</p></div></div>' + renderLeaderboard(data.leaderboard) + '</section>'
+        + '<section class="section-card"><div class="section-head"><div><h2>Rivals you name</h2><p class="subtle">Name a competitor here and it is tracked whether or not an answer mentions it. A tracked rival nobody named reads as zero, which is a finding; leaving it out would hide it.</p></div></div>' + renderRivals(data) + '</section>'
         + '<div class="section-head" style="margin-top:24px"><div><h2>Topics, weakest first</h2><p class="subtle">Where you are losing, in the order worth fixing. Every question opens its answers.</p></div></div>'
         + renderTopicRows(data.topics)
-        + '<section class="section-card"><div class="section-head"><div><h2>Questions you never appear in</h2><p class="subtle">Answered, and you were not named once. This is the actionable list.</p></div></div>' + renderAbsent(data.absentFrom) + '</section>'
+        + '<section class="section-card"><div class="section-head"><div><h2>Questions you never appear in</h2><p class="subtle">Answered, and you were not named once. Open one to read what the models credited the winners with, which is the standard that question is answered against.</p></div></div>' + renderAbsent(data.absentFrom) + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>Movement</h2><p class="subtle">One point per run. A run where everything failed is left out rather than drawn as a drop.</p></div></div>' + renderPromptTrend(data.trend) + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>By market</h2><p class="subtle">The same questions, asked for a different buyer.</p></div></div>' + renderRegionRows(data.byRegion, data.regionCaveat) + '</section>'
-        + '<section class="section-card"><div class="section-head"><div><h2>Rivals you track</h2><p class="subtle">Declared, as opposed to whoever happened to be named.</p></div></div>' + renderRivals(data) + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>Sources</h2><p class="subtle">A domain says you are cited. A page says which one to write more of.</p></div></div>' + renderCitedPages() + '</section>'
-        + '<section class="section-card"><div class="section-head"><div><h2>By model</h2><p class="subtle">The same questions, answered differently.</p></div></div>' + renderModelRows(data.byModel) + '</section>'
+        + '<section class="section-card"><div class="section-head"><div><h2>By AI assistant</h2><p class="subtle">The models you picked in Choose models, each answering the same questions. These are who was asked, not who you compete with.</p></div></div>' + renderModelRows(data.byModel) + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>Keep it running</h2><p class="subtle">A tracker that is run by hand is a snapshot.</p></div></div>' + renderSchedule() + '</section></section>';
     }
 
@@ -1570,7 +1808,7 @@ export function renderProductPhase2AppHtml(): string {
       return '<div class="bulkbar"><strong>' + chosen.length + ' selected</strong>'
         + (proposed ? '<button type="button" class="button" data-bulk-activate>Track ' + proposed + '</button>' : '')
         + (tracked ? '<button type="button" class="button" data-bulk-retire>Stop tracking ' + tracked + '</button>' : '')
-        + (tracked ? '<button type="button" class="button primary" data-bulk-run>Run these ' + tracked + '</button>' : '')
+        + (tracked && !state.liveRun ? '<button type="button" class="button primary" data-bulk-run>Run these ' + tracked + '</button>' : '')
         + '<span class="spacer"></span><button type="button" class="linklike" data-bulk-clear>Clear</button></div>';
     }
 
@@ -1643,6 +1881,7 @@ export function renderProductPhase2AppHtml(): string {
       if (state.topicState === "idle") { loadTopics(); }
       if (state.answerEngineState === "idle") { loadAnswerEngine(); }
       if (state.homeState === "idle") { loadHome(); }
+      if (state.scheduleState === "idle") { loadSchedule(); }
       if (state.topicState !== "ready") {
         return '<section class="view"><div class="heading"><div><h1>Prompts</h1><p class="subtle">The questions your buyers ask.</p></div></div><div class="empty"><div class="empty-copy"><h2>' + (state.topicState === "error" ? "Could not read the prompt set" : "Loading prompts") + '</h2></div></div></section>';
       }
@@ -1650,7 +1889,7 @@ export function renderProductPhase2AppHtml(): string {
       const notice = state.promptNotice.text ? '<div class="' + (state.promptNotice.kind === "error" ? "warning-box" : "success-box") + '">' + html(state.promptNotice.text) + '</div>' : '';
       const live = livePrompts(set);
       const active = live.filter((prompt) => prompt.status === "active").length;
-      const head = '<section class="view"><div class="heading"><div><h1>Prompts</h1><p class="subtle">The questions buyers type, grouped by topic. Every other number in this tool is these questions, asked and archived.</p></div><div class="inline-actions"><button type="button" class="button" data-generate-prompts>' + (state.promptRunState === "generating" ? "Proposing…" : "Propose a set") + '</button><button type="button" class="button primary" data-run-prompts' + (active ? '' : ' disabled') + '>' + (state.promptRunState === "running" ? "Running…" : "Run all " + active) + '</button></div></div>' + notice + renderLiveRun();
+      const head = '<section class="view"><div class="heading"><div><h1>Prompts</h1><p class="subtle">The questions buyers type, grouped by topic. Every other number in this tool is these questions, asked and archived.</p></div><div class="inline-actions"><button type="button" class="button" data-generate-prompts>' + (state.promptRunState === "generating" ? "Proposing…" : "Propose a set") + '</button>' + runActionButton("Run all " + active, active > 0) + '</div></div>' + notice + renderLiveRun();
       if (!live.length) {
         // Retiring the last question must not remove the only way to add one.
         return head + '<div class="empty"><div class="empty-copy"><h2>Nothing is being asked</h2><p class="subtle">Propose a set and a model will suggest the questions buyers ask about what you do, grouped into topics. Nothing runs until you have read them and chosen which to track, because what buyers ask is not something this tool can observe.</p></div></div>' + promptAddForms(set) + '</section>';
@@ -1876,6 +2115,7 @@ export function renderProductPhase2AppHtml(): string {
       state.filters[control.getAttribute("data-filter")] = control.value;
       state.answerEngineState = "idle";
       state.citedState = "idle";
+      state.rankPlanState = "idle";
       loadAnswerEngine();
     });
 
@@ -1886,10 +2126,13 @@ export function renderProductPhase2AppHtml(): string {
         state.filters = { modelId:"", regionId:"", languageId:"", topicId:"" };
         state.answerEngineState = "idle";
         state.citedState = "idle";
+        state.rankPlanState = "idle";
         loadAnswerEngine();
         return;
       }
       if (target.closest("[data-stop-run]")) { stopRun(); return; }
+      const openRun = target.closest("[data-open-run]");
+      if (openRun) { openRunPane(openRun.getAttribute("data-open-run") || ""); return; }
       if (target.closest("[data-adopt-rivals]")) { rivalAction("/competitors/adopt", {}, "Adopted."); return; }
       if (target.closest("[data-save-segment]")) { saveSegment(); return; }
       const removeSegment = target.closest("[data-segment-remove]");
@@ -1978,11 +2221,11 @@ export function renderProductPhase2AppHtml(): string {
       if (clearCred) { await clearCredential(clearCred.getAttribute("data-credential-clear"), clearCred); return; }
       const probeButton = target && target.closest ? target.closest("[data-probe-signals]") : null;
       if (probeButton) { await captureSignals(probeButton); state.signalsState = "idle"; loadSignals(); return; } if (!(target instanceof Element)) return; const pageButton = target.closest("[data-page]"); if (pageButton) { await setPage(pageButton.getAttribute("data-page") || "overview"); return; } const listModeButton = target.closest("[data-list-mode]"); if (listModeButton) { state.mode = listModeButton.getAttribute("data-list-mode") || "current"; await refreshProjects(); render(); return; } if (target.id === "new-project" || target.id === "empty-new-project") { openDrawer(); return; } if (target.id === "close-drawer" || target.id === "cancel-draft" || target.id === "drawer-backdrop") { closeDrawer(); return; } if (target.id === "retry-catalog") { state.catalogState = "idle"; await loadCatalog(); return; } if (target.id === "save-models") { await saveModels(target); return; } if (target.id === "save-monitoring-configuration") { await saveMonitoringConfiguration(); return; } if (target.id === "archive-project") { const selected = project(); if (selected) await projectAction("archive", selected.id, target); return; } if (target.id === "delete-project") { const selected = project(); if (selected) await projectAction("delete", selected.id, target); return; } const action = target.closest("[data-project-action]"); if (action) { const projectId = action.getAttribute("data-project-id"); const name = action.getAttribute("data-project-action"); if (projectId && name) await projectAction(name, projectId, action); } });
-    document.addEventListener("change", async (event) => { const target = event.target; if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) return; if (target.id === "project-select") { setSelectedProject(target.value); state.selectionsDirty = false; await refreshConfiguration(); render(); return; } if (target instanceof HTMLInputElement && target.hasAttribute("data-model-checkbox")) { changeModel(target.getAttribute("data-model-checkbox") || "", target.checked); return; } if (target instanceof HTMLSelectElement && target.hasAttribute("data-model-mode")) { changeModelMode(target.getAttribute("data-model-mode") || "", target.value); return; } if (target instanceof HTMLSelectElement && target.hasAttribute("data-selected-model-mode")) { changeModelMode(target.getAttribute("data-selected-model-mode") || "", target.value); return; } });
+    document.addEventListener("change", async (event) => { const target = event.target; if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) return; if (target.id === "project-select") { setSelectedProject(target.value); state.selectionsDirty = false; await refreshConfiguration(); loadLiveRun(); render(); return; } if (target instanceof HTMLInputElement && target.hasAttribute("data-model-checkbox")) { changeModel(target.getAttribute("data-model-checkbox") || "", target.checked); return; } if (target instanceof HTMLSelectElement && target.hasAttribute("data-model-mode")) { changeModelMode(target.getAttribute("data-model-mode") || "", target.value); return; } if (target instanceof HTMLSelectElement && target.hasAttribute("data-selected-model-mode")) { changeModelMode(target.getAttribute("data-selected-model-mode") || "", target.value); return; } });
     document.addEventListener("change", (event) => { const target = event.target; if (!(target instanceof HTMLSelectElement)) return; if (target.id === "model-provider-filter") { state.catalogProvider = target.value; render(); return; } if (target.id === "model-native-search-filter") { state.catalogNativeSearch = target.value; render(); return; } if (target.id === "model-catalog-sort") { state.catalogSort = target.value; render(); } });
     document.addEventListener("input", (event) => { const target = event.target; if (target instanceof HTMLInputElement && target.id === "model-search") { state.query = target.value; refreshCatalogSearchResults(); return; } if (target instanceof HTMLInputElement && target.id === "prompt-search") { state.promptFilters.query = target.value; refreshPromptResults(); } });
     document.addEventListener("submit", (event) => { const target = event.target; if (!(target instanceof HTMLFormElement)) return; if (target.id === "project-form") createDraft(event); if (target.id === "project-edit-form") saveProject(event); });
-    refreshProjects().then(async () => { await refreshConfiguration(); render(); }).catch((error) => { app.innerHTML = '<main class="workspace"><div class="warning-box">' + html(error instanceof Error ? error.message : String(error)) + '</div></main>'; });
+    refreshProjects().then(async () => { await refreshConfiguration(); loadLiveRun(); render(); }).catch((error) => { app.innerHTML = '<main class="workspace"><div class="warning-box">' + html(error instanceof Error ? error.message : String(error)) + '</div></main>'; });
     function recognitionRunStatusText(status) { return status === "queued" ? "Waiting to start" : status === "running" ? "Running" : status === "completed" ? "Completed" : status === "partial" ? "Partly complete" : "Execution failed"; }
     function recognitionModelStatusText(status) { return status === "queued" ? "Waiting to start" : status === "running" ? "Calling" : status === "response_saved" ? "Answer received" : status === "analysis_failed" ? "Local parse failed" : status === "completed" ? "Completed" : status === "unknown" ? "Model could not confirm" : status === "unsupported" ? "Model does not support it" : "Provider Call failed"; }
     function activeRecognitionRun() { return state.recognitionDetail && (state.recognitionDetail.run.status === "queued" || state.recognitionDetail.run.status === "running") ? state.recognitionDetail.run : null; }

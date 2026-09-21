@@ -56,3 +56,24 @@ test("a question with no answer says so rather than scoring zero", () => {
   const html = renderProductPhase2AppHtml();
   assert.equal(html.includes('(answers ? scoreText(standing.score.score) : "Not asked yet")'), true);
 });
+
+test("a live run replaces the run button and opens a pane instead of offering a second run", () => {
+  const html = renderProductPhase2AppHtml();
+  assert.equal(html.includes('if (state.liveRun) return \'<button type="button" class="button primary" data-open-run="\' + html(state.liveRun.id) + \'">Watch the run</button>\';'), true);
+  for (const part of ["data-open-run", "renderRunPane", "runInFlightCard", "runFeedBody", "/prompt-answers?runId="]) {
+    assert.equal(html.includes(part), true, part);
+  }
+  assert.equal(html.includes("Sent"), true);
+  assert.equal(html.includes("Came back"), true);
+  assert.equal(html.includes("Named, in order"), true);
+});
+
+test("the two lists on the scores page say which is a competitor and which is an assistant", () => {
+  const html = renderProductPhase2AppHtml();
+  assert.equal(html.includes("Competitors named in the answers"), true);
+  assert.equal(html.includes("Not the assistants themselves"), true);
+  assert.equal(html.includes("By AI assistant"), true);
+  assert.equal(html.includes("not who you compete with"), true);
+  assert.equal(html.includes("Rival you track"), true);
+  assert.equal(html.includes("Named by the models"), true);
+});
