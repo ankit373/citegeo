@@ -72,7 +72,7 @@ test("no citations anywhere is stated, and no citations because nothing ran is n
 function home(overrides: Partial<HomeSummary> = {}): HomeSummary {
   return {
     projectId: "p", domain: "ninethirty.ai", score: 40, change: null, rank: 3, rivals: 9,
-    answers: 12, alerts: [], weakestTopics: [], absentFrom: [], lastRun: null,
+    answers: 12, modelCount: 3, alerts: [], weakestTopics: [], absentFrom: [], lastRun: null,
     setup: [], ready: true, showSetupOnly: false, ...overrides,
   };
 }
