@@ -11,6 +11,7 @@ import { isPromptIntent } from "./topic-schema.js";
 import { REGIONS, REGION_CAVEAT } from "./region.js";
 import { LANGUAGES } from "./language.js";
 import { promptExportNames, promptExportTable } from "./topic-export.js";
+import { answerExportNames, answerExportTable } from "./answer-export.js";
 import type { PromptAnswer } from "./prompt-run-schema.js";
 import type { PromptRunService } from "./prompt-run-service.js";
 import type { PromptScheduleService } from "./prompt-schedule.js";
@@ -219,6 +220,17 @@ export async function handleTopicApi(input: {
       const promptId = url?.searchParams.get("promptId") || "";
       const mine = promptId ? answers.filter((answer) => answer.promptId === promptId) : answers;
       send(200, { answers: mine.slice(0, 60) });
+    } catch (error) {
+      send(404, { error: message(error) });
+    }
+    return true;
+  }
+
+  if (method === "GET" && tail.length === 2 && tail[0] === "answer-export") {
+    try {
+      const csv = answerExportTable(sliced(await runs.listAnswers(projectId), url), tail[1] || "");
+      if (csv === null) send(404, { error: `Unknown export "${tail[1]}". Available: ${answerExportNames().join(", ")}.` });
+      else send(200, csv, "text/csv; charset=utf-8");
     } catch (error) {
       send(404, { error: message(error) });
     }
