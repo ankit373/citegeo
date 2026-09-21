@@ -92,7 +92,9 @@ async function handle(req: IncomingMessage, res: ServerResponse, services: Produ
   if (await handleProviderStatusApi({ method, route, send: json, catalog })) return;
   if (await handleCredentialApi({ method, route, send: json, service: services.credentials, authEnabled: services.auth.enabled, readJson: body })) return;
   if (await handleInsightsApi({ method, route, send: json, service: insights })) return;
-  if (await handleCrawlerApi({ method, route, send: json, crawlerLog, insights })) return;
+  if (await handleCrawlerApi({ method, route, send: json, crawlerLog, insights,
+    answers: (id) => promptRuns.listAnswers(id),
+    domain: async (id) => (await services.projects.get(id))?.normalizedDomain || "" })) return;
   if (await handleActionApi({ method, route, send: json, signals, insights })) return;
   if (await handleSearchConsoleApi({ method, route, send: json, searchConsole: services.searchConsole, readJson: body,
     prompts: async (id) => (await topics.get(id)).prompts.filter((prompt) => prompt.status === "active"),
