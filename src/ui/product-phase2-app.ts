@@ -337,6 +337,15 @@ export function renderProductPhase2AppHtml(): string {
     .warning-box { border:1px solid var(--unknown); background:var(--unknown-wash); padding:12px 14px; border-radius:var(--radius-sm); color:var(--unknown-text); }
     .success-box { border:1px solid var(--confirmed); background:var(--confirmed-wash); padding:12px 14px; border-radius:var(--radius-sm); color:var(--confirmed-text); }
     .technical-details { border:1px solid var(--line); border-radius:8px; background:var(--sunken); padding:14px 16px; color:var(--muted); }
+    .exportmenu { position:relative; }
+    .exportmenu > summary { list-style:none; cursor:pointer; display:inline-flex; }
+    .exportmenu > summary::-webkit-details-marker { display:none; }
+    .exportlist { position:absolute; right:0; z-index:6; margin-top:6px; min-width:256px; display:grid; gap:2px; padding:10px; border:1px solid var(--line-strong); border-radius:var(--radius-sm); background:var(--surface); box-shadow:var(--shadow); }
+    .exportlist strong { font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--weak); margin-top:6px; }
+    .exportlist strong:first-child { margin-top:0; }
+    .exportlist a { display:block; padding:5px 7px; border-radius:6px; font-size:13px; color:var(--text); text-decoration:none; }
+    .exportlist a:hover,.exportlist a:focus-visible { background:var(--raised); }
+    .exportlist .subtle { margin-top:8px; padding-top:8px; border-top:1px solid var(--line); font-size:11px; line-height:1.5; }
     .technical-details summary { color:var(--text); cursor:pointer; font-weight:700; }
     .technical-details[open] summary { margin-bottom:14px; }
     .run-list { display:grid; gap:12px; }
@@ -1246,7 +1255,20 @@ export function renderProductPhase2AppHtml(): string {
         + '<select data-filter="languageId" aria-label="Language">' + tongues.join("") + '</select>'
         + (applied ? '<button type="button" class="linklike applied" data-clear-filters>Clear ' + applied + '</button>' : '')
         + '<span class="spacer"></span>'
-        + '<a class="button" href="/api/projects/' + html(state.selectedId) + '/prompt-export/scores.csv">Export CSV</a></div>';
+        + exportMenu() + '</div>';
+    }
+
+    const AGGREGATE_EXPORTS = [["scores", "Scores by question"], ["leaderboard", "Who was named"], ["topics", "Topics"], ["models", "By assistant"], ["markets", "By market"], ["trend", "Movement"], ["absent", "Absent from"]];
+    const ANSWER_EXPORTS = [["answers", "Every answer"], ["mentions", "Every name in every answer"], ["citations", "Every source"]];
+
+    // The filters travel with the file, so an export is the slice on screen.
+    function exportMenu() {
+      const link = (base, name, label) => '<a href="/api/projects/' + html(state.selectedId) + '/' + base + '/' + name + '.csv' + filterQuery() + '">' + label + '</a>';
+      return '<details class="exportmenu"><summary class="button">Export CSV</summary><div class="exportlist">'
+        + '<strong>Aggregates</strong>' + AGGREGATE_EXPORTS.map((row) => link("prompt-export", row[0], row[1])).join("")
+        + '<strong>One row per answer</strong>' + ANSWER_EXPORTS.map((row) => link("answer-export", row[0], row[1])).join("")
+        + '<span class="subtle">Every aggregate in this tool is built from the answer rows, so exporting them is how a number here gets checked rather than taken.</span>'
+        + '</div></details>';
     }
 
     function renderLeaderboard(rows) {
