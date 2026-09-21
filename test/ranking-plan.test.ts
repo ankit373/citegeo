@@ -41,7 +41,7 @@ function insights(overrides: Partial<TopicInsights> = {}): TopicInsights {
   return {
     projectId: "p", answers: 10, answersFailed: 0, overall: score(), rank: null, weights: WEIGHTS,
     leaderboard: [], topics: [], byModel: [], absentFrom: [], citationsUnavailable: false,
-    trend: { points: [], change: null, since: null }, byRegion: [], byLanguage: [],
+    trend: { points: [], change: null, since: null }, byRegion: [], byLanguage: [], byPersona: [],
     regionCaveat: "", identityCaveat: null, trackedRivals: [], ...overrides,
   };
 }

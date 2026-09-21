@@ -23,6 +23,7 @@ import { currentBaseline } from "../configuration/current-baseline.js";
 import type { TopicService } from "./topic-service.js";
 import type { BrowserEngine } from "../engines/browser-engine.js";
 import type { Prompt } from "./topic-schema.js";
+import { NO_PERSONA, personaFrom, personaInstruction, type Persona, type PersonaService } from "./persona.js";
 
 export class PromptRunUnavailableError extends Error {}
 
@@ -38,6 +39,9 @@ export interface StartPromptRunInput {
   regionIds?: string[] | undefined;
   /** Languages to ask in. English alone when omitted. */
   languageIds?: string[] | undefined;
+  /** Personas to ask on behalf of. Nobody stated when omitted, which is how
+   * every run before personas existed was asked. */
+  personaIds?: string[] | undefined;
   /** Browser engines to ask as well as the saved models. These are the only
    * source here that is web-grounded by construction, so they carry sources. */
   engineIds?: string[] | undefined;
@@ -62,6 +66,7 @@ export class PromptRunService {
     private readonly executor: RecognitionAnswerExecutor,
     private readonly catalog?: ProductModelCatalog | undefined,
     private readonly engines?: EnginePlan | undefined,
+    private readonly personas?: PersonaService | undefined,
   ) {}
 
   /** Splits the saved models into the ones the catalogue still says can answer
@@ -172,6 +177,15 @@ export class PromptRunService {
       return found;
     });
 
+    // An unknown persona is refused rather than dropped, or the run would
+    // cover fewer audiences than it was asked for and never say so.
+    const personaSet = this.personas ? await this.personas.get(input.projectId) : null;
+    const personas: Persona[] = (input.personaIds && input.personaIds.length ? input.personaIds : [NO_PERSONA.id]).map((id) => {
+      const found = personaFrom(personaSet, id);
+      if (!found) throw new PromptRunUnavailableError(`Unknown persona "${id}".`);
+      return found;
+    });
+
     const run: PromptRun = {
       id: `prompt-run-${randomUUID()}`,
       projectId: input.projectId,
@@ -180,8 +194,9 @@ export class PromptRunService {
       modelIds: models.map((model) => model.modelId),
       regionIds: regions.map((row) => row.id),
       languageIds: languages.map((row) => row.id),
+      personaIds: personas.map((row) => row.id),
       skippedModels: skipped,
-      answersRequested: prompts.length * (models.length * regions.length * languages.length + chosenEngines.length),
+      answersRequested: prompts.length * (models.length * regions.length * languages.length * personas.length + chosenEngines.length),
       answersCompleted: 0,
       answersFailed: 0,
       startedAt: nowIso(),
@@ -197,18 +212,21 @@ export class PromptRunService {
         for (const market of regions) {
           if (stopped) break;
           for (const tongue of languages) {
-            if (this.cancelled.has(run.id)) { stopped = true; break; }
-            // Written before the call so the interface can name what is in
-            // flight rather than only how many are done.
-            run.currentPromptText = prompt.text;
-            run.currentModelId = model.modelId;
-            await this.store.saveRun(run);
-            const answer = await this.ask({ run, baseline, model, prompt, identity, market, tongue });
-            await this.store.saveAnswer(answer);
-            if (countsTowardProgress(answer)) run.answersCompleted += 1;
-            else run.answersFailed += 1;
-            // Progress is written as it happens, so a long run is readable while it runs.
-            await this.store.saveRun(run);
+            if (stopped) break;
+            for (const who of personas) {
+              if (this.cancelled.has(run.id)) { stopped = true; break; }
+              // Written before the call so the interface can name what is in
+              // flight rather than only how many are done.
+              run.currentPromptText = prompt.text;
+              run.currentModelId = model.modelId;
+              await this.store.saveRun(run);
+              const answer = await this.ask({ run, baseline, model, prompt, identity, market, tongue, who });
+              await this.store.saveAnswer(answer);
+              if (countsTowardProgress(answer)) run.answersCompleted += 1;
+              else run.answersFailed += 1;
+              // Progress is written as it happens, so a long run is readable while it runs.
+              await this.store.saveRun(run);
+            }
           }
         }
       }
@@ -270,6 +288,7 @@ export class PromptRunService {
     identity: BrandIdentity;
     market: Region;
     tongue: AnswerLanguage;
+    who: Persona;
   }): Promise<PromptAnswer> {
     const base = {
       id: `prompt-answer-${randomUUID()}`,
@@ -284,6 +303,7 @@ export class PromptRunService {
       modelDisplayName: input.model.displayName,
       regionId: input.market.id,
       languageId: input.tongue.id,
+      personaId: input.who.id,
       createdAt: nowIso(),
     };
 
@@ -294,7 +314,7 @@ export class PromptRunService {
         prompt: promptAnswerPrompt({
           question: input.prompt.text,
           languageInstruction: languageInstruction(input.tongue),
-          audience: audienceInstruction(input.market),
+          audience: [audienceInstruction(input.market), personaInstruction(input.who)].filter(Boolean).join(" "),
         }),
         requestParameters: {
           model: input.model.modelId,

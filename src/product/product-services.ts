@@ -47,6 +47,7 @@ import { EngineService } from "./engines/engine-service.js";
 import { ActionLogService, ActionLogStore } from "./topics/action-log.js";
 import { SourcePageService } from "./citations/source-service.js";
 import { SearchConsoleService } from "./search-console/search-console-service.js";
+import { PersonaService } from "./topics/persona.js";
 // The composition root. The graph is built once per server, not per request:
 // rebuilding it per call silently discarded anything a service held between
 // calls, so the insights cache cached nothing and cost 60ms every time.
@@ -126,6 +127,7 @@ export interface ProductServices {
   actions: ActionLogService;
   sourcePages: SourcePageService;
   searchConsole: SearchConsoleService;
+  personas: PersonaService;
   storageSettings: StorageSettingsStore;
   dataDir: string;
   /** Asks one structured question through the project's own saved models. */
@@ -165,6 +167,7 @@ export function createProductServices(dependencies: ProductServerDependencies = 
   const profiles = new BrandProfileService(new BrandProfileFileStore(projectStore), projects);
   const topics = new TopicService(new TopicFileStore(projectStore), projects, insights, profiles);
   const ask = createStructuredAsk({ baselines, executor });
+  const personas = new PersonaService(projectStore);
   // Browser engines read the surfaces a buyer uses, through the user's own
   // signed-in browser, and are the only source here that carries citations.
   const engines = new EngineService(projectStore, ask, { endpoint: browserDebugEndpoint() });
@@ -172,7 +175,7 @@ export function createProductServices(dependencies: ProductServerDependencies = 
     saved: (projectId) => engines.saved(projectId),
     lookup: (engineId) => engines.lookup(engineId),
     ask: (input) => engines.askOne(input),
-  });
+  }, personas);
   const promptSchedule = new PromptScheduleService(new PromptScheduleFileStore(projectStore), promptRuns);
   const demand = new DemandReportFileStore(projectStore);
   const competitors = new CompetitorService(new CompetitorFileStore(projectStore));
@@ -197,7 +200,7 @@ export function createProductServices(dependencies: ProductServerDependencies = 
   return {
     projects, catalog, selections, baselines, recognition, reports, insights,
     signals, crawlerLog, watchSets, measurements, stats, schedules,
-    topics, promptRuns, promptSchedule, demand, profiles, competitors, segments, ask, engines, actions, sourcePages, searchConsole,
+    topics, promptRuns, promptSchedule, demand, profiles, competitors, segments, ask, engines, actions, sourcePages, searchConsole, personas,
     storageSettings, dataDir: productDataDir(),
     credentials,
     auth: authConfig(),
