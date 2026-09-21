@@ -4,6 +4,7 @@ import { askBrowserEngine } from "../src/product/engines/engine-run.js";
 import { parseEngineAnalysisOutput, engineAnalysisPrompt } from "../src/product/engines/engine-answer-protocol.js";
 import type { BrowserEngine, EngineOutcome } from "../src/product/engines/browser-engine.js";
 import type { BrandIdentity } from "../src/product/topics/brand-identity.js";
+import { countsTowardProgress, countsTowardVisibility } from "../src/product/topics/prompt-run-schema.js";
 
 const IDENTITY: BrandIdentity = {
   host: "tradomate.one",
@@ -53,9 +54,9 @@ test("a page that changed shape is unreadable, which is not the same as an empty
   assert.equal(answer.errorCode, "unreadable");
 });
 
-test("a surface that answered but named nobody is a completed measurement", async () => {
+test("a surface reached but silent is recorded without becoming a measurement", async () => {
   const answer = await run({ state: "no_answer", detail: "no overview for this query" }, GOOD);
-  assert.equal(answer.status, "completed");
+  assert.equal(answer.status, "no_answer");
   assert.equal(answer.text, "");
   assert.equal(answer.errorCode, "no_answer");
 });
@@ -92,4 +93,22 @@ test("the reader is told to read the answer, not to answer the question", () => 
 test("an unreported analysis status is unknown, never a completed read of nobody", () => {
   assert.equal(parseEngineAnalysisOutput({ mentions: [] }).analysisStatus, "unknown");
   assert.equal(parseEngineAnalysisOutput({ analysisStatus: "completed", mentions: [] }).analysisStatus, "completed");
+});
+
+test("a surface that produced nothing is not an answer that left you out", async () => {
+  const answer = await run({ state: "no_answer", detail: "no overview for this query" }, GOOD);
+  assert.equal(answer.status, "no_answer");
+  assert.equal(countsTowardVisibility(answer), false, "nothing was answered, so nothing can be absent from it");
+  assert.equal(countsTowardProgress(answer), true, "the run did get through this unit of work");
+  assert.equal(answer.mentions.length, 0);
+  assert.equal(answer.errorCode, "no_answer");
+});
+
+test("an answer that happened and named nobody still counts against you", async () => {
+  const answer = await run({
+    state: "answered",
+    answer: { engineId: "perplexity-web", text: "Screener.in is best.", citationUrls: [], capturedAt: "" },
+  }, async () => ({ analysisStatus: "completed", mentions: [] }));
+  assert.equal(answer.status, "completed");
+  assert.equal(countsTowardVisibility(answer), true);
 });

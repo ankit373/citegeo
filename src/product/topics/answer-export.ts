@@ -21,7 +21,7 @@ export function answerExportTables(answers: PromptAnswer[]): Record<AnswerExport
       rows: answers.map((answer) => [
         answer.id, answer.runId, answer.createdAt, answer.promptId, answer.promptText, answer.topicId, answer.intent,
         answer.providerId, answer.modelId, answer.modelDisplayName, answer.regionId, answer.languageId, answer.status,
-        // A failed answer did not fail to name you; it did not answer.
+        // An answer that did not happen did not fail to name you.
         answer.status === "completed" ? answer.mentions.some((row) => row.isTarget) : null,
         answer.status === "completed" ? answer.mentions.length : null,
         answer.citationUrls.length, answer.latencyMs, answer.errorCode, answer.text.length,

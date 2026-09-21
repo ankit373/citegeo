@@ -19,7 +19,9 @@ export type PromptRunStatus =
 export function isLive(status: PromptRunStatus): boolean {
   return status === "running" || status === "cancelling";
 }
-export type PromptAnswerStatus = "completed" | "provider_failed" | "analysis_failed";
+/** A surface that produced nothing is its own state. It is not a failure,
+ * and it is not an answer that considered you and left you out. */
+export type PromptAnswerStatus = "completed" | "no_answer" | "provider_failed" | "analysis_failed";
 
 /** One organisation named in one answer, with the evidence for it. */
 export interface AnswerMention {
@@ -84,4 +86,10 @@ export interface PromptRun {
 /** True when this answer can contribute to a visibility figure. */
 export function countsTowardVisibility(answer: PromptAnswer): boolean {
   return answer.status === "completed";
+}
+
+/** Work the run got through, as opposed to work that measured something. A
+ * surface with no answer finished; it just has nothing to contribute. */
+export function countsTowardProgress(answer: PromptAnswer): boolean {
+  return answer.status === "completed" || answer.status === "no_answer";
 }

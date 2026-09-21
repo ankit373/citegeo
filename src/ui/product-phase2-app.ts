@@ -1397,9 +1397,11 @@ export function renderProductPhase2AppHtml(): string {
     function runAnswerCard(answer) {
       const failed = answer.status !== "completed";
       const target = (answer.mentions || []).find((row) => row.isTarget);
-      const badge = failed
-        ? '<span class="pill bad">' + html(answer.status.split("_").join(" ")) + '</span>'
-        : target ? '<span class="pill good">named you</span>' : '<span class="pill flat">did not name you</span>';
+      const badge = answer.status === "no_answer"
+        ? '<span class="pill flat">no answer from this surface</span>'
+        : failed
+          ? '<span class="pill bad">' + html(answer.status.split("_").join(" ")) + '</span>'
+          : target ? '<span class="pill good">named you</span>' : '<span class="pill flat">did not name you</span>';
       const came = failed
         ? '<p class="runtext state-bad">' + html(answer.errorMessage || answer.errorCode || "The model returned nothing usable.") + '</p>'
         : '<p class="runtext">' + (answer.text ? markMentions(answer.text, answer.mentions) : html("This answer returned no text.")) + '</p>';
