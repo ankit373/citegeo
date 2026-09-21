@@ -26,3 +26,9 @@ export const PRODUCT_PROVIDER_IDS: ProductProviderId[] = [
 export function isProductProviderId(value: unknown): value is ProductProviderId {
   return typeof value === "string" && (PRODUCT_PROVIDER_IDS as string[]).includes(value);
 }
+
+/** A browser engine answers, but it is not a provider: no key, no endpoint and
+ * no balance, so it stays out of the credential list above. */
+export type AnswerSourceId = ProductProviderId | "browser";
+
+export const BROWSER_SOURCE_ID = "browser";

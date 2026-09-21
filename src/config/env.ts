@@ -94,6 +94,12 @@ export function productDataDir(): string {
   return process.env.PRODUCT_DATA_DIR || join(monitoringDataDir(), "product-v2");
 }
 
+/** Where a Chrome with remote debugging is listening, for the browser
+ * engines. It drives a browser you already have open; it starts nothing. */
+export function browserDebugEndpoint(): string {
+  return process.env.BROWSER_DEBUG_ENDPOINT || "http://127.0.0.1:9222";
+}
+
 export function azureOpenAIEndpoint(): string | undefined {
   return envSecretValue("AZURE_OPENAI_ENDPOINT") || undefined;
 }

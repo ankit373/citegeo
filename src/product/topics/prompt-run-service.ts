@@ -21,6 +21,8 @@ import { audienceInstruction, GLOBAL_REGION, region, type Region } from "./regio
 import { DEFAULT_LANGUAGE, language, languageInstruction, type AnswerLanguage } from "./language.js";
 import { currentBaseline } from "../configuration/current-baseline.js";
 import type { TopicService } from "./topic-service.js";
+import type { BrowserEngine } from "../engines/browser-engine.js";
+import type { Prompt } from "./topic-schema.js";
 
 export class PromptRunUnavailableError extends Error {}
 
@@ -36,6 +38,17 @@ export interface StartPromptRunInput {
   regionIds?: string[] | undefined;
   /** Languages to ask in. English alone when omitted. */
   languageIds?: string[] | undefined;
+  /** Browser engines to ask as well as the saved models. These are the only
+   * source here that is web-grounded by construction, so they carry sources. */
+  engineIds?: string[] | undefined;
+}
+
+/** What the run needs from the engines domain, so the run service does not
+ * depend on how an engine is driven or where its selection is stored. */
+export interface EnginePlan {
+  saved(projectId: string): Promise<string[]>;
+  lookup(engineId: string): BrowserEngine | undefined;
+  ask(input: { run: PromptRun; prompt: Prompt; engine: BrowserEngine; identity: BrandIdentity }): Promise<PromptAnswer>;
 }
 
 /** One answer per prompt per model per market is one observation. Nothing is
@@ -48,6 +61,7 @@ export class PromptRunService {
     private readonly baselines: ProductBaselineService,
     private readonly executor: RecognitionAnswerExecutor,
     private readonly catalog?: ProductModelCatalog | undefined,
+    private readonly engines?: EnginePlan | undefined,
   ) {}
 
   /** Splits the saved models into the ones the catalogue still says can answer
@@ -130,12 +144,13 @@ export class PromptRunService {
       );
     }
 
+    const chosenEngines = await this.chosenEngines(input);
     const baseline = await this.currentBaseline(input.projectId);
-    if (!baseline.modelSnapshots.length) {
+    if (!baseline.modelSnapshots.length && !chosenEngines.length) {
       throw new PromptRunUnavailableError("No models are saved for this project. Choose models and save a configuration first.");
     }
     const { run: models, skipped } = await this.usable(baseline.modelSnapshots);
-    if (!models.length) {
+    if (!models.length && !chosenEngines.length) {
       throw new PromptRunUnavailableError(
         `Every saved model is unusable: ${skipped.map((row) => `${row.modelId} (${row.reason})`).join("; ")}`,
       );
@@ -166,7 +181,7 @@ export class PromptRunService {
       regionIds: regions.map((row) => row.id),
       languageIds: languages.map((row) => row.id),
       skippedModels: skipped,
-      answersRequested: prompts.length * models.length * regions.length * languages.length,
+      answersRequested: prompts.length * (models.length * regions.length * languages.length + chosenEngines.length),
       answersCompleted: 0,
       answersFailed: 0,
       startedAt: nowIso(),
@@ -197,6 +212,19 @@ export class PromptRunService {
           }
         }
       }
+      for (const engine of chosenEngines) {
+        if (stopped) break;
+        if (this.cancelled.has(run.id)) { stopped = true; break; }
+        run.currentPromptText = prompt.text;
+        run.currentModelId = engine.id;
+        await this.store.saveRun(run);
+        const answer = await this.engines?.ask({ run, prompt, engine, identity });
+        if (!answer) continue;
+        await this.store.saveAnswer(answer);
+        if (answer.status === "completed") run.answersCompleted += 1;
+        else run.answersFailed += 1;
+        await this.store.saveRun(run);
+      }
     }
 
     this.cancelled.delete(run.id);
@@ -212,6 +240,20 @@ export class PromptRunService {
     run.completedAt = nowIso();
     await this.store.saveRun(run);
     return run;
+  }
+
+  /** The engines the request named, or the ones the project saved. An engine
+   * the registry does not know is refused rather than silently dropped. */
+  private async chosenEngines(input: StartPromptRunInput): Promise<BrowserEngine[]> {
+    if (!this.engines) return [];
+    const wanted = input.engineIds && input.engineIds.length
+      ? input.engineIds
+      : await this.engines.saved(input.projectId);
+    return wanted.map((id) => {
+      const found = this.engines?.lookup(id);
+      if (!found) throw new PromptRunUnavailableError(`Unknown engine "${id}".`);
+      return found;
+    });
   }
 
   private async currentBaseline(projectId: string): Promise<ProductBaseline> {

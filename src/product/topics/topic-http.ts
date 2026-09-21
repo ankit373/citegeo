@@ -184,11 +184,13 @@ export async function handleTopicApi(input: {
     const promptIds = stringList(body.promptIds);
     const regionIds = stringList(body.regionIds);
     const languageIds = stringList(body.languageIds);
+    const engineIds = stringList(body.engineIds);
     await guard(() => runs.start({
       projectId,
       promptIds: promptIds.length ? promptIds : undefined,
       regionIds: regionIds.length ? regionIds : undefined,
       languageIds: languageIds.length ? languageIds : undefined,
+      engineIds: engineIds.length ? engineIds : undefined,
     }));
     return true;
   }
