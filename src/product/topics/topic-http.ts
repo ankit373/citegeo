@@ -2,6 +2,7 @@ import { buildTopicInsights, type TopicInsights } from "./topic-insights.js";
 import { buildHomeSummary } from "../alerts/home-summary.js";
 import { buildAnswerDigest } from "../alerts/answer-digest.js";
 import { buildCitationAnalysis } from "./citation-analysis.js";
+import { buildRankingPlan, type RankingPlan } from "./ranking-plan.js";
 import type { CompetitorService } from "./competitor-set.js";
 import type { SegmentService } from "./segment-set.js";
 import { isPromptIntent } from "./topic-schema.js";
@@ -209,7 +210,8 @@ export async function handleTopicApi(input: {
 
   if (method === "GET" && tail.length === 1 && tail[0] === "prompt-answers") {
     try {
-      const answers = sliced(await runs.listAnswers(projectId), url);
+      const runId = url?.searchParams.get("runId") || "";
+      const answers = sliced(await runs.listAnswers(projectId, runId || undefined), url);
       const promptId = url?.searchParams.get("promptId") || "";
       const mine = promptId ? answers.filter((answer) => answer.promptId === promptId) : answers;
       send(200, { answers: mine.slice(0, 60) });
@@ -352,6 +354,33 @@ export async function handleTopicApi(input: {
         insights,
         runs: runList,
         modelCount: selections,
+      });
+    }, 404);
+    return true;
+  }
+
+  if (method === "GET" && tail.length === 1 && tail[0] === "ranking-plan") {
+    await guard(async (): Promise<RankingPlan> => {
+      const [set, answers, runList, identity] = await Promise.all([
+        topics.get(projectId),
+        runs.listAnswers(projectId),
+        runs.listRuns(projectId),
+        topics.targetIdentity(projectId).catch(() => null),
+      ]);
+      const rivals = await competitors.get(projectId).catch(() => null);
+      const scoped = sliced(answers, url);
+      const insights = buildTopicInsights({
+        projectId,
+        set,
+        answers: scoped,
+        runs: runList,
+        identityCaveat: identity?.caveat || null,
+        competitors: rivals?.competitors,
+      });
+      return buildRankingPlan({
+        insights,
+        set,
+        citations: identity ? buildCitationAnalysis({ answers: scoped, identity }) : undefined,
       });
     }, 404);
     return true;
