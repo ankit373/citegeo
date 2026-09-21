@@ -14,6 +14,7 @@ import { recognitionProtocolSnapshot } from "../src/product/configuration/recogn
 import { ProductProjectService } from "../src/product/projects/project-service.js";
 import { ProductProjectFileStore } from "../src/product/projects/project-store.js";
 import { renderProductPhase2AppHtml } from "../src/ui/product-phase2-app.js";
+import { productAppSource } from "../src/ui/app-source.js";
 
 const fixtureModels: ProviderModelCatalogItem[] = [
   {
@@ -265,7 +266,7 @@ test("Phase 2 reports an unavailable catalog without inventing a product directo
 });
 
 test("Phase 2 UI exposes the domain-only configuration flow without prompt or execution controls", () => {
-  const html = renderProductPhase2AppHtml();
+  const html = productAppSource();
   assert.equal(html.includes("/api/provider-models"), true);
   assert.equal(html.includes("/models"), true);
   assert.equal(html.includes("/baselines"), true);

@@ -7,6 +7,7 @@ import { catchErrors, compose, exchangeFor, lifecycleGate, observability, probes
 import { startExporter } from "../runtime/otlp.js";
 import { stat } from "node:fs/promises";
 import { existsSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import { loadDotEnv } from "../config/env.js";
@@ -81,6 +82,18 @@ async function handle(req: IncomingMessage, res: ServerResponse, services: Produ
     return send(res, 200, measurementView ? renderProductPhase5AppHtml() : renderProductPhase4AppHtml(), "text/html; charset=utf-8");
   }
   if (method === "GET" && url.pathname === "/health") return send(res, 200, { ok: true });
+  // The application, compiled. Served from the build output so the browser
+  // runs exactly what the type checker read, rather than a copy in a string.
+  if (method === "GET" && route[0] === "app" && route.length > 1) {
+    const root = resolve("dist", "src", "ui", "app");
+    const path = resolve(root, route.slice(1).join("/"));
+    if (!path.startsWith(root + sep) || !path.endsWith(".js") || !existsSync(path)) {
+      return send(res, 404, { error: "not found" });
+    }
+    res.writeHead(200, { "Content-Type": "text/javascript; charset=utf-8", "Cache-Control": "no-cache" });
+    res.end(await readFile(path, "utf8"));
+    return;
+  }
   if (method === "GET" && route[0] === "assets" && route.length > 1) {
     const root = resolve("assets");
     const path = resolve(root, route.slice(1).join("/"));

@@ -1,4 +1,5 @@
-import { browserDebugEndpoint, productDataDir } from "../config/env.js";
+import { answerIndexDir, browserDebugEndpoint, productDataDir } from "../config/env.js";
+import { AnswerIndexService } from "./index/answer-index-service.js";
 import { PROVIDER_MODEL_CAPABILITIES } from "../providers/catalog.js";
 import { ProductConfigurationFileStore } from "./configuration/configuration-store.js";
 import { OpenRouterProductModelCatalog } from "./configuration/model-catalog.js";
@@ -171,7 +172,10 @@ export function createProductServices(dependencies: ProductServerDependencies = 
   // Browser engines read the surfaces a buyer uses, through the user's own
   // signed-in browser, and are the only source here that carries citations.
   const engines = new EngineService(projectStore, ask, { endpoint: browserDebugEndpoint() });
-  const promptRuns = new PromptRunService(new PromptRunFileStore(projectStore), topics, projects, baselines, executor, catalog, {
+  // The answers index is a local cache of what is in the store, so losing it
+  // costs a scan and nothing else.
+  const promptRunStore = new PromptRunFileStore(projectStore, new AnswerIndexService({ dir: answerIndexDir() }));
+  const promptRuns = new PromptRunService(promptRunStore, topics, projects, baselines, executor, catalog, {
     saved: (projectId) => engines.saved(projectId),
     lookup: (engineId) => engines.lookup(engineId),
     ask: (input) => engines.askOne(input),

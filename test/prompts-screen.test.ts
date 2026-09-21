@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { buildHomeSummary } from "../src/product/alerts/home-summary.js";
 import { renderProductPhase2AppHtml } from "../src/ui/product-phase2-app.js";
+import { productAppSource } from "../src/ui/app-source.js";
 import type { TopicInsights } from "../src/product/topics/topic-insights.js";
 import type { TopicSet } from "../src/product/topics/topic-schema.js";
 import type { VisibilityScore } from "../src/product/topics/visibility-score.js";
@@ -32,7 +33,7 @@ test("the saved model count travels with the summary, so a run can be forecast b
 });
 
 test("the prompts screen can be read, filtered and acted on in bulk", () => {
-  const html = renderProductPhase2AppHtml();
+  const html = productAppSource();
 
   for (const control of ['id="prompt-search"', 'data-prompt-filter="topicId"', 'data-prompt-filter="intent"', 'data-prompt-filter="status"', "data-prompt-select-all", "data-prompt-intent="]) {
     assert.equal(html.includes(control), true, control);
@@ -47,18 +48,18 @@ test("the prompts screen can be read, filtered and acted on in bulk", () => {
 });
 
 test("an unknown model count is reported as unknown, never as a forecast of zero answers", () => {
-  const html = renderProductPhase2AppHtml();
+  const html = productAppSource();
   assert.equal(html.includes('return { value: "Unknown", note: "the saved model count has not loaded" };'), true);
   assert.equal(html.includes('return { value: "None", note: "no models are saved, so a run cannot ask anything" };'), true);
 });
 
 test("a question with no answer says so rather than scoring zero", () => {
-  const html = renderProductPhase2AppHtml();
+  const html = productAppSource();
   assert.equal(html.includes('(answers ? scoreText(standing.score.score) : "Not asked yet")'), true);
 });
 
 test("a live run replaces the run button and opens a pane instead of offering a second run", () => {
-  const html = renderProductPhase2AppHtml();
+  const html = productAppSource();
   assert.equal(html.includes('if (state.liveRun) return \'<button type="button" class="button primary" data-open-run="\' + html(state.liveRun.id) + \'">Watch the run</button>\';'), true);
   for (const part of ["data-open-run", "renderRunPane", "runInFlightCard", "runFeedBody", "/prompt-answers?runId="]) {
     assert.equal(html.includes(part), true, part);
@@ -69,7 +70,7 @@ test("a live run replaces the run button and opens a pane instead of offering a 
 });
 
 test("the two lists on the scores page say which is a competitor and which is an assistant", () => {
-  const html = renderProductPhase2AppHtml();
+  const html = productAppSource();
   assert.equal(html.includes("Competitors named in the answers"), true);
   assert.equal(html.includes("Not the assistants themselves"), true);
   assert.equal(html.includes("By AI assistant"), true);

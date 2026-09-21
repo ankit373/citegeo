@@ -46,10 +46,12 @@ test("a property that reported nothing says so rather than reading as nobody arr
   assert.equal(report.totalSessions, 0);
 });
 
-test("a property the account cannot see says to add the account, not that the key is wrong", async () => {
+test("a property the account cannot see says who needs access, not that the key is wrong", async () => {
   const client = new AnalyticsClient(TOKENS, async () => new Response("no", { status: 403 }));
   await assert.rejects(
     () => client.referrals({ account: ACCOUNT, propertyId: "9", from: "a", to: "b" }),
-    (error: Error) => error.message.includes("Add the service account as a viewer"),
+    (error: Error) => error.message.includes("needs viewer access on that property")
+      // Either path can be the one without access, so the advice names both.
+      && error.message.includes("the account that granted consent"),
   );
 });

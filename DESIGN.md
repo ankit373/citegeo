@@ -3,11 +3,11 @@
 name: citegeo
 typography:
   display:
-    fontFamily: Cabinet Grotesk
+    fontFamily: Newsreader
   body:
-    fontFamily: General Sans
+    fontFamily: Instrument Sans
   label:
-    fontFamily: General Sans
+    fontFamily: Instrument Sans
   mono:
     fontFamily: JetBrains Mono
     fontFeature: tnum
@@ -88,8 +88,8 @@ rounded:
 
 ## Typography
 
-- **Display (headings, hero text):** Cabinet Grotesk, Fontshare, free for commercial use, verified 2026-09-08. A grotesque with real character (flared terminals, slightly irregular counters) that avoids the Inter/Geist/Space-Grotesk default every competitor in this category uses. Set in Bold/Extrabold only, never past a poster-scale on a page that is not literally a poster.
-- **Body / UI:** General Sans, same foundry (Fontshare), free commercial, verified. Plain and legible at UI sizes, pairs cleanly with Cabinet Grotesk's DNA without competing with it for attention. Regular for body copy, Medium for UI labels and buttons.
+- **Display (headings, hero text):** Newsreader, Google Fonts, open licence. It carries an optical-size axis, so one face is correct at a 40px hero and at a 16px section head rather than needing two. A serif also puts real distance between this and the near-identical sans-only look the category has converged on.
+- **Body / UI:** Instrument Sans, Google Fonts, open licence. A quiet grotesque with true tabular figures, which a dashboard of aligned numbers needs, and a variable range covering every weight the app sets without the browser synthesising one.
 - **Data / evidence (load-bearing, not decorative):** JetBrains Mono, SIL OFL 1.1, verified. Every hash, quote, offset, model ID, JSON fragment, and timestamp in the product is set in this face, always. This is not a "code accent" the way competitors use a mono font for a stray label, it is the primary voice for roughly half the product's actual content, because the product's whole job is showing exact machine output. Tabular figures (`tnum`) on for every number so columns of costs, tokens, and percentages align.
 - **Scale:** headings differ from body by more than weight, at least 1.6x jump between adjacent levels, never a heading that is just bold body text.
 - **Anti-list respected:** no Inter, no Geist (both banned as display in the source research and both common in this category), no system-ui, no gradient text, no italic-serif-for-credibility.
@@ -112,6 +112,7 @@ rounded:
 - 2026-09-19: A chart never plots an absence as a zero. A run that parsed no answer leaves a gap in the line, and a percentage axis is fixed to 0-100 rather than scaled to the data, so a run of zeros cannot produce an axis that implies movement.
 
 - 2026-09-11: Replaced the prior black-background and white-geometric-mark identity with a semantic, functional colour system on a warm-charcoal base, after research on the category confirmed it has converged on one near-black-plus-one-accent look.
-- 2026-09-11: Chose Cabinet Grotesk + General Sans + JetBrains Mono over Inter/Geist, both banned as a display voice per the anti-convergence research, and both already the choice of at least one direct competitor.
+- 2026-09-21: Chose Newsreader + Instrument Sans + JetBrains Mono, and recorded it here because the entry below it had been wrong since the day it was written. It named Cabinet Grotesk and General Sans, which are Fontshare faces the theme's Google Fonts loader could never have fetched, while the code shipped Source Serif 4 and Inter. Inter is the face that entry bans. A decision log that disagrees with the code is worse than no decision log, so the rule now is that a typography change edits the front matter, the section and this list in the same commit as the token.
+- 2026-09-11: Chose Cabinet Grotesk + General Sans + JetBrains Mono over Inter/Geist. Never implemented: see the 2026-09-21 entry.
 - 2026-09-11: Settled the name as CiteGEO and adopted a quotation-mark glyph as the mark.
 - 2026-09-11: Added the series-1 through series-6 chart palette. The three semantic colors alone cannot distinguish four or more model lines on one chart; that is a different job from reporting evidence state, so it gets its own, deliberately muted, palette rather than reusing state color or reviving the old decorative six-color set.

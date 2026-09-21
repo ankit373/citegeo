@@ -68,3 +68,32 @@ test("join drops the empty branches, so a conditional leaves no gap", () => {
   assert.ok(nameCell("Title").includes("<strong>Title</strong>"));
   assert.equal(nameCell("T", "", null).includes("<span class=\"subtle\">"), false);
 });
+
+test("switching project forgets everything read for the last one", async () => {
+  const { emptyStore, forProject } = await import("../src/ui/app/state.js");
+  const store = emptyStore("prompts", "a");
+  store.projects.all = [{ id: "a", name: "A", normalizedDomain: "a.test", status: "active" }];
+  store.scores.insights = { status: "ready", value: { answers: 7 } };
+  store.home = { status: "ready", value: { score: 40 } };
+  store.prompts.selection = ["q1"];
+  store.scores.filters.modelId = "gpt";
+
+  const next = forProject(store, "b");
+  assert.equal(next.projects.selectedId, "b");
+  assert.equal(next.scores.insights.status, "idle", "a figure from the last project must not survive the switch");
+  assert.equal(next.home.status, "idle");
+  assert.deepEqual(next.prompts.selection, []);
+  assert.equal(next.scores.filters.modelId, "");
+  assert.deepEqual(next.projects.all, store.projects.all, "the project list itself is not per project");
+  assert.equal(next.page, "prompts", "the page you are on survives");
+});
+
+test("two long pulls are tracked apart, so one finishing does not unblock the other", async () => {
+  const { emptyStore } = await import("../src/ui/app/state.js");
+  const store = emptyStore("dashboard", "a");
+  store.integrations.busy.add("search-demand");
+  store.integrations.busy.add("source-pages");
+  assert.equal(store.integrations.busy.has("search-demand"), true);
+  store.integrations.busy.delete("search-demand");
+  assert.equal(store.integrations.busy.has("source-pages"), true, "the other is still going");
+});

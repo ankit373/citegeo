@@ -1,4 +1,5 @@
 import { providerEnvKeys } from "../../config/env.js";
+import { GOOGLE_SCOPES } from "../search-console/google-auth.js";
 import { PROVIDER_ACCESS } from "../configuration/provider-access.js";
 
 // Everything this product can hold a credential for. Model providers answer
@@ -36,6 +37,10 @@ const MODEL_PROVIDERS: IntegrationDefinition[] = PROVIDER_ACCESS.map((access) =>
   ...(access.settings ? { settings: access.settings } : {}),
 }));
 
+// A self-hosted copy registers no OAuth application, so the second way in is
+// a client the user registers and owns. Both are pasted as JSON.
+const GOOGLE_HELP = `A service account JSON key, or an OAuth client of your own as {"client_id", "client_secret", "refresh_token"} consented to ${GOOGLE_SCOPES.join(" and ")}.`;
+
 const OUTWARD_INTEGRATIONS: IntegrationDefinition[] = [
   {
     id: "github",
@@ -51,8 +56,8 @@ const OUTWARD_INTEGRATIONS: IntegrationDefinition[] = [
     label: "Google Search Console",
     kind: "integration",
     purpose: "Read the queries and impressions your site already earns, as the honest substitute for AI prompt-volume data.",
-    envKeys: ["GOOGLE_SERVICE_ACCOUNT_JSON"],
-    help: "A service account JSON key, with the service account added as a user on the Search Console property.",
+    envKeys: ["GOOGLE_SERVICE_ACCOUNT_JSON", "GOOGLE_OAUTH_CREDENTIALS_JSON"],
+    help: `${GOOGLE_HELP} A service account also has to be added as a user on the Search Console property.`,
     settings: [{ key: "siteUrl", label: "Property URL", envKey: "GOOGLE_SEARCH_CONSOLE_SITE" }],
   },
   {
@@ -60,8 +65,8 @@ const OUTWARD_INTEGRATIONS: IntegrationDefinition[] = [
     label: "Google Analytics",
     kind: "integration",
     purpose: "Read how many people arrived from each assistant, which is a different claim from having been named by one.",
-    envKeys: ["GOOGLE_SERVICE_ACCOUNT_JSON"],
-    help: "The same service account key, added as a viewer on the Analytics property.",
+    envKeys: ["GOOGLE_SERVICE_ACCOUNT_JSON", "GOOGLE_OAUTH_CREDENTIALS_JSON"],
+    help: `${GOOGLE_HELP} Whichever one Search Console holds serves this too, as a viewer on the Analytics property.`,
     settings: [{ key: "propertyId", label: "GA4 property id", envKey: "GOOGLE_ANALYTICS_PROPERTY_ID" }],
   },
 ];

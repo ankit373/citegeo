@@ -94,6 +94,26 @@ export function productDataDir(): string {
   return process.env.PRODUCT_DATA_DIR || join(monitoringDataDir(), "product-v2");
 }
 
+/**
+ * Reads in flight when a whole prefix is read. Absent lets the backend pick,
+ * because a disk and a bucket are bounded by different things.
+ */
+export function objectReadConcurrency(): number | null {
+  const raw = process.env.OBJECT_READ_CONCURRENCY?.trim();
+  if (!raw) return null;
+  const value = Number.parseInt(raw, 10);
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
+
+/**
+ * The answer index sits beside the settings and the locks, on local disk and
+ * never in the bucket it indexes. Off returns null and every read rescans.
+ */
+export function answerIndexDir(): string | null {
+  if ((process.env.PRODUCT_ANSWER_INDEX || "").trim().toLowerCase() === "off") return null;
+  return process.env.PRODUCT_INDEX_DIR?.trim() || join(productDataDir(), "index");
+}
+
 /** Where a Chrome with remote debugging is listening, for the browser
  * engines. It drives a browser you already have open; it starts nothing. */
 export function browserDebugEndpoint(): string {
