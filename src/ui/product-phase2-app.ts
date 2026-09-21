@@ -185,6 +185,8 @@ export function renderProductPhase2AppHtml(): string {
     .move p { margin:0; font-size:13px; color:var(--muted); }
     .move .why { color:var(--text); }
     .move .evidence-note { font-size:12px; color:var(--weak); }
+    .move-actions { display:flex; gap:7px; flex-wrap:wrap; margin-top:4px; }
+    .card-action.is-on { background:var(--accent-wash); border-color:var(--accent); color:var(--accent); }
     .pill { display:inline-flex; align-items:center; gap:5px; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:600; border:1px solid var(--line-strong); }
     .pill.good { color:var(--confirmed-text); border-color:var(--confirmed); background:var(--confirmed-wash); }
     .pill.bad { color:var(--failed-text); border-color:var(--failed); background:var(--failed-wash); }
@@ -413,7 +415,7 @@ export function renderProductPhase2AppHtml(): string {
     </form>
   </aside>
   <script>
-    const state = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", promptFilters:{ query:"", topicId:"", intent:"", status:"" }, promptSelection:[], answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", rivals:null, rivalsState:"idle", segments:null, segmentsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, lastRun:null, runPollTimer:0, runFeed:[], runFeedState:"idle", runFeedTimer:0, rankPlan:null, rankPlanState:"idle", brief:null, briefState:"idle", engines:null, enginesState:"idle" };
+    const state = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", promptFilters:{ query:"", topicId:"", intent:"", status:"" }, promptSelection:[], answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", rivals:null, rivalsState:"idle", segments:null, segmentsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, lastRun:null, runPollTimer:0, runFeed:[], runFeedState:"idle", runFeedTimer:0, rankPlan:null, rankPlanState:"idle", brief:null, briefState:"idle", engines:null, enginesState:"idle", actions:[], actionsState:"idle" };
     const app = document.getElementById("app");
     const element = (id) => document.getElementById(id);
     const html = (value) => String(value).split("&").join("&amp;").split("<").join("&lt;").split(">").join("&gt;").split('"').join("&quot;").split("'").join("&#39;");
@@ -421,7 +423,7 @@ export function renderProductPhase2AppHtml(): string {
     const formatTime = (value) => new Date(value).toLocaleString();
     const modeText = (mode) => mode === "provider_native" ? "Provider Native web search" : "Offline";
     const statusText = (status) => status === "draft" ? "Draft" : status === "active" ? "Running" : status === "archived" ? "Archived" : "Deleted";
-    function setSelectedProject(projectId) { if (projectId !== state.selectedId) { state.liveRun = null; state.lastRun = null; state.insights = null; state.insightsState = "idle"; state.plan = null; state.planState = "idle"; state.rankPlan = null; state.rankPlanState = "idle"; state.engines = null; state.enginesState = "idle"; state.crawlers = null; state.crawlersState = "idle"; state.signals = null; state.signalsState = "idle"; } state.selectedId = projectId || ""; if (state.selectedId) localStorage.setItem("citegeo.product.projectId", state.selectedId); else localStorage.removeItem("citegeo.product.projectId"); const next = new URL(window.location.href); if (state.selectedId) next.searchParams.set("projectId", state.selectedId); else next.searchParams.delete("projectId"); window.history.replaceState({ projectId:state.selectedId }, "", next); }
+    function setSelectedProject(projectId) { if (projectId !== state.selectedId) { state.liveRun = null; state.lastRun = null; state.insights = null; state.insightsState = "idle"; state.plan = null; state.planState = "idle"; state.rankPlan = null; state.rankPlanState = "idle"; state.engines = null; state.enginesState = "idle"; state.actions = []; state.actionsState = "idle"; state.crawlers = null; state.crawlersState = "idle"; state.signals = null; state.signalsState = "idle"; } state.selectedId = projectId || ""; if (state.selectedId) localStorage.setItem("citegeo.product.projectId", state.selectedId); else localStorage.removeItem("citegeo.product.projectId"); const next = new URL(window.location.href); if (state.selectedId) next.searchParams.set("projectId", state.selectedId); else next.searchParams.delete("projectId"); window.history.replaceState({ projectId:state.selectedId }, "", next); }
     function setDrawer(open) { document.body.classList.toggle("drawer-open", open); element("project-drawer").setAttribute("aria-hidden", String(!open)); }
     function openDrawer() { state.drawerSession += 1; setFormStatus("", ""); setDrawer(true); window.setTimeout(() => element("project-domain").focus(), 0); }
     function closeDrawer() { state.drawerSession += 1; setDrawer(false); }
@@ -633,7 +635,7 @@ export function renderProductPhase2AppHtml(): string {
         // A start takes a moment to appear, and one missed poll used to leave
         // the page claiming nothing was running for the length of the run.
         else if (state.promptRunState === "running") state.runPollTimer = window.setTimeout(loadLiveRun, 1500);
-        else if (had) { state.answerEngineState = "idle"; state.rankPlanState = "idle"; loadAnswerEngine(); if (state.panel && state.panel.kind === "run") loadRunFeed(); }
+        else if (had) { state.answerEngineState = "idle"; state.rankPlanState = "idle"; state.actionsState = "idle"; loadAnswerEngine(); if (state.panel && state.panel.kind === "run") loadRunFeed(); }
         render();
       } catch (error) {
         state.liveRun = null;
@@ -1420,6 +1422,61 @@ export function renderProductPhase2AppHtml(): string {
       render();
     }
 
+    async function loadActions() {
+      if (!state.selectedId || state.actionsState === "loading") return;
+      state.actionsState = "loading";
+      try {
+        const result = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/actions");
+        state.actions = result.actions || [];
+        state.actionsState = "ready";
+      } catch (error) {
+        state.actionsState = "error";
+      }
+      render();
+    }
+
+    async function setActionState(moveId, promptId, next) {
+      if (!state.selectedId) return;
+      try {
+        await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/actions", {
+          method:"PUT", headers:{"Content-Type":"application/json"},
+          body: JSON.stringify({ moveId: moveId, promptId: promptId || null, state: next }),
+        });
+        state.actionsState = "idle";
+        loadActions();
+      } catch (error) {
+        state.promptNotice = { text: error && error.message ? error.message : String(error), kind:"error" };
+        render();
+      }
+    }
+
+    function takenAction(moveId, promptId) {
+      const id = promptId ? moveId + ":" + promptId : moveId;
+      return state.actions.find((row) => row.id === id) || null;
+    }
+
+    function effectText(effect) {
+      if (!effect) return "";
+      if (effect.nothingRunSince) return "No answer has been archived since, so nothing can have moved yet.";
+      const score = effect.scoreChange === null
+        ? "the score could not be measured at both ends"
+        : "score " + (effect.scoreChange > 0 ? "+" : "") + effect.scoreChange;
+      const rank = effect.rankNow === null
+        ? "still not named"
+        : effect.rankThen === null ? "now ranked #" + effect.rankNow : "rank " + effect.rankThen + " to " + effect.rankNow;
+      return effect.answersAdded + " answer(s) since · " + score + " · " + rank
+        + (effect.appearancesAdded ? " · " + effect.appearancesAdded + " more answer(s) named you" : "");
+    }
+
+    function actionControls(move) {
+      const taken = takenAction(move.id, move.promptId);
+      const current = taken ? taken.state : "open";
+      const button = (value, label) => '<button type="button" class="card-action' + (current === value ? " is-on" : "") + '" data-action-move="' + html(move.id) + '" data-action-prompt="' + html(move.promptId || "") + '" data-action-state="' + value + '">' + label + '</button>';
+      const effect = taken && taken.effect ? '<p class="evidence-note">Since you started: ' + html(effectText(taken.effect)) + '</p>' : '';
+      return '<div class="move-actions">' + button("doing", "Doing") + button("done", "Done") + button("dismissed", "Not doing")
+        + (current === "open" ? '' : button("open", "Reopen")) + '</div>' + effect;
+    }
+
     function effectLabel(effect) {
       return effect === "raises_visibility" ? "Raises the score"
         : effect === "unblocks_measurement" ? "Unblocks measurement"
@@ -1428,6 +1485,7 @@ export function renderProductPhase2AppHtml(): string {
 
     function renderRankingPlan() {
       if (state.rankPlanState === "idle") { loadRankingPlan(); }
+      if (state.actionsState === "idle") { loadActions(); }
       if (state.rankPlanState !== "ready" || !state.rankPlan) {
         return '<p class="subtle">' + (state.rankPlanState === "error" ? "Could not build a plan from the archived answers." : "Reading the answers to work out what would move this.") + '</p>';
       }
@@ -1435,9 +1493,11 @@ export function renderProductPhase2AppHtml(): string {
       const moves = plan.moves.length
         ? '<div class="plan">' + plan.moves.map((move) => '<div class="move ' + html(move.effect) + '">'
             + '<div class="move-top"><strong>' + html(move.title) + '</strong><span class="tag">' + html(effectLabel(move.effect)) + '</span>'
+            + (takenAction(move.id, move.promptId) ? '<span class="pill good">' + html(takenAction(move.id, move.promptId).state) + '</span>' : '')
             + (move.answers === null ? '' : '<span class="subtle">' + move.answers + ' answer(s)</span>') + '</div>'
             + '<p class="why">' + html(move.why) + '</p>'
-            + '<p class="evidence-note">' + html(move.evidence) + '</p></div>').join("") + '</div>'
+            + '<p class="evidence-note">' + html(move.evidence) + '</p>'
+            + actionControls(move) + '</div>').join("") + '</div>'
         : '<p class="subtle">Nothing in the archived answers points at a specific move.</p>';
       return '<p class="subtle"><strong>' + html(plan.verdict) + '</strong></p>' + moves
         + '<details class="technical-details" style="margin-top:14px"><summary>Would tracking more questions make me rank higher?</summary><p class="subtle">' + html(plan.promptsNote) + '</p></details>';
@@ -2182,6 +2242,11 @@ export function renderProductPhase2AppHtml(): string {
         state.citedState = "idle";
         state.rankPlanState = "idle";
         loadAnswerEngine();
+        return;
+      }
+      const moveButton = target.closest("[data-action-move]");
+      if (moveButton) {
+        setActionState(moveButton.getAttribute("data-action-move"), moveButton.getAttribute("data-action-prompt"), moveButton.getAttribute("data-action-state"));
         return;
       }
       if (target.closest("[data-stop-run]")) { stopRun(); return; }
