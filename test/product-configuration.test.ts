@@ -277,7 +277,10 @@ test("Phase 2 UI exposes the domain-only configuration flow without prompt or ex
   assert.equal(html.includes('Release date: newest first'), true);
   assert.equal(html.includes('Catalog does not provide a release date'), true);
   assert.equal(html.includes("comma"), false);
-  assert.equal(html.includes("<textarea"), false);
+  // The one textarea is the pasted question list. The workbench's freeform
+  // audit box, which this test was written to keep out, is still absent.
+  assert.equal(html.split("<textarea").length - 1, 1);
+  assert.equal(html.includes('placeholder="One question per line"'), true);
   assert.equal(html.includes("AuditPlan"), false);
   assert.equal(html.includes("/api/audit"), false);
   assert.equal(html.includes("Save config v1"), true);

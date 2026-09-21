@@ -10,7 +10,7 @@ import type { HomeSummary } from "../src/product/alerts/home-summary.js";
 function home(overrides: Partial<HomeSummary> = {}): HomeSummary {
   return {
     projectId: "p", domain: "example.com", score: 25, change: null, rank: 3, rivals: 9,
-    answers: 12, alerts: [], weakestTopics: [], absentFrom: [], lastRun: null,
+    answers: 12, modelCount: 3, alerts: [], weakestTopics: [], absentFrom: [], lastRun: null,
     setup: [], ready: true, showSetupOnly: false, ...overrides,
   };
 }

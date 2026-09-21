@@ -86,6 +86,21 @@ export function renderProductPhase2AppHtml(): string {
     .mcols-topic { grid-template-columns:minmax(0,1.3fr) 80px 110px 90px minmax(0,1.4fr); align-items:start; }
     .mcols-aemodel { grid-template-columns:minmax(0,1.6fr) 80px 110px 90px; align-items:start; }
     .mcols-prompt { grid-template-columns:minmax(0,1fr) 110px 120px; align-items:start; }
+    .mcols-promptrow { grid-template-columns:20px minmax(0,1fr) 96px 82px 104px; align-items:start; }
+    .promptbar { display:flex; gap:9px; flex-wrap:wrap; align-items:center; margin:22px 0 10px; }
+    .promptbar input,.promptbar select { flex:0 1 auto; width:auto; min-width:150px; }
+    .promptbar #prompt-search { flex:1 1 260px; }
+    .promptbar .prompt-result-summary { color:var(--weak); margin-left:auto; }
+    .bulkbar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; padding:10px 14px; margin-bottom:12px; border:1px solid var(--accent); border-radius:var(--radius-sm); background:var(--accent-wash); }
+    .bulkbar .spacer { flex:1 1 auto; }
+    .coverage { display:flex; gap:7px; flex-wrap:wrap; margin-top:14px; }
+    .coverage .tag { cursor:pointer; background:transparent; color:var(--muted); font:inherit; font-size:12px; }
+    .coverage .tag:hover,.coverage .tag.active { border-color:var(--accent); color:var(--accent); }
+    .headmain { flex:1 1 300px; min-width:0; }
+    .headaside { display:flex; align-items:center; gap:14px; flex-wrap:wrap; justify-content:flex-end; margin-left:auto; }
+    .scoremid { font-family:var(--font-display); font-size:26px; line-height:1; }
+    textarea { width:100%; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--surface); color:var(--text); padding:9px 10px; font:inherit; font-size:13px; line-height:1.5; resize:vertical; }
+    .inline-form textarea { flex:1 1 100%; background:var(--sunken); border-radius:6px; }
     /* The score is the page's subject, so it is set as a header rather than as
        one card among equals. */
     .hero { display:grid; grid-template-columns:minmax(0,auto) minmax(0,1fr); gap:clamp(20px,3vw,44px); align-items:center; padding:clamp(18px,2.2vw,28px) 0 clamp(20px,2.4vw,30px); border-bottom:1px solid var(--line); }
@@ -200,7 +215,7 @@ export function renderProductPhase2AppHtml(): string {
     .tag.ready { color:var(--confirmed-text); border-color:var(--confirmed); background:var(--confirmed-wash); }
     .tag.warning { color:var(--unknown-text); border-color:var(--unknown); background:var(--unknown-wash); }
     .card-action { min-height:32px; border:1px solid var(--line-strong); border-radius:6px; background:var(--sunken); color:var(--muted); padding:0 9px; font-size:12px; font-weight:700; transition:transform var(--motion-fast) var(--ease-press),background-color var(--motion-fast) var(--ease-standard),border-color var(--motion-fast) var(--ease-standard); }
-    .card-action:hover,.card-action:focus-visible { background:var(--raised); border-color:#555; color:var(--text); }
+    .card-action:hover,.card-action:focus-visible { background:var(--raised); border-color:var(--line-strong); color:var(--text); }
     .card-action.danger { color:var(--text); border-color:var(--line-strong); }
     .empty { border:1px dashed var(--line-strong); min-height:230px; display:grid; place-items:center; text-align:center; padding:30px; border-radius:8px; }
     .empty-copy { max-width:500px; }
@@ -332,8 +347,9 @@ export function renderProductPhase2AppHtml(): string {
       /* Fixed column widths do not fit, so every table stacks. */
       .mhead { display:none; }
       .mcols-selected,.mcols-readonly,.mcols-project,.mcols-provider { grid-template-columns:minmax(0,1fr); gap:6px; }
-      .mcols-catalog { grid-template-columns:20px minmax(0,1fr); gap:6px 10px; }
-      .mcols-catalog > *:nth-child(n+3) { grid-column:2; }
+      .mcols-catalog,.mcols-promptrow { grid-template-columns:20px minmax(0,1fr); gap:6px 10px; }
+      .mcols-catalog > *:nth-child(n+3),.mcols-promptrow > *:nth-child(n+3) { grid-column:2; }
+      .promptbar .prompt-result-summary { margin-left:0; }
       .card-actions { margin-top:2px; }
     }
     @media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration:.01ms !important; transition-duration:.01ms !important; } }
@@ -352,7 +368,7 @@ export function renderProductPhase2AppHtml(): string {
     </form>
   </aside>
   <script>
-    const state = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", rivals:null, rivalsState:"idle", segments:null, segmentsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, runPollTimer:0 };
+    const state = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", promptFilters:{ query:"", topicId:"", intent:"", status:"" }, promptSelection:[], answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", rivals:null, rivalsState:"idle", segments:null, segmentsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, runPollTimer:0 };
     const app = document.getElementById("app");
     const element = (id) => document.getElementById(id);
     const html = (value) => String(value).split("&").join("&amp;").split("<").join("&lt;").split(">").join("&gt;").split('"').join("&quot;").split("'").join("&#39;");
@@ -573,6 +589,36 @@ export function renderProductPhase2AppHtml(): string {
       } catch (error) {
         state.liveRun = null;
       }
+    }
+
+    function selectAllShown() {
+      const set = state.topicSet || { topics: [], prompts: [] };
+      const rows = filteredPrompts(set, promptStandings());
+      const all = rows.length > 0 && rows.every((prompt) => state.promptSelection.indexOf(prompt.id) >= 0);
+      state.promptSelection = all ? [] : rows.map((prompt) => prompt.id);
+      refreshPromptResults();
+    }
+
+    // Only the prompts the action can apply to: activating something already
+    // tracked is a no-op the count should not claim.
+    async function bulkPrompts(action) {
+      const set = state.topicSet || { topics: [], prompts: [] };
+      const wanted = action === "activate" ? "proposed" : "active";
+      const ids = set.prompts.filter((prompt) => prompt.status === wanted && state.promptSelection.indexOf(prompt.id) >= 0).map((prompt) => prompt.id);
+      if (!ids.length) return;
+      state.promptSelection = [];
+      const done = action === "activate" ? ids.length + " question(s) now tracked." : ids.length + " question(s) no longer tracked. Past answers are kept.";
+      await postPrompts("/prompts/" + action, { promptIds: ids }, "saving", done);
+    }
+
+    async function bulkRun() {
+      const set = state.topicSet || { topics: [], prompts: [] };
+      const ids = set.prompts.filter((prompt) => prompt.status === "active" && state.promptSelection.indexOf(prompt.id) >= 0).map((prompt) => prompt.id);
+      if (!ids.length) return;
+      state.promptSelection = [];
+      loadLiveRun();
+      await postPrompts("/prompt-runs", { promptIds: ids }, "running", "The run finished. Every answer is archived.");
+      loadLiveRun();
     }
 
     async function stopRun() {
@@ -1408,38 +1454,222 @@ export function renderProductPhase2AppHtml(): string {
         + '<section class="section-card"><div class="section-head"><div><h2>Keep it running</h2><p class="subtle">A tracker that is run by hand is a snapshot.</p></div></div>' + renderSchedule() + '</section></section>';
     }
 
-    function renderPromptRows(set) {
-      if (!set.topics.length) return '<p class="subtle">No topics yet.</p>';
-      return set.topics.map((topic) => {
-        const prompts = set.prompts.filter((prompt) => prompt.topicId === topic.id && prompt.status !== "retired");
-        const proposed = prompts.filter((prompt) => prompt.status === "proposed");
-        const bulk = proposed.length ? '<button type="button" class="card-action" data-activate-topic="' + html(topic.id) + '">Activate all ' + proposed.length + '</button>' : '';
-        const rows = prompts.map((prompt) => '<div class="mrow mcols-prompt">'
-          + '<div class="mname"><strong>' + html(prompt.text) + '</strong><span class="subtle">' + intentLabel(prompt.intent) + (prompt.measuresVisibility ? '' : ' · names you, so it cannot measure visibility') + '</span></div>'
-          + '<span class="mcell ' + (prompt.status === "active" ? "state-ok" : "state-flag") + '">' + (prompt.status === "active" ? "Tracked" : "Proposed") + '</span>'
-          + '<span class="mcell">' + (prompt.status === "active"
-            ? '<button type="button" class="linklike" data-retire-prompt="' + html(prompt.id) + '">Stop tracking</button>'
-            : '<button type="button" class="linklike" data-activate-prompt="' + html(prompt.id) + '">Track it</button>') + '</span></div>').join("");
-        return '<section class="section-card"><div class="section-head"><div><h2>' + html(topic.name) + '</h2><p class="subtle">' + html(topic.description || "") + '</p></div><div class="inline-actions">' + bulk + '</div></div><div class="mtable"><div class="mhead mcols-prompt"><span>Question</span><span>State</span><span></span></div>' + rows + '</div></section>';
+    const PROMPT_INTENTS = ["discovery", "comparison", "alternatives", "brand", "problem"];
+    const PROMPT_STATES = [["", "Any state"], ["tracked", "Tracked"], ["proposed", "Needs review"], ["absent", "Never named"], ["unmeasured", "Cannot measure"]];
+
+    // Score and rank come from the answer engine, so a question shows whether
+    // it is working rather than only that it is tracked.
+    function promptStandings() {
+      const rows = new Map();
+      const data = state.answerEngine;
+      if (!data || !data.topics) return rows;
+      for (const topic of data.topics) {
+        for (const prompt of topic.prompts) rows.set(prompt.promptId, prompt);
+      }
+      return rows;
+    }
+
+    function topicStandings() {
+      const rows = new Map();
+      const data = state.answerEngine;
+      if (!data || !data.topics) return rows;
+      for (const topic of data.topics) rows.set(topic.topicId, topic);
+      return rows;
+    }
+
+    function livePrompts(set) { return set.prompts.filter((prompt) => prompt.status !== "retired"); }
+
+    function filteredPrompts(set, standings) {
+      const filters = state.promptFilters;
+      const query = filters.query.trim().toLocaleLowerCase();
+      return livePrompts(set).filter((prompt) => {
+        if (filters.topicId && prompt.topicId !== filters.topicId) return false;
+        if (filters.intent && prompt.intent !== filters.intent) return false;
+        if (filters.status === "tracked" && prompt.status !== "active") return false;
+        if (filters.status === "proposed" && prompt.status !== "proposed") return false;
+        if (filters.status === "unmeasured" && prompt.measuresVisibility) return false;
+        if (filters.status === "absent") {
+          const standing = standings.get(prompt.id);
+          if (!standing || standing.score.answers === 0 || standing.score.appearances > 0) return false;
+        }
+        return !query || prompt.text.toLocaleLowerCase().includes(query);
+      });
+    }
+
+    function promptResultSummary(shown, total) {
+      return shown === total ? "Showing all " + total + " question(s)" : "Showing " + shown + " of " + total + " question(s)";
+    }
+
+    // A forecast of one run at the saved model set, in one market and one
+    // language. An unknown model count says so rather than standing in as one.
+    function runForecast(tracked) {
+      const models = state.home && typeof state.home.modelCount === "number" ? state.home.modelCount : null;
+      if (models === null) return { value: "Unknown", note: "the saved model count has not loaded" };
+      if (!models) return { value: "None", note: "no models are saved, so a run cannot ask anything" };
+      if (!tracked) return { value: "None", note: "nothing is tracked, so a run has nothing to ask" };
+      return { value: String(tracked * models), note: tracked + " question(s) by " + models + " model(s), one market, one language" };
+    }
+
+    function renderPromptStats(set, standings) {
+      const live = livePrompts(set);
+      const tracked = live.filter((prompt) => prompt.status === "active");
+      const proposed = live.filter((prompt) => prompt.status === "proposed").length;
+      const measuring = tracked.filter((prompt) => prompt.measuresVisibility).length;
+      const answered = tracked.filter((prompt) => { const row = standings.get(prompt.id); return Boolean(row) && row.score.answers > 0; }).length;
+      const forecast = runForecast(tracked.length);
+      return '<div class="statgrid">'
+        + stat("Tracked", String(tracked.length), tracked.length ? "asked on every run" : "nothing is being asked", live.length ? tracked.length / live.length : null)
+        + stat("Needs review", String(proposed), proposed ? "proposed, never asked until tracked" : "nothing waiting on you", null)
+        + stat("Topics", String(set.topics.length), set.topics.length + " group(s) of questions", null)
+        + stat("Answers per run", forecast.value, forecast.note, null)
+        + stat("Measures visibility", measuring + " of " + tracked.length, "the rest name you, so presence is not earned", tracked.length ? measuring / tracked.length : null)
+        + stat("Has an answer", answered + " of " + tracked.length, answered ? "tracked question(s) with archived answers" : "no tracked question has been answered yet", tracked.length ? answered / tracked.length : null)
+        + '</div>';
+    }
+
+    function renderPromptCoverage(set) {
+      const live = livePrompts(set);
+      const tracked = live.filter((prompt) => prompt.status === "active");
+      // Tracked over proposed, because a chip reading 0 that filters to rows
+      // looked like a contradiction rather than a blind spot.
+      const chips = PROMPT_INTENTS.map((intent) => {
+        const count = tracked.filter((prompt) => prompt.intent === intent).length;
+        const total = live.filter((prompt) => prompt.intent === intent).length;
+        const active = state.promptFilters.intent === intent ? ' active' : '';
+        return '<button type="button" class="tag' + (count ? '' : ' warning') + active + '" data-prompt-intent="' + intent + '">' + intentLabel(intent) + ' · ' + count + ' of ' + total + ' tracked</button>';
       }).join("");
+      const thin = set.topics.filter((topic) => !tracked.some((prompt) => prompt.topicId === topic.id));
+      const note = thin.length
+        ? thin.length + ' topic(s) have nothing tracked: ' + thin.map((topic) => html(topic.name)).join(", ") + '.'
+        : 'Every topic has at least one tracked question.';
+      return '<section class="section-card"><div class="section-head"><div><h2>Coverage</h2><p class="subtle">A buyer arrives five ways. An intent with nothing tracked is a blind spot, not a zero.</p></div></div>'
+        + '<div class="coverage">' + chips + '</div><p class="subtle">' + note + '</p></section>';
+    }
+
+    function promptToolbar(set, shown) {
+      const filters = state.promptFilters;
+      const topics = set.topics.map((topic) => '<option value="' + html(topic.id) + '"' + (filters.topicId === topic.id ? ' selected' : '') + '>' + html(topic.name) + '</option>').join("");
+      const intents = PROMPT_INTENTS.map((intent) => '<option value="' + intent + '"' + (filters.intent === intent ? ' selected' : '') + '>' + intentLabel(intent) + '</option>').join("");
+      const states = PROMPT_STATES.map((row) => '<option value="' + row[0] + '"' + (filters.status === row[0] ? ' selected' : '') + '>' + row[1] + '</option>').join("");
+      return '<div class="promptbar">'
+        + '<input id="prompt-search" type="search" placeholder="Search questions" aria-label="Search questions" value="' + html(filters.query) + '">'
+        + '<select data-prompt-filter="topicId" aria-label="Filter by topic"><option value="">All topics</option>' + topics + '</select>'
+        + '<select data-prompt-filter="intent" aria-label="Filter by intent"><option value="">Any intent</option>' + intents + '</select>'
+        + '<select data-prompt-filter="status" aria-label="Filter by state">' + states + '</select>'
+        + '<button type="button" class="filter" data-prompt-select-all>Select all shown</button>'
+        + '<span class="prompt-result-summary subtle">' + promptResultSummary(shown, livePrompts(set).length) + '</span></div>';
+    }
+
+    function promptBulkInner() {
+      const ids = state.promptSelection;
+      if (!ids.length) return '';
+      const set = state.topicSet || { topics: [], prompts: [] };
+      const chosen = set.prompts.filter((prompt) => ids.indexOf(prompt.id) >= 0);
+      const proposed = chosen.filter((prompt) => prompt.status === "proposed").length;
+      const tracked = chosen.filter((prompt) => prompt.status === "active").length;
+      return '<div class="bulkbar"><strong>' + chosen.length + ' selected</strong>'
+        + (proposed ? '<button type="button" class="button" data-bulk-activate>Track ' + proposed + '</button>' : '')
+        + (tracked ? '<button type="button" class="button" data-bulk-retire>Stop tracking ' + tracked + '</button>' : '')
+        + (tracked ? '<button type="button" class="button primary" data-bulk-run>Run these ' + tracked + '</button>' : '')
+        + '<span class="spacer"></span><button type="button" class="linklike" data-bulk-clear>Clear</button></div>';
+    }
+
+    function promptRow(prompt, standing) {
+      const checked = state.promptSelection.indexOf(prompt.id) >= 0;
+      const notes = [intentLabel(prompt.intent)];
+      if (prompt.status === "proposed") notes.push("proposed, not asked yet");
+      if (!prompt.measuresVisibility) notes.push("names you, so it cannot measure visibility");
+      const answers = standing ? standing.score.answers : 0;
+      const label = answers
+        ? '<button type="button" class="linklike" data-evidence="' + html(prompt.id) + '" data-evidence-title="' + html(prompt.text) + '">' + html(prompt.text) + '</button>'
+        : html(prompt.text);
+      const scoreClass = !standing || standing.score.score === null ? "" : standing.score.score > 0 ? "state-ok" : "state-bad";
+      return '<div class="mrow mcols-promptrow">'
+        + '<input type="checkbox" data-prompt-checkbox="' + html(prompt.id) + '"' + (checked ? ' checked' : '') + ' aria-label="Select this question">'
+        + '<div class="mname"><strong>' + label + '</strong><span class="subtle">' + html(notes.join(" · ")) + (answers ? ' · ' + answers + ' answer(s)' : '') + '</span></div>'
+        + '<span class="mcell ' + scoreClass + '">' + (answers ? scoreText(standing.score.score) : "Not asked yet") + '</span>'
+        + '<span class="mcell">' + (answers ? (standing.rank === null ? "Not named" : "#" + standing.rank) : "") + '</span>'
+        + '<span class="mcell">' + (prompt.status === "active"
+          ? '<button type="button" class="linklike" data-retire-prompt="' + html(prompt.id) + '">Stop tracking</button>'
+          : '<button type="button" class="linklike" data-activate-prompt="' + html(prompt.id) + '">Track it</button>') + '</span></div>';
+    }
+
+    function renderPromptGroups(set, rows, standings, topics) {
+      if (!set.topics.length) return '<p class="subtle">No topics yet.</p>';
+      if (!rows.length) return '<p class="subtle">No question matches these filters.</p>';
+      return set.topics.filter((topic) => rows.some((prompt) => prompt.topicId === topic.id)).map((topic) => {
+        const mine = rows.filter((prompt) => prompt.topicId === topic.id);
+        const proposed = mine.filter((prompt) => prompt.status === "proposed").length;
+        const tracked = mine.filter((prompt) => prompt.status === "active").length;
+        const standing = topics.get(topic.id);
+        const score = standing && standing.score.answers
+          ? '<div class="scorehead"><span class="scoremid">' + scoreText(standing.score.score) + '</span><span class="subtle">' + (standing.rank === null ? "not named" : "rank #" + standing.rank) + '</span></div>'
+          : '';
+        const bulk = proposed ? '<button type="button" class="card-action" data-activate-topic="' + html(topic.id) + '">Track all ' + proposed + '</button>' : '';
+        const description = topic.description ? html(topic.description) + ' · ' : '';
+        return '<section class="section-card"><div class="section-head"><div class="headmain"><h2>' + html(topic.name) + '</h2><p class="subtle">' + description + tracked + ' of ' + mine.length + ' shown tracked</p></div><div class="headaside">' + bulk + score + '</div></div>'
+          + '<div class="mtable"><div class="mhead mcols-promptrow"><span></span><span>Question</span><span>Score</span><span>Rank</span><span></span></div>'
+          + mine.map((prompt) => promptRow(prompt, standings.get(prompt.id))).join("") + '</div></section>';
+      }).join("");
+    }
+
+    function refreshPromptResults() {
+      const list = document.querySelector(".prompt-results");
+      if (!list || state.page !== "prompts" || state.topicState !== "ready") { render(); return; }
+      const set = state.topicSet || { topics: [], prompts: [] };
+      const standings = promptStandings();
+      const rows = filteredPrompts(set, standings);
+      list.innerHTML = renderPromptGroups(set, rows, standings, topicStandings());
+      const summary = document.querySelector(".prompt-result-summary");
+      if (summary) summary.textContent = promptResultSummary(rows.length, livePrompts(set).length);
+      const bulk = document.querySelector(".prompt-bulk");
+      if (bulk) bulk.innerHTML = promptBulkInner();
+    }
+
+    function promptAddForms(set) {
+      if (!set.topics.length) return '';
+      const topics = set.topics.map((topic) => '<option value="' + html(topic.id) + '">' + html(topic.name) + '</option>').join("");
+      const intents = PROMPT_INTENTS.map((intent) => '<option value="' + intent + '">' + intentLabel(intent) + '</option>').join("");
+      return '<section class="section-card"><div class="section-head"><div><h2>Add your own</h2><p class="subtle">A question you know buyers ask. It starts tracked.</p></div></div>'
+        + '<form id="add-prompt-form" class="inline-form"><select name="topicId" aria-label="Topic">' + topics + '</select><input name="text" type="text" placeholder="best stock screener for indian markets" aria-label="Question"><select name="intent" aria-label="Intent">' + intents + '</select><button type="submit" class="button">Add</button></form>'
+        + '<details class="technical-details" style="margin-top:14px"><summary>Paste a list</summary>'
+        + '<form id="bulk-prompt-form" class="inline-form"><select name="topicId" aria-label="Topic for the pasted questions">' + topics + '</select><select name="intent" aria-label="Intent for the pasted questions">' + intents + '</select><textarea name="text" rows="6" placeholder="One question per line" aria-label="Questions, one per line"></textarea><button type="submit" class="button">Add them all</button></form>'
+        + '<p class="subtle">One question per line, all under the same topic and intent. A question already in the set is skipped rather than added twice.</p></details></section>';
     }
 
     function renderPrompts() {
       const selected = project();
       if (!selected) return '<section class="view"><div class="empty"><div class="empty-copy"><h2>Select a project first</h2></div></div></section>';
       if (state.topicState === "idle") { loadTopics(); }
+      if (state.answerEngineState === "idle") { loadAnswerEngine(); }
+      if (state.homeState === "idle") { loadHome(); }
       if (state.topicState !== "ready") {
         return '<section class="view"><div class="heading"><div><h1>Prompts</h1><p class="subtle">The questions your buyers ask.</p></div></div><div class="empty"><div class="empty-copy"><h2>' + (state.topicState === "error" ? "Could not read the prompt set" : "Loading prompts") + '</h2></div></div></section>';
       }
       const set = state.topicSet || { topics: [], prompts: [] };
       const notice = state.promptNotice.text ? '<div class="' + (state.promptNotice.kind === "error" ? "warning-box" : "success-box") + '">' + html(state.promptNotice.text) + '</div>' : '';
-      const active = set.prompts.filter((prompt) => prompt.status === "active").length;
-      const head = '<section class="view"><div class="heading"><div><h1>Prompts</h1><p class="subtle">' + active + ' tracked of ' + set.prompts.length + ' across ' + set.topics.length + ' topic(s). Every metric is sliced by these.</p></div><div class="inline-actions"><button type="button" class="button" data-generate-prompts>' + (state.promptRunState === "generating" ? "Proposing…" : "Propose a set") + '</button><button type="button" class="button primary" data-run-prompts' + (active ? '' : ' disabled') + '>' + (state.promptRunState === "running" ? "Running…" : "Run " + active + " prompt(s)") + '</button></div></div>' + notice + renderLiveRun();
-      if (!set.prompts.length) {
-        return head + '<div class="empty"><div class="empty-copy"><h2>No prompts yet</h2><p class="subtle">Propose a set and a model will suggest the questions buyers ask about what you do, grouped into topics. Nothing runs until you have read them and chosen which to track, because what buyers ask is not something this tool can observe.</p></div></div></section>';
+      const live = livePrompts(set);
+      const active = live.filter((prompt) => prompt.status === "active").length;
+      const head = '<section class="view"><div class="heading"><div><h1>Prompts</h1><p class="subtle">The questions buyers type, grouped by topic. Every other number in this tool is these questions, asked and archived.</p></div><div class="inline-actions"><button type="button" class="button" data-generate-prompts>' + (state.promptRunState === "generating" ? "Proposing…" : "Propose a set") + '</button><button type="button" class="button primary" data-run-prompts' + (active ? '' : ' disabled') + '>' + (state.promptRunState === "running" ? "Running…" : "Run all " + active) + '</button></div></div>' + notice + renderLiveRun();
+      if (!live.length) {
+        // Retiring the last question must not remove the only way to add one.
+        return head + '<div class="empty"><div class="empty-copy"><h2>Nothing is being asked</h2><p class="subtle">Propose a set and a model will suggest the questions buyers ask about what you do, grouped into topics. Nothing runs until you have read them and chosen which to track, because what buyers ask is not something this tool can observe.</p></div></div>' + promptAddForms(set) + '</section>';
       }
-      const addTopic = set.topics.length ? '<section class="section-card"><div class="section-head"><div><h2>Add your own</h2><p class="subtle">A question you know buyers ask. It starts tracked.</p></div></div><form id="add-prompt-form" class="inline-form"><select name="topicId" aria-label="Topic">' + set.topics.map((topic) => '<option value="' + html(topic.id) + '">' + html(topic.name) + '</option>').join("") + '</select><input name="text" type="text" placeholder="best stock screener for indian markets" aria-label="Question"><select name="intent" aria-label="Intent"><option value="discovery">Discovery</option><option value="comparison">Comparison</option><option value="alternatives">Alternatives</option><option value="brand">Brand</option><option value="problem">Problem</option></select><button type="submit" class="button">Add</button></form></section>' : '';
-      return head + renderPromptRows(set) + addTopic + '</section>';
+      const standings = promptStandings();
+      const rows = filteredPrompts(set, standings);
+      const proposed = live.filter((prompt) => prompt.status === "proposed").length;
+      const review = proposed
+        ? '<div class="warning-box"><strong>' + proposed + ' question(s) are proposed and not tracked.</strong> A proposed question is never asked. Read them and track the ones buyers actually type. <button type="button" class="linklike" data-prompt-review>Show only those</button></div>'
+        : '';
+      return head
+        + renderPromptStats(set, standings)
+        + renderPromptCoverage(set)
+        + review
+        + promptToolbar(set, rows.length)
+        + '<div class="prompt-bulk">' + promptBulkInner() + '</div>'
+        + '<div class="prompt-results">' + renderPromptGroups(set, rows, standings, topicStandings()) + '</div>'
+        + promptAddForms(set)
+        + '</section>';
     }
 
     function renderStorage() {
@@ -1589,16 +1819,51 @@ export function renderProductPhase2AppHtml(): string {
       if (activate) { await postPrompts("/prompts/activate", { promptIds:[activate.getAttribute("data-activate-prompt")] }, "saving", "Now tracked."); return; }
       const retire = clicked.closest("[data-retire-prompt]");
       if (retire) { await postPrompts("/prompts/retire", { promptIds:[retire.getAttribute("data-retire-prompt")] }, "saving", "No longer tracked. Past answers are kept."); return; }
+      if (clicked.closest("[data-prompt-review]")) { state.promptFilters.status = "proposed"; render(); return; }
+      const intentChip = clicked.closest("[data-prompt-intent]");
+      if (intentChip) {
+        const picked = intentChip.getAttribute("data-prompt-intent");
+        state.promptFilters.intent = state.promptFilters.intent === picked ? "" : picked;
+        render();
+        return;
+      }
+      if (clicked.closest("[data-prompt-select-all]")) { selectAllShown(); return; }
+      if (clicked.closest("[data-bulk-clear]")) { state.promptSelection = []; refreshPromptResults(); return; }
+      if (clicked.closest("[data-bulk-activate]")) { await bulkPrompts("activate"); return; }
+      if (clicked.closest("[data-bulk-retire]")) { await bulkPrompts("retire"); return; }
+      if (clicked.closest("[data-bulk-run]")) { await bulkRun(); return; }
       const activateTopic = clicked.closest("[data-activate-topic]");
       if (activateTopic) {
         const topicId = activateTopic.getAttribute("data-activate-topic");
-        const set = state.topicSet || { prompts: [] };
-        const ids = set.prompts.filter((prompt) => prompt.topicId === topicId && prompt.status === "proposed").map((prompt) => prompt.id);
-        await postPrompts("/prompts/activate", { promptIds: ids }, "saving", ids.length + " prompt(s) now tracked.");
+        const set = state.topicSet || { topics: [], prompts: [] };
+        // Only what the filters are showing: the count on the button is the
+        // list under it, not everything the topic happens to hold.
+        const ids = filteredPrompts(set, promptStandings())
+          .filter((prompt) => prompt.topicId === topicId && prompt.status === "proposed")
+          .map((prompt) => prompt.id);
+        if (!ids.length) return;
+        await postPrompts("/prompts/activate", { promptIds: ids }, "saving", ids.length + " question(s) now tracked.");
       }
     });
 
     document.addEventListener("change", (event) => {
+      const box = event.target && event.target.closest ? event.target.closest("[data-prompt-checkbox]") : null;
+      if (box) {
+        const id = box.getAttribute("data-prompt-checkbox");
+        const at = state.promptSelection.indexOf(id);
+        if (at >= 0) state.promptSelection.splice(at, 1);
+        else state.promptSelection.push(id);
+        const bar = document.querySelector(".prompt-bulk");
+        if (bar) bar.innerHTML = promptBulkInner();
+        else render();
+        return;
+      }
+      const promptFilter = event.target && event.target.closest ? event.target.closest("[data-prompt-filter]") : null;
+      if (promptFilter) {
+        state.promptFilters[promptFilter.getAttribute("data-prompt-filter")] = promptFilter.value;
+        refreshPromptResults();
+        return;
+      }
       const backend = event.target && event.target.closest ? event.target.closest("[data-storage-backend]") : null;
       if (backend) {
         state.storageBackend = backend.value;
@@ -1689,6 +1954,12 @@ export function renderProductPhase2AppHtml(): string {
         render();
         return;
       }
+      if (form && form.id === "bulk-prompt-form") {
+        event.preventDefault();
+        const pasted = new FormData(form);
+        await postPrompts("/prompts/bulk", { topicId: pasted.get("topicId"), text: pasted.get("text"), intent: pasted.get("intent") }, "saving", "Added and tracked. Anything already in the set was skipped.");
+        return;
+      }
       if (!form || form.id !== "add-prompt-form") return;
       event.preventDefault();
       const data = new FormData(form);
@@ -1709,7 +1980,7 @@ export function renderProductPhase2AppHtml(): string {
       if (probeButton) { await captureSignals(probeButton); state.signalsState = "idle"; loadSignals(); return; } if (!(target instanceof Element)) return; const pageButton = target.closest("[data-page]"); if (pageButton) { await setPage(pageButton.getAttribute("data-page") || "overview"); return; } const listModeButton = target.closest("[data-list-mode]"); if (listModeButton) { state.mode = listModeButton.getAttribute("data-list-mode") || "current"; await refreshProjects(); render(); return; } if (target.id === "new-project" || target.id === "empty-new-project") { openDrawer(); return; } if (target.id === "close-drawer" || target.id === "cancel-draft" || target.id === "drawer-backdrop") { closeDrawer(); return; } if (target.id === "retry-catalog") { state.catalogState = "idle"; await loadCatalog(); return; } if (target.id === "save-models") { await saveModels(target); return; } if (target.id === "save-monitoring-configuration") { await saveMonitoringConfiguration(); return; } if (target.id === "archive-project") { const selected = project(); if (selected) await projectAction("archive", selected.id, target); return; } if (target.id === "delete-project") { const selected = project(); if (selected) await projectAction("delete", selected.id, target); return; } const action = target.closest("[data-project-action]"); if (action) { const projectId = action.getAttribute("data-project-id"); const name = action.getAttribute("data-project-action"); if (projectId && name) await projectAction(name, projectId, action); } });
     document.addEventListener("change", async (event) => { const target = event.target; if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) return; if (target.id === "project-select") { setSelectedProject(target.value); state.selectionsDirty = false; await refreshConfiguration(); render(); return; } if (target instanceof HTMLInputElement && target.hasAttribute("data-model-checkbox")) { changeModel(target.getAttribute("data-model-checkbox") || "", target.checked); return; } if (target instanceof HTMLSelectElement && target.hasAttribute("data-model-mode")) { changeModelMode(target.getAttribute("data-model-mode") || "", target.value); return; } if (target instanceof HTMLSelectElement && target.hasAttribute("data-selected-model-mode")) { changeModelMode(target.getAttribute("data-selected-model-mode") || "", target.value); return; } });
     document.addEventListener("change", (event) => { const target = event.target; if (!(target instanceof HTMLSelectElement)) return; if (target.id === "model-provider-filter") { state.catalogProvider = target.value; render(); return; } if (target.id === "model-native-search-filter") { state.catalogNativeSearch = target.value; render(); return; } if (target.id === "model-catalog-sort") { state.catalogSort = target.value; render(); } });
-    document.addEventListener("input", (event) => { const target = event.target; if (target instanceof HTMLInputElement && target.id === "model-search") { state.query = target.value; refreshCatalogSearchResults(); } });
+    document.addEventListener("input", (event) => { const target = event.target; if (target instanceof HTMLInputElement && target.id === "model-search") { state.query = target.value; refreshCatalogSearchResults(); return; } if (target instanceof HTMLInputElement && target.id === "prompt-search") { state.promptFilters.query = target.value; refreshPromptResults(); } });
     document.addEventListener("submit", (event) => { const target = event.target; if (!(target instanceof HTMLFormElement)) return; if (target.id === "project-form") createDraft(event); if (target.id === "project-edit-form") saveProject(event); });
     refreshProjects().then(async () => { await refreshConfiguration(); render(); }).catch((error) => { app.innerHTML = '<main class="workspace"><div class="warning-box">' + html(error instanceof Error ? error.message : String(error)) + '</div></main>'; });
     function recognitionRunStatusText(status) { return status === "queued" ? "Waiting to start" : status === "running" ? "Running" : status === "completed" ? "Completed" : status === "partial" ? "Partly complete" : "Execution failed"; }

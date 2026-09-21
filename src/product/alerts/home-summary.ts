@@ -25,6 +25,8 @@ export interface HomeSummary {
   rank: number | null;
   rivals: number;
   answers: number;
+  /** Models saved for the project, so a run can be forecast before it starts. */
+  modelCount: number;
   alerts: Alert[];
   /** Where the work is, worst first. */
   weakestTopics: Array<{ topicId: string; name: string; score: number | null; rank: number | null }>;
@@ -78,6 +80,7 @@ export function buildHomeSummary(input: {
     rank: insights.rank,
     rivals: insights.leaderboard.filter((row) => !row.isTarget).length,
     answers: insights.answers,
+    modelCount: input.modelCount,
     alerts: evaluateAlerts(insights, undefined, { skippedModels: latest?.skippedModels }),
     weakestTopics: insights.topics.slice(0, 4).map((topic) => ({
       topicId: topic.topicId,
