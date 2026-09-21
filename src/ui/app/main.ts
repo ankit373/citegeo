@@ -22,6 +22,7 @@ export function boot(): void {
     plan: Unshaped; planState: LoadState;
     signals: Unshaped; signalsState: LoadState;
     credentials: Unshaped; credentialsState: LoadState; credentialNotice: Notice;
+    integrations: Unshaped[]; integrationsState: LoadState;
     dashMetric: string; dashRange: string;
     catalog: CatalogModel[]; catalogState: LoadState; catalogError: string;
     query: string; catalogProvider: string; catalogNativeSearch: string; catalogSort: string;
@@ -61,7 +62,7 @@ export function boot(): void {
     actions: Unshaped[]; actionsState: LoadState;
   }
 
-    const state: State = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", promptFilters:{ query:"", topicId:"", intent:"", status:"" }, promptSelection:[], answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", rivals:null, rivalsState:"idle", segments:null, segmentsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, lastRun:null, runPollTimer:0, runFeed:[], runFeedState:"idle", runFeedTimer:0, rankPlan:null, rankPlanState:"idle", brief:null, briefState:"idle", outreach:null, outreachState:"idle", harvesting:false, searchDemand:null, searchDemandState:"idle", pulling:false, personas:null, personasState:"idle", priority:null, priorityState:"idle", promptSort:"topic", referrals:null, referralsState:"idle", pullingReferrals:false, engines:null, enginesState:"idle", actions:[], actionsState:"idle" };
+    const state: State = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, integrations:[], integrationsState:"idle", dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", promptFilters:{ query:"", topicId:"", intent:"", status:"" }, promptSelection:[], answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", rivals:null, rivalsState:"idle", segments:null, segmentsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, lastRun:null, runPollTimer:0, runFeed:[], runFeedState:"idle", runFeedTimer:0, rankPlan:null, rankPlanState:"idle", brief:null, briefState:"idle", outreach:null, outreachState:"idle", harvesting:false, searchDemand:null, searchDemandState:"idle", pulling:false, personas:null, personasState:"idle", priority:null, priorityState:"idle", promptSort:"topic", referrals:null, referralsState:"idle", pullingReferrals:false, engines:null, enginesState:"idle", actions:[], actionsState:"idle" };
     const app = document.getElementById("app") as HTMLElement;
     let renderOverride: (() => void) | null = null;
     // render() was a hoisted declaration that a later line reassigned. A
@@ -687,6 +688,21 @@ export function boot(): void {
         + '<section class="section-card"><div class="section-head"><div><h2>Claim audit</h2><p class="subtle">Disagreement, assertions with no source, and claims unlike your own description.</p></div></div>' + (auditRows ? '<ul class="protocol-list">' + auditRows + '</ul>' : '<p class="subtle">Nothing flagged across ' + audit.answers + ' answer(s).</p>') + '</section>'
         + renderCrawlerSection() + renderSignalHistory() + '<section class="section-card"><div class="section-head"><div><h2>How the models categorise you</h2><p class="subtle">Their words, counted.</p></div></div>' + (categoryRows ? '<ul class="protocol-list">' + categoryRows + '</ul>' : '<p class="subtle">No category returned yet.</p>') + '</section></section>';
     }
+    /** What this product can connect to. It answers whether or not key entry
+     * is open, so a closed server still says what Setup would ask for. */
+    async function loadIntegrations() {
+      if (state.integrationsState === "loading") return;
+      state.integrationsState = "loading";
+      try {
+        const body = await request<{ integrations: Unshaped[] }>("/api/integrations");
+        state.integrations = body.integrations || [];
+        state.integrationsState = "ready";
+      } catch (error) {
+        state.integrationsState = "error";
+      }
+      render();
+    }
+
     async function loadCredentials() {
       if (state.credentialsState === "loading") return;
       state.credentialsState = "loading";
@@ -728,6 +744,54 @@ export function boot(): void {
       loadCredentials();
       loadProviders();
     }
+    /** The outward connections, which are not model providers and do not
+     * belong in the same table: one answers questions, the other reaches out. */
+    function renderConnections() {
+      if (state.integrationsState === "idle") { loadIntegrations(); }
+      const head = '<section class="section-card"><div class="section-head"><div><h2>Connections</h2>'
+        + '<p class="subtle">None of these are required. Measurement runs from a domain alone; these add what your own site already knows, and let the fixes be raised as a pull request.</p></div></div>';
+      if (state.integrationsState !== "ready") {
+        return head + '<p class="subtle">' + (state.integrationsState === "error" ? "Could not read what this product can connect to." : "Reading connections\u2026") + '</p></section>';
+      }
+      const held = state.credentials && (state.credentials as Unshaped).credentials ? (state.credentials as Unshaped).credentials as Unshaped[] : [];
+      const open = Boolean(state.credentials) && !(state.credentials as Unshaped).closed;
+      const storageEnabled = Boolean(state.credentials && (state.credentials as Unshaped).storageEnabled);
+      const rows = state.integrations.filter((row) => row.kind === "integration").map((row) => {
+        const live = held.find((item) => item.providerId === row.providerId);
+        const mark = !live ? '<span class="mcell state-flag" title="This server has no AUTH_PASSWORD, so it will not report whether a credential is held.">cannot be read here</span>'
+          : live.source === "environment" ? '<span class="mcell state-ok">set in the environment</span>'
+          : live.source === "stored" ? '<span class="mcell state-ok">stored here</span>'
+          : '<span class="mcell state-flag">not connected</span>';
+        // The two ways in, named. A self-hosted copy registers no OAuth app of
+        // its own, so the second way is a client the reader owns.
+        const ways = row.providerId === "google" || row.providerId === "google-analytics"
+          ? '<ul class="protocol-list"><li><strong>A service account key.</strong> Paste the JSON, then add the service account as a user on the property.</li>'
+            + '<li><strong>An OAuth client you own.</strong> Paste <span class="mono">{"client_id", "client_secret", "refresh_token"}</span> consented to the scopes below.</li></ul>'
+          : '';
+        const settings = (row.settings || []).map((setting: Unshaped) => {
+          const value = live && (live.settings || []).find((item: Unshaped) => item.key === setting.key);
+          const shown = value && value.value ? '<span class="mono">' + html(String(value.value)) + '</span>' : '<span class="state-flag">not set</span>';
+          return '<li>' + html(setting.label) + ': ' + shown + ' \u00b7 <span class="mono">' + html(setting.envKey) + '</span></li>';
+        }).join("");
+        const control = !open
+          ? '<span class="step-note">Key entry is closed on this server, so set ' + (row.envKeys || []).map((key: Unshaped) => '<span class="mono">' + html(String(key)) + '</span>').join(" or ") + ' in .env.</span>'
+          : live && !live.editable
+            ? '<span class="step-note">Set in the environment, so it cannot be changed here.</span>'
+            : !storageEnabled
+              ? '<span class="step-note">Needs CREDENTIAL_KEY.</span>'
+              : '<span class="credential-control"><input type="password" autocomplete="off" placeholder="' + (ways ? "Paste the JSON" : "Paste the token") + '" data-credential-input="' + html(row.providerId) + '">'
+                + button({ label: "Save", on: { "data-credential-save": row.providerId } })
+                + (live && live.source === "stored" ? button({ label: "Remove", tone: "danger", on: { "data-credential-clear": row.providerId } }) : '') + '</span>';
+        return '<div class="section-card connection-card" data-connection="' + html(String(row.providerId)) + '"><div class="section-head"><div><h3>' + html(row.label) + '</h3>'
+          + '<p class="subtle">' + html(row.purpose) + '</p></div>' + mark + '</div>'
+          + ways
+          + (settings ? '<ul class="protocol-list">' + settings + '</ul>' : '')
+          + '<p class="field-help">' + html(row.help) + '</p>'
+          + '<div class="inline-actions">' + control + '</div></div>';
+      }).join("");
+      return head + (rows || '<p class="subtle">No outward connections are defined.</p>') + '</section>';
+    }
+
     function renderCredentials() {
       if (state.credentialsState === "idle") { loadCredentials(); }
       const head = '<section class="section-card"><div class="section-head"><div><h2>Provider keys</h2><p class="subtle">A key set here is encrypted at rest and never returned by the API. Only the last four characters are ever shown.</p></div></div>';
@@ -2043,7 +2107,7 @@ export function boot(): void {
         + banner
         + '<section class="section-card"><div class="section-head"><div><h2>Providers</h2><p class="subtle">A provider appears in the model picker only when it is configured and answering.</p></div></div><div class="mtable"><div class="mhead mcols-provider"><span>Provider</span><span>Catalog</span><span>Status</span><span>What this means</span></div>' + rows + '</div></section>'
         + '<section class="section-card"><div class="section-head"><div><h2>Where this is stored</h2><p class="subtle">Everything is small JSON documents, so it sits on a disk or a bucket equally well.</p></div></div>' + renderStorage() + '</section>'
-        + renderCredentials() + '<section class="section-card"><div class="section-head"><div><h2>Where these come from</h2><p class="subtle">Set in .env at the repository root, then restart the server.</p></div></div><ul class="protocol-list">' + envRows + '</ul></section></section>';
+        + renderCredentials() + renderConnections() + '<section class="section-card"><div class="section-head"><div><h2>Where these come from</h2><p class="subtle">Set in .env at the repository root, then restart the server.</p></div></div><ul class="protocol-list">' + envRows + '</ul></section></section>';
     }
 
     function resultsSwitch(active: any) {

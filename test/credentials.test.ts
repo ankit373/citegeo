@@ -5,6 +5,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { CredentialFileStore, credentialKey, decryptSecret, encryptSecret } from "../src/product/auth/credential-store.js";
 import { CredentialService } from "../src/product/auth/credential-service.js";
+import { handleCredentialApi } from "../src/product/auth/credential-http.js";
+import { productAppSource } from "../src/ui/app-source.js";
 
 const KEY_B64 = Buffer.alloc(32, 7).toString("base64");
 const SECRET = "sk-or-v1-abcdefghijklmnop";
@@ -198,4 +200,37 @@ test("a stored record never carries the secret in the clear beyond its last four
   const serialised = JSON.stringify(record);
   assert.equal(serialised.includes("verysecret"), false);
   assert.equal(record.last4, "alue");
+});
+
+test("what the product can connect to is readable without a password", async () => {
+  // The credentials endpoint refuses without AUTH_PASSWORD, and it should.
+  // The catalogue is not a secret, so a closed server can still say what
+  // Setup would ask for rather than showing an empty page.
+  const sent: Array<{ status: number; body: unknown }> = [];
+  const handled = await handleCredentialApi({
+    method: "GET",
+    route: ["api", "integrations"],
+    send: (status, body) => { sent.push({ status, body }); },
+    service: {} as never,
+    authEnabled: false,
+    readJson: async () => ({}),
+  });
+  assert.equal(handled, true);
+  assert.equal(sent[0]?.status, 200);
+  const rows = (sent[0]?.body as { integrations: Array<Record<string, unknown>> }).integrations;
+  const google = rows.find((row) => row.providerId === "google");
+  assert.ok(google, "Search Console is not offered");
+  assert.equal((google?.settings as Array<{ key: string }>)[0]?.key, "siteUrl");
+  // Neither a key nor its last four characters may appear here.
+  assert.equal(JSON.stringify(rows).includes("last4"), false);
+  assert.equal(JSON.stringify(rows).includes("source"), false);
+});
+
+test("Setup names both ways into a Google property", () => {
+  const html = productAppSource();
+  // A self-hosted copy registers no OAuth application, so the second way in
+  // is a client the reader owns. Offering only one strands half the readers.
+  assert.equal(html.includes("A service account key."), true);
+  assert.equal(html.includes("An OAuth client you own."), true);
+  assert.equal(html.includes('data-connection="'), true);
 });
