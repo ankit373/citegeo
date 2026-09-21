@@ -89,6 +89,7 @@ export function renderProductPhase2AppHtml(): string {
     .mcols-promptrow { grid-template-columns:20px minmax(0,1fr) 96px 82px 104px; align-items:start; }
     .mcols-engine { grid-template-columns:20px minmax(0,1fr) 150px; align-items:start; }
     .mcols-source { grid-template-columns:minmax(0,1fr) 110px 100px; align-items:start; }
+    .mcols-search { grid-template-columns:minmax(0,1fr) 104px 74px 92px; align-items:start; }
     .promptbar { display:flex; gap:9px; flex-wrap:wrap; align-items:center; margin:22px 0 10px; }
     .promptbar input,.promptbar select { flex:0 1 auto; width:auto; min-width:150px; }
     .promptbar #prompt-search { flex:1 1 260px; }
@@ -404,7 +405,7 @@ export function renderProductPhase2AppHtml(): string {
       .mhead { display:none; }
       .mcols-selected,.mcols-readonly,.mcols-project,.mcols-provider { grid-template-columns:minmax(0,1fr); gap:6px; }
       .mcols-catalog,.mcols-promptrow,.mcols-engine { grid-template-columns:20px minmax(0,1fr); gap:6px 10px; }
-      .mcols-source { grid-template-columns:minmax(0,1fr); gap:6px; }
+      .mcols-source,.mcols-search { grid-template-columns:minmax(0,1fr); gap:6px; }
       .runfield { grid-template-columns:minmax(0,1fr); gap:5px; }
       .mcols-catalog > *:nth-child(n+3),.mcols-promptrow > *:nth-child(n+3),.mcols-engine > *:nth-child(n+3) { grid-column:2; }
       .promptbar .prompt-result-summary { margin-left:0; }
@@ -426,7 +427,7 @@ export function renderProductPhase2AppHtml(): string {
     </form>
   </aside>
   <script>
-    const state = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", promptFilters:{ query:"", topicId:"", intent:"", status:"" }, promptSelection:[], answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", rivals:null, rivalsState:"idle", segments:null, segmentsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, lastRun:null, runPollTimer:0, runFeed:[], runFeedState:"idle", runFeedTimer:0, rankPlan:null, rankPlanState:"idle", brief:null, briefState:"idle", outreach:null, outreachState:"idle", harvesting:false, engines:null, enginesState:"idle", actions:[], actionsState:"idle" };
+    const state = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", promptFilters:{ query:"", topicId:"", intent:"", status:"" }, promptSelection:[], answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", rivals:null, rivalsState:"idle", segments:null, segmentsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, lastRun:null, runPollTimer:0, runFeed:[], runFeedState:"idle", runFeedTimer:0, rankPlan:null, rankPlanState:"idle", brief:null, briefState:"idle", outreach:null, outreachState:"idle", harvesting:false, searchDemand:null, searchDemandState:"idle", pulling:false, engines:null, enginesState:"idle", actions:[], actionsState:"idle" };
     const app = document.getElementById("app");
     const element = (id) => document.getElementById(id);
     const html = (value) => String(value).split("&").join("&amp;").split("<").join("&lt;").split(">").join("&gt;").split('"').join("&quot;").split("'").join("&#39;");
@@ -434,7 +435,7 @@ export function renderProductPhase2AppHtml(): string {
     const formatTime = (value) => new Date(value).toLocaleString();
     const modeText = (mode) => mode === "provider_native" ? "Provider Native web search" : "Offline";
     const statusText = (status) => status === "draft" ? "Draft" : status === "active" ? "Running" : status === "archived" ? "Archived" : "Deleted";
-    function setSelectedProject(projectId) { if (projectId !== state.selectedId) { state.liveRun = null; state.lastRun = null; state.insights = null; state.insightsState = "idle"; state.plan = null; state.planState = "idle"; state.rankPlan = null; state.rankPlanState = "idle"; state.engines = null; state.enginesState = "idle"; state.actions = []; state.actionsState = "idle"; state.outreach = null; state.outreachState = "idle"; state.crawlers = null; state.crawlersState = "idle"; state.signals = null; state.signalsState = "idle"; } state.selectedId = projectId || ""; if (state.selectedId) localStorage.setItem("citegeo.product.projectId", state.selectedId); else localStorage.removeItem("citegeo.product.projectId"); const next = new URL(window.location.href); if (state.selectedId) next.searchParams.set("projectId", state.selectedId); else next.searchParams.delete("projectId"); window.history.replaceState({ projectId:state.selectedId }, "", next); }
+    function setSelectedProject(projectId) { if (projectId !== state.selectedId) { state.liveRun = null; state.lastRun = null; state.insights = null; state.insightsState = "idle"; state.plan = null; state.planState = "idle"; state.rankPlan = null; state.rankPlanState = "idle"; state.engines = null; state.enginesState = "idle"; state.actions = []; state.actionsState = "idle"; state.outreach = null; state.outreachState = "idle"; state.searchDemand = null; state.searchDemandState = "idle"; state.crawlers = null; state.crawlersState = "idle"; state.signals = null; state.signalsState = "idle"; } state.selectedId = projectId || ""; if (state.selectedId) localStorage.setItem("citegeo.product.projectId", state.selectedId); else localStorage.removeItem("citegeo.product.projectId"); const next = new URL(window.location.href); if (state.selectedId) next.searchParams.set("projectId", state.selectedId); else next.searchParams.delete("projectId"); window.history.replaceState({ projectId:state.selectedId }, "", next); }
     function setDrawer(open) { document.body.classList.toggle("drawer-open", open); element("project-drawer").setAttribute("aria-hidden", String(!open)); }
     function openDrawer() { state.drawerSession += 1; setFormStatus("", ""); setDrawer(true); window.setTimeout(() => element("project-domain").focus(), 0); }
     function closeDrawer() { state.drawerSession += 1; setDrawer(false); }
@@ -1647,6 +1648,67 @@ export function renderProductPhase2AppHtml(): string {
         + plan.targets.slice(0, 20).map(outreachRow).join("") + '</div>';
     }
 
+    async function loadSearchDemand() {
+      if (!state.selectedId || state.searchDemandState === "loading") return;
+      state.searchDemandState = "loading";
+      try {
+        state.searchDemand = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/search-demand");
+        state.searchDemandState = "ready";
+      } catch (error) {
+        state.searchDemandState = "error";
+      }
+      render();
+    }
+
+    async function pullSearchDemand() {
+      if (!state.selectedId || state.pulling) return;
+      state.pulling = true;
+      render();
+      try {
+        const result = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/search-demand", { method:"POST", headers:{"Content-Type":"application/json"}, body:"{}" });
+        state.searchDemand = { ...(state.searchDemand || {}), configured:true, report: result.report };
+        state.searchDemandState = "ready";
+        state.promptNotice = { text: result.report.queries + " query row(s) read from Search Console.", kind:"success" };
+      } catch (error) {
+        state.promptNotice = { text: error && error.message ? error.message : String(error), kind:"error" };
+      }
+      state.pulling = false;
+      render();
+    }
+
+    function searchDemandRow(row) {
+      const matched = row.exact.concat(row.related).slice(0, 4);
+      return '<div class="mrow mcols-search">'
+        + '<div class="mname"><strong>' + html(row.text) + '</strong>'
+        + (matched.length ? '<span class="subtle">' + html(matched.map((match) => match.query).join(" · ")) + '</span>' : '<span class="subtle">No query in the window shares its words.</span>')
+        + (row.earnedInSearchAbsentInAnswers ? '<span class="tag warning">Found in search, absent from the answers</span>' : '') + '</div>'
+        + '<span class="mcell">' + row.impressions + '</span>'
+        + '<span class="mcell">' + row.clicks + '</span>'
+        + '<span class="mcell">' + (row.position === null ? "Not ranked" : "#" + (Math.round(row.position * 10) / 10)) + '</span></div>';
+    }
+
+    function renderSearchDemand() {
+      if (state.searchDemandState === "idle") { loadSearchDemand(); }
+      if (state.searchDemandState !== "ready" || !state.searchDemand) {
+        return '<p class="subtle">' + (state.searchDemandState === "error" ? "Could not read the Search Console settings." : "Checking for a Search Console key.") + '</p>';
+      }
+      const data = state.searchDemand;
+      const button = data.configured && data.siteUrl
+        ? '<button type="button" class="button" data-pull-search' + (state.pulling ? ' disabled' : '') + '>' + (state.pulling ? "Reading…" : "Pull the last 90 days") + '</button>'
+        : '<button type="button" class="button" data-page="setup">Add the key in Setup</button>';
+      const head = '<p class="subtle">' + html(data.detail) + '</p><div class="inline-actions">' + button + '</div>';
+      const report = data.report;
+      if (!report) return head;
+      const gaps = report.prompts.filter((row) => row.earnedInSearchAbsentInAnswers).length;
+      return head
+        + '<p class="subtle">' + report.queries + ' query row(s), ' + report.totalImpressions + ' impression(s), ' + html(report.window.from) + ' to ' + html(report.window.to) + '. '
+        + (gaps ? gaps + ' question(s) earn search impressions while no answer names you. Those are the clearest gaps here.' : 'No question earns search impressions while the answers leave you out.')
+        + '</p>'
+        + '<div class="mtable"><div class="mhead mcols-search"><span>Question, and the queries matching it</span><span>Impressions</span><span>Clicks</span><span>Position</span></div>'
+        + report.prompts.slice(0, 20).map(searchDemandRow).join("") + '</div>'
+        + '<p class="evidence-note">Search queries are not AI prompts and this does not pretend otherwise. It is measured demand for the same subject, from the one place that reports it.</p>';
+    }
+
     function renderRunPane() {
       return '<div class="panel-scrim" data-close-panel></div><aside class="panel" role="dialog" aria-label="Live run">'
         + '<div class="panel-head"><div><h2>' + (runIsLive() ? "Live run" : "Finished run") + '</h2>'
@@ -1842,6 +1904,7 @@ export function renderProductPhase2AppHtml(): string {
         + '<section class="section-card"><div class="section-head"><div><h2>Movement</h2><p class="subtle">One point per run. A run where everything failed is left out rather than drawn as a drop.</p></div></div>' + renderPromptTrend(data.trend) + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>By market</h2><p class="subtle">The same questions, asked for a different buyer.</p></div></div>' + renderRegionRows(data.byRegion, data.regionCaveat) + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>Sources</h2><p class="subtle">A domain says you are cited. A page says which one to write more of.</p></div></div>' + renderCitedPages() + '</section>'
+        + '<section class="section-card"><div class="section-head"><div><h2>What people search for</h2><p class="subtle">Search Console, joined to the questions you track. Not AI prompt volume, but real demand for the same subject.</p></div></div>' + renderSearchDemand() + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>Pages the models read</h2><p class="subtle">Each cited page, fetched and read back: who is on it, in what order, and whether you are. A page cited on a question you lose, without you on it, is the most specific thing here.</p></div></div>' + renderOutreach() + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>By AI assistant</h2><p class="subtle">The models you picked in Choose models, each answering the same questions. These are who was asked, not who you compete with.</p></div></div>' + renderModelRows(data.byModel) + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>Keep it running</h2><p class="subtle">A tracker that is run by hand is a snapshot.</p></div></div>' + renderSchedule() + '</section></section>';
@@ -2344,6 +2407,7 @@ export function renderProductPhase2AppHtml(): string {
         return;
       }
       if (target.closest("[data-harvest-pages]")) { harvestPages(); return; }
+      if (target.closest("[data-pull-search]")) { pullSearchDemand(); return; }
       if (target.closest("[data-stop-run]")) { stopRun(); return; }
       const openRun = target.closest("[data-open-run]");
       if (openRun) { openRunPane(openRun.getAttribute("data-open-run") || ""); return; }

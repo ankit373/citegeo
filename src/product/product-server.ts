@@ -26,6 +26,7 @@ import { handleTopicApi } from "./topics/topic-http.js";
 import { handleEngineApi } from "./engines/engine-http.js";
 import { handleRankingActionApi } from "./topics/action-http.js";
 import { handleCitationApi } from "./citations/citation-http.js";
+import { handleSearchConsoleApi } from "./search-console/search-console-http.js";
 import { projectInsights } from "./topics/project-insights.js";
 import { handleStorageApi } from "./storage/storage-http.js";
 import { renderProductPhase5AppHtml } from "../ui/product-phase5-app.js";
@@ -93,6 +94,9 @@ async function handle(req: IncomingMessage, res: ServerResponse, services: Produ
   if (await handleInsightsApi({ method, route, send: json, service: insights })) return;
   if (await handleCrawlerApi({ method, route, send: json, crawlerLog, insights })) return;
   if (await handleActionApi({ method, route, send: json, signals, insights })) return;
+  if (await handleSearchConsoleApi({ method, route, send: json, searchConsole: services.searchConsole, readJson: body,
+    prompts: async (id) => (await topics.get(id)).prompts.filter((prompt) => prompt.status === "active"),
+    insights: (id) => projectInsights({ projectId: id, topics, runs: promptRuns, competitors: services.competitors }) })) return;
   if (await handleCitationApi({ method, route, send: json, pages: services.sourcePages,
     answers: (id) => promptRuns.listAnswers(id),
     identity: (id) => topics.targetIdentity(id),
