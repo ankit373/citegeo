@@ -91,6 +91,8 @@ export function renderProductPhase2AppHtml(): string {
     .mcols-source { grid-template-columns:minmax(0,1fr) 110px 100px; align-items:start; }
     .mcols-search { grid-template-columns:minmax(0,1fr) 104px 74px 92px; align-items:start; }
     .mcols-persona { grid-template-columns:minmax(0,1fr) minmax(0,1.6fr) 110px; align-items:start; }
+    .rowtags { display:flex; gap:5px; flex-wrap:wrap; margin-top:5px; }
+    .rowtags .tag { font-size:11px; padding:1px 7px; }
     .promptbar { display:flex; gap:9px; flex-wrap:wrap; align-items:center; margin:22px 0 10px; }
     .promptbar input,.promptbar select { flex:0 1 auto; width:auto; min-width:150px; }
     .promptbar #prompt-search { flex:1 1 260px; }
@@ -428,7 +430,7 @@ export function renderProductPhase2AppHtml(): string {
     </form>
   </aside>
   <script>
-    const state = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", promptFilters:{ query:"", topicId:"", intent:"", status:"" }, promptSelection:[], answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", rivals:null, rivalsState:"idle", segments:null, segmentsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, lastRun:null, runPollTimer:0, runFeed:[], runFeedState:"idle", runFeedTimer:0, rankPlan:null, rankPlanState:"idle", brief:null, briefState:"idle", outreach:null, outreachState:"idle", harvesting:false, searchDemand:null, searchDemandState:"idle", pulling:false, personas:null, personasState:"idle", engines:null, enginesState:"idle", actions:[], actionsState:"idle" };
+    const state = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", promptFilters:{ query:"", topicId:"", intent:"", status:"" }, promptSelection:[], answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", rivals:null, rivalsState:"idle", segments:null, segmentsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, lastRun:null, runPollTimer:0, runFeed:[], runFeedState:"idle", runFeedTimer:0, rankPlan:null, rankPlanState:"idle", brief:null, briefState:"idle", outreach:null, outreachState:"idle", harvesting:false, searchDemand:null, searchDemandState:"idle", pulling:false, personas:null, personasState:"idle", priority:null, priorityState:"idle", promptSort:"topic", engines:null, enginesState:"idle", actions:[], actionsState:"idle" };
     const app = document.getElementById("app");
     const element = (id) => document.getElementById(id);
     const html = (value) => String(value).split("&").join("&amp;").split("<").join("&lt;").split(">").join("&gt;").split('"').join("&quot;").split("'").join("&#39;");
@@ -436,7 +438,7 @@ export function renderProductPhase2AppHtml(): string {
     const formatTime = (value) => new Date(value).toLocaleString();
     const modeText = (mode) => mode === "provider_native" ? "Provider Native web search" : "Offline";
     const statusText = (status) => status === "draft" ? "Draft" : status === "active" ? "Running" : status === "archived" ? "Archived" : "Deleted";
-    function setSelectedProject(projectId) { if (projectId !== state.selectedId) { state.liveRun = null; state.lastRun = null; state.insights = null; state.insightsState = "idle"; state.plan = null; state.planState = "idle"; state.rankPlan = null; state.rankPlanState = "idle"; state.engines = null; state.enginesState = "idle"; state.actions = []; state.actionsState = "idle"; state.outreach = null; state.outreachState = "idle"; state.searchDemand = null; state.searchDemandState = "idle"; state.personas = null; state.personasState = "idle"; state.crawlers = null; state.crawlersState = "idle"; state.signals = null; state.signalsState = "idle"; } state.selectedId = projectId || ""; if (state.selectedId) localStorage.setItem("citegeo.product.projectId", state.selectedId); else localStorage.removeItem("citegeo.product.projectId"); const next = new URL(window.location.href); if (state.selectedId) next.searchParams.set("projectId", state.selectedId); else next.searchParams.delete("projectId"); window.history.replaceState({ projectId:state.selectedId }, "", next); }
+    function setSelectedProject(projectId) { if (projectId !== state.selectedId) { state.liveRun = null; state.lastRun = null; state.insights = null; state.insightsState = "idle"; state.plan = null; state.planState = "idle"; state.rankPlan = null; state.rankPlanState = "idle"; state.engines = null; state.enginesState = "idle"; state.actions = []; state.actionsState = "idle"; state.outreach = null; state.outreachState = "idle"; state.searchDemand = null; state.searchDemandState = "idle"; state.personas = null; state.personasState = "idle"; state.priority = null; state.priorityState = "idle"; state.crawlers = null; state.crawlersState = "idle"; state.signals = null; state.signalsState = "idle"; } state.selectedId = projectId || ""; if (state.selectedId) localStorage.setItem("citegeo.product.projectId", state.selectedId); else localStorage.removeItem("citegeo.product.projectId"); const next = new URL(window.location.href); if (state.selectedId) next.searchParams.set("projectId", state.selectedId); else next.searchParams.delete("projectId"); window.history.replaceState({ projectId:state.selectedId }, "", next); }
     function setDrawer(open) { document.body.classList.toggle("drawer-open", open); element("project-drawer").setAttribute("aria-hidden", String(!open)); }
     function openDrawer() { state.drawerSession += 1; setFormStatus("", ""); setDrawer(true); window.setTimeout(() => element("project-domain").focus(), 0); }
     function closeDrawer() { state.drawerSession += 1; setDrawer(false); }
@@ -1571,9 +1573,10 @@ export function renderProductPhase2AppHtml(): string {
           + (brief.namesYouElsewhere.length ? ' These name you elsewhere: ' + html(brief.namesYouElsewhere.join(", ")) + '.' : '') + '</p>';
       const contest = brief.contest;
       const contestClass = contest.state === "open" ? "ready" : contest.state === "settled" ? "warning" : "";
-      const contestLine = '<p class="evidence-note"><span class="tag ' + contestClass + '">'
-        + (contest.state === "open" ? "Open field" : contest.state === "settled" ? "Settled field" : "Contested field")
-        + '</span> ' + html(contest.reason)
+      const contestLine = '<p class="evidence-note">'
+        + (contest.state === "unknown" ? '' : '<span class="tag ' + contestClass + '">'
+          + (contest.state === "open" ? "Open field" : contest.state === "settled" ? "Settled field" : "Contested field") + '</span> ')
+        + html(contest.reason)
         + ' Being absent from a settled question is a harder problem than being absent from an open one.</p>';
       const demand = brief.demand
         ? '<p class="evidence-note">Asked ' + brief.demand.match.exactTerms + ' time(s) in the indexed corpus, '
@@ -1967,6 +1970,64 @@ export function renderProductPhase2AppHtml(): string {
 
     // Score and rank come from the answer engine, so a question shows whether
     // it is working rather than only that it is tracked.
+    async function loadPriority() {
+      if (!state.selectedId || state.priorityState === "loading") return;
+      state.priorityState = "loading";
+      try {
+        state.priority = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/question-priority");
+        state.priorityState = "ready";
+      } catch (error) {
+        state.priorityState = "error";
+      }
+      render();
+    }
+
+    function priorityOf(promptId) {
+      if (!state.priority) return null;
+      return state.priority.questions.find((row) => row.promptId === promptId) || null;
+    }
+
+    // Open beats settled, and the reason is on the badge, because the order is
+    // a judgement and the figures it came from are not.
+    function fieldBadge(row) {
+      if (!row || row.contest.state === "unknown") return '';
+      const field = row.contest.state;
+      const tone = field === "open" ? "ready" : field === "settled" ? "warning" : "";
+      const label = field === "open" ? "Open field" : field === "settled" ? "Settled" : "Contested";
+      return '<span class="tag ' + tone + '" title="' + html(row.contest.reason) + '">' + label + '</span>';
+    }
+
+    function demandBadge(row) {
+      if (!row || !row.demand) return '';
+      const match = row.demand.match;
+      if (!match.exactTerms && !match.relatedTerms) return '<span class="tag">Nobody asked it in the corpus</span>';
+      return '<span class="tag">Asked ' + match.exactTerms + ' · ' + match.relatedTerms + ' loosely</span>';
+    }
+
+    const FIELD_ORDER = { open: 0, contested: 1, settled: 2, unknown: 3 };
+
+    function sortedPrompts(rows, standings) {
+      if (state.promptSort === "topic") return rows;
+      const copy = rows.slice();
+      if (state.promptSort === "open") {
+        copy.sort((left, right) => {
+          const a = priorityOf(left.id);
+          const b = priorityOf(right.id);
+          return (FIELD_ORDER[a ? a.contest.state : "unknown"] || 0) - (FIELD_ORDER[b ? b.contest.state : "unknown"] || 0);
+        });
+        return copy;
+      }
+      // A question with no answer has no score, so it sorts after the scored
+      // ones rather than ahead of them as a zero would.
+      copy.sort((left, right) => {
+        const a = standings.get(left.id);
+        const b = standings.get(right.id);
+        const scoreOf = (row) => (row && row.score.answers ? (row.score.score === null ? 101 : row.score.score) : 102);
+        return scoreOf(a) - scoreOf(b);
+      });
+      return copy;
+    }
+
     function promptStandings() {
       const rows = new Map();
       const data = state.answerEngine;
@@ -2064,6 +2125,7 @@ export function renderProductPhase2AppHtml(): string {
         + '<select data-prompt-filter="topicId" aria-label="Filter by topic"><option value="">All topics</option>' + topics + '</select>'
         + '<select data-prompt-filter="intent" aria-label="Filter by intent"><option value="">Any intent</option>' + intents + '</select>'
         + '<select data-prompt-filter="status" aria-label="Filter by state">' + states + '</select>'
+        + '<select data-prompt-sort aria-label="Order"><option value="topic"' + (state.promptSort === "topic" ? " selected" : "") + '>Group by topic</option><option value="open"' + (state.promptSort === "open" ? " selected" : "") + '>Open fields first</option><option value="worst"' + (state.promptSort === "worst" ? " selected" : "") + '>Worst score first</option></select>'
         + '<button type="button" class="filter" data-prompt-select-all>Select all shown</button>'
         + '<span class="prompt-result-summary subtle">' + promptResultSummary(shown, livePrompts(set).length) + '</span></div>';
     }
@@ -2087,6 +2149,7 @@ export function renderProductPhase2AppHtml(): string {
       const notes = [intentLabel(prompt.intent)];
       if (prompt.status === "proposed") notes.push("proposed, not asked yet");
       if (!prompt.measuresVisibility) notes.push("names you, so it cannot measure visibility");
+      const priority = priorityOf(prompt.id);
       const answers = standing ? standing.score.answers : 0;
       const label = answers
         ? '<button type="button" class="linklike" data-evidence="' + html(prompt.id) + '" data-evidence-title="' + html(prompt.text) + '">' + html(prompt.text) + '</button>'
@@ -2094,7 +2157,8 @@ export function renderProductPhase2AppHtml(): string {
       const scoreClass = !standing || standing.score.score === null ? "" : standing.score.score > 0 ? "state-ok" : "state-bad";
       return '<div class="mrow mcols-promptrow">'
         + '<input type="checkbox" data-prompt-checkbox="' + html(prompt.id) + '"' + (checked ? ' checked' : '') + ' aria-label="Select this question">'
-        + '<div class="mname"><strong>' + label + '</strong><span class="subtle">' + html(notes.join(" · ")) + (answers ? ' · ' + answers + ' answer(s)' : '') + '</span></div>'
+        + '<div class="mname"><strong>' + label + '</strong><span class="subtle">' + html(notes.join(" · ")) + (answers ? ' · ' + answers + ' answer(s)' : '') + '</span>'
+        + (priority ? '<span class="rowtags">' + fieldBadge(priority) + demandBadge(priority) + '</span>' : '') + '</div>'
         + '<span class="mcell ' + scoreClass + '">' + (answers ? scoreText(standing.score.score) : "Not asked yet") + '</span>'
         + '<span class="mcell">' + (answers ? (standing.rank === null ? "Not named" : "#" + standing.rank) : "") + '</span>'
         + '<span class="mcell">' + (prompt.status === "active"
@@ -2117,7 +2181,7 @@ export function renderProductPhase2AppHtml(): string {
         const description = topic.description ? html(topic.description) + ' · ' : '';
         return '<section class="section-card"><div class="section-head"><div class="headmain"><h2>' + html(topic.name) + '</h2><p class="subtle">' + description + tracked + ' of ' + mine.length + ' shown tracked</p></div><div class="headaside">' + bulk + score + '</div></div>'
           + '<div class="mtable"><div class="mhead mcols-promptrow"><span></span><span>Question</span><span>Score</span><span>Rank</span><span></span></div>'
-          + mine.map((prompt) => promptRow(prompt, standings.get(prompt.id))).join("") + '</div></section>';
+          + sortedPrompts(mine, standings).map((prompt) => promptRow(prompt, standings.get(prompt.id))).join("") + '</div></section>';
       }).join("");
     }
 
@@ -2152,6 +2216,7 @@ export function renderProductPhase2AppHtml(): string {
       if (state.answerEngineState === "idle") { loadAnswerEngine(); }
       if (state.homeState === "idle") { loadHome(); }
       if (state.scheduleState === "idle") { loadSchedule(); }
+      if (state.priorityState === "idle") { loadPriority(); }
       if (state.topicState !== "ready") {
         return '<section class="view"><div class="heading"><div><h1>Prompts</h1><p class="subtle">The questions your buyers ask.</p></div></div><div class="empty"><div class="empty-copy"><h2>' + (state.topicState === "error" ? "Could not read the prompt set" : "Loading prompts") + '</h2></div></div></section>';
       }
@@ -2420,6 +2485,8 @@ export function renderProductPhase2AppHtml(): string {
         saveEngines(chosen);
         return;
       }
+      const promptOrder = event.target && event.target.closest ? event.target.closest("[data-prompt-sort]") : null;
+      if (promptOrder) { state.promptSort = promptOrder.value; refreshPromptResults(); return; }
       const promptFilter = event.target && event.target.closest ? event.target.closest("[data-prompt-filter]") : null;
       if (promptFilter) {
         state.promptFilters[promptFilter.getAttribute("data-prompt-filter")] = promptFilter.value;
