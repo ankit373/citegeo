@@ -7,9 +7,10 @@ import { projectInsights } from "./project-insights.js";
 import { NO_PERSONA, type PersonaService } from "./persona.js";
 import { buildPromptBrief, type PromptBrief } from "./prompt-brief.js";
 import { briefMarkdown } from "./brief-export.js";
+import { buildQuestionContest } from "./question-contest.js";
 import type { CompetitorService } from "./competitor-set.js";
 import type { SegmentService } from "./segment-set.js";
-import { isPromptIntent } from "./topic-schema.js";
+import { activePrompts, isPromptIntent } from "./topic-schema.js";
 import { REGIONS, REGION_CAVEAT } from "./region.js";
 import { LANGUAGES } from "./language.js";
 import { promptExportNames, promptExportTable } from "./topic-export.js";
@@ -396,6 +397,30 @@ export async function handleTopicApi(input: {
         runs: runList,
         modelCount: selections,
       });
+    }, 404);
+    return true;
+  }
+
+  if (method === "GET" && tail.length === 1 && tail[0] === "question-priority") {
+    await guard(async () => {
+      const [set, answers, report] = await Promise.all([
+        topics.get(projectId),
+        runs.listAnswers(projectId),
+        demand.load(projectId).catch(() => null),
+      ]);
+      const scoped = sliced(answers, url);
+      return {
+        questions: activePrompts(set).map((prompt) => ({
+          promptId: prompt.id,
+          text: prompt.text,
+          topicId: prompt.topicId,
+          intent: prompt.intent,
+          measuresVisibility: prompt.measuresVisibility,
+          contest: buildQuestionContest({ prompt, answers: scoped }),
+          demand: report?.prompts.find((row) => row.promptId === prompt.id) || null,
+        })),
+        corpusIndexed: Boolean(report),
+      };
     }, 404);
     return true;
   }

@@ -69,7 +69,7 @@ test("nothing answered reads as no reading, and never as a settled field", () =>
   assert.equal(contest.named, 0);
   assert.equal(contest.leaderAgreement, null);
   assert.ok(contest.reason.includes("Nothing has been answered"));
-  assert.equal(contest.state, "open");
+  assert.equal(contest.state, "unknown", "an unasked question has no field to read, which is not an open one");
 });
 
 test("an answer with no readable order contributes a name but not a leader", () => {

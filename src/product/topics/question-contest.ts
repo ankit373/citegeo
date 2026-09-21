@@ -6,7 +6,9 @@ import type { Prompt } from "./topic-schema.js";
 // volume nobody here can see. Being absent from a question every model answers
 // the same way is a different problem from being absent from an open one.
 
-export type ContestState = "settled" | "contested" | "open";
+/** "unknown" is not a fourth kind of field. It is the absence of a reading,
+ * and calling an unasked question open would be inventing one. */
+export type ContestState = "settled" | "contested" | "open" | "unknown";
 
 export interface QuestionContest {
   promptId: string;
@@ -76,13 +78,15 @@ export function buildQuestionContest(input: { prompt: Prompt; answers: PromptAns
   const namedOnce = [...counts.values()].filter((row) => row.answers === 1).length;
 
   // Nothing answered is no reading at all, not an open field.
-  const state: ContestState = completed.length === 0 || leaderAgreement === null
-    ? "open"
-    : leaderAgreement >= SETTLED_AGREEMENT
-      ? "settled"
-      : leaderAgreement < OPEN_AGREEMENT
-        ? "open"
-        : "contested";
+  const state: ContestState = completed.length === 0
+    ? "unknown"
+    : leaderAgreement === null
+      ? "open"
+      : leaderAgreement >= SETTLED_AGREEMENT
+        ? "settled"
+        : leaderAgreement < OPEN_AGREEMENT
+          ? "open"
+          : "contested";
 
   const tail = `${named} organisation(s) named in total, ${namedOnce} of them by one answer only.`;
   const share = `${Math.round((leaderAgreement || 0) * 100)}%`;
