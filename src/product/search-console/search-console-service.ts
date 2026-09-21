@@ -1,5 +1,6 @@
 import { getJson, putJson } from "../storage/object-store.js";
 import { recentWindow, SearchConsoleClient, type SearchRow } from "./search-console-client.js";
+import { AnalyticsClient, type ReferralReport } from "./analytics-client.js";
 import { buildSearchDemand, type SearchDemandReport } from "./search-demand.js";
 import { ServiceAccountError } from "./service-account.js";
 import type { ProductProjectFileStore } from "../projects/project-store.js";
@@ -23,10 +24,56 @@ export class SearchConsoleService {
     private readonly secret: () => Promise<string | null>,
     private readonly siteUrl: () => string | null,
     private readonly client = new SearchConsoleClient(),
+    private readonly propertyId: () => string | null = () => null,
+    private readonly analytics = new AnalyticsClient(),
   ) {}
 
   private key(projectId: string): string {
     return this.projects.keyFor(projectId, "search-console", "report.json");
+  }
+
+  private referralKey(projectId: string): string {
+    return this.projects.keyFor(projectId, "search-console", "referrals.json");
+  }
+
+  async referrals(projectId: string): Promise<{ configured: boolean; propertyId: string | null; report: ReferralReport | null; detail: string }> {
+    const raw = await this.secret();
+    const property = this.propertyId();
+    const report = await getJson<ReferralReport>(this.projects.objects, this.referralKey(projectId));
+    return {
+      configured: Boolean(raw),
+      propertyId: property,
+      report,
+      detail: !raw
+        ? "No service account key is held. The same key serves Search Console and Analytics."
+        : !property
+          ? "A key is held but no GA4 property id is set."
+          : report
+            ? `Last pulled ${report.fetchedAt.slice(0, 10)}.`
+            : "Ready to pull. Nothing has been read yet.",
+    };
+  }
+
+  /** Who arrived, as opposed to who was named. A property that reported no
+   * row at all says so rather than reading as nobody arriving. */
+  async refreshReferrals(projectId: string, days = 90): Promise<ReferralReport> {
+    const raw = await this.secret();
+    if (!raw) throw new SearchConsoleUnavailableError("No service account key is held.");
+    const property = this.propertyId();
+    if (!property) throw new SearchConsoleUnavailableError("No GA4 property id is set, so there is nothing to query.");
+    const window = recentWindow(days);
+    try {
+      const report = await this.analytics.referrals({
+        account: SearchConsoleClient.accountFrom(raw),
+        propertyId: property,
+        from: window.from,
+        to: window.to,
+      });
+      await putJson(this.projects.objects, this.referralKey(projectId), report);
+      return report;
+    } catch (error) {
+      throw error instanceof ServiceAccountError ? new SearchConsoleUnavailableError(error.message) : error;
+    }
   }
 
   private async saved(projectId: string): Promise<SearchDemandReport | null> {

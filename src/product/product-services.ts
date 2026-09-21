@@ -189,6 +189,8 @@ export function createProductServices(dependencies: ProductServerDependencies = 
     projectStore,
     async () => process.env.GOOGLE_SERVICE_ACCOUNT_JSON || await credentials.resolve("google"),
     () => process.env.GOOGLE_SEARCH_CONSOLE_SITE || null,
+    undefined,
+    () => process.env.GOOGLE_ANALYTICS_PROPERTY_ID || null,
   );
   const storageSettings = new StorageSettingsStore(productDataDir());
   // A run left "running" by a process that is gone would otherwise show as

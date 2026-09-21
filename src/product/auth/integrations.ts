@@ -55,6 +55,15 @@ const OUTWARD_INTEGRATIONS: IntegrationDefinition[] = [
     help: "A service account JSON key, with the service account added as a user on the Search Console property.",
     settings: [{ key: "siteUrl", label: "Property URL", envKey: "GOOGLE_SEARCH_CONSOLE_SITE" }],
   },
+  {
+    id: "google-analytics",
+    label: "Google Analytics",
+    kind: "integration",
+    purpose: "Read how many people arrived from each assistant, which is a different claim from having been named by one.",
+    envKeys: ["GOOGLE_SERVICE_ACCOUNT_JSON"],
+    help: "The same service account key, added as a viewer on the Analytics property.",
+    settings: [{ key: "propertyId", label: "GA4 property id", envKey: "GOOGLE_ANALYTICS_PROPERTY_ID" }],
+  },
 ];
 
 export const INTEGRATIONS: IntegrationDefinition[] = [...MODEL_PROVIDERS, ...OUTWARD_INTEGRATIONS];
