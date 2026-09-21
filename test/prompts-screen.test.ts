@@ -94,3 +94,26 @@ test("a failed request reports what the server said, not a category", () => {
   assert.equal(html.includes('requestError(typeof body.code === "string" ? body.code : "request_failed", typeof body.error === "string" ? body.error : undefined)'), true);
   assert.equal(html.includes("const error = new Error(detail || expectedErrorText[code]"), true);
 });
+
+test("no button is inert: every one can be reached by a handler", () => {
+  const html = productAppSource();
+  // A button with no data attribute, id, href or submit can never do anything.
+  // Nine of them shipped that way when the markup moved onto the component,
+  // because a bare attribute like data-reload-insights was simply dropped.
+  const inert: string[] = [];
+  let at = html.indexOf("button({");
+  while (at >= 0) {
+    let depth = 0;
+    let end = at + 7;
+    for (; end < html.length; end++) {
+      const ch = html[end];
+      if (ch === "(" || ch === "{") depth++;
+      else if (ch === ")" || ch === "}") { depth--; if (depth === 0) break; }
+    }
+    const call = html.slice(at, end + 1);
+    const wired = ["on:", "href:", "id:", "submit:"].some((key) => call.includes(key));
+    if (!wired) inert.push(call.slice(0, 90));
+    at = html.indexOf("button({", end);
+  }
+  assert.deepEqual(inert, [], "these buttons cannot be clicked to any effect");
+});

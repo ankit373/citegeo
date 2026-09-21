@@ -626,7 +626,7 @@ export function boot(): void {
     }
     function renderActionPlan() {
       if (state.planState === "idle") { loadPlan(); }
-      const head = '<section class="section-card"><div class="section-head"><div><h2>What to do next</h2><p class="subtle">Ordered by what decides whether a model can cite you at all. Every line names the observation behind it.</p></div><div class="inline-actions">' + button({ label: "Probe the site" }) + '</div></div>';
+      const head = '<section class="section-card"><div class="section-head"><div><h2>What to do next</h2><p class="subtle">Ordered by what decides whether a model can cite you at all. Every line names the observation behind it.</p></div><div class="inline-actions">' + button({ label: "Probe the site", on: { "data-probe-signals": true } }) + '</div></div>';
       if (state.planState !== "ready" || !state.plan) {
         return head + '<p class="subtle">' + (state.planState === "error" ? "Could not build a plan." : "Building the plan…") + '</p></section>';
       }
@@ -677,7 +677,7 @@ export function boot(): void {
         audit.mismatches.map((row: any) => '<li><strong class="state-bad">' + html(row.field) + ' shares nothing with what you declare</strong><br><span class="subtle">they say "' + html(row.asserted) + '", you say "' + html(row.declared) + '"</span></li>'),
       ).join("");
       const categoryRows = core.categories.map((row: any) => '<li>' + html(row.value) + ' <span class="subtle">' + row.count + '</span></li>').join("");
-      return '<section class="view"><div class="heading"><div><h1>Visibility</h1><p class="subtle">Pooled from ' + data.runsConsidered + ' run(s) and ' + core.answered + ' parsed answer(s) for ' + html(data.domain) + '.</p></div><div class="inline-actions">' + button({ label: "Recompute" }) + '</div></div>'
+      return '<section class="view"><div class="heading"><div><h1>Visibility</h1><p class="subtle">Pooled from ' + data.runsConsidered + ' run(s) and ' + core.answered + ' parsed answer(s) for ' + html(data.domain) + '.</p></div><div class="inline-actions">' + button({ label: "Recompute", on: { "data-reload-insights": true } }) + '</div></div>'
         + renderActionPlan()
         + '<div class="countstrip"><span class="count"><strong>' + (v.score === null ? "n/a" : Math.round(v.score * 100) + "%") + '</strong>Visibility</span><span class="count"><strong>' + v.recognized + '</strong>Recognised</span><span class="count"><strong>' + v.answered + '</strong>Answers</span><span class="count"><strong>' + core.citations.targetCitedIn + '</strong>Answers citing you</span><span class="count"><strong>' + data.citationGap.length + '</strong>Citation gaps</span></div>'
         + '<section class="section-card"><div class="section-head"><div><h2>Visibility by model</h2><p class="subtle">Answers where the model said it recognised the domain.</p></div></div>' + insightTable("mcols-vis", ["Model", "Recognised", "Visibility"], v.byModel.length ? [modelRows] : [], "No parsed answers yet.") + '</section>'
@@ -875,7 +875,7 @@ export function boot(): void {
         + '<span class="spacer"></span>'
         + (run.status === "cancelling"
           ? '<span class="subtle">Finishing the answer in flight.</span>'
-          : button({ label: "Stop", tone: "danger" }))
+          : button({ label: "Stop", tone: "danger", on: { "data-stop-run": true } }))
         + '</div><div class="bar"><i style="width:' + pctDone + '%"></i></div>'
         + '<p class="subtle">' + doing + '. Open this to watch each question and answer as it lands.</p></div>';
     }
@@ -1475,7 +1475,7 @@ export function boot(): void {
         + '<p class="subtle">What went to each model and what came back, newest first.</p>'
         + '<div class="runpane-progress">' + runPaneProgress() + '</div></div>'
         + '<div class="panel-actions">'
-        + (runIsLive() && state.liveRun && state.liveRun.status !== "cancelling" ? button({ label: "Stop", tone: "danger" }) : '')
+        + (runIsLive() && state.liveRun && state.liveRun.status !== "cancelling" ? button({ label: "Stop", tone: "danger", on: { "data-stop-run": true } }) : '')
         + '<button type="button" class="close" data-close-panel aria-label="Close">×</button></div></div>'
         + '<div class="panel-body">' + runFeedBody() + '</div></aside>';
     }
@@ -1601,7 +1601,7 @@ export function boot(): void {
             + '<span class="mcell">' + button({ label: "Stop tracking", kind: "link", on: { "data-retire-rival": declaredIdFor(row.name) } }) + '</span></div>').join("") + '</div>'
         : '<p class="subtle">No rival is tracked yet. Adopt the ones your site and your answers already name, or add one by hand.</p>';
       return body
-        + '<div class="inline-actions" style="margin-top:14px">' + button({ label: "Adopt the ones already named" }) + '</div>'
+        + '<div class="inline-actions" style="margin-top:14px">' + button({ label: "Adopt the ones already named", on: { "data-adopt-rivals": true } }) + '</div>'
         + '<form id="add-rival-form" class="inline-form"><input name="name" type="text" placeholder="Competitor name" aria-label="Competitor name"><input name="domain" type="text" placeholder="domain.com (optional)" aria-label="Competitor domain">' + button({ label: "Add", submit: true }) + '</form>'
         + '<p class="subtle">A rival you track and never see reads as zero rather than disappearing, because that is the finding.</p>'
         + (declared.length ? '' : '');
@@ -1867,7 +1867,7 @@ export function boot(): void {
         + (proposed ? button({ label: "Track " + (proposed), on: { "data-bulk-activate": true } }) : '')
         + (tracked ? button({ label: "Stop tracking " + (tracked), on: { "data-bulk-retire": true } }) : '')
         + (tracked && !state.liveRun ? button({ label: "Run these " + (tracked), kind: "primary", on: { "data-bulk-run": true } }) : '')
-        + '<span class="spacer"></span>' + button({ label: "Clear", kind: "link" }) + '</div>';
+        + '<span class="spacer"></span>' + button({ label: "Clear", kind: "link", on: { "data-bulk-clear": true } }) + '</div>';
     }
 
     function promptRow(prompt: any, standing: any) {
@@ -1963,7 +1963,7 @@ export function boot(): void {
       const rows = filteredPrompts(set, standings);
       const proposed = live.filter((prompt) => prompt.status === "proposed").length;
       const review = proposed
-        ? '<div class="warning-box"><strong>' + proposed + ' question(s) are proposed and not tracked.</strong> A proposed question is never asked. Read them and track the ones buyers actually type. ' + button({ label: "Show only those", kind: "link" }) + '</div>'
+        ? '<div class="warning-box"><strong>' + proposed + ' question(s) are proposed and not tracked.</strong> A proposed question is never asked. Read them and track the ones buyers actually type. ' + button({ label: "Show only those", kind: "link", on: { "data-prompt-review": true } }) + '</div>'
         : '';
       return head
         + renderPromptStats(set, standings)
@@ -2003,7 +2003,7 @@ export function boot(): void {
       return '<p class="subtle">' + html(chosen.note) + '</p>'
         + '<div class="storage-grid"><label class="storage-field"><span>Where to store</span><select data-storage-backend>' + options + '</select><small class="mono">STORAGE_BACKEND</small></label>' + fields + '</div>'
         + result
-        + '<div class="inline-actions" style="margin-top:14px">' + button({ label: "Test connection" }) + button({ label: "Save", kind: "primary" }) + '</div>'
+        + '<div class="inline-actions" style="margin-top:14px">' + button({ label: "Test connection", on: { "data-storage-check": true } }) + button({ label: "Save", kind: "primary", on: { "data-storage-save": true } }) + '</div>'
         + '<p class="subtle">A secret is encrypted with <span class="mono">CREDENTIAL_KEY</span> and never sent back to this page. Anything set in the environment wins over what is saved here.</p>';
     }
 
@@ -2039,7 +2039,7 @@ export function boot(): void {
         const keys = provider.envKeys.concat(provider.settingsEnvKeys || []);
         return '<li>' + html(provider.label) + ': <span class="mono">' + html(keys.join(", ")) + '</span></li>';
       }).join("");
-      return '<section class="view"><div class="heading"><div><h1>Setup</h1><p class="subtle">Which providers this machine can actually run, and what each one costs you.</p></div><div class="inline-actions">' + button({ label: "Re-check" }) + '</div></div>'
+      return '<section class="view"><div class="heading"><div><h1>Setup</h1><p class="subtle">Which providers this machine can actually run, and what each one costs you.</p></div><div class="inline-actions">' + button({ label: "Re-check", on: { "data-reload-providers": true } }) + '</div></div>'
         + banner
         + '<section class="section-card"><div class="section-head"><div><h2>Providers</h2><p class="subtle">A provider appears in the model picker only when it is configured and answering.</p></div></div><div class="mtable"><div class="mhead mcols-provider"><span>Provider</span><span>Catalog</span><span>Status</span><span>What this means</span></div>' + rows + '</div></section>'
         + '<section class="section-card"><div class="section-head"><div><h2>Where this is stored</h2><p class="subtle">Everything is small JSON documents, so it sits on a disk or a bucket equally well.</p></div></div>' + renderStorage() + '</section>'
