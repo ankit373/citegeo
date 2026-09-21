@@ -27,6 +27,8 @@
   --color-failed-wash: rgba(168,64,47,.10);
   --color-skeleton: #ECE9E1;
   --color-skeleton-sheen: rgba(255,255,255,.70);
+  /* Behind a drawer or a panel, so the page reads as out of reach. */
+  --color-scrim: rgba(20,18,14,.34);
   --font-display: "Newsreader",ui-serif,Georgia,"Times New Roman",serif;
   --font-ui: "Instrument Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
   --font-mono: "JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
@@ -96,6 +98,7 @@
   --failed-wash: var(--color-failed-wash);
   --skeleton: var(--color-skeleton);
   --skeleton-sheen: var(--color-skeleton-sheen);
+  --scrim: var(--color-scrim);
   --type-micro: var(--text-micro);
   --type-xs: var(--text-xs);
   --type-sm: var(--text-sm);
@@ -170,6 +173,8 @@
       --skeleton: #2C2B28;
       --color-skeleton-sheen: rgba(255,255,255,.06);
       --skeleton-sheen: rgba(255,255,255,.06);
+      --color-scrim: rgba(0,0,0,.52);
+      --scrim: rgba(0,0,0,.52);
 
       --shadow-sm:0 1px 2px rgba(0,0,0,.28);
       --shadow:0 1px 3px rgba(0,0,0,.32),0 1px 1px rgba(0,0,0,.22);
@@ -193,6 +198,7 @@
     --failed: #DE8271; --failed-text:#E89583; --failed-wash:rgba(222,130,113,.13);
     --color-skeleton: #2C2B28; --skeleton-sheen:rgba(255,255,255,.06);
     --skeleton: #2C2B28; --skeleton-sheen:rgba(255,255,255,.06);
+    --color-scrim: rgba(0,0,0,.52); --scrim: rgba(0,0,0,.52);
     --shadow-sm:0 1px 2px rgba(0,0,0,.28);
     --shadow:0 1px 3px rgba(0,0,0,.32),0 1px 1px rgba(0,0,0,.22);
   }
@@ -392,10 +398,39 @@
 @utility shell {
   @apply grid min-h-screen grid-cols-[244px_minmax(0,1fr)];
   background: linear-gradient(to right, var(--sunken) 0 244px, var(--paper) 244px);
+  /* Collapsing the rail has to be written here: a utility outranks any layer
+     underneath it, so the same rule in @layer components never applies. */
+  body.nav-closed & {
+    grid-template-columns: minmax(0, 1fr);
+    background: var(--paper);
+  }
+  @media (max-width: 840px) {
+    grid-template-columns: minmax(0, 1fr);
+    background: var(--paper);
+  }
 }
 
 @utility sidebar {
   @apply sticky top-0 flex h-screen flex-col overflow-y-auto border-r border-line bg-transparent px-[14px] py-[22px];
+  body.nav-closed & { display: none; }
+  @media (max-width: 840px) {
+    /* Off canvas rather than hidden, so a phone keeps every destination one
+       tap away and the rail keeps its scroll position. */
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 7;
+    width: 244px;
+    max-width: 82vw;
+    height: 100dvh;
+    background: var(--sunken);
+    transform: translateX(-100%);
+    transition: transform var(--motion-normal) var(--ease-standard);
+    /* The remembered desktop choice must not hide the drawer on a phone. */
+    body.nav-closed & { display: flex; }
+    body.nav-open & { transform: translateX(0); }
+  }
 }
 
 @utility workspace {
@@ -575,4 +610,34 @@
   }
   .btn[data-action-state="success"], .button[data-action-state="success"] { color: var(--confirmed-text); border-color: var(--confirmed); }
   .btn[data-action-state="error"], .button[data-action-state="error"] { color: var(--failed-text); border-color: var(--failed); }
+}
+
+/* The rail collapses on a desktop and slides over the page on a phone. One
+   toggle drives both, so there is one closed state rather than two. */
+
+@layer components {
+  .nav-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 6;
+    opacity: 0;
+    pointer-events: none;
+    background: var(--scrim);
+    transition: opacity var(--motion-normal) var(--ease-standard);
+  }
+
+  .topbar-lead {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  body.nav-open .nav-scrim { opacity: 1; pointer-events: auto; }
+
+  /* A pointer can reach a 34px target; a thumb needs the room back. */
+  @media (max-width: 840px) and (pointer: coarse) {
+    .btn, .button { min-height: 40px; }
+    .btn-sm, .card-action { min-height: 34px; }
+  }
 }

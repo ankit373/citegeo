@@ -134,7 +134,7 @@ export function renderProductPhase2AppHtml(): string {
     .chev { color:var(--weak); font-size:11px; }
 
     /* Evidence opens beside the number rather than replacing the page. */
-    .panel-scrim { position:fixed; inset:0; z-index:8; background:rgba(20,18,14,.34); opacity:0; pointer-events:none; transition:opacity var(--motion-normal) var(--ease-standard); }
+    .panel-scrim { position:fixed; inset:0; z-index:8; background:var(--scrim); opacity:0; pointer-events:none; transition:opacity var(--motion-normal) var(--ease-standard); }
     .panel { position:fixed; z-index:9; inset:0 0 0 auto; width:min(720px,100vw); background:var(--paper); border-left:1px solid var(--line); box-shadow:-12px 0 40px rgba(20,18,14,.16); transform:translateX(100%); transition:transform var(--motion-normal) var(--ease-standard); display:flex; flex-direction:column; }
     body.panel-open .panel-scrim { opacity:1; pointer-events:auto; }
     body.panel-open .panel { transform:translateX(0); }
@@ -357,11 +357,37 @@ export function renderProductPhase2AppHtml(): string {
     @media (max-width:840px) {
       /* Hiding the sidebar here left no way to navigate at all on a phone. */
       .brand { margin:0 0 14px; }
-      .topbar,.heading,.section-head { align-items:flex-start; flex-direction:column; }
+      /* anywhere, not break-word: only this variant lowers min-content, and a
+         domain in a heading was setting the width of the whole page. */
+      .workspace { overflow-wrap:anywhere; }
+      /* stretch, not flex-start: a flex-start child is sized to max-content,
+         so every heading refused to wrap and pushed the page sideways. */
+      .heading,.section-head { flex-direction:column; align-items:stretch; }
+      .topbar { flex-wrap:wrap; }
       /* Fixed column widths do not fit, so every table stacks. */
       .mcols-catalog > *:nth-child(n+3),.mcols-promptrow > *:nth-child(n+3),.mcols-engine > *:nth-child(n+3) { grid-column:2; }
       .promptbar .prompt-result-summary { margin-left:0; }
       .card-actions { margin-top:2px; }
+      /* Anchored to the right of a control that can sit anywhere in a wrapped
+         row, this opened off the left edge. Inline, it cannot. */
+      .exportlist { position:static; min-width:0; margin-top:8px; box-shadow:none; }
+      /* A fixed track width cannot fit a phone, so the table scrolls inside
+         its card. contain, not overflow: a scroll container only zeroes the
+         minimum size of a flex or grid item, and this is a plain block, so
+         overflow alone still let the rows widen the whole page. */
+      .mtable { contain:inline-size; overflow-x:auto; overscroll-behavior-x:contain; }
+      .mtable > * { min-width:max-content; }
+    }
+    /* A thumb needs more room than a pointer. These sit here rather than in
+       the theme because the rules they widen are still defined in this file. */
+    @media (pointer:coarse) {
+      input[type="checkbox"],input[type="radio"] { width:19px; height:19px; }
+      .checkline { min-height:34px; align-items:center; }
+      .exportlist a { padding:9px 7px; }
+      .tag { min-height:32px; }
+      /* Widens the target without moving the sentence it sits in. */
+      .linklike { position:relative; }
+      .linklike::after { content:""; position:absolute; inset:-9px -5px; }
     }
     @media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration:.01ms !important; transition-duration:.01ms !important; } }
   </style>
