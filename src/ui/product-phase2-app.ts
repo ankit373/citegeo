@@ -430,7 +430,7 @@ export function renderProductPhase2AppHtml(): string {
     </form>
   </aside>
   <script>
-    const state = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", promptFilters:{ query:"", topicId:"", intent:"", status:"" }, promptSelection:[], answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", rivals:null, rivalsState:"idle", segments:null, segmentsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, lastRun:null, runPollTimer:0, runFeed:[], runFeedState:"idle", runFeedTimer:0, rankPlan:null, rankPlanState:"idle", brief:null, briefState:"idle", outreach:null, outreachState:"idle", harvesting:false, searchDemand:null, searchDemandState:"idle", pulling:false, personas:null, personasState:"idle", priority:null, priorityState:"idle", promptSort:"topic", engines:null, enginesState:"idle", actions:[], actionsState:"idle" };
+    const state = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", promptFilters:{ query:"", topicId:"", intent:"", status:"" }, promptSelection:[], answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", rivals:null, rivalsState:"idle", segments:null, segmentsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, lastRun:null, runPollTimer:0, runFeed:[], runFeedState:"idle", runFeedTimer:0, rankPlan:null, rankPlanState:"idle", brief:null, briefState:"idle", outreach:null, outreachState:"idle", harvesting:false, searchDemand:null, searchDemandState:"idle", pulling:false, personas:null, personasState:"idle", priority:null, priorityState:"idle", promptSort:"topic", referrals:null, referralsState:"idle", pullingReferrals:false, engines:null, enginesState:"idle", actions:[], actionsState:"idle" };
     const app = document.getElementById("app");
     const element = (id) => document.getElementById(id);
     const html = (value) => String(value).split("&").join("&amp;").split("<").join("&lt;").split(">").join("&gt;").split('"').join("&quot;").split("'").join("&#39;");
@@ -438,7 +438,7 @@ export function renderProductPhase2AppHtml(): string {
     const formatTime = (value) => new Date(value).toLocaleString();
     const modeText = (mode) => mode === "provider_native" ? "Provider Native web search" : "Offline";
     const statusText = (status) => status === "draft" ? "Draft" : status === "active" ? "Running" : status === "archived" ? "Archived" : "Deleted";
-    function setSelectedProject(projectId) { if (projectId !== state.selectedId) { state.liveRun = null; state.lastRun = null; state.insights = null; state.insightsState = "idle"; state.plan = null; state.planState = "idle"; state.rankPlan = null; state.rankPlanState = "idle"; state.engines = null; state.enginesState = "idle"; state.actions = []; state.actionsState = "idle"; state.outreach = null; state.outreachState = "idle"; state.searchDemand = null; state.searchDemandState = "idle"; state.personas = null; state.personasState = "idle"; state.priority = null; state.priorityState = "idle"; state.crawlers = null; state.crawlersState = "idle"; state.signals = null; state.signalsState = "idle"; } state.selectedId = projectId || ""; if (state.selectedId) localStorage.setItem("citegeo.product.projectId", state.selectedId); else localStorage.removeItem("citegeo.product.projectId"); const next = new URL(window.location.href); if (state.selectedId) next.searchParams.set("projectId", state.selectedId); else next.searchParams.delete("projectId"); window.history.replaceState({ projectId:state.selectedId }, "", next); }
+    function setSelectedProject(projectId) { if (projectId !== state.selectedId) { state.liveRun = null; state.lastRun = null; state.insights = null; state.insightsState = "idle"; state.plan = null; state.planState = "idle"; state.rankPlan = null; state.rankPlanState = "idle"; state.engines = null; state.enginesState = "idle"; state.actions = []; state.actionsState = "idle"; state.outreach = null; state.outreachState = "idle"; state.searchDemand = null; state.searchDemandState = "idle"; state.personas = null; state.personasState = "idle"; state.priority = null; state.priorityState = "idle"; state.referrals = null; state.referralsState = "idle"; state.crawlers = null; state.crawlersState = "idle"; state.signals = null; state.signalsState = "idle"; } state.selectedId = projectId || ""; if (state.selectedId) localStorage.setItem("citegeo.product.projectId", state.selectedId); else localStorage.removeItem("citegeo.product.projectId"); const next = new URL(window.location.href); if (state.selectedId) next.searchParams.set("projectId", state.selectedId); else next.searchParams.delete("projectId"); window.history.replaceState({ projectId:state.selectedId }, "", next); }
     function setDrawer(open) { document.body.classList.toggle("drawer-open", open); element("project-drawer").setAttribute("aria-hidden", String(!open)); }
     function openDrawer() { state.drawerSession += 1; setFormStatus("", ""); setDrawer(true); window.setTimeout(() => element("project-domain").focus(), 0); }
     function closeDrawer() { state.drawerSession += 1; setDrawer(false); }
@@ -1760,6 +1760,55 @@ export function renderProductPhase2AppHtml(): string {
         + '</div>';
     }
 
+    async function loadReferrals() {
+      if (!state.selectedId || state.referralsState === "loading") return;
+      state.referralsState = "loading";
+      try {
+        state.referrals = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/assistant-referrals");
+        state.referralsState = "ready";
+      } catch (error) {
+        state.referralsState = "error";
+      }
+      render();
+    }
+
+    async function pullReferrals() {
+      if (!state.selectedId || state.pullingReferrals) return;
+      state.pullingReferrals = true;
+      render();
+      try {
+        const result = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/assistant-referrals", { method:"POST", headers:{"Content-Type":"application/json"}, body:"{}" });
+        state.referrals = { ...(state.referrals || {}), configured:true, report: result.report };
+        state.promptNotice = { text:"Analytics read.", kind:"success" };
+      } catch (error) {
+        state.promptNotice = { text: error && error.message ? error.message : String(error), kind:"error" };
+      }
+      state.pullingReferrals = false;
+      render();
+    }
+
+    function renderReferrals() {
+      if (state.referralsState === "idle") { loadReferrals(); }
+      if (state.referralsState !== "ready" || !state.referrals) {
+        return '<p class="subtle">' + (state.referralsState === "error" ? "Could not read the Analytics settings." : "Checking for an Analytics property.") + '</p>';
+      }
+      const data = state.referrals;
+      const button = data.configured && data.propertyId
+        ? '<button type="button" class="button" data-pull-referrals' + (state.pullingReferrals ? ' disabled' : '') + '>' + (state.pullingReferrals ? "Reading…" : "Pull the last 90 days") + '</button>'
+        : '<button type="button" class="button" data-page="setup">Add it in Setup</button>';
+      const head = '<p class="subtle">' + html(data.detail) + '</p><div class="inline-actions">' + button + '</div>';
+      const report = data.report;
+      if (!report) return head;
+      if (report.empty) return head + '<p class="subtle">The property reported no row at all for this window, which is a property with nothing in it rather than a property where nobody arrived from an assistant.</p>';
+      if (!report.assistants.length) return head + '<p class="subtle">' + report.totalSessions + ' session(s) in the window and none from an assistant this tool knows. Being named is not the same as being visited.</p>';
+      return head + '<div class="mtable"><div class="mhead mcols-rank"><span>Assistant</span><span>Sessions</span><span>Share of all</span></div>'
+        + report.assistants.map((row) => '<div class="mrow mcols-rank">'
+          + '<div class="mname"><strong>' + html(row.source) + '</strong><span class="subtle">' + (row.engaged === null ? "engagement not reported" : row.engaged + ' engaged') + '</span></div>'
+          + '<span class="mcell">' + row.sessions + '</span>'
+          + '<span class="mcell">' + (report.totalSessions ? Math.round(row.sessions / report.totalSessions * 1000) / 10 + '%' : "Not measurable") + '</span></div>').join("")
+        + '</div><p class="evidence-note">Arriving is a different claim from being named. A high score with no sessions means the answers name you and nobody clicks through, which is the normal case and not a fault in either number.</p>';
+    }
+
     function renderRunPane() {
       return '<div class="panel-scrim" data-close-panel></div><aside class="panel" role="dialog" aria-label="Live run">'
         + '<div class="panel-head"><div><h2>' + (runIsLive() ? "Live run" : "Finished run") + '</h2>'
@@ -1960,6 +2009,7 @@ export function renderProductPhase2AppHtml(): string {
         + '<section class="section-card"><div class="section-head"><div><h2>Who is asking</h2><p class="subtle">Add a persona and every run asks on their behalf as well.</p></div></div>' + renderPersonas() + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>Sources</h2><p class="subtle">A domain says you are cited. A page says which one to write more of.</p></div></div>' + renderCitedPages() + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>What people search for</h2><p class="subtle">Search Console, joined to the questions you track. Not AI prompt volume, but real demand for the same subject.</p></div></div>' + renderSearchDemand() + '</section>'
+        + '<section class="section-card"><div class="section-head"><div><h2>Who arrived from an assistant</h2><p class="subtle">Analytics sessions by referring assistant. Being named is one claim; somebody arriving because of it is another.</p></div></div>' + renderReferrals() + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>Pages the models read</h2><p class="subtle">Each cited page, fetched and read back: who is on it, in what order, and whether you are. A page cited on a question you lose, without you on it, is the most specific thing here.</p></div></div>' + renderOutreach() + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>By AI assistant</h2><p class="subtle">The models you picked in Choose models, each answering the same questions. These are who was asked, not who you compete with.</p></div></div>' + renderModelRows(data.byModel) + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>Keep it running</h2><p class="subtle">A tracker that is run by hand is a snapshot.</p></div></div>' + renderSchedule() + '</section></section>';
@@ -2527,6 +2577,7 @@ export function renderProductPhase2AppHtml(): string {
       }
       if (target.closest("[data-harvest-pages]")) { harvestPages(); return; }
       if (target.closest("[data-pull-search]")) { pullSearchDemand(); return; }
+      if (target.closest("[data-pull-referrals]")) { pullReferrals(); return; }
       if (target.closest("[data-stop-run]")) { stopRun(); return; }
       const openRun = target.closest("[data-open-run]");
       if (openRun) { openRunPane(openRun.getAttribute("data-open-run") || ""); return; }

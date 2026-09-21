@@ -17,7 +17,25 @@ export async function handleSearchConsoleApi(input: {
   if (route[0] !== "api" || route[1] !== "projects") return false;
   const projectId = route[2];
   const tail = route.slice(3);
-  if (!projectId || tail.length !== 1 || tail[0] !== "search-demand") return false;
+  if (!projectId || tail.length !== 1) return false;
+
+  if (tail[0] === "assistant-referrals") {
+    if (method === "GET") {
+      send(200, await searchConsole.referrals(projectId));
+      return true;
+    }
+    if (method === "POST") {
+      try {
+        send(200, { report: await searchConsole.refreshReferrals(projectId) });
+      } catch (error) {
+        send(error instanceof SearchConsoleUnavailableError ? 400 : 500, { error: error instanceof Error ? error.message : String(error) });
+      }
+      return true;
+    }
+    return false;
+  }
+
+  if (tail[0] !== "search-demand") return false;
 
   if (method === "GET") {
     send(200, await searchConsole.status(projectId));
