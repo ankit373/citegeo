@@ -44,6 +44,7 @@ import { ProductMeasurementStatsService } from "./measurements/measurement-stats
 import { ProductScheduleFileStore } from "./scheduling/schedule-store.js";
 import { ProductScheduleService } from "./scheduling/schedule-service.js";
 import { EngineService } from "./engines/engine-service.js";
+import { ActionLogService, ActionLogStore } from "./topics/action-log.js";
 // The composition root. The graph is built once per server, not per request:
 // rebuilding it per call silently discarded anything a service held between
 // calls, so the insights cache cached nothing and cost 60ms every time.
@@ -120,6 +121,7 @@ export interface ProductServices {
   competitors: CompetitorService;
   segments: SegmentService;
   engines: EngineService;
+  actions: ActionLogService;
   storageSettings: StorageSettingsStore;
   dataDir: string;
   /** Asks one structured question through the project's own saved models. */
@@ -171,6 +173,7 @@ export function createProductServices(dependencies: ProductServerDependencies = 
   const demand = new DemandReportFileStore(projectStore);
   const competitors = new CompetitorService(new CompetitorFileStore(projectStore));
   const segments = new SegmentService(new SegmentFileStore(projectStore));
+  const actions = new ActionLogService(new ActionLogStore(projectStore));
   const storageSettings = new StorageSettingsStore(productDataDir());
   // A run left "running" by a process that is gone would otherwise show as
   // live forever, which is how three dead runs kept claiming to be working.
@@ -181,7 +184,7 @@ export function createProductServices(dependencies: ProductServerDependencies = 
   return {
     projects, catalog, selections, baselines, recognition, reports, insights,
     signals, crawlerLog, watchSets, measurements, stats, schedules,
-    topics, promptRuns, promptSchedule, demand, profiles, competitors, segments, ask, engines,
+    topics, promptRuns, promptSchedule, demand, profiles, competitors, segments, ask, engines, actions,
     storageSettings, dataDir: productDataDir(),
     credentials: new CredentialService(new CredentialFileStore(productDataDir())),
     auth: authConfig(),

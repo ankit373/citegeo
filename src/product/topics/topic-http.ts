@@ -3,6 +3,7 @@ import { buildHomeSummary } from "../alerts/home-summary.js";
 import { buildAnswerDigest } from "../alerts/answer-digest.js";
 import { buildCitationAnalysis } from "./citation-analysis.js";
 import { buildRankingPlan, type RankingPlan } from "./ranking-plan.js";
+import { projectInsights } from "./project-insights.js";
 import { buildPromptBrief, type PromptBrief } from "./prompt-brief.js";
 import type { CompetitorService } from "./competitor-set.js";
 import type { SegmentService } from "./segment-set.js";
@@ -402,23 +403,7 @@ export async function handleTopicApi(input: {
   }
 
   if (method === "GET" && tail.length === 1 && tail[0] === "prompt-insights") {
-    await guard(async (): Promise<TopicInsights> => {
-      const [set, answers, runList, identity] = await Promise.all([
-        topics.get(projectId),
-        runs.listAnswers(projectId),
-        runs.listRuns(projectId),
-        topics.targetIdentity(projectId).catch(() => null),
-      ]);
-      const rivals = await competitors.get(projectId).catch(() => null);
-      return buildTopicInsights({
-        projectId,
-        set,
-        answers: sliced(answers, url),
-        runs: runList,
-        identityCaveat: identity?.caveat || null,
-        competitors: rivals?.competitors,
-      });
-    }, 404);
+    await guard(() => projectInsights({ projectId, topics, runs, competitors, slice: (rows) => sliced(rows, url) }), 404);
     return true;
   }
 

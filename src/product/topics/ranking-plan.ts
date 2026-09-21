@@ -11,6 +11,9 @@ export type RankingEffect = "raises_visibility" | "unblocks_measurement" | "wide
 
 export interface RankingMove {
   id: string;
+  /** Set when the move is about one question, so it can be opened and taken
+   * up on its own rather than as a project-wide instruction. */
+  promptId?: string | null | undefined;
   effect: RankingEffect;
   title: string;
   why: string;
@@ -107,6 +110,7 @@ export function buildRankingPlan(input: {
     const instead = [...named.entries()].sort((left, right) => right[1] - left[1]).map(([name]) => ({ name }));
     moves.push({
       id: "absent-prompts",
+      promptId: absent[0]?.promptId || null,
       effect: "raises_visibility",
       title: `Win the ${absent.length} question(s) you are never named in`,
       why: instead.length
