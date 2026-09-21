@@ -32,6 +32,28 @@ interface ReadPayload {
   links: string[];
 }
 
+/** A wall, not a banner: a sign-in phrase on a page too short to hold an
+ * answer. Signing in and updating a selector are different repairs. */
+const SIGNED_OUT = `(() => {
+  const text = (document.body ? document.body.innerText : "").slice(0, 4000).toLowerCase();
+  const prompts = ["sign in", "log in", "sign up", "create an account", "continue with google"];
+  const hits = prompts.filter((phrase) => text.includes(phrase)).length;
+  return hits > 0 && text.length < 2500;
+})()`;
+
+/** The container gets its grace first: a page three seconds old has rendered
+ * nothing, and a prompt beside a real answer is a banner rather than a wall. */
+async function signedOut(session: CdpSession, specificSelectors: string[], graceMs = 15000): Promise<boolean> {
+  const present = `${JSON.stringify(specificSelectors)}.some((selector) => document.querySelector(selector))`;
+  if (await waitFor(session, present, graceMs, 1000)) return false;
+  return session.evaluate<boolean>(SIGNED_OUT).catch(() => false);
+}
+
+const SIGN_IN_OUTCOME: EngineOutcome = {
+  state: "unavailable",
+  detail: "This surface is asking the browser to sign in. Sign in to it in the browser you started, then run again. Nothing here will sign in for you.",
+};
+
 /** A signed-out or interstitial page still renders text, so an answer is only
  * an answer when the surface's own container matched. */
 async function readAnswer(input: {
@@ -47,9 +69,10 @@ async function readAnswer(input: {
     return { state: "unreadable", detail: "No answer container matched. The page has changed shape, so this engine needs updating." };
   }
   if (!input.specificSelectors.includes(payload.selector)) {
+    if (await input.session.evaluate<boolean>(SIGNED_OUT).catch(() => false)) return SIGN_IN_OUTCOME;
     return {
       state: "unreadable",
-      detail: `Only the generic container "${payload.selector}" matched, so what was read is page furniture rather than an answer. Either the page changed or this browser is not signed in.`,
+      detail: `Only the generic container "${payload.selector}" matched, so what was read is page furniture rather than an answer. The page has changed and this engine needs updating.`,
     };
   }
   if (payload.text.length < input.minimumLength) {
@@ -87,12 +110,13 @@ export const googleAiOverview: BrowserEngine = {
 export const perplexityWeb: BrowserEngine = {
   id: "perplexity-web",
   label: "Perplexity (web)",
-  caveat: "Read from perplexity.ai in your own signed-in browser. The web app and the Sonar API do not always answer the same way.",
+  caveat: "Read from perplexity.ai in your own signed-in browser. Signed out it answers but renders no linked sources, so citations come back empty rather than wrong. The web app and the Sonar API do not always answer the same way.",
   async ask(session, question) {
     await session.send("Page.navigate", { url: `https://www.perplexity.ai/search?q=${encodeURIComponent(question)}` });
     // "main" is the fallback only so a miss can be reported as a miss; it is
     // not in specificSelectors, so page furniture never reads as an answer.
     const specific = ["[data-testid='answer']", "div.prose"];
+    if (await signedOut(session, specific)) return SIGN_IN_OUTCOME;
     const expression = readerExpression([...specific, "main"], "a[href^='http']");
     await waitFor(session, `(() => { const found = ${expression}; return Boolean(found && found.links.length > 0 && found.text.length > 200); })()`, 45000);
     return readAnswer({ session, engineId: "perplexity-web", expression, minimumLength: 200, specificSelectors: specific });
@@ -109,6 +133,7 @@ export const copilotWeb: BrowserEngine = {
   async ask(session, question) {
     await session.send("Page.navigate", { url: `https://copilot.microsoft.com/?q=${encodeURIComponent(question)}` });
     const specific = ["[data-content='ai-message']", "div[data-testid='message-content']", "cib-message-group"];
+    if (await signedOut(session, specific)) return SIGN_IN_OUTCOME;
     const expression = readerExpression([...specific, "main"], "a[href^='http']");
     await waitFor(session, `(() => { const found = ${expression}; return Boolean(found && found.text.length > 200); })()`, 60000);
     return readAnswer({ session, engineId: "copilot", expression, minimumLength: 200, specificSelectors: specific });
@@ -124,6 +149,7 @@ export const chatgptWeb: BrowserEngine = {
   async ask(session, question) {
     await session.send("Page.navigate", { url: `https://chatgpt.com/?q=${encodeURIComponent(question)}` });
     const specific = ["[data-message-author-role='assistant']", "div.markdown.prose"];
+    if (await signedOut(session, specific)) return SIGN_IN_OUTCOME;
     const expression = readerExpression([...specific, "main"], "a[href^='http']");
     const settled = await waitFor(
       session,
