@@ -4,6 +4,7 @@ import { buildAnswerDigest } from "../alerts/answer-digest.js";
 import { buildCitationAnalysis } from "./citation-analysis.js";
 import { buildRankingPlan, type RankingPlan } from "./ranking-plan.js";
 import { projectInsights } from "./project-insights.js";
+import { NO_PERSONA, type PersonaService } from "./persona.js";
 import { buildPromptBrief, type PromptBrief } from "./prompt-brief.js";
 import type { CompetitorService } from "./competitor-set.js";
 import type { SegmentService } from "./segment-set.js";
@@ -60,10 +61,11 @@ export async function handleTopicApi(input: {
   models: (projectId: string) => Promise<number>;
   competitors: CompetitorService;
   segments: SegmentService;
+  personas: PersonaService;
   ask: StructuredAsk;
   readJson: () => Promise<Record<string, unknown>>;
 }): Promise<boolean> {
-  const { method, route, url, send, topics, runs, schedule, demand, profiles, models, competitors, segments, ask, readJson } = input;
+  const { method, route, url, send, topics, runs, schedule, demand, profiles, models, competitors, segments, personas, ask, readJson } = input;
   if (route[0] !== "api" || route[1] !== "projects") return false;
   const projectId = route[2];
   if (!projectId) return false;
@@ -166,6 +168,26 @@ export async function handleTopicApi(input: {
     return true;
   }
 
+  if (method === "GET" && tail.length === 1 && tail[0] === "personas") {
+    await guard(async () => ({ ...(await personas.get(projectId)), none: NO_PERSONA }), 404);
+    return true;
+  }
+
+  if (method === "POST" && tail.length === 1 && tail[0] === "personas") {
+    const body = await readJson();
+    await guard(() => personas.add(projectId, {
+      label: typeof body.label === "string" ? body.label : "",
+      describedAs: typeof body.describedAs === "string" ? body.describedAs : "",
+    }));
+    return true;
+  }
+
+  if (method === "POST" && tail.length === 2 && tail[0] === "personas" && tail[1] === "retire") {
+    const body = await readJson();
+    await guard(() => personas.retire(projectId, stringList(body.personaIds)));
+    return true;
+  }
+
   if (method === "GET" && tail.length === 1 && tail[0] === "regions") {
     send(200, { regions: REGIONS, languages: LANGUAGES, caveat: REGION_CAVEAT });
     return true;
@@ -187,12 +209,14 @@ export async function handleTopicApi(input: {
     const regionIds = stringList(body.regionIds);
     const languageIds = stringList(body.languageIds);
     const engineIds = stringList(body.engineIds);
+    const personaIds = stringList(body.personaIds);
     await guard(() => runs.start({
       projectId,
       promptIds: promptIds.length ? promptIds : undefined,
       regionIds: regionIds.length ? regionIds : undefined,
       languageIds: languageIds.length ? languageIds : undefined,
       engineIds: engineIds.length ? engineIds : undefined,
+      personaIds: personaIds.length ? personaIds : undefined,
     }));
     return true;
   }

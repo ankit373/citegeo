@@ -50,6 +50,8 @@ export interface PromptAnswer {
   regionId: string;
   /** The language the answer was asked for. */
   languageId: string;
+  /** Who the question was asked on behalf of. "anyone" means nobody stated. */
+  personaId?: string | undefined;
   status: PromptAnswerStatus;
   /** The answer as the model wrote it. Every number here traces back to this. */
   text: string;
@@ -70,6 +72,7 @@ export interface PromptRun {
   modelIds: string[];
   regionIds: string[];
   languageIds: string[];
+  personaIds?: string[] | undefined;
   answersRequested: number;
   answersCompleted: number;
   answersFailed: number;

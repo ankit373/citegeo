@@ -75,6 +75,13 @@ export interface LanguageStanding {
   rank: number | null;
 }
 
+export interface PersonaStanding {
+  personaId: string;
+  label: string;
+  score: VisibilityScore;
+  rank: number | null;
+}
+
 export interface TopicInsights {
   projectId: string;
   /** Completed answers behind everything below. */
@@ -96,6 +103,9 @@ export interface TopicInsights {
   byRegion: RegionStanding[];
   /** Per language, worst first. Empty until a run asks in more than one. */
   byLanguage: LanguageStanding[];
+  /** Per persona, worst first. Empty until a run asks on behalf of more than
+   * one, because a single audience is the overall figure under another name. */
+  byPersona: PersonaStanding[];
   /** What the UI must print next to any regional figure. */
   regionCaveat: string;
   /** Set when the brand is named after its own category, so a name match
@@ -219,6 +229,23 @@ function languageStandings(answers: PromptAnswer[]): LanguageStanding[] {
     .sort((left, right) => (left.score.score || 0) - (right.score.score || 0));
 }
 
+function personaStandings(answers: PromptAnswer[], labels: Map<string, string>): PersonaStanding[] {
+  const groups = new Map<string, PromptAnswer[]>();
+  for (const answer of answers) {
+    const id = answer.personaId || "anyone";
+    groups.set(id, [...(groups.get(id) || []), answer]);
+  }
+  if (groups.size < 2) return [];
+  return [...groups.entries()]
+    .map(([personaId, group]) => ({
+      personaId,
+      label: labels.get(personaId) || (personaId === "anyone" ? "No stated persona" : personaId),
+      score: scoreAnswers(group),
+      rank: rankOfTarget(standings(group)),
+    }))
+    .sort((left, right) => (left.score.score || 0) - (right.score.score || 0));
+}
+
 function trackedStandings(competitors: Competitor[], leaderboard: EntityStanding[], answers: number): EntityStanding[] {
   return competitors
     .filter((row) => row.tracked)
@@ -248,6 +275,8 @@ export function buildTopicInsights(input: {
   runs?: PromptRun[];
   identityCaveat?: string | null;
   competitors?: Competitor[] | undefined;
+  /** Persona id to label, so a retired persona still reads as its name. */
+  personaLabels?: Map<string, string> | undefined;
 }): TopicInsights {
   const { projectId, set, answers } = input;
   const completed = answers.filter((answer) => answer.status === "completed");
@@ -314,6 +343,7 @@ export function buildTopicInsights(input: {
     }),
     byRegion: regionStandings(answers),
     byLanguage: languageStandings(answers),
+    byPersona: personaStandings(answers, input.personaLabels || new Map()),
     regionCaveat: REGION_CAVEAT,
     identityCaveat: input.identityCaveat || null,
     trackedRivals: trackedStandings(input.competitors || [], leaderboard, completed.length),
