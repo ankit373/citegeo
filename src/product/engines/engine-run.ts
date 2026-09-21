@@ -65,7 +65,7 @@ export async function askBrowserEngine(input: EngineAskInput): Promise<PromptAns
       ...shell,
       // Four outcomes, three of them not an answer. None of them is an answer
       // that named nobody, which is what an empty row would claim.
-      status: outcome.state === "no_answer" ? "completed" : "provider_failed",
+      status: outcome.state === "no_answer" ? "no_answer" : "provider_failed",
       text: "",
       mentions: [],
       citationUrls: [],

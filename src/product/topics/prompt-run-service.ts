@@ -13,7 +13,7 @@ import {
   PROMPT_ANSWER_SCHEMA_NAME,
   PROMPT_ANSWER_TOOL_DESCRIPTION,
 } from "./prompt-answer-protocol.js";
-import { isLive, type AnswerMention, type PromptAnswer, type PromptRun } from "./prompt-run-schema.js";
+import { countsTowardProgress, isLive, type AnswerMention, type PromptAnswer, type PromptRun } from "./prompt-run-schema.js";
 import type { PromptRunFileStore } from "./prompt-run-store.js";
 import { readStructuredValue } from "./structured-value.js";
 import { activePrompts, type PromptIntent } from "./topic-schema.js";
@@ -205,7 +205,7 @@ export class PromptRunService {
             await this.store.saveRun(run);
             const answer = await this.ask({ run, baseline, model, prompt, identity, market, tongue });
             await this.store.saveAnswer(answer);
-            if (answer.status === "completed") run.answersCompleted += 1;
+            if (countsTowardProgress(answer)) run.answersCompleted += 1;
             else run.answersFailed += 1;
             // Progress is written as it happens, so a long run is readable while it runs.
             await this.store.saveRun(run);
@@ -221,7 +221,7 @@ export class PromptRunService {
         const answer = await this.engines?.ask({ run, prompt, engine, identity });
         if (!answer) continue;
         await this.store.saveAnswer(answer);
-        if (answer.status === "completed") run.answersCompleted += 1;
+        if (countsTowardProgress(answer)) run.answersCompleted += 1;
         else run.answersFailed += 1;
         await this.store.saveRun(run);
       }
