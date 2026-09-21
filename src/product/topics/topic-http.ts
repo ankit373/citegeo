@@ -6,6 +6,7 @@ import { buildRankingPlan, type RankingPlan } from "./ranking-plan.js";
 import { projectInsights } from "./project-insights.js";
 import { NO_PERSONA, type PersonaService } from "./persona.js";
 import { buildPromptBrief, type PromptBrief } from "./prompt-brief.js";
+import { briefMarkdown } from "./brief-export.js";
 import type { CompetitorService } from "./competitor-set.js";
 import type { SegmentService } from "./segment-set.js";
 import { isPromptIntent } from "./topic-schema.js";
@@ -396,6 +397,27 @@ export async function handleTopicApi(input: {
         modelCount: selections,
       });
     }, 404);
+    return true;
+  }
+
+  if (method === "GET" && tail.length === 1 && tail[0] === "prompt-brief.md") {
+    try {
+      const promptId = url?.searchParams.get("promptId") || "";
+      const set = await topics.get(projectId);
+      const prompt = set.prompts.find((row) => row.id === promptId);
+      if (!prompt) throw new Error(`No question ${promptId} in this project.`);
+      const answers = await runs.listAnswers(projectId);
+      const report = await demand.load(projectId).catch(() => null);
+      const brief = buildPromptBrief({
+        prompt,
+        answers: sliced(answers, url),
+        allAnswers: answers,
+        demand: report?.prompts.find((row) => row.promptId === promptId) || null,
+      });
+      send(200, briefMarkdown(brief), "text/markdown; charset=utf-8");
+    } catch (error) {
+      send(404, { error: message(error) });
+    }
     return true;
   }
 
