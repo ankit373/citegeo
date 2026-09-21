@@ -180,3 +180,27 @@ test("the generated stylesheet lands where the container image copies from", () 
   const dockerfile = readFileSync(join(process.cwd(), "Dockerfile"), "utf8");
   assert.ok(dockerfile.includes("/app/dist/src"));
 });
+
+test("the vocabulary is Tailwind utilities, not a stylesheet the markup depends on", () => {
+  const css = readFileSync(join(process.cwd(), "src", "ui", "theme.css"), "utf8");
+  const shell = readFileSync(join(process.cwd(), "src", "ui", "product-phase2-app.ts"), "utf8");
+  const sheet = shell.slice(shell.indexOf("<style>"), shell.indexOf("</style>"));
+
+  for (const name of ["subtle", "section-card", "mrow", "mcell", "mname", "pill", "tag", "warning-box", "statgrid", "bar"]) {
+    assert.ok(css.includes(`@utility ${name} {`), `${name} is not a utility`);
+    // The bare rule has to be gone, or two definitions race and the loser is
+    // whichever the bundler happened to order last.
+    const bare = `\n    .${name} {`;
+    assert.equal(sheet.includes(bare), false, `.${name} still has a hand-written rule`);
+  }
+});
+
+test("a utility never carries a colour of its own, only a token", () => {
+  const css = readFileSync(join(process.cwd(), "src", "ui", "theme.css"), "utf8");
+  const utilities = css.slice(css.indexOf("@utility subtle"));
+  // A hex inside a utility is the drift this file exists to prevent.
+  assert.equal(utilities.includes("#"), false, "a utility declares a literal colour");
+  for (const raw of ["rgb(", "rgba("]) {
+    assert.equal(utilities.includes(raw), false, `a utility declares a literal ${raw}`);
+  }
+});

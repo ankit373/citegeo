@@ -96,9 +96,6 @@
   --failed-wash: var(--color-failed-wash);
   --skeleton: var(--color-skeleton);
   --skeleton-sheen: var(--color-skeleton-sheen);
-  --font-display: var(--font-display);
-  --font-ui: var(--font-ui);
-  --font-mono: var(--font-mono);
   --type-micro: var(--text-micro);
   --type-xs: var(--text-xs);
   --type-sm: var(--text-sm);
@@ -115,9 +112,6 @@
   --space-lg: var(--spacing-lg);
   --space-xl: var(--spacing-xl);
   --space-2xl: var(--spacing-2xl);
-  --radius-sm: var(--radius-sm);
-  --radius-xs: var(--radius-xs);
-  --radius-pill: var(--radius-pill);
 }
 
 /* Dark follows the system and is overridden by data-theme on the root, applied
@@ -230,4 +224,95 @@
   @media (prefers-reduced-motion: reduce) {
     *,*::before,*::after { animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; scroll-behavior:auto !important; }
   }
+}
+
+
+/* The vocabulary this product is written in. Each one is a Tailwind utility
+   built from the scale above, so it is generated only where it is used and a
+   colour in it cannot be a literal. Markup stays terse; nothing styles from a
+   distance, because these compose the same utilities a caller would write. */
+
+@utility subtle {
+  @apply text-[13px] text-muted;
+}
+
+@utility view {
+  @apply block;
+}
+
+@utility heading {
+  @apply mb-2 flex flex-wrap items-start justify-between gap-4;
+}
+
+@utility inline-actions {
+  @apply flex flex-wrap gap-[9px];
+}
+
+@utility section-card {
+  @apply mt-3 rounded-[var(--radius)] border border-line bg-surface p-[clamp(16px,1.8vw,24px)] shadow-[var(--shadow-sm)];
+}
+
+@utility section-head {
+  @apply mb-1 flex flex-wrap items-start justify-between gap-4;
+}
+
+@utility mtable {
+  @apply mt-[14px];
+}
+
+@utility mhead {
+  @apply grid items-center gap-4 border-b border-line px-2 py-[10px] text-[10px] font-semibold uppercase tracking-[.09em] text-weak;
+}
+
+@utility mrow {
+  @apply grid items-center gap-4 border-b border-line px-2 py-[10px] last:border-b-0;
+  transition: background-color var(--motion-fast) var(--ease-standard);
+}
+
+@utility mcell {
+  @apply min-w-0 break-words text-[13px] text-muted;
+}
+
+@utility mname {
+  @apply min-w-0;
+}
+
+@utility empty {
+  @apply grid min-h-[230px] place-items-center rounded-lg border border-dashed border-line-strong p-[30px] text-center;
+}
+
+@utility empty-copy {
+  @apply max-w-[500px];
+}
+
+@utility warning-box {
+  @apply rounded-[var(--radius-sm)] border border-unknown bg-unknown-wash px-[14px] py-3 text-unknown-text;
+}
+
+@utility success-box {
+  @apply rounded-[var(--radius-sm)] border border-confirmed bg-confirmed-wash px-[14px] py-3 text-confirmed-text;
+}
+
+@utility pill {
+  @apply inline-flex items-center gap-[5px] rounded-[999px] border border-line-strong px-2 py-[2px] text-[11px] font-semibold;
+}
+
+@utility tag {
+  @apply rounded-[999px] border border-line px-2 py-[3px] text-xs;
+}
+
+@utility linklike {
+  @apply cursor-pointer border-0 bg-transparent p-0 font-[inherit] text-text underline;
+}
+
+@utility bar {
+  @apply mt-2 h-1 overflow-hidden rounded-[2px] bg-sunken;
+}
+
+@utility statgrid {
+  @apply mt-[18px] grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-px overflow-hidden rounded-[var(--radius)] border border-line bg-line;
+}
+
+@utility stat {
+  @apply grid gap-1 bg-surface px-[18px] py-4;
 }

@@ -68,13 +68,10 @@ export function renderProductPhase2AppHtml(): string {
     .button[data-action-state="error"] { color:var(--failed-text); border-color:var(--failed); }
     .content { max-width:1280px; margin:0 auto; padding-top:clamp(24px,3vw,40px); }
     /* No entrance animation: a view is static content, not a state change. */
-    .view { }
     h1 { margin:0; font-size:clamp(26px,2.6vw,34px); letter-spacing:-0.03em; font-weight:650; }
     h2 { margin:0; font-size:16px; font-weight:600; letter-spacing:-0.015em; }
     h3 { margin:0; font-size:14px; font-weight:600; }
     p { line-height:1.6; }
-    .subtle { font-size:13px; }
-    .heading { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap; margin-bottom:8px; }
     .heading .subtle { margin-top:6px; }
     .toolbar,.actions,.card-actions,.inline-actions { display:flex; gap:9px; flex-wrap:wrap; }
     .heading .button,.heading .inline-actions .button { white-space:nowrap; }
@@ -226,19 +223,15 @@ export function renderProductPhase2AppHtml(): string {
     .move .evidence-note { font-size:12px; color:var(--weak); }
     .move-actions { display:flex; gap:7px; flex-wrap:wrap; margin-top:4px; }
     .card-action.is-on { background:var(--accent-wash); border-color:var(--accent); color:var(--accent); }
-    .pill { display:inline-flex; align-items:center; gap:5px; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:600; border:1px solid var(--line-strong); }
     .pill.good { color:var(--confirmed-text); border-color:var(--confirmed); background:var(--confirmed-wash); }
     .pill.bad { color:var(--failed-text); border-color:var(--failed); background:var(--failed-wash); }
     .pill.flat { color:var(--muted); }
 
     .scorehead { display:flex; flex-direction:column; align-items:flex-end; gap:4px; }
     .scorebig { font-family:var(--font-display); font-size:clamp(44px,5.4vw,66px); font-weight:500; line-height:.92; letter-spacing:-0.035em; font-variant-numeric:tabular-nums; color:var(--text); }
-    .statgrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:1px; margin-top:18px; background:var(--line); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; }
-    .stat { background:var(--surface); padding:16px 18px; display:grid; gap:4px; }
     .stat span { font-size:11px; letter-spacing:.07em; text-transform:uppercase; color:var(--weak); font-weight:600; }
     .stat strong { font-family:var(--font-display); font-size:25px; font-weight:500; letter-spacing:-0.018em; line-height:1.15; }
     .stat small { font-size:12px; color:var(--weak); }
-    .bar { height:4px; border-radius:2px; background:var(--sunken); overflow:hidden; margin-top:8px; }
     .bar > i { display:block; height:100%; background:var(--accent); border-radius:2px; transition:width var(--motion-normal) var(--ease-standard); }
     .inline-form { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
     .inline-form input,.inline-form select { flex:1 1 180px; min-width:0; padding:8px 10px; border-radius:6px; border:1px solid var(--line); background:var(--sunken); color:var(--text); font:inherit; font-size:13px; }
@@ -275,7 +268,6 @@ export function renderProductPhase2AppHtml(): string {
     .trend circle { fill:var(--text); }
     .chart-grid { stroke:var(--line); stroke-width:1; }
     .chart-axis { fill:var(--weak); font-size:10px; font-family:"JetBrains Mono",ui-monospace,monospace; }
-    .linklike { background:none; border:0; padding:0; color:var(--text); text-decoration:underline; font:inherit; }
     .credential-control { display:flex; gap:8px; align-items:center; }
     .credential-control input { flex:1; min-width:0; }
     .step.plan-step { grid-template-columns:66px minmax(0,1fr); align-items:start; }
@@ -288,7 +280,6 @@ export function renderProductPhase2AppHtml(): string {
     .card-header { display:flex; justify-content:space-between; gap:10px; align-items:center; }
     .domain { font-feature-settings:"tnum" 1; color:var(--muted); margin-top:8px; overflow-wrap:anywhere; }
     .meta { display:flex; gap:8px; flex-wrap:wrap; margin-top:15px; color:var(--weak); font-size:12px; }
-    .tag { border:1px solid var(--line); border-radius:999px; padding:3px 8px; font-size:12px; }
     .tag.draft { color:var(--unknown-text); border-color:var(--unknown); background:var(--unknown-wash); }
     .tag.archived { color:var(--muted); }
     .tag.deleted { color:var(--failed-text); border-color:var(--failed); background:var(--failed-wash); }
@@ -297,8 +288,6 @@ export function renderProductPhase2AppHtml(): string {
     .card-action { min-height:32px; border:1px solid var(--line-strong); border-radius:6px; background:var(--sunken); color:var(--muted); padding:0 9px; font-size:12px; font-weight:700; transition:transform var(--motion-fast) var(--ease-press),background-color var(--motion-fast) var(--ease-standard),border-color var(--motion-fast) var(--ease-standard); }
     .card-action:hover,.card-action:focus-visible { background:var(--raised); border-color:var(--line-strong); color:var(--text); }
     .card-action.danger { color:var(--text); border-color:var(--line-strong); }
-    .empty { border:1px dashed var(--line-strong); min-height:230px; display:grid; place-items:center; text-align:center; padding:30px; border-radius:8px; }
-    .empty-copy { max-width:500px; }
     .empty .button { margin-top:15px; }
     .detail { margin-top:24px; }
     .detail-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:14px; margin:19px 0 22px; }
@@ -322,8 +311,6 @@ export function renderProductPhase2AppHtml(): string {
     .close { width:34px; min-width:34px; height:34px; border:1px solid var(--line); border-radius:7px; background:var(--surface); }
     .drawer-footer { display:flex; justify-content:space-between; gap:12px; border-top:1px solid var(--line); margin-top:28px; padding-top:18px; }
     .section-stack { display:grid; gap:12px; margin-top:20px; }
-    .section-card { margin-top:12px; }
-    .section-head { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; margin-bottom:4px; flex-wrap:wrap; }
     .protocol-list { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:8px; padding:0; margin:15px 0 0; list-style:none; }
     .protocol-list li { border:1px solid var(--line); background:var(--sunken); border-radius:7px; padding:10px; color:var(--muted); font-size:13px; min-width:0; overflow-wrap:anywhere; }
     .protocol-list li.is-clickable { cursor:pointer; }
@@ -334,23 +321,18 @@ export function renderProductPhase2AppHtml(): string {
     .model-catalog-controls select { min-width:0; }
     .catalog-result-summary { color:var(--weak); font-size:12px; margin:0 0 12px; }
     .model-list { display:grid; gap:8px; max-height:620px; overflow:auto; padding-right:3px; }
-    .mtable { margin-top:14px; }
     .mhead,.mrow { display:grid; align-items:center; gap:16px; padding:10px 8px; border-bottom:1px solid var(--line); }
     .mrow:last-child { border-bottom:0; }
-    .mhead { font-size:10px; letter-spacing:.09em; text-transform:uppercase; color:var(--weak); font-weight:600; }
-    .mrow { transition:background-color var(--motion-fast) var(--ease-standard); }
     .mrow:hover,.mrow:focus-within { background:var(--raised); border-radius:var(--radius-sm); }
     .mcols-selected { grid-template-columns:minmax(0,1fr) 104px 92px 178px; }
     .mcols-readonly { grid-template-columns:minmax(0,1fr) 104px 178px; }
     .mcols-catalog { grid-template-columns:20px minmax(0,1fr) 116px 96px 178px; }
-    .mname { min-width:0; }
     .mname strong { display:block; font-size:13px; line-height:1.4; font-weight:550; color:var(--text); }
     .mname span { display:block; font-size:12px; color:var(--weak); overflow-wrap:anywhere; margin-top:2px; }
     /* A badge is part of the name line, so it must not take the block
        display the rule above gives every other span in the cell. */
     .mname .pill,.mname .tag { display:inline-flex; width:auto; margin-top:0; }
     .mname .subtle { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; font-size:12px; color:var(--weak); margin-top:3px; }
-    .mcell { font-size:13px; color:var(--muted); min-width:0; overflow-wrap:anywhere; }
     .state-ok { color:var(--confirmed-text); font-weight:500; }
     .state-flag { color:var(--unknown-text); font-weight:500; }
     .state-bad { color:var(--failed-text); font-weight:500; }
@@ -373,8 +355,6 @@ export function renderProductPhase2AppHtml(): string {
     .baseline-row strong { display:block; font-size:13px; }
     .baseline-row span { display:block; color:var(--weak); font-size:12px; margin-top:3px; overflow-wrap:anywhere; }
     .status-line { display:flex; gap:9px; flex-wrap:wrap; align-items:center; color:var(--muted); font-size:13px; }
-    .warning-box { border:1px solid var(--unknown); background:var(--unknown-wash); padding:12px 14px; border-radius:var(--radius-sm); color:var(--unknown-text); }
-    .success-box { border:1px solid var(--confirmed); background:var(--confirmed-wash); padding:12px 14px; border-radius:var(--radius-sm); color:var(--confirmed-text); }
     .technical-details { border:1px solid var(--line); border-radius:8px; background:var(--sunken); padding:14px 16px; color:var(--muted); }
     .exportmenu { position:relative; }
     .exportmenu > summary { list-style:none; cursor:pointer; display:inline-flex; }
@@ -439,7 +419,6 @@ export function renderProductPhase2AppHtml(): string {
       .workspace { padding:22px 16px; }
       .topbar,.heading,.section-head { align-items:flex-start; flex-direction:column; }
       /* Fixed column widths do not fit, so every table stacks. */
-      .mhead { display:none; }
       .mcols-selected,.mcols-readonly,.mcols-project,.mcols-provider { grid-template-columns:minmax(0,1fr); gap:6px; }
       .mcols-catalog,.mcols-promptrow,.mcols-engine { grid-template-columns:20px minmax(0,1fr); gap:6px 10px; }
       .mcols-source,.mcols-search,.mcols-persona { grid-template-columns:minmax(0,1fr); gap:6px; }
