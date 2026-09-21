@@ -3,6 +3,10 @@ import { dashboardBody, heroStats, type DashboardData } from "./pages/dashboard-
 import { emptyState, notice } from "./components/primitives.js";
 import { button } from "./components/button.js";
 import { navScrim, navToggle, wireNav } from "./components/nav.js";
+import { setupView, type CredentialRow, type IntegrationRow, type ProviderRow, type SetupData, type StorageCheck, type StorageSettings } from "./pages/setup-view.js";
+
+/** What the credentials endpoint answers with, or nothing when it refuses. */
+type CredentialFile = { closed?: boolean; detail?: string; storageEnabled?: boolean; credentials?: CredentialRow[] };
 import type {
   AnswerRow, CatalogModel, InsightsShape, LoadState, Notice, Panel, Payload,
   ProjectRow, RunRow, SelectionRow, TopicSetShape, Unshaped,
@@ -16,13 +20,13 @@ export function boot(): void {
   interface State {
     page: string; mode: string;
     projects: ProjectRow[]; currentProjects: ProjectRow[]; selectedId: string;
-    providers: Unshaped[]; providersState: LoadState;
+    providers: ProviderRow[]; providersState: LoadState;
     insights: Unshaped; insightsState: LoadState;
     crawlers: Unshaped; crawlersState: LoadState;
     plan: Unshaped; planState: LoadState;
     signals: Unshaped; signalsState: LoadState;
-    credentials: Unshaped; credentialsState: LoadState; credentialNotice: Notice;
-    integrations: Unshaped[]; integrationsState: LoadState;
+    credentials: CredentialFile | null; credentialsState: LoadState; credentialNotice: Notice;
+    integrations: IntegrationRow[]; integrationsState: LoadState;
     dashMetric: string; dashRange: string;
     catalog: CatalogModel[]; catalogState: LoadState; catalogError: string;
     query: string; catalogProvider: string; catalogNativeSearch: string; catalogSort: string;
@@ -45,8 +49,8 @@ export function boot(): void {
     cited: Unshaped; citedState: LoadState;
     rivals: Unshaped; rivalsState: LoadState;
     segments: Unshaped; segmentsState: LoadState;
-    storage: Unshaped; storageState: LoadState;
-    storageDraft: Record<string, string>; storageBackend: string; storageCheck: Payload | null;
+    storage: StorageSettings | null; storageState: LoadState;
+    storageDraft: Record<string, string>; storageBackend: string; storageCheck: StorageCheck | null;
     filters: Record<string, string>;
     panel: Panel | null; panelState: LoadState; panelAnswers: AnswerRow[];
     liveRun: RunRow | null; lastRun: RunRow | null; runPollTimer: number;
@@ -223,8 +227,9 @@ export function boot(): void {
       if (state.storageState === "loading") return;
       state.storageState = "loading";
       try {
-        state.storage = await request("/api/storage");
-        state.storageBackend = state.storageBackend || state.storage.current.backend;
+        const settings = await request<StorageSettings>("/api/storage");
+        state.storage = settings;
+        state.storageBackend = state.storageBackend || settings.current.backend;
         state.storageState = "ready";
       } catch (error) {
         state.storageState = "error";
@@ -744,86 +749,6 @@ export function boot(): void {
       loadCredentials();
       loadProviders();
     }
-    /** The outward connections, which are not model providers and do not
-     * belong in the same table: one answers questions, the other reaches out. */
-    function renderConnections() {
-      if (state.integrationsState === "idle") { loadIntegrations(); }
-      const head = '<section class="section-card"><div class="section-head"><div><h2>Connections</h2>'
-        + '<p class="subtle">None of these are required. Measurement runs from a domain alone; these add what your own site already knows, and let the fixes be raised as a pull request.</p></div></div>';
-      if (state.integrationsState !== "ready") {
-        return head + '<p class="subtle">' + (state.integrationsState === "error" ? "Could not read what this product can connect to." : "Reading connections\u2026") + '</p></section>';
-      }
-      const held = state.credentials && (state.credentials as Unshaped).credentials ? (state.credentials as Unshaped).credentials as Unshaped[] : [];
-      const open = Boolean(state.credentials) && !(state.credentials as Unshaped).closed;
-      const storageEnabled = Boolean(state.credentials && (state.credentials as Unshaped).storageEnabled);
-      const rows = state.integrations.filter((row) => row.kind === "integration").map((row) => {
-        const live = held.find((item) => item.providerId === row.providerId);
-        const mark = !live ? '<span class="mcell state-flag" title="This server has no AUTH_PASSWORD, so it will not report whether a credential is held.">cannot be read here</span>'
-          : live.source === "environment" ? '<span class="mcell state-ok">set in the environment</span>'
-          : live.source === "stored" ? '<span class="mcell state-ok">stored here</span>'
-          : '<span class="mcell state-flag">not connected</span>';
-        // The two ways in, named. A self-hosted copy registers no OAuth app of
-        // its own, so the second way is a client the reader owns.
-        const ways = row.providerId === "google" || row.providerId === "google-analytics"
-          ? '<ul class="protocol-list"><li><strong>A service account key.</strong> Paste the JSON, then add the service account as a user on the property.</li>'
-            + '<li><strong>An OAuth client you own.</strong> Paste <span class="mono">{"client_id", "client_secret", "refresh_token"}</span> consented to the scopes below.</li></ul>'
-          : '';
-        const settings = (row.settings || []).map((setting: Unshaped) => {
-          const value = live && (live.settings || []).find((item: Unshaped) => item.key === setting.key);
-          const shown = value && value.value ? '<span class="mono">' + html(String(value.value)) + '</span>' : '<span class="state-flag">not set</span>';
-          return '<li>' + html(setting.label) + ': ' + shown + ' \u00b7 <span class="mono">' + html(setting.envKey) + '</span></li>';
-        }).join("");
-        const control = !open
-          ? '<span class="step-note">Key entry is closed on this server, so set ' + (row.envKeys || []).map((key: Unshaped) => '<span class="mono">' + html(String(key)) + '</span>').join(" or ") + ' in .env.</span>'
-          : live && !live.editable
-            ? '<span class="step-note">Set in the environment, so it cannot be changed here.</span>'
-            : !storageEnabled
-              ? '<span class="step-note">Needs CREDENTIAL_KEY.</span>'
-              : '<span class="credential-control"><input type="password" autocomplete="off" placeholder="' + (ways ? "Paste the JSON" : "Paste the token") + '" data-credential-input="' + html(row.providerId) + '">'
-                + button({ label: "Save", on: { "data-credential-save": row.providerId } })
-                + (live && live.source === "stored" ? button({ label: "Remove", tone: "danger", on: { "data-credential-clear": row.providerId } }) : '') + '</span>';
-        return '<div class="section-card connection-card" data-connection="' + html(String(row.providerId)) + '"><div class="section-head"><div><h3>' + html(row.label) + '</h3>'
-          + '<p class="subtle">' + html(row.purpose) + '</p></div>' + mark + '</div>'
-          + ways
-          + (settings ? '<ul class="protocol-list">' + settings + '</ul>' : '')
-          + '<p class="field-help">' + html(row.help) + '</p>'
-          + '<div class="inline-actions">' + control + '</div></div>';
-      }).join("");
-      return head + (rows || '<p class="subtle">No outward connections are defined.</p>') + '</section>';
-    }
-
-    function renderCredentials() {
-      if (state.credentialsState === "idle") { loadCredentials(); }
-      const head = '<section class="section-card"><div class="section-head"><div><h2>Provider keys</h2><p class="subtle">A key set here is encrypted at rest and never returned by the API. Only the last four characters are ever shown.</p></div></div>';
-      if (state.credentialsState !== "ready" || !state.credentials) {
-        return head + '<p class="subtle">Reading key status…</p></section>';
-      }
-      const data = state.credentials;
-      if (data.closed) {
-        return head + '<div class="warning-box">Key entry is closed because this server has no password. Set <span class="mono">AUTH_PASSWORD</span> and restart, or keep using <span class="mono">.env</span>.</div></section>';
-      }
-      const notice = state.credentialNotice.text
-        ? '<div class="' + (state.credentialNotice.kind === "error" ? "warning-box" : "success-box") + '">' + html(state.credentialNotice.text) + '</div>'
-        : '';
-      const disabled = data.storageEnabled
-        ? ''
-        : '<div class="warning-box">Storing keys here needs <span class="mono">CREDENTIAL_KEY</span>, 32 bytes. Without it a stored key could not survive a restart, so the form stays read-only.</div>';
-      const rows = (data.credentials || []).map((row: any) => {
-        const known = row.last4 ? '<span class="mono">••••' + html(row.last4) + '</span>' : '<span class="state-flag">not set</span>';
-        const where = row.source === "environment"
-          ? '<span class="mcell">from <span class="mono">' + html(row.envKeys.join(" or ")) + '</span></span>'
-          : '<span class="mcell">' + (row.source === "stored" ? "stored here" : "none") + '</span>';
-        const control = !row.editable
-          ? '<span class="step-note">Set in the environment, so it cannot be changed here.</span>'
-          : !data.storageEnabled
-            ? '<span class="step-note">Needs CREDENTIAL_KEY.</span>'
-            : '<span class="credential-control"><input type="password" autocomplete="off" placeholder="Paste a key" data-credential-input="' + html(row.providerId) + '">' + button({ label: "Save", on: { "data-credential-save": row.providerId } }) + '' + (row.source === "stored" ? button({ label: "Remove", tone: "danger", on: { "data-credential-clear": row.providerId } }) : '') + '</span>';
-        return '<div class="mrow mcols-credential"><div class="mname"><strong>' + html(row.providerId) + '</strong>' + where + '</div><span class="mcell">' + known + '</span>' + control + '</div>';
-      }).join("");
-      return head + notice + disabled + '<div class="mtable"><div class="mhead mcols-credential"><span>Provider</span><span>Key</span><span>Change</span></div>' + rows + '</div></section>';
-    }
-    // A score nobody can take apart is a score nobody can act on, so the
-    // components are always next to the number and the weights are printed.
     function pct(value: any) { return value === null || value === undefined ? "Not measurable" : Math.round(value * 100) + "%"; }
     function scoreText(value: any) { return value === null || value === undefined ? "Not measurable" : String(value); }
     function intentLabel(intent: string) {
@@ -2040,76 +1965,6 @@ export function boot(): void {
         + '</section>';
     }
 
-    function renderStorage() {
-      if (state.storageState === "idle") { loadStorage(); }
-      if (state.storageState !== "ready" || !state.storage) {
-        return '<p class="subtle">' + (state.storageState === "error" ? "Could not read the storage settings." : "Reading storage settings.") + '</p>';
-      }
-      const backends = state.storage.backends;
-      const current = state.storage.current;
-      const chosen = backends.find((row: any) => row.id === state.storageBackend) || backends[0];
-      const options = backends.map((row: any) => '<option value="' + html(row.id) + '"' + (row.id === chosen.id ? " selected" : "") + '>' + html(row.label) + '</option>').join("");
-      const fields = chosen.fields.map((field: any) => {
-        const stored = current.backend === chosen.id;
-        const isSet = stored && current.secretsSet.indexOf(field.key) >= 0;
-        const value = stored && !field.secret ? (current.values[field.key] || "") : "";
-        return '<label class="storage-field"><span>' + html(field.label) + (field.required ? '' : ' <em>optional</em>') + '</span>'
-          + '<input data-storage-field="' + html(field.key) + '" type="' + (field.secret ? "password" : "text") + '"'
-          + ' value="' + html(value) + '"'
-          + ' placeholder="' + html(isSet ? "stored, leave blank to keep" : (field.placeholder || "")) + '">'
-          + '<small class="mono">' + html(field.envKey) + '</small></label>';
-      }).join("");
-      const result = state.storageCheck
-        ? (state.storageCheck.pending
-            ? '<p class="subtle">Writing a probe object.</p>'
-            : '<div class="' + (state.storageCheck.ok ? "success-box" : "warning-box") + '">' + html(state.storageCheck.detail) + (state.storageCheck.describes ? ' (' + html(state.storageCheck.describes) + ')' : '') + '</div>')
-        : '';
-      return '<p class="subtle">' + html(chosen.note) + '</p>'
-        + '<div class="storage-grid"><label class="storage-field"><span>Where to store</span><select data-storage-backend>' + options + '</select><small class="mono">STORAGE_BACKEND</small></label>' + fields + '</div>'
-        + result
-        + '<div class="inline-actions" style="margin-top:14px">' + button({ label: "Test connection", on: { "data-storage-check": true } }) + button({ label: "Save", kind: "primary", on: { "data-storage-save": true } }) + '</div>'
-        + '<p class="subtle">A secret is encrypted with <span class="mono">CREDENTIAL_KEY</span> and never sent back to this page. Anything set in the environment wins over what is saved here.</p>';
-    }
-
-    function renderSetup() {
-      if (state.providersState === "idle") { loadProviders(); }
-      if (state.providersState !== "ready") {
-        return '<section class="view"><div class="heading"><div><h1>Setup</h1><p class="subtle">Which providers this machine can actually run.</p></div></div><div class="empty"><div class="empty-copy"><h2>' + (state.providersState === "error" ? "Could not read provider status" : "Checking providers") + '</h2></div></div></section>';
-      }
-      const rows = state.providers.map((provider) => {
-        const paidBlocked = Boolean(provider.balance && !provider.balance.paidModelsRunnable);
-        const mark = !provider.configured ? "Not configured"
-          : !provider.reachable ? "Unreachable"
-          : paidBlocked && provider.freeModels ? "Free models only"
-          : !provider.runnableNow ? "Out of credit"
-          : "Ready";
-        const mode = provider.runnableNow ? "done" : provider.configured ? "warn" : "todo";
-        const counts = provider.modelCount + ' models'
-          + (provider.freeModels ? ' \u00b7 ' + provider.freeModels + ' free to run' : '')
-          + (provider.nativeWebSearchModels ? ' \u00b7 ' + provider.nativeWebSearchModels + ' with web search' : '')
-          + (provider.configured && !provider.citationCapable ? ' \u00b7 no citations' : '');
-        const stateClass = mode === "done" ? "state-ok" : mode === "warn" ? "state-flag" : "";
-        return '<div class="mrow mcols-provider" data-state="' + mode + '">'
-          + '<div class="mname"><strong>' + html(provider.label) + '</strong><span class="mono">' + html(provider.endpoint || "not set") + '</span></div>'
-          + '<span class="mcell">' + counts + '</span>'
-          + '<span class="mcell ' + stateClass + '">' + html(mark) + '</span>'
-          + '<span class="mcell">' + html(provider.detail) + '</span></div>';
-      }).join("");
-      const runnable = state.providers.filter((provider) => provider.runnableNow);
-      const banner = runnable.length
-        ? ''
-        : '<div class="warning-box">Nothing can run right now. Every configured provider is either out of credit, unreachable or has no models. A run started now would fail once per selected model.</div>';
-      const envRows = state.providers.map((provider) => {
-        const keys = provider.envKeys.concat(provider.settingsEnvKeys || []);
-        return '<li>' + html(provider.label) + ': <span class="mono">' + html(keys.join(", ")) + '</span></li>';
-      }).join("");
-      return '<section class="view"><div class="heading"><div><h1>Setup</h1><p class="subtle">Which providers this machine can actually run, and what each one costs you.</p></div><div class="inline-actions">' + button({ label: "Re-check", on: { "data-reload-providers": true } }) + '</div></div>'
-        + banner
-        + '<section class="section-card"><div class="section-head"><div><h2>Providers</h2><p class="subtle">A provider appears in the model picker only when it is configured and answering.</p></div></div><div class="mtable"><div class="mhead mcols-provider"><span>Provider</span><span>Catalog</span><span>Status</span><span>What this means</span></div>' + rows + '</div></section>'
-        + '<section class="section-card"><div class="section-head"><div><h2>Where this is stored</h2><p class="subtle">Everything is small JSON documents, so it sits on a disk or a bucket equally well.</p></div></div>' + renderStorage() + '</section>'
-        + renderCredentials() + renderConnections() + '<section class="section-card"><div class="section-head"><div><h2>Where these come from</h2><p class="subtle">Set in .env at the repository root, then restart the server.</p></div></div><ul class="protocol-list">' + envRows + '</ul></section></section>';
-    }
-
     function resultsSwitch(active: any) {
       const has = state.recognitionRuns.length > 0;
       const tab = (page: any, label: any, enabled: any) => '<button type="button" class="filter ' + (active === page ? "active" : "") + '" data-page="' + page + '"' + (enabled ? "" : " disabled") + '>' + label + '</button>';
@@ -2214,6 +2069,28 @@ export function boot(): void {
     function renderConfigurationRows(configuration: any) { if (state.baselines.length === 0) return '<p class="subtle">No past configurations yet.</p>'; const currentId = configuration.currentBaseline ? configuration.currentBaseline.id : ""; return '<div class="baseline-list">' + state.baselines.map((baseline) => '<article class="baseline-row" data-testid="configuration-version-row" data-configuration-id="' + html(baseline.id) + '"><div><strong>config v' + baseline.version + (currentId === baseline.id ? " · Current version" : "") + '</strong><span>' + html(baseline.normalizedDomain) + ' · ' + baseline.modelSnapshots.length + '  models</span><span>' + baseline.modelSnapshots.map((item: any) => html(item.displayName + "（" + modeText(item.webSearchMode) + "）")).join(", ") + '</span></div><span class="tag mono">' + html(formatTime(baseline.createdAt)) + '</span></article>').join("") + '</div>'; }
     function renderTechnicalDetails(configuration: any) { const protocol = configuration.currentProtocol; const capabilities = configuration.currentModelSnapshots.length ? configuration.currentModelSnapshots.map((item: any) => '<li>' + html(item.displayName + " · " + formatTime(item.capabilityCheckedAt)) + '</li>').join("") : '<li>The capability check time is recorded once models are saved.</li>'; return '<details class="technical-details"><summary>Technical details</summary><div class="detail-grid"><div class="detail-cell"><span>Protocol</span><strong>' + html(protocol.protocolId + "/" + protocol.protocolVersion) + '</strong></div><div class="detail-cell"><span>Protocol hash</span><strong>' + html(protocol.promptTemplateHash || "Recorded on first save") + '</strong></div><div class="detail-cell"><span>Input scope</span><strong>Domain only</strong></div><div class="detail-cell"><span>Output language</span><strong>' + html(configuration.currentLanguage) + '</strong></div></div><p class="field-help">Model capability check time</p><ul class="protocol-list">' + capabilities + '</ul></details>'; }
     function saveConfigurationButton(configuration: any, hasModels: any) { const visual = configurationVisualState(configuration); const disabled = !hasModels || visual === "unchanged" || visual === "saving" || visual === "saved"; const label = visual === "no_version" ? "Save config v1" : visual === "unchanged" ? "✓ Current configuration saved" : visual === "changed" ? "Save as config v" + configuration.nextVersion : visual === "saving" ? "Saving…" : visual === "saved" ? "✓ Saved as v" + configuration.currentVersion : "Save again"; return button({ label: label, kind: "primary", disabled: disabled, id: "save-monitoring-configuration", testId: "save-monitoring-configuration", on: { "data-action-state": visual } }); }
+    /** The page only draws. Loading stays here, because a view that fetches
+     * is a view that cannot be rendered twice. */
+    function renderSetup() {
+      if (state.providersState === "idle") { loadProviders(); }
+      if (state.storageState === "idle") { loadStorage(); }
+      if (state.credentialsState === "idle") { loadCredentials(); }
+      if (state.integrationsState === "idle") { loadIntegrations(); }
+      return setupView({
+        providers: state.providers,
+        providersState: state.providersState,
+        storage: state.storage,
+        storageState: state.storageState,
+        storageBackend: state.storageBackend,
+        storageCheck: state.storageCheck,
+        credentials: state.credentials,
+        credentialsState: state.credentialsState,
+        credentialNotice: state.credentialNotice,
+        integrations: state.integrations,
+        integrationsState: state.integrationsState,
+      });
+    }
+
     function renderConfiguration() { const selected = project(); if (!selected) return '<section class="view"><div class="empty"><div class="empty-copy"><h2>Select a project first</h2><p class="subtle">A configuration belongs to a single project.</p></div></div></section>'; if (state.configurationState === "loading") return '<section class="view"><div class="heading"><div><h1>Configuration</h1><p class="subtle">Loading the current configuration…</p></div></div><div class="section-card inline-empty" aria-live="polite">Loading the domain, models and web search modes.</div></section>'; const configuration = monitoringConfiguration(); const hasModels = selectedRows().length > 0; const notice = state.monitoringNotice.text; const noticeKind = state.monitoringNotice.kind; const stateMessage = !hasModels ? "Select at least one available model before saving the configuration." : configuration.status === "no_version" ? "No configuration saved yet. Saving fixes the current domain, language, models and web search modes." : configuration.status === "changed" ? "The models or web search modes have changed. Saving creates a new configuration version." : "The current models and web search modes are saved."; const stateClass = !hasModels || configuration.status === "changed" ? "warning-box" : configuration.status === "unchanged" ? "success-box" : "warning-box"; return '<section class="view"><div class="heading"><div><h1>Configuration</h1><p class="subtle">Save the domain, output language and each model\'s web search mode as reusable monitoring conditions.</p></div>' + saveConfigurationButton(configuration, hasModels) + '</div><div id="monitoring-configuration-status" data-testid="monitoring-configuration-status" class="form-status ' + html(noticeKind) + '" aria-live="polite">' + html(notice) + '</div><div class="section-stack"><section class="section-card"><div class="section-head"><div><h2>Current version</h2><p class="subtle">Target domain: <span class="mono">' + html(selected.normalizedDomain) + '</span></p></div><span class="tag ' + (configuration.status === "unchanged" ? "ready" : "warning") + '">' + (configuration.currentVersion ? "v" + configuration.currentVersion : "Not saved yet") + '</span></div><div class="' + stateClass + '" data-testid="monitoring-configuration-summary">' + html(stateMessage) + '</div></section><section class="section-card"><div class="section-head"><div><h2>Current model configuration</h2><p class="subtle">Each model stores its own web search mode.</p></div>' + button({ label: "Adjust models", on: { "data-page": "models" } }) + '</div>' + renderSelectedModels(true) + '</section>' + renderConfigurationDiff(configuration) + '<section class="section-card"><div class="section-head"><div><h2>Past configurations</h2><p class="subtle">Read-only snapshot. Saving a new version does not overwrite past configurations.</p></div></div>' + renderConfigurationRows(configuration) + '</section>' + renderTechnicalDetails(configuration) + '</div></section>'; }
     const brandMark = CONFIG.brandMark;
     const brandLockup = CONFIG.brandLockup;
