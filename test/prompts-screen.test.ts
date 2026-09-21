@@ -60,7 +60,7 @@ test("a question with no answer says so rather than scoring zero", () => {
 
 test("a live run replaces the run button and opens a pane instead of offering a second run", () => {
   const html = productAppSource();
-  assert.equal(html.includes('if (state.liveRun) return \'<button type="button" class="button primary" data-open-run="\' + html(state.liveRun.id) + \'">Watch the run</button>\';'), true);
+  assert.equal(html.includes('if (state.liveRun) return button({ label: "Watch the run", kind: "primary", on: { "data-open-run": state.liveRun.id } });'), true);
   for (const part of ["data-open-run", "renderRunPane", "runInFlightCard", "runFeedBody", "/prompt-answers?runId="]) {
     assert.equal(html.includes(part), true, part);
   }

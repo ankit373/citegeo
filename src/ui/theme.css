@@ -449,3 +449,130 @@
 @utility runfield {
   @apply grid grid-cols-[104px_minmax(0,1fr)] items-start gap-3 border-t border-line px-[15px] py-[11px];
 }
+
+
+/* Controls that sit on one line share one height. A 40px button beside a
+   34px select reads as a mistake even when nobody can say which is wrong. */
+
+@utility control-row {
+  @apply flex flex-wrap items-center gap-[9px];
+}
+
+@utility filter {
+  @apply inline-flex min-h-[34px] cursor-pointer items-center rounded-[7px] border border-line bg-transparent px-[10px] text-[13px] text-muted;
+  transition: background-color var(--motion-fast) var(--ease-standard),
+              border-color var(--motion-fast) var(--ease-standard),
+              transform var(--motion-fast) var(--ease-press);
+}
+
+@utility theme-toggle {
+  @apply grid h-[34px] w-[34px] place-items-center rounded-[var(--radius-xs)] border border-line bg-surface text-muted;
+  transition: color var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard);
+}
+
+@utility topbar-actions {
+  @apply flex items-center gap-[10px];
+}
+
+@utility promptbar {
+  @apply mb-[10px] mt-[22px] flex flex-wrap items-center gap-[9px];
+}
+
+/* Every button in the product, in one place.
+
+   One geometry, two size steps, a handful of weights. Variants never change
+   the shape, so a row of mixed kinds lines up. Base and modifiers share the
+   components layer on purpose: a utility layer would beat every modifier
+   whatever its specificity, which is how primary lost its accent once. */
+
+@layer components {
+  .btn, .button, .card-action {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    min-height: 34px;
+    padding: 0 13px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    font-size: var(--type-md);
+    font-weight: 500;
+    color: inherit;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+    transition: transform var(--motion-fast) var(--ease-press),
+                background-color var(--motion-fast) var(--ease-standard),
+                border-color var(--motion-fast) var(--ease-standard),
+                color var(--motion-fast) var(--ease-standard);
+  }
+
+  /* The only thing a size changes. A small button is the same button. */
+  .btn-sm, .card-action {
+    min-height: 32px;
+    padding: 0 9px;
+    border-radius: 6px;
+    font-size: var(--type-sm);
+  }
+
+  /* Square, and whichever size step is in play decides how square. */
+  .btn-icon {
+    aspect-ratio: 1 / 1;
+    padding: 0;
+    border-color: var(--line);
+  }
+
+  .btn:hover, .btn:focus-visible,
+  .button:hover, .button:focus-visible,
+  .card-action:hover, .card-action:focus-visible {
+    background: var(--raised);
+    border-color: var(--line-strong);
+    color: var(--text);
+  }
+  .btn:active, .button:active, .card-action:active { transform: translateY(1px); }
+  /* The base layer sets this on the element; a component layer outranks it. */
+  .btn:disabled, .button:disabled, .card-action:disabled { cursor: not-allowed; }
+
+  .btn-primary, .button.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-ink);
+    font-weight: 550;
+  }
+  .btn-primary:hover, .btn-primary:focus-visible,
+  .button.primary:hover, .button.primary:focus-visible {
+    background: var(--accent-hover);
+    border-color: var(--accent-hover);
+    color: var(--accent-ink);
+  }
+
+  .btn-quiet, .card-action {
+    background: var(--sunken);
+    font-weight: 700;
+    color: var(--muted);
+    box-shadow: none;
+  }
+  .btn-quiet.is-on, .card-action.is-on {
+    background: var(--accent-wash);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .btn-danger, .button.danger, .card-action.danger { color: var(--text); border-color: var(--line-strong); }
+  .btn-danger:hover, .button.danger:hover, .card-action.danger:hover { border-color: var(--text); }
+
+  /* The state a long action reports on itself, so no caller has to. */
+  .btn[data-action-state="loading"], .button[data-action-state="loading"] { color: var(--muted); }
+  .btn[data-action-state="loading"]::before,
+  .button[data-action-state="loading"]::before {
+    content: ""; display: inline-block; width: 12px; height: 12px;
+    margin-right: 7px; vertical-align: -1px;
+    border: 2px solid currentColor; border-right-color: transparent;
+    border-radius: 50%; animation: spin 700ms linear infinite;
+  }
+  .btn[data-action-state="success"], .button[data-action-state="success"] { color: var(--confirmed-text); border-color: var(--confirmed); }
+  .btn[data-action-state="error"], .button[data-action-state="error"] { color: var(--failed-text); border-color: var(--failed); }
+}

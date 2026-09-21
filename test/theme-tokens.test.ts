@@ -204,3 +204,30 @@ test("a utility never carries a colour of its own, only a token", () => {
     assert.equal(utilities.includes(raw), false, `a utility declares a literal ${raw}`);
   }
 });
+
+test("every button is the same button, defined once", () => {
+  const css = readFileSync(join(process.cwd(), "src", "ui", "theme.css"), "utf8");
+  const shell = readFileSync(join(process.cwd(), "src", "ui", "product-phase2-app.ts"), "utf8");
+  const sheet = shell.slice(shell.indexOf("<style>"), shell.indexOf("</style>"));
+
+  // One rule for all three spellings. Two definitions is how btn lost the
+  // shadow that button kept, and a row of mixed callers stopped lining up.
+  assert.ok(css.includes(".btn, .button, .card-action {"), "the button geometry is not shared");
+  for (const name of ["button", "card-action"]) {
+    assert.equal(sheet.includes(`\n    .${name} {`), false, `.${name} still has a hand-written rule`);
+  }
+
+  // Base and modifiers have to share a layer. A utility layer outranks every
+  // modifier whatever its specificity, which is how primary lost its accent.
+  const block = css.slice(css.indexOf(".btn, .button, .card-action {"));
+  for (const modifier of [".btn-primary, .button.primary {", ".btn-quiet, .card-action {", ".btn-danger, .button.danger"]) {
+    assert.ok(block.includes(modifier), `${modifier} is not beside the base`);
+  }
+  assert.equal(css.includes("@utility btn {"), false, "the base is a utility again, so modifiers cannot win");
+});
+
+test("a disabled button still reads as disabled", () => {
+  const css = readFileSync(join(process.cwd(), "src", "ui", "theme.css"), "utf8");
+  // The element default lives in the base layer, which a component outranks.
+  assert.ok(css.includes(".btn:disabled, .button:disabled, .card-action:disabled { cursor: not-allowed; }"));
+});

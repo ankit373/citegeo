@@ -40,22 +40,9 @@ export function renderProductPhase2AppHtml(): string {
     .nav-item:hover,.nav-item:focus-visible { background:var(--raised); color:var(--text); }
     .nav-item.active:hover { color:var(--accent); }
     .nav-item.active { background:var(--accent-wash); color:var(--accent); font-weight:550; }
-    .button:active,.card-action:active { transform:translateY(1px); }
-    .topbar-actions { display:flex; align-items:center; gap:10px; }
-    .theme-toggle { width:32px; height:32px; display:grid; place-items:center; border:1px solid var(--line); border-radius:var(--radius-xs); background:var(--surface); color:var(--muted); transition:color var(--motion-fast) var(--ease-standard),border-color var(--motion-fast) var(--ease-standard); }
     .theme-toggle:hover { color:var(--text); border-color:var(--line-strong); }
     .crumb strong { color:var(--text); }
-    .button { position:relative; min-height:34px; border-radius:var(--radius-sm); border:1px solid var(--line-strong); background:var(--surface); padding:0 13px; font-size:13px; font-weight:500; box-shadow:var(--shadow-sm); transition:transform var(--motion-fast) var(--ease-press),background-color var(--motion-fast) var(--ease-standard),border-color var(--motion-fast) var(--ease-standard),color var(--motion-fast) var(--ease-standard); }
-    .button:hover,.button:focus-visible { background:var(--raised); border-color:var(--line-strong); color:var(--text); }
-    .button.primary { background:var(--accent); border-color:var(--accent); color:var(--accent-ink); font-weight:550; }
-    .button.primary:hover,.button.primary:focus-visible { background:var(--accent-hover); border-color:var(--accent-hover); }
     /* The failed colour reports an evidence state; chrome must not borrow it. */
-    .button.danger { color:var(--text); border-color:var(--line-strong); }
-    .button.danger:hover { border-color:var(--text); }
-    .button[data-action-state="loading"] { color:var(--muted); }
-    .button[data-action-state="loading"]::before { content:""; display:inline-block; width:12px; height:12px; margin-right:7px; vertical-align:-1px; border:2px solid currentColor; border-right-color:transparent; border-radius:50%; animation:spin 700ms linear infinite; }
-    .button[data-action-state="success"] { color:var(--confirmed-text); border-color:var(--confirmed); }
-    .button[data-action-state="error"] { color:var(--failed-text); border-color:var(--failed); }
     .content { max-width:1280px; margin:0 auto; padding-top:clamp(24px,3vw,40px); }
     /* No entrance animation: a view is static content, not a state change. */
     h1 { margin:0; font-size:clamp(26px,2.6vw,34px); letter-spacing:-0.03em; font-weight:650; }
@@ -66,7 +53,6 @@ export function renderProductPhase2AppHtml(): string {
     .toolbar,.actions,.card-actions,.inline-actions { display:flex; gap:9px; flex-wrap:wrap; }
     .heading .button,.heading .inline-actions .button { white-space:nowrap; }
     .toolbar { margin:24px 0 18px; }
-    .filter { border:1px solid var(--line); background:transparent; color:var(--muted); padding:8px 10px; border-radius:7px; transition:background-color var(--motion-fast) var(--ease-standard),border-color var(--motion-fast) var(--ease-standard),transform var(--motion-fast) var(--ease-press); }
     .filter:hover,.filter:focus-visible,.filter.active { background:var(--surface); color:var(--text); border-color:var(--line-strong); }
     .filter:active { transform:translateY(1px) scale(.98); }
     .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:12px; }
@@ -74,8 +60,7 @@ export function renderProductPhase2AppHtml(): string {
     .card:hover,.card:focus-within { border-color:var(--line-strong); box-shadow:var(--shadow); }
     .rowtags { display:flex; gap:5px; flex-wrap:wrap; margin-top:5px; }
     .rowtags .tag { font-size:11px; padding:1px 7px; }
-    .promptbar { display:flex; gap:9px; flex-wrap:wrap; align-items:center; margin:22px 0 10px; }
-    .promptbar input,.promptbar select { flex:0 1 auto; width:auto; min-width:150px; }
+    .promptbar input,.promptbar select { flex:0 1 auto; width:auto; min-width:150px; min-height:34px; }
     .promptbar #prompt-search { flex:1 1 260px; }
     .promptbar .prompt-result-summary { color:var(--weak); margin-left:auto; }
     .bulkbar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; padding:10px 14px; margin-bottom:12px; border:1px solid var(--accent); border-radius:var(--radius-sm); background:var(--accent-wash); }
@@ -199,7 +184,6 @@ export function renderProductPhase2AppHtml(): string {
     .move .why { color:var(--text); }
     .move .evidence-note { font-size:12px; color:var(--weak); }
     .move-actions { display:flex; gap:7px; flex-wrap:wrap; margin-top:4px; }
-    .card-action.is-on { background:var(--accent-wash); border-color:var(--accent); color:var(--accent); }
     .pill.good { color:var(--confirmed-text); border-color:var(--confirmed); background:var(--confirmed-wash); }
     .pill.bad { color:var(--failed-text); border-color:var(--failed); background:var(--failed-wash); }
     .pill.flat { color:var(--muted); }
@@ -253,9 +237,6 @@ export function renderProductPhase2AppHtml(): string {
     .tag.deleted { color:var(--failed-text); border-color:var(--failed); background:var(--failed-wash); }
     .tag.ready { color:var(--confirmed-text); border-color:var(--confirmed); background:var(--confirmed-wash); }
     .tag.warning { color:var(--unknown-text); border-color:var(--unknown); background:var(--unknown-wash); }
-    .card-action { min-height:32px; border:1px solid var(--line-strong); border-radius:6px; background:var(--sunken); color:var(--muted); padding:0 9px; font-size:12px; font-weight:700; transition:transform var(--motion-fast) var(--ease-press),background-color var(--motion-fast) var(--ease-standard),border-color var(--motion-fast) var(--ease-standard); }
-    .card-action:hover,.card-action:focus-visible { background:var(--raised); border-color:var(--line-strong); color:var(--text); }
-    .card-action.danger { color:var(--text); border-color:var(--line-strong); }
     .empty .button { margin-top:15px; }
     .detail { margin-top:24px; }
     .detail-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:14px; margin:19px 0 22px; }
