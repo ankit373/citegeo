@@ -5,6 +5,15 @@ import { button } from "./components/button.js";
 import { navScrim, navToggle, wireNav } from "./components/nav.js";
 import { setupView, type CredentialRow, type IntegrationRow, type ProviderRow, type SetupData, type StorageCheck, type StorageSettings } from "./pages/setup-view.js";
 
+/** What moved since the previous run, in sentences. Only built when
+ * something did: a digest that usually says nothing stops being read. */
+interface AnswerDigest {
+  headline: string;
+  newsworthy: boolean;
+  lines: string[];
+  builtAt: string;
+}
+
 /** What the credentials endpoint answers with, or nothing when it refuses. */
 type CredentialFile = { closed?: boolean; detail?: string; storageEnabled?: boolean; credentials?: CredentialRow[] };
 import type {
@@ -27,6 +36,7 @@ export function boot(): void {
     signals: Unshaped; signalsState: LoadState;
     credentials: CredentialFile | null; credentialsState: LoadState; credentialNotice: Notice;
     integrations: IntegrationRow[]; integrationsState: LoadState;
+    digest: AnswerDigest | null; digestState: LoadState;
     dashMetric: string; dashRange: string;
     catalog: CatalogModel[]; catalogState: LoadState; catalogError: string;
     query: string; catalogProvider: string; catalogNativeSearch: string; catalogSort: string;
@@ -66,7 +76,7 @@ export function boot(): void {
     actions: Unshaped[]; actionsState: LoadState;
   }
 
-    const state: State = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, integrations:[], integrationsState:"idle", dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", promptFilters:{ query:"", topicId:"", intent:"", status:"" }, promptSelection:[], answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", rivals:null, rivalsState:"idle", segments:null, segmentsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, lastRun:null, runPollTimer:0, runFeed:[], runFeedState:"idle", runFeedTimer:0, rankPlan:null, rankPlanState:"idle", brief:null, briefState:"idle", outreach:null, outreachState:"idle", harvesting:false, searchDemand:null, searchDemandState:"idle", pulling:false, personas:null, personasState:"idle", priority:null, priorityState:"idle", promptSort:"topic", referrals:null, referralsState:"idle", pullingReferrals:false, engines:null, enginesState:"idle", actions:[], actionsState:"idle" };
+    const state: State = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, integrations:[], integrationsState:"idle", digest:null, digestState:"idle", dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", promptFilters:{ query:"", topicId:"", intent:"", status:"" }, promptSelection:[], answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", rivals:null, rivalsState:"idle", segments:null, segmentsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, lastRun:null, runPollTimer:0, runFeed:[], runFeedState:"idle", runFeedTimer:0, rankPlan:null, rankPlanState:"idle", brief:null, briefState:"idle", outreach:null, outreachState:"idle", harvesting:false, searchDemand:null, searchDemandState:"idle", pulling:false, personas:null, personasState:"idle", priority:null, priorityState:"idle", promptSort:"topic", referrals:null, referralsState:"idle", pullingReferrals:false, engines:null, enginesState:"idle", actions:[], actionsState:"idle" };
     const app = document.getElementById("app") as HTMLElement;
     let renderOverride: (() => void) | null = null;
     // render() was a hoisted declaration that a later line reassigned. A
@@ -695,6 +705,21 @@ export function boot(): void {
     }
     /** What this product can connect to. It answers whether or not key entry
      * is open, so a closed server still says what Setup would ask for. */
+    async function loadDigest() {
+      const selected = project();
+      if (!selected || state.digestState === "loading") return;
+      state.digestState = "loading";
+      try {
+        state.digest = await request<AnswerDigest>("/api/projects/" + encodeURIComponent(selected.id) + "/digest");
+        state.digestState = "ready";
+      } catch (error) {
+        // Nothing to summarise is a state, not a failure.
+        state.digest = null;
+        state.digestState = "error";
+      }
+      render();
+    }
+
     async function loadIntegrations() {
       if (state.integrationsState === "loading") return;
       state.integrationsState = "loading";
@@ -1516,6 +1541,7 @@ export function boot(): void {
       if (state.answerEngineState === "idle") { loadAnswerEngine(); }
       if (state.outreachState === "idle") { loadOutreach(); }
       if (state.rankPlanState === "idle") { loadRankingPlan(); }
+      if (state.digestState === "idle") { loadDigest(); }
 
       const heading = (body: string): string => '<section class="view"><div class="heading"><div class="headmain"><h1>'
         + html(selected.name) + '</h1><p class="subtle">' + html(String((state.home && state.home.domain) || selected.normalizedDomain)) + '</p></div>'
@@ -1572,8 +1598,17 @@ export function boot(): void {
         ? '<div class="alertlist">' + (home.alerts as any[]).map((alert: any) => '<div class="alertrow"><span class="pill ' + alertPill(alert.severity) + '">' + html(alert.severity) + '</span><div><strong>' + html(alert.headline) + '</strong><p class="subtle">' + html(alert.detail) + '</p></div></div>').join("") + '</div>'
         : '<p class="subtle">Nothing moved since the previous run.</p>';
 
+      const digest = state.digest;
+      const changed = state.digestState === "loading"
+        ? '<p class="subtle">Reading what changed.</p>'
+        : digest && digest.lines.length
+          ? '<p class="changed-headline">' + html(digest.headline) + '</p><ul class="protocol-list">'
+            + digest.lines.map((line: string) => '<li>' + html(line) + '</li>').join("") + '</ul>'
+          : '<p class="subtle">Nothing has moved since the previous run.</p>';
+
       return heading(hero
         + dashboardBody({ status: "ready", value: view })
+        + '<section class="section-card"><div class="section-head"><div class="headmain"><h2>What changed</h2><p class="subtle">Read off the archived answers, in the words the evidence supports.</p></div></div>' + changed + '</section>'
         + '<section class="section-card"><div class="section-head"><div class="headmain"><h2>Needs attention</h2><p class="subtle">Only what moved, and only where both runs could be measured.</p></div></div>' + alerts + '</section>');
     }
 
