@@ -86,7 +86,9 @@ jobs:
           KUBECONFORM_VERSION: v0.8.0
           KUBECONFORM_SHA256: 9bc2bffbf71f261128533edaf912153948b7ff238f9a531ae6d34466ec287883
         run: |
-          curl -fsSL -o kubeconform.tar.gz \
+          # A 504 from the release host failed this check on main once. The
+          # checksum below is what makes a retry safe to add.
+          curl -fsSL --retry 5 --retry-delay 3 --retry-all-errors -o kubeconform.tar.gz \
             "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz"
           echo "${KUBECONFORM_SHA256}  kubeconform.tar.gz" | sha256sum -c -
           tar xzf kubeconform.tar.gz kubeconform
