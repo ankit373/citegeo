@@ -1586,6 +1586,11 @@ export function boot(): void {
                   + badge
                   + '<span>' + html(labelFor(state.regions, answer.regionId, "No stated market")) + ' · ' + html(labelFor(state.languages, answer.languageId, "English")) + '</span>'
                   + '<span class="spacer"></span><span>' + html((answer.createdAt || "").slice(0, 16).replace("T", " ")) + '</span></div>'
+                  // An answer without the question it answered is not evidence
+                  // of anything. The prompt pane is already headed by its own.
+                  + (state.panel && state.panel.kind !== "evidence" && answer.promptText
+                    ? '<p class="evidence-asked"><span>Asked</span>' + html(String(answer.promptText)) + '</p>'
+                    : '')
                   + '<div class="evidence-text">' + (answer.text ? markMentions(answer.text, answer.mentions) + (answer.errorMessage ? '' : '') : html(answer.errorMessage || "This answer returned no text.")) + '</div>'
                   + sources + '</article>';
               }).join("");

@@ -775,6 +775,13 @@
 }
 
 @layer components {
+  /* The question above the answer, because a count of answers is only evidence
+     once a reader can see what was asked to get them. */
+  .evidence-asked { display: flex; gap: 8px; align-items: baseline; margin: 0 0 var(--space-sm); font-size: var(--type-md); color: var(--text); }
+  .evidence-asked span { flex: 0 0 auto; font-size: var(--type-micro); letter-spacing: .09em; text-transform: uppercase; color: var(--weak); font-weight: 600; }
+}
+
+@layer components {
   /* A panel opened on its own gets the width the grid could not give it. */
   .panel.is-wide-panel { width: min(960px, 100vw); }
   .panel-body { padding: 0 var(--space-lg) var(--space-lg); overflow-y: auto; }

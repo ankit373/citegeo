@@ -4,6 +4,7 @@ import { html, join } from "../src/ui/app/dom.js";
 import { percent, rank, score, seconds } from "../src/ui/app/format.js";
 import { cell, emptyState, nameCell, pill, row, section, table, tiles } from "../src/ui/app/components/primitives.js";
 import { skeletonTable, skeletonTiles, loading } from "../src/ui/app/components/skeleton.js";
+import { productAppSource } from "../src/ui/app-source.js";
 import { footer, header, panel, sidebar } from "../src/ui/app/components/layout.js";
 
 test("every string a component writes is escaped, because one omission is a hole", () => {
@@ -96,4 +97,12 @@ test("two long pulls are tracked apart, so one finishing does not unblock the ot
   assert.equal(store.integrations.busy.has("search-demand"), true);
   store.integrations.busy.delete("search-demand");
   assert.equal(store.integrations.busy.has("source-pages"), true, "the other is still going");
+});
+
+test("an archived answer is shown with the question that produced it", () => {
+  // A count of answers is only evidence once a reader can see what was asked
+  // to get them. The brand pane draws answers from many different questions.
+  const source = productAppSource();
+  assert.ok(source.includes("evidence-asked"), "the evidence card has no place for the question");
+  assert.ok(source.includes("answer.promptText"), "the question on the answer is never read");
 });
