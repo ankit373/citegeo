@@ -367,6 +367,10 @@ export function renderProductPhase2AppHtml(): string {
       /* stretch, not flex-start: a flex-start child is sized to max-content,
          so every heading refused to wrap and pushed the page sideways. */
       .heading,.section-head { flex-direction:column; align-items:stretch; }
+      /* The 300px basis is a width in a row and a height in a column, so
+         turning the head sideways gave every card a 300px tall header with
+         one line in it, and pushed the content to the bottom. */
+      .headmain { flex-basis:auto; }
       .topbar { flex-wrap:wrap; }
       /* Fixed column widths do not fit, so every table stacks. */
       .mcols-catalog > *:nth-child(n+3),.mcols-promptrow > *:nth-child(n+3),.mcols-engine > *:nth-child(n+3) { grid-column:2; }
@@ -380,7 +384,6 @@ export function renderProductPhase2AppHtml(): string {
          minimum size of a flex or grid item, and this is a plain block, so
          overflow alone still let the rows widen the whole page. */
       .mtable { contain:inline-size; overflow-x:auto; overscroll-behavior-x:contain; }
-      .mtable > * { min-width:max-content; }
     }
     /* A thumb needs more room than a pointer. These sit here rather than in
        the theme because the rules they widen are still defined in this file. */
