@@ -132,7 +132,12 @@ export function renderProductPhase2AppHtml(): string {
     @media (max-width:860px) { .hero { grid-template-columns:1fr; } }
 
     /* Filters read as one control strip, not as a row of loose buttons. */
-    .segment { display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:12px 0; border-bottom:1px solid var(--line); margin-bottom:6px; }
+    /* A grid for the same reason the prompt bar is one: four selects of four
+       widths wrapped into lines with nothing under anything. */
+    .segment { display:grid; grid-template-columns:repeat(auto-fit,minmax(158px,1fr)); gap:8px; align-items:center; padding:12px 0; border-bottom:1px solid var(--line); margin-bottom:6px; }
+    .segment .spacer { display:none; }
+    .segment .exportmenu { justify-self:end; }
+    .segment .applied { grid-column:1 / -1; }
     .segment select { width:auto; min-width:120px; max-width:200px; }
     .segment .spacer { flex:1 1 auto; }
     .segment .applied { font-size:12px; color:var(--accent); }

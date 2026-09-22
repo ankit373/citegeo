@@ -511,8 +511,20 @@
   @apply flex items-center gap-[10px];
 }
 
+/* A grid, not a wrapping row. Six controls of six different widths wrapped
+   into ragged lines with nothing under anything, which is what a filter bar
+   must not look like. Every control is one column wide, so they line up. */
 @utility promptbar {
-  @apply mb-[10px] mt-[22px] flex flex-wrap items-center gap-[9px];
+  @apply mb-[10px] mt-[22px] grid items-center gap-[9px] grid-cols-[repeat(auto-fit,minmax(158px,1fr))];
+}
+
+@layer components {
+  /* The search box earns two, and the count sits under the row it counts. */
+  .promptbar > input[type="search"] { grid-column: span 2; }
+  .promptbar > .prompt-result-summary { grid-column: 1 / -1; margin-left: 0; }
+  @media (max-width: 420px) {
+    .promptbar > input[type="search"] { grid-column: 1 / -1; }
+  }
 }
 
 /* Every button in the product, in one place.
