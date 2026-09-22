@@ -4,6 +4,7 @@ import {
   dashboardBody, heroStats, leaderboardBars, movesList, sourcesPanel, splitRows, summaryTiles,
   rivalChart,
   rivalPanel, rivalRanks, rivalStandings, withTarget,
+  topicMatrix, rowVerdict,
   dashboardPanels,
   type DashboardData,
 } from "../src/ui/app/pages/dashboard-view.js";
@@ -252,4 +253,42 @@ test("a panel is opened by its card, not by a button beside the title", () => {
   assert.equal(drawn.includes("panel-expand"), false);
   assert.ok(drawn.includes('data-expand-panel="trend"'));
   assert.ok(drawn.includes("panel-open"), "the title stays reachable from a keyboard");
+});
+
+const COLUMNS = [{ name: "Mine", isTarget: true }, { name: "Rival", isTarget: false }];
+
+test("the verdict on a row is the gap to the best brand on that row", () => {
+  assert.equal(rowVerdict([null, 0.8], COLUMNS).text, "Never named");
+  assert.equal(rowVerdict([0, 0.8], COLUMNS).text, "Never named");
+  assert.equal(rowVerdict([0.2, 0.8], COLUMNS).text, "Far behind");
+  assert.equal(rowVerdict([0.6, 0.8], COLUMNS).text, "Behind");
+  assert.equal(rowVerdict([0.9, 0.8], COLUMNS).text, "Leading");
+});
+
+test("a topic opens onto its subtopics, and only when the reader opens it", () => {
+  const matrix = {
+    columns: COLUMNS,
+    rows: [
+      { key: "t:1", parent: "", depth: 0, label: "Backtesting", shares: [0.1, 0.9], children: 1 },
+      { key: "t:1/s:a", parent: "t:1", depth: 1, label: "Walk forward", shares: [0, 1], children: 2 },
+      { key: "t:1/s:a/p:x", parent: "t:1/s:a", depth: 2, label: "which tool", shares: [0, 1], children: 0 },
+    ],
+  };
+  const shut = topicMatrix(matrix, []);
+  assert.ok(shut.includes("Backtesting"));
+  assert.equal(shut.includes("Walk forward"), false, "a shut topic does not print its subtopics");
+  const open = topicMatrix(matrix, ["t:1"]);
+  assert.ok(open.includes("Walk forward"));
+  assert.equal(open.includes("which tool"), false, "opening a topic does not open its subtopics too");
+  assert.ok(topicMatrix(matrix, ["t:1", "t:1/s:a"]).includes("which tool"));
+});
+
+test("a cell nobody was named in reads as absent, not as nought percent", () => {
+  const drawn = topicMatrix({ columns: COLUMNS, rows: [{ key: "t:1", parent: "", depth: 0, label: "T", shares: [null, 0.5], children: 0 }] }, []);
+  assert.ok(drawn.includes("&ndash;"));
+  assert.equal(drawn.includes(">0%<"), false);
+});
+
+test("nothing scored against a topic says so rather than drawing an empty grid", () => {
+  assert.ok(topicMatrix({ columns: [], rows: [] }, []).includes("No answer has been scored"));
 });

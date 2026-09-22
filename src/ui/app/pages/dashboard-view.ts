@@ -46,6 +46,9 @@ export interface Move {
 export interface DashboardData {
   /** Empty until two runs exist, which the chart reports rather than hides. */
   rivalTrend?: RivalSeries[];
+  matrix?: MatrixData | undefined;
+  /** Rows the reader has opened, so an expansion survives a re-render. */
+  matrixOpen?: string[] | undefined;
   asked?: AskedSplit | undefined;
   domain: string;
   score: number | null;
@@ -481,6 +484,68 @@ export function dashboardSkeleton(): string {
   ]);
 }
 
+export interface MatrixRow {
+  key: string;
+  parent: string;
+  /** 0 topic, 1 subtopic, 2 prompt. Drawn as an indent, not as a separate table. */
+  depth: number;
+  label: string;
+  /** One cell per column, aligned by index. Null means never named there. */
+  shares: Array<number | null>;
+  children: number;
+}
+
+export interface MatrixData {
+  columns: Array<{ name: string; isTarget: boolean }>;
+  rows: MatrixRow[];
+}
+
+/** Where a row stands against the best brand on that row. The verdict is the
+ * gap, so a reader is told what to do rather than left to compare cells. */
+export function rowVerdict(shares: Array<number | null>, columns: Array<{ isTarget: boolean }>): { text: string; tone: string } {
+  const at = columns.findIndex((column) => column.isTarget);
+  const mine = at < 0 ? null : shares[at] ?? null;
+  const best = shares.reduce((top: number, share) => (share !== null && share > top ? share : top), 0);
+  if (mine === null || mine === 0) return { text: "Never named", tone: "state-bad" };
+  if (best <= mine) return { text: "Leading", tone: "state-ok" };
+  return mine * 2 < best ? { text: "Far behind", tone: "state-bad" } : { text: "Behind", tone: "state-flag" };
+}
+
+/** Every topic against every brand the answers named, one row per topic and
+ * one more for each subtopic and prompt a reader opens. */
+export function topicMatrix(data: MatrixData, open: string[] = []): string {
+  if (!data.rows.length || !data.columns.length) {
+    return '<p class="subtle">No answer has been scored against a topic yet.</p>';
+  }
+  const shown = new Set(open);
+  const columns = `grid-template-columns:minmax(150px,1.4fr) 92px repeat(${data.columns.length},minmax(52px,1fr))`;
+  const heads = data.columns.map((column) =>
+    `<span class="${column.isTarget ? "is-you" : ""}">${html(column.name.length > 13 ? column.name.slice(0, 12) + "…" : column.name)}</span>`).join("");
+  const visible = data.rows.filter((row) => !row.parent || shown.has(row.parent));
+  const body = visible.map((row) => {
+    const verdict = rowVerdict(row.shares, data.columns);
+    const cells = row.shares.map((share, index) => {
+      const tint = share === null ? 0 : Math.round(share * 100);
+      const target = data.columns[index]?.isTarget;
+      // The fill is the figure, so a row can be read without stopping to
+      // compare five numbers by eye.
+      return `<span class="mxcell${target ? " is-you" : ""}" style="background:color-mix(in srgb, var(--accent) ${Math.round(tint * 0.55)}%, transparent)">`
+        + (share === null ? "&ndash;" : percent(share)) + "</span>";
+    }).join("");
+    const opens = row.children > 0;
+    return `<div class="mrow mxrow d${row.depth}" style="${columns}">`
+      + `<div class="mxname">`
+      + (opens
+        ? `<button type="button" class="mxopen" data-matrix-open="${html(row.key)}" aria-expanded="${shown.has(row.key) ? "true" : "false"}" title="${html(row.label)}">`
+          + `<span class="mxchev">${shown.has(row.key) ? "−" : "+"}</span><span class="mxlabel">${html(row.label)}</span>`
+          + `<small>${row.children}</small></button>`
+        : `<span class="mxflat" title="${html(row.label)}">${html(row.label)}</span>`)
+      + "</div>"
+      + `<span class="mcell ${verdict.tone}">${verdict.text}</span>${cells}</div>`;
+  }).join("");
+  return `<div class="mtable mxtable"><div class="mhead" style="${columns}"><span>Topic</span><span>Standing</span>${heads}</div>${body}</div>`;
+}
+
 export interface Panel {
   id: string;
   title: string;
@@ -500,6 +565,7 @@ export function dashboardPanels(data: DashboardData): Panel[] {
   return [
     { id: "moves", title: "Recommendations", blurb: "The strongest levers, read off the answers.", body: movesList(data.moves), detail: movesList(data.moves, every) },
     { id: "trend", title: "Share of voice", blurb: "Every brand on one axis, so a gap that is closing looks different from one that is not.", body: rivalPanel(rivals, data.domain), detail: rivalPanel(rivals, data.domain) + rivalRuns(rivals, data.domain), wide: true },
+    { id: "topics", title: "Topics by competitor", blurb: "Every topic against every brand the answers named. Open a row for its subtopics and the questions under them.", body: topicMatrix(data.matrix || { columns: [], rows: [] }, data.matrixOpen || []), detail: topicMatrix(data.matrix || { columns: [], rows: [] }, (data.matrix || { rows: [] }).rows.map((row) => row.key)), wide: true },
     { id: "named", title: "Brand mentions", blurb: "You against everyone else the answers named.", body: leaderboardBars(data.leaderboard), detail: leaderboardBars(data.leaderboard, every) },
     { id: "described", title: "Sentiment by brand", blurb: "Where each brand appears in the answer, and how it is spoken about.", body: brandsTable(data.leaderboard), detail: brandsTable(data.leaderboard, every), wide: true },
     { id: "asked", title: "Branded and unbranded", blurb: "A question that names you cannot show whether you are found. The two are counted apart.", body: data.asked ? askedSplit(data.asked) : '<p class="subtle">Nothing asked yet.</p>', detail: data.asked ? askedSplit(data.asked) : '<p class="subtle">Nothing asked yet.</p>' },

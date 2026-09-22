@@ -109,7 +109,7 @@ test("moves that raise the score come before moves that only widen what is measu
   const plan = buildRankingPlan({
     insights: insights({
       leaderboard: [entity("Screener.in", { appearances: 9 })],
-      absentFrom: [{ promptId: "a", topicId: "t", text: "q", intent: "discovery", measuresVisibility: true, score: score(), rank: null, entitiesNamed: 1, byModel: [], ahead: [entity("Screener.in")] } as PromptStanding],
+      absentFrom: [{ promptId: "a", topicId: "t", text: "q", intent: "discovery", measuresVisibility: true, score: score(), rank: null, entitiesNamed: 1, byModel: [], ahead: [entity("Screener.in")], subtopic: null, standing: [entity("Screener.in")] } as PromptStanding],
     }),
     set: set([prompt("a"), prompt("b", { intent: "brand", measuresVisibility: false, visibilityExclusionReason: "names_the_brand" })]),
   });

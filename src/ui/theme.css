@@ -749,6 +749,28 @@
 }
 
 @layer components {
+  /* One topic per row, one brand per column, the fill carrying the share so a
+     row reads without comparing five numbers by eye. */
+  .mxtable .mxrow { gap: 8px; }
+  .mxcell { display: block; padding: 4px 6px; border-radius: var(--radius-xs); text-align: right; font-variant-numeric: tabular-nums; font-size: var(--type-sm); }
+  .mxcell.is-you { box-shadow: inset 0 0 0 1px var(--line-strong); }
+  .mxname { min-width: 0; }
+  .mxopen { display: flex; align-items: center; gap: 6px; width: 100%; border: 0; background: none; padding: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+  .mxopen small { color: var(--weak); font-size: var(--type-xs); }
+  .mxchev { display: inline-flex; width: 14px; height: 14px; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: var(--radius-xs); color: var(--muted); font-size: var(--type-xs); }
+  /* A span does not clip, so the label is a block and the flex row is told
+     it may shrink. Without both, long prompt text runs over the cells. */
+  .mxflat, .mxlabel { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mxopen { min-width: 0; }
+  .mxrow.d1 .mxname { padding-left: 16px; }
+  .mxrow.d2 .mxname { padding-left: 32px; }
+  .mxrow.d1, .mxrow.d2 { background: var(--sunken); }
+  .mxrow.d2 .mxflat { color: var(--muted); font-size: var(--type-sm); }
+  .mxtable .mhead span:not(:first-child):not(:nth-child(2)) { text-align: right; }
+  .mxtable .mhead .is-you { color: var(--text); font-weight: 600; }
+}
+
+@layer components {
   /* A panel opened on its own gets the width the grid could not give it. */
   .panel.is-wide-panel { width: min(960px, 100vw); }
   .panel-body { padding: 0 var(--space-lg) var(--space-lg); overflow-y: auto; }
