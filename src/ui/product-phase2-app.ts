@@ -77,8 +77,16 @@ export function renderProductPhase2AppHtml(): string {
     /* start, not stretch: one card with sixteen rows in it was pulling every
        card beside it to its own height, and one of them holds a single line. */
     /* dense: a full width card would otherwise leave the narrow card before
-       it sitting alone with a hole beside it. */
-    .dgrid { display:grid; grid-auto-flow:dense; grid-template-columns:repeat(auto-fit,minmax(322px,1fr)); align-items:start; gap:12px; margin-bottom:12px; }
+       it sitting alone with a hole beside it. Cards in a row share a height,
+       which only works because a long list inside one scrolls rather than
+       setting the height of everything beside it. */
+    .dgrid { display:grid; grid-auto-flow:dense; grid-template-columns:repeat(auto-fit,minmax(322px,1fr)); gap:12px; margin-bottom:12px; }
+    .dgrid > .section-card { display:flex; flex-direction:column; }
+    /* A full width card shares its row with nobody, so it has no height to
+       match and shows every row. */
+    .dgrid > .section-card:not(.is-wide) > .mtable { max-height:340px; overflow-y:auto; }
+    /* The cut lands mid row, so it fades to say there is more below. */
+    .dgrid > .section-card:not(.is-wide) > .mtable { mask-image:linear-gradient(to bottom,#000 calc(100% - 26px),transparent); -webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 26px),transparent); }
     .dgrid > .section-card { margin:0; }
     /* A table with five columns cannot fit a 322px card. */
     .dgrid > .section-card.is-wide { grid-column:1 / -1; }

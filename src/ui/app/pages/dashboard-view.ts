@@ -136,15 +136,19 @@ export function brandsTable(rows: NamedEntity[]): string {
     empty: "No organisation has been named yet.",
     rows: rows.slice(0, 8).map((entry) => {
       const judged = (entry.positive || 0) + (entry.negative || 0);
-      // Nothing judged is not neutral: it is nothing judged.
+      // Every count opens the answers it counted, because a number nobody can
+      // check is the thing this tool exists not to print.
+      const open = (label: string, tone: string, klass = "") =>
+        `<button type="button" class="mcell countlink ${klass}" data-brand-evidence="${html(entry.name)}" data-brand-tone="${tone}"`
+        + ` title="Open the archived answers behind this">${label}</button>`;
       const described = judged === 0
         ? cell("not judged", "state-flag")
         : entry.negative
-          ? cell(`${entry.positive || 0} positive · ${entry.negative} negative`)
-          : cell(`${entry.positive || 0} positive`, "state-ok");
+          ? open(`${entry.positive || 0} positive · ${entry.negative} negative`, "")
+          : open(`${entry.positive || 0} positive`, "positive", "state-ok");
       return row("mcols-brand", [
         nameCell(html(entry.name), entry.isTarget ? "You" : ""),
-        cell(String(entry.appearances)),
+        open(String(entry.appearances), ""),
         cell(percent(entry.shareOfAnswers)),
         cell(entry.prominence === null || entry.prominence === undefined ? "not readable" : percent(entry.prominence)),
         described,
@@ -161,51 +165,93 @@ export interface RivalSeries {
 
 const SERIES_INK = ["var(--accent)", "#6B8CAE", "#8B7FBF", "#6FA88A", "#B98A5E", "#A6748F"];
 
+/** Pushes labels apart so two lines ending at the same height do not print
+ * on top of each other. */
+function spread(values: number[], gap: number): number[] {
+  const order = values.map((y, index) => ({ y, index })).sort((left, right) => left.y - right.y);
+  let last = -Infinity;
+  for (const item of order) {
+    if (item.y - last < gap) item.y = last + gap;
+    last = item.y;
+  }
+  const out = values.slice();
+  for (const item of order) out[item.index] = item.y;
+  return out;
+}
+
+function runLabel(at: string): string {
+  if (!at) return "";
+  const when = new Date(at);
+  if (Number.isNaN(when.getTime())) return "";
+  return when.toLocaleDateString(undefined, { day: "numeric", month: "short" });
+}
+
 /** Every brand's share across the runs, on one axis. Share rather than score,
  * because a rival has no score here, only a presence in the answers. */
 export function rivalChart(series: RivalSeries[], domain: string): string {
   const runs = series[0] ? series[0].points.length : 0;
   if (runs < 2) return '<p class="subtle">One run so far. Run again to see movement.</p>';
 
-  // A brand nobody named has no series at all, and that absence is the whole
-  // finding, so it is drawn flat at zero rather than left off the chart.
   const first = series[0];
   if (!first) return '<p class="subtle">Nothing has been named yet.</p>';
+  // A brand nobody named has no series at all, and that absence is the whole
+  // finding, so it is drawn flat at zero rather than left off the chart.
   const drawn = series.some((row) => row.isTarget)
     ? series
     : [{ name: domain, isTarget: true, points: first.points.map((point) => ({ at: point.at, share: 0 })) }, ...series];
 
-  const width = 720;
-  const height = 190;
-  const pad = { left: 34, right: 12, top: 12, bottom: 22 };
-  const x = (index: number) => pad.left + (index * (width - pad.left - pad.right)) / (runs - 1);
-  const y = (share: number) => pad.top + (1 - Math.max(0, Math.min(1, share))) * (height - pad.top - pad.bottom);
+  const width = 760;
+  const height = 230;
+  const pad = { left: 38, right: 168, top: 14, bottom: 30 };
+  const plot = { w: width - pad.left - pad.right, h: height - pad.top - pad.bottom };
+  const x = (index: number) => pad.left + (runs === 1 ? plot.w : (index * plot.w) / (runs - 1));
+  const y = (share: number) => pad.top + (1 - Math.max(0, Math.min(1, share))) * plot.h;
 
-  const gridlines = [0, 0.5, 1].map((value) => join([
-    `<line class="ch-axis" x1="${pad.left}" x2="${width - pad.right}" y1="${y(value).toFixed(1)}" y2="${y(value).toFixed(1)}"></line>`,
-    `<text class="ch-tick" x="${pad.left - 7}" y="${(y(value) + 4).toFixed(1)}" text-anchor="end">${Math.round(value * 100)}%</text>`,
-  ])).join("");
+  // Light gridlines, labelled only at the ends and the middle.
+  const grid = [0, 0.25, 0.5, 0.75, 1].map((value) => {
+    const labelled = value === 0 || value === 0.5 || value === 1;
+    return join([
+      `<line class="ch-grid" x1="${pad.left}" x2="${width - pad.right}" y1="${y(value).toFixed(1)}" y2="${y(value).toFixed(1)}"></line>`,
+      labelled ? `<text class="ch-tick" x="${pad.left - 8}" y="${(y(value) + 3.5).toFixed(1)}" text-anchor="end">${Math.round(value * 100)}%</text>` : "",
+    ]);
+  }).join("");
+
+  // The hairline the runs sit on, and when each one happened.
+  const axis = join([
+    `<line class="ch-axis" x1="${pad.left}" x2="${width - pad.right}" y1="${y(0).toFixed(1)}" y2="${y(0).toFixed(1)}"></line>`,
+    first.points.map((point, index) => {
+      const anchor = index === 0 ? "start" : index === runs - 1 ? "end" : "middle";
+      return `<text class="ch-tick" x="${x(index).toFixed(1)}" y="${(height - 10).toFixed(1)}" text-anchor="${anchor}">${html(runLabel(point.at))}</text>`;
+    }).join(""),
+  ]);
+
+  const inkFor = (row: RivalSeries, index: number) => (row.isTarget ? SERIES_INK[0] : SERIES_INK[(index % (SERIES_INK.length - 1)) + 1]);
+  const ends = spread(drawn.map((row) => y(row.points[row.points.length - 1]?.share || 0)), 15);
 
   const lines = drawn.map((row, index) => {
-    const ink = row.isTarget ? SERIES_INK[0] : SERIES_INK[(index % (SERIES_INK.length - 1)) + 1];
+    const ink = inkFor(row, index);
     const path = row.points.map((point, at) => `${at ? "L" : "M"} ${x(at).toFixed(1)} ${y(point.share).toFixed(1)}`).join(" ");
-    const dots = row.points.map((point, at) => `<circle cx="${x(at).toFixed(1)}" cy="${y(point.share).toFixed(1)}" r="${row.isTarget ? 4 : 3}" fill="${ink}"></circle>`).join("");
-    return `<path class="ch-line" d="${path}" stroke="${ink}" stroke-width="${row.isTarget ? 3 : 2}"></path>${dots}`;
+    const dots = row.points.map((point, at) => join([
+      `<circle cx="${x(at).toFixed(1)}" cy="${y(point.share).toFixed(1)}" r="${row.isTarget ? 4 : 3}" fill="${ink}">`,
+      `<title>${html(row.name)}: ${percent(point.share)} of the answers on ${html(runLabel(point.at) || "this run")}</title>`,
+      "</circle>",
+    ])).join("");
+    return `<path class="ch-line" d="${path}" stroke="${ink}" stroke-width="${row.isTarget ? 2.5 : 1.5}"></path>${dots}`;
   }).join("");
 
-  const key = drawn.map((row, index) => {
-    const ink = row.isTarget ? SERIES_INK[0] : SERIES_INK[(index % (SERIES_INK.length - 1)) + 1];
+  // Named at the line's own end, so nobody has to match six colours to a key.
+  const labels = drawn.map((row, index) => {
     const now = row.points[row.points.length - 1];
-    return `<span class="ch-key"><i style="background:${ink}"></i>${html(row.name)}${row.isTarget ? " (you)" : ""} · ${percent(now ? now.share : null)}</span>`;
+    const ink = inkFor(row, index);
+    return join([
+      `<text class="ch-name${row.isTarget ? " is-you" : ""}" x="${(width - pad.right + 10).toFixed(1)}" y="${(ends[index] as number + 3.5).toFixed(1)}" fill="${ink}">`,
+      html(row.name.length > 16 ? row.name.slice(0, 15) + "\u2026" : row.name),
+      `<tspan class="ch-value" dx="6">${percent(now ? now.share : null)}</tspan>`,
+      "</text>",
+    ]);
   }).join("");
 
-  return join([
-    `<svg class="ch" viewBox="0 0 ${width} ${height}" role="img" aria-label="Share of the answers over ${runs} runs">`,
-    gridlines,
-    lines,
-    "</svg>",
-    `<div class="ch-legend">${key}</div>`,
-  ]);
+  return `<svg class="ch" viewBox="0 0 ${width} ${height}" role="img" aria-label="Share of the answers across ${runs} runs, one line per brand">${grid}${axis}${lines}${labels}</svg>`;
 }
 
 export interface AskedSplit {

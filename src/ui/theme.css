@@ -653,7 +653,7 @@
 }
 
 @utility ch {
-  @apply block h-[190px] w-full;
+  @apply block h-[230px] w-full;
 }
 
 @utility ch-legend {
@@ -666,8 +666,13 @@
 
 @layer components {
   .ch-line { fill: none; stroke-linecap: round; stroke-linejoin: round; }
-  .ch-axis { stroke: var(--line); stroke-width: 1; }
-  .ch-tick { fill: var(--weak); font-size: 10px; }
+  /* A hairline for the baseline, lighter still for the rest. */
+  .ch-axis { stroke: var(--line-strong); stroke-width: 1; }
+  .ch-grid { stroke: var(--line); stroke-width: 1; opacity: .55; }
+  .ch-tick { fill: var(--weak); font-size: 10px; font-variant-numeric: tabular-nums; }
+  .ch-name { font-size: 11px; }
+  .ch-name.is-you { font-weight: 650; }
+  .ch-value { fill: var(--muted); font-variant-numeric: tabular-nums; }
   .ch-key i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
 }
 
@@ -695,4 +700,15 @@
   @apply my-[18px] grid grid-cols-1 gap-px overflow-hidden rounded-[var(--radius)] border border-line bg-line;
   @media (min-width: 640px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   @media (min-width: 1024px) { grid-template-columns: repeat(var(--tile-columns, 3), minmax(0, 1fr)); }
+}
+
+/* A figure that opens the answers behind it. Underlined on hover only, so a
+   table of them does not read as a wall of links. */
+@utility countlink {
+  @apply cursor-pointer border-0 bg-transparent p-0 text-left font-[inherit] text-[inherit] underline decoration-transparent underline-offset-2;
+  transition: text-decoration-color var(--motion-fast) var(--ease-standard);
+}
+
+@layer components {
+  .countlink:hover, .countlink:focus-visible { text-decoration-color: currentColor; }
 }

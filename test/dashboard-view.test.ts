@@ -101,9 +101,10 @@ test("a brand nobody named is drawn flat at zero, not left off the chart", () =>
     { name: "Rival", isTarget: false, points: [{ at: "2026-01-01", share: 0.5 }, { at: "2026-01-02", share: 1 }] },
   ];
   const html = rivalChart(series, "mine.example");
-  // Absent from every answer is the finding, so the line has to be there.
+  // Absent from every answer is the finding, so the line has to be there,
+  // named at its own end and marked as the reader's own brand.
   assert.equal(html.includes("mine.example"), true);
-  assert.equal(html.includes("(you)"), true);
+  assert.equal(html.includes("ch-name is-you"), true);
 });
 
 test("one run reports that it is one run rather than drawing a flat line", () => {
@@ -119,4 +120,32 @@ test("a brand named in no answer of a run is plotted at zero, not skipped", () =
   const html = rivalChart(series, "mine.example");
   // Two points per line, so four circles, and no gap in either path.
   assert.equal(html.split("<circle").length - 1, 4);
+});
+
+test("the chart says when each run happened", () => {
+  const series = [
+    { name: "Mine", isTarget: true, points: [{ at: "2026-09-20T10:00:00Z", share: 0 }, { at: "2026-09-21T10:00:00Z", share: 0.4 }] },
+  ];
+  const html = rivalChart(series, "mine.example");
+  // Six lines crossing with no time axis is a picture of nothing.
+  assert.equal(html.includes("Sep"), true);
+  assert.equal(html.includes("ch-axis"), true);
+});
+
+test("labels that would land on each other are pushed apart", () => {
+  const series = [
+    { name: "A", isTarget: false, points: [{ at: "a", share: 1 }, { at: "b", share: 0.5 }] },
+    { name: "B", isTarget: false, points: [{ at: "a", share: 0 }, { at: "b", share: 0.5 }] },
+  ];
+  const html = rivalChart(series, "mine.example");
+  const ys: number[] = [];
+  let at = html.indexOf('<text class="ch-name');
+  while (at >= 0) {
+    const yAt = html.indexOf('y="', at);
+    ys.push(Number(html.slice(yAt + 3, html.indexOf('"', yAt + 3))));
+    at = html.indexOf('<text class="ch-name', at + 10);
+  }
+  assert.ok(ys.length >= 2, "expected a label per line");
+  const sorted = [...ys].sort((left, right) => left - right);
+  assert.ok((sorted[1] as number) - (sorted[0] as number) >= 14, "two labels overlap");
 });
