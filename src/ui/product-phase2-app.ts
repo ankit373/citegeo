@@ -74,7 +74,9 @@ export function renderProductPhase2AppHtml(): string {
     .dtile > span { font-size:var(--type-micro); letter-spacing:.09em; text-transform:uppercase; color:var(--weak); font-weight:600; }
     .dtile strong { font-family:var(--font-display); font-size:26px; font-weight:500; letter-spacing:-0.02em; line-height:1.1; }
     .dtile small { font-size:var(--type-xs); color:var(--weak); line-height:1.45; }
-    .dgrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(322px,1fr)); gap:12px; margin-bottom:12px; }
+    /* start, not stretch: one card with sixteen rows in it was pulling every
+       card beside it to its own height, and one of them holds a single line. */
+    .dgrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(322px,1fr)); align-items:start; gap:12px; margin-bottom:12px; }
     .dgrid > .section-card { margin:0; }
     /* A table with five columns cannot fit a 322px card. */
     .dgrid > .section-card.is-wide { grid-column:1 / -1; }
