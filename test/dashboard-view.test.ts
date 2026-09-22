@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   dashboardBody, heroStats, leaderboardBars, movesList, sourcesPanel, splitRows, summaryTiles,
   rivalChart,
+  dashboardPanels,
   type DashboardData,
 } from "../src/ui/app/pages/dashboard-view.js";
 
@@ -148,4 +149,26 @@ test("labels that would land on each other are pushed apart", () => {
   assert.ok(ys.length >= 2, "expected a label per line");
   const sorted = [...ys].sort((left, right) => left - right);
   assert.ok((sorted[1] as number) - (sorted[0] as number) >= 14, "two labels overlap");
+});
+
+test("panels are named the way the market names them", () => {
+  // Checked against search volume rather than taste: share of voice,
+  // recommendations, competitors and alerts are what people already call
+  // these, and an invented name makes a reader translate before they read.
+  const titles = dashboardPanels(data()).map((panel) => panel.title);
+  for (const expected of ["Share of voice", "Recommendations", "Brand mentions", "Sentiment by brand", "Cited sources"]) {
+    assert.ok(titles.includes(expected), `${expected} is not a panel title`);
+  }
+});
+
+test("every panel can be opened on its own", () => {
+  const panels = dashboardPanels(data());
+  assert.ok(panels.length >= 8);
+  for (const panel of panels) {
+    assert.ok(panel.id, "a panel has no id, so it cannot be reordered or expanded");
+    assert.ok(panel.body.length > 0, `${panel.id} has no body`);
+  }
+  // Ids have to be unique or the order and the expand both pick the wrong one.
+  const ids = panels.map((panel) => panel.id);
+  assert.deepEqual(ids, [...new Set(ids)]);
 });

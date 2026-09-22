@@ -146,7 +146,18 @@ export interface SelectionRow {
   enabled: boolean;
 }
 
-export interface Panel { kind?: string; promptId: string; title: string; runId?: string }
+/** What the side pane is showing: the answers behind a question, a live run,
+ * the answers naming one brand, or one dashboard panel on its own. */
+export interface Panel {
+  kind?: string;
+  promptId: string;
+  title: string;
+  runId?: string;
+  /** Set when the pane is holding a dashboard panel. */
+  panelId?: string;
+  blurb?: string;
+  body?: string;
+}
 
 export type Payload = Record<string, unknown>;
 

@@ -346,33 +346,51 @@ export function dashboardSkeleton(): string {
   ]);
 }
 
-/** The panels, in the reader's own order. The default order is the argument
- * this dashboard makes; theirs is the one they care about. */
-function arrangePanels(panels: Array<[string, string]>): string {
-  const byId = new Map(panels);
-  return panelOrder(panels.map(([id]) => id)).map((id) => byId.get(id) || "").join("");
+export interface Panel {
+  id: string;
+  title: string;
+  blurb: string;
+  body: string;
+  wide?: boolean;
+}
+
+/** Every dashboard panel, once. The grid draws them in the reader's order and
+ * the side pane draws one of them at full width, from the same list. */
+export function dashboardPanels(data: DashboardData): Panel[] {
+  return [
+    { id: "moves", title: "Recommendations", blurb: "The strongest levers, read off the answers.", body: movesList(data.moves) },
+    { id: "trend", title: "Share of voice", blurb: "Every brand on one axis, so a gap that is closing looks different from one that is not.", body: rivalChart(data.rivalTrend || [], data.domain), wide: true },
+    { id: "named", title: "Brand mentions", blurb: "You against everyone else the answers named.", body: leaderboardBars(data.leaderboard) },
+    { id: "described", title: "Sentiment by brand", blurb: "Where each brand appears in the answer, and how it is spoken about.", body: brandsTable(data.leaderboard), wide: true },
+    { id: "asked", title: "Branded and unbranded", blurb: "A question that names you cannot show whether you are found. The two are counted apart.", body: data.asked ? askedSplit(data.asked) : '<p class="subtle">Nothing asked yet.</p>' },
+    { id: "models", title: "By AI platform", blurb: "Who was asked, and how each one answered.", body: splitRows(data.byModel, "No assistant has answered yet.") },
+    { id: "regions", title: "By market", blurb: "Fills in once a run states more than one.", body: splitRows(data.byRegion, "Every answer was asked without a market stated.") },
+    { id: "personas", title: "By persona", blurb: "Fills in once a run asks on behalf of more than one.", body: splitRows(data.byPersona, "Every answer was asked on nobody\u2019s behalf.") },
+    { id: "sources", title: "Cited sources", blurb: "The pages the answers actually read.", body: sourcesPanel(data) },
+  ];
 }
 
 export function dashboardBody(held: Loadable<DashboardData>): string {
   return match(held, {
     loading: () => dashboardSkeleton(),
     error: (error) => `<div class="warning-box">${html(error)}</div>`,
-    ready: (data) => join([
-      summaryTiles(data),
-      '<div class="dgrid">',
-      arrangePanels([
-        ["moves", section({ id: "moves", title: "What would move this", blurb: "The strongest levers, from the answers.", body: movesList(data.moves) })],
-        ["trend", section({ id: "trend", title: "Share of the answers, run by run", blurb: "Every brand on one axis, so a gap that is closing looks different from one that is not.", body: rivalChart(data.rivalTrend || [], data.domain), wide: true })],
-        ["named", section({ id: "named", title: "Who the answers name", blurb: "You against everyone else named.", body: leaderboardBars(data.leaderboard) })],
-        ["described", section({ id: "described", title: "How each one is described", blurb: "Where each brand appears in the answer, and how it is spoken about.", body: brandsTable(data.leaderboard), wide: true })],
-        ["asked", section({ id: "asked", title: "Found, or already known", blurb: "A question that names you cannot show whether you are found. The two are counted apart.", body: data.asked ? askedSplit(data.asked) : '<p class="subtle">Nothing asked yet.</p>' })],
-        ["models", section({ id: "models", title: "By assistant", blurb: "Who was asked, and how each one answered.", body: splitRows(data.byModel, "No assistant has answered yet.") })],
-        ["regions", section({ id: "regions", title: "By market", blurb: "Fills in once a run states more than one.", body: splitRows(data.byRegion, "Every answer was asked without a market stated.") })],
-        ["personas", section({ id: "personas", title: "By persona", blurb: "Fills in once a run asks on behalf of more than one.", body: splitRows(data.byPersona, "Every answer was asked on nobody’s behalf.") })],
-        ["sources", section({ id: "sources", title: "Sources", blurb: "The pages the answers actually read.", body: sourcesPanel(data) })],
-      ]),
-      "</div>",
-    ]),
+    ready: (data) => {
+      const panels = dashboardPanels(data);
+      const byId = new Map(panels.map((panel) => [panel.id, panel]));
+      const drawn = panelOrder(panels.map((panel) => panel.id)).map((id) => {
+        const panel = byId.get(id);
+        if (!panel) return "";
+        return section({
+          id: panel.id,
+          title: panel.title,
+          blurb: panel.blurb,
+          body: panel.body,
+          ...(panel.wide ? { wide: true } : {}),
+          aside: `<button type="button" class="panel-expand" data-expand-panel="${html(panel.id)}" title="Open this on its own">Expand</button>`,
+        });
+      }).join("");
+      return join([summaryTiles(data), '<div class="dgrid">', drawn, "</div>"]);
+    },
   });
 }
 

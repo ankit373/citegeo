@@ -721,3 +721,19 @@
   /* A drag has to start on the card, not on a control inside it. */
   [data-panel] button, [data-panel] a, [data-panel] select, [data-panel] input { cursor: pointer; }
 }
+
+@utility panel-expand {
+  @apply cursor-pointer rounded-[6px] border border-transparent bg-transparent px-[7px] py-[3px] text-[11px] font-semibold uppercase tracking-[.06em] text-weak;
+  transition: color var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard);
+}
+
+@layer components {
+  .panel-expand:hover, .panel-expand:focus-visible { color: var(--text); border-color: var(--line-strong); }
+}
+
+@layer components {
+  /* A panel opened on its own gets the width the grid could not give it. */
+  .panel.is-wide-panel { width: min(960px, 100vw); }
+  .panel-body { padding: 0 var(--space-lg) var(--space-lg); overflow-y: auto; }
+  .panel-body .mtable { max-height: none; }
+}

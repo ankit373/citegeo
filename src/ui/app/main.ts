@@ -1,5 +1,5 @@
 import { CONFIG } from "./config.js";
-import { dashboardBody, heroStats, type DashboardData } from "./pages/dashboard-view.js";
+import { dashboardBody, dashboardPanels, heroStats, type DashboardData } from "./pages/dashboard-view.js";
 import { emptyState, notice } from "./components/primitives.js";
 import { button } from "./components/button.js";
 import { navScrim, navToggle, wireNav } from "./components/nav.js";
@@ -408,6 +408,21 @@ export function boot(): void {
       } catch (error) {
         state.panelState = "error";
       }
+      render();
+    }
+
+    /** One dashboard panel on its own, with the room the grid could not give
+     * it. The body is the same one the card drew, not a second version. */
+    function openPanel(panelId: string) {
+      const view = dashboardView();
+      if (!view) return;
+      const panel = dashboardPanels(view).find((row) => row.id === panelId);
+      if (!panel) return;
+      state.panel = { kind: "panel", promptId: "", title: panel.title, panelId, blurb: panel.blurb, body: panel.body };
+      state.panelState = "ready";
+      state.panelAnswers = [];
+      state.brief = null;
+      document.body.classList.add("panel-open");
       render();
     }
 
@@ -1519,6 +1534,12 @@ export function boot(): void {
     function renderEvidence() {
       if (!state.panel) return '<div class="panel-scrim" data-close-panel></div><aside class="panel" aria-hidden="true"></aside>';
       if (state.panel.kind === "run") return renderRunPane();
+      if (state.panel.kind === "panel") {
+        return '<div class="panel-scrim" data-close-panel></div><aside class="panel is-wide-panel" role="dialog" aria-label="' + html(state.panel.title) + '">'
+          + '<div class="panel-head"><div><h2>' + html(state.panel.title) + '</h2><p class="subtle">' + html(String(state.panel.blurb || "")) + '</p></div>'
+          + '<div class="panel-actions">' + button({ label: "Close", kind: "quiet", on: { "data-close-panel": true } }) + '</div></div>'
+          + '<div class="panel-body">' + String(state.panel.body || "") + '</div></aside>';
+      }
       const body = state.panelState === "loading"
         ? '<p class="subtle">Reading the archived answers.</p>'
         : state.panelState === "error"
@@ -1559,34 +1580,12 @@ export function boot(): void {
 
     /** The dashboard is assembled by a module of its own, from the same
      * figures the answer engine reports, so two screens cannot disagree. */
-    function renderHome() {
+    /** What the dashboard draws from. Built here rather than inside the
+     * renderer, so the side pane can redraw one panel from the same figures. */
+    function dashboardView(): DashboardData | null {
       const selected = project();
-      if (!selected) return '<section class="view">' + emptyState("Create a project first", "Everything here reports on one domain.") + '</section>';
-      if (state.homeState === "idle") { loadHome(); }
-      if (state.answerEngineState === "idle") { loadAnswerEngine(); }
-      if (state.outreachState === "idle") { loadOutreach(); }
-      if (state.rankPlanState === "idle") { loadRankingPlan(); }
-      if (state.digestState === "idle") { loadDigest(); }
-
-      const heading = (body: string): string => '<section class="view"><div class="heading"><div class="headmain"><h1>'
-        + html(selected.name) + '</h1><p class="subtle">' + html(String((state.home && state.home.domain) || selected.normalizedDomain)) + '</p></div>'
-        + '<div class="inline-actions">'
-        + (hasPanelOrder() ? button({ label: "Reset layout", kind: "quiet", on: { "data-reset-panels": true } }) : '')
-        + button({ label: "Full report", on: { "data-page": "answer-engine" } }) + ''
-        + runActionButton("Run prompts") + '</div></div>' + renderLiveRun() + body + '</section>';
-
-      if (state.homeState === "error") return heading(notice("Could not read this project.", "error"));
-      if (state.homeState !== "ready" || !state.home) return heading(dashboardBody({ status: "loading" }));
-
       const home = state.home;
-      if (home.showSetupOnly) {
-        const steps = (home.setup as any[]).map((step: any, index: number) => '<div class="mrow mcols-step" data-state="' + (step.done ? "done" : "todo") + '">'
-          + '<span class="mcell mono">' + (step.done ? "\u2713" : String(index + 1)) + '</span>'
-          + '<div class="mname"><strong>' + html(step.label) + '</strong><span class="subtle">' + html(step.detail) + '</span></div>'
-          + '<span class="mcell">' + (step.done ? '<span class="state-ok">Done</span>' : button({ label: "Open", kind: "link", on: { "data-page": (step.id === "models" ? "models" : "prompts") } })) + '</span></div>').join("");
-        return heading('<section class="section-card"><div class="mtable"><div class="mhead mcols-step"><span></span><span>Step</span><span></span></div>' + steps + '</div></section>');
-      }
-
+      if (!selected || !home) return null;
       const data = state.answerEngine;
       const outreach = state.outreach;
       const plan = state.rankPlan;
@@ -1650,6 +1649,40 @@ export function boot(): void {
         alerts: (home.alerts as any[]).length,
       };
 
+      return view;
+    }
+
+    function renderHome() {
+      const selected = project();
+      if (!selected) return '<section class="view">' + emptyState("Create a project first", "Everything here reports on one domain.") + '</section>';
+      if (state.homeState === "idle") { loadHome(); }
+      if (state.answerEngineState === "idle") { loadAnswerEngine(); }
+      if (state.outreachState === "idle") { loadOutreach(); }
+      if (state.rankPlanState === "idle") { loadRankingPlan(); }
+      if (state.digestState === "idle") { loadDigest(); }
+
+      const heading = (body: string): string => '<section class="view"><div class="heading"><div class="headmain"><h1>'
+        + html(selected.name) + '</h1><p class="subtle">' + html(String((state.home && state.home.domain) || selected.normalizedDomain)) + '</p></div>'
+        + '<div class="inline-actions">'
+        + (hasPanelOrder() ? button({ label: "Reset layout", kind: "quiet", on: { "data-reset-panels": true } }) : '')
+        + button({ label: "Full report", on: { "data-page": "answer-engine" } }) + ''
+        + runActionButton("Run prompts") + '</div></div>' + renderLiveRun() + body + '</section>';
+
+      if (state.homeState === "error") return heading(notice("Could not read this project.", "error"));
+      if (state.homeState !== "ready" || !state.home) return heading(dashboardBody({ status: "loading" }));
+
+      const home = state.home;
+      if (home.showSetupOnly) {
+        const steps = (home.setup as any[]).map((step: any, index: number) => '<div class="mrow mcols-step" data-state="' + (step.done ? "done" : "todo") + '">'
+          + '<span class="mcell mono">' + (step.done ? "\u2713" : String(index + 1)) + '</span>'
+          + '<div class="mname"><strong>' + html(step.label) + '</strong><span class="subtle">' + html(step.detail) + '</span></div>'
+          + '<span class="mcell">' + (step.done ? '<span class="state-ok">Done</span>' : button({ label: "Open", kind: "link", on: { "data-page": (step.id === "models" ? "models" : "prompts") } })) + '</span></div>').join("");
+        return heading('<section class="section-card"><div class="mtable"><div class="mhead mcols-step"><span></span><span>Step</span><span></span></div>' + steps + '</div></section>');
+      }
+
+      const view = dashboardView();
+      if (!view) return heading(dashboardBody({ status: "loading" }));
+      const data = state.answerEngine;
       const hero = '<div class="hero"><div class="hero-figure"><span class="scorebig">' + scoreText(home.score) + '</span>'
         + '<span class="hero-sub">' + deltaPill(data ? data.trend : { change: home.change }) + '<span>'
         + (home.rank === null || home.rank === undefined ? "Not named" : "#" + home.rank + " of " + ((home.rivals || 0) + 1)) + '</span></span>'
@@ -2413,7 +2446,7 @@ export function boot(): void {
       const clearCred = target && target.closest ? target.closest("[data-credential-clear]") : null;
       if (clearCred) { await clearCredential(clearCred.getAttribute("data-credential-clear"), clearCred); return; }
       const probeButton = target && target.closest ? target.closest("[data-probe-signals]") : null;
-      if (probeButton) { await captureSignals(probeButton); state.signalsState = "idle"; loadSignals(); return; } if (!(target instanceof Element)) return; const pageButton = target.closest("[data-page]"); if (pageButton) { await setPage(pageButton.getAttribute("data-page") || "overview"); return; } const listModeButton = target.closest("[data-list-mode]"); if (listModeButton) { state.mode = listModeButton.getAttribute("data-list-mode") || "current"; await refreshProjects(); render(); return; } if (target.id === "new-project" || target.id === "empty-new-project") { openDrawer(); return; } if (target.id === "close-drawer" || target.id === "cancel-draft" || target.id === "drawer-backdrop") { closeDrawer(); return; } if (target.id === "retry-catalog") { state.catalogState = "idle"; await loadCatalog(); return; } if (target.closest("[data-reset-panels]")) { resetPanelOrder(); render(); return; } const brand = target.closest("[data-brand-evidence]"); if (brand) { await openBrandEvidence(brand.getAttribute("data-brand-evidence") || "", brand.getAttribute("data-brand-tone") || ""); return; } const dropped = target.closest("[data-drop-selection]"); if (dropped) { dropSelection(dropped.getAttribute("data-drop-selection") || ""); return; } if (target.id === "save-models") { await saveModels((target as any)); return; } if (target.id === "save-monitoring-configuration") { await saveMonitoringConfiguration(); return; } if (target.id === "archive-project") { const selected = project(); if (selected) await projectAction("archive", selected.id, (target as any)); return; } if (target.id === "delete-project") { const selected = project(); if (selected) await projectAction("delete", selected.id, (target as any)); return; } const action = target.closest("[data-project-action]"); if (action) { const projectId = action.getAttribute("data-project-id"); const name = action.getAttribute("data-project-action"); if (projectId && name) await projectAction(name, projectId, (action as any)); } });
+      if (probeButton) { await captureSignals(probeButton); state.signalsState = "idle"; loadSignals(); return; } if (!(target instanceof Element)) return; const pageButton = target.closest("[data-page]"); if (pageButton) { await setPage(pageButton.getAttribute("data-page") || "overview"); return; } const listModeButton = target.closest("[data-list-mode]"); if (listModeButton) { state.mode = listModeButton.getAttribute("data-list-mode") || "current"; await refreshProjects(); render(); return; } if (target.id === "new-project" || target.id === "empty-new-project") { openDrawer(); return; } if (target.id === "close-drawer" || target.id === "cancel-draft" || target.id === "drawer-backdrop") { closeDrawer(); return; } if (target.id === "retry-catalog") { state.catalogState = "idle"; await loadCatalog(); return; } const expand = target.closest("[data-expand-panel]"); if (expand) { openPanel(expand.getAttribute("data-expand-panel") || ""); return; } if (target.closest("[data-reset-panels]")) { resetPanelOrder(); render(); return; } const brand = target.closest("[data-brand-evidence]"); if (brand) { await openBrandEvidence(brand.getAttribute("data-brand-evidence") || "", brand.getAttribute("data-brand-tone") || ""); return; } const dropped = target.closest("[data-drop-selection]"); if (dropped) { dropSelection(dropped.getAttribute("data-drop-selection") || ""); return; } if (target.id === "save-models") { await saveModels((target as any)); return; } if (target.id === "save-monitoring-configuration") { await saveMonitoringConfiguration(); return; } if (target.id === "archive-project") { const selected = project(); if (selected) await projectAction("archive", selected.id, (target as any)); return; } if (target.id === "delete-project") { const selected = project(); if (selected) await projectAction("delete", selected.id, (target as any)); return; } const action = target.closest("[data-project-action]"); if (action) { const projectId = action.getAttribute("data-project-id"); const name = action.getAttribute("data-project-action"); if (projectId && name) await projectAction(name, projectId, (action as any)); } });
     document.addEventListener("change", async (event) => { const target = el(event.target) as any; if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) return; if (target.id === "project-select") { setSelectedProject(target.value); state.selectionsDirty = false; await refreshConfiguration(); loadLiveRun(); render(); return; } if (target instanceof HTMLInputElement && target.hasAttribute("data-model-checkbox")) { changeModel(target.getAttribute("data-model-checkbox") || "", target.checked); return; } if (target instanceof HTMLSelectElement && target.hasAttribute("data-model-mode")) { changeModelMode(target.getAttribute("data-model-mode") || "", target.value); return; } if (target instanceof HTMLSelectElement && target.hasAttribute("data-selected-model-mode")) { changeModelMode(target.getAttribute("data-selected-model-mode") || "", target.value); return; } });
     document.addEventListener("change", (event) => { const target = el(event.target) as any; if (!(target instanceof HTMLSelectElement)) return; if (target.id === "model-provider-filter") { state.catalogProvider = target.value; render(); return; } if (target.id === "model-native-search-filter") { state.catalogNativeSearch = target.value; render(); return; } if (target.id === "model-catalog-sort") { state.catalogSort = target.value; render(); } });
     document.addEventListener("input", (event) => { const target = el(event.target) as any; if (target instanceof HTMLInputElement && target.id === "model-search") { state.query = target.value; refreshCatalogSearchResults(); return; } if (target instanceof HTMLInputElement && target.id === "prompt-search") { state.promptFilters.query = target.value; refreshPromptResults(); } });
