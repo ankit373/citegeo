@@ -22,6 +22,11 @@ export interface NamedEntity {
   isTarget: boolean;
   appearances: number;
   shareOfAnswers: number | null;
+  /** How early in the answer, 0 to 1. Null when no answer gave a readable order. */
+  prominence?: number | null;
+  /** Answers that recommended or listed this brand, and that did not. */
+  positive?: number;
+  negative?: number;
 }
 
 export interface Split {
@@ -119,6 +124,32 @@ export function leaderboardBars(rows: NamedEntity[]): string {
   ])).join("")}</div>`;
 }
 
+/** The same brands as the bars, with the three things a bar cannot carry:
+ * how early each one appears, and how it is spoken about. */
+export function brandsTable(rows: NamedEntity[]): string {
+  return table({
+    layout: "mcols-brand",
+    columns: ["Brand", "Named in", "Share", "Prominence", "Described"],
+    empty: "No organisation has been named yet.",
+    rows: rows.slice(0, 8).map((entry) => {
+      const judged = (entry.positive || 0) + (entry.negative || 0);
+      // Nothing judged is not neutral: it is nothing judged.
+      const described = judged === 0
+        ? cell("not judged", "state-flag")
+        : entry.negative
+          ? cell(`${entry.positive || 0} positive · ${entry.negative} negative`)
+          : cell(`${entry.positive || 0} positive`, "state-ok");
+      return row("mcols-brand", [
+        nameCell(html(entry.name), entry.isTarget ? "You" : ""),
+        cell(String(entry.appearances)),
+        cell(percent(entry.shareOfAnswers)),
+        cell(entry.prominence === null || entry.prominence === undefined ? "not readable" : percent(entry.prominence)),
+        described,
+      ]);
+    }),
+  });
+}
+
 export function splitRows(rows: Split[], empty: string): string {
   return table({
     layout: "mcols-rank",
@@ -183,6 +214,7 @@ export function dashboardBody(held: Loadable<DashboardData>): string {
       '<div class="dgrid">',
       section({ title: "What would move this", blurb: "The strongest levers, from the answers.", body: movesList(data.moves) }),
       section({ title: "Who the answers name", blurb: "You against everyone else named.", body: leaderboardBars(data.leaderboard) }),
+      section({ title: "How each one is described", blurb: "Where each brand appears in the answer, and how it is spoken about.", body: brandsTable(data.leaderboard), wide: true }),
       section({ title: "By assistant", blurb: "Who was asked, and how each one answered.", body: splitRows(data.byModel, "No assistant has answered yet.") }),
       section({ title: "By market", blurb: "Fills in once a run states more than one.", body: splitRows(data.byRegion, "Every answer was asked without a market stated.") }),
       section({ title: "By persona", blurb: "Fills in once a run asks on behalf of more than one.", body: splitRows(data.byPersona, "Every answer was asked on nobody’s behalf.") }),

@@ -73,11 +73,13 @@ export interface SectionInput {
   blurb?: string;
   aside?: string;
   body: string;
+  /** Spans the whole dashboard row. For a table too wide for a card. */
+  wide?: boolean;
 }
 
 export function section(input: SectionInput): string {
   return join([
-    '<section class="section-card"><div class="section-head"><div class="headmain">',
+    `<section class="section-card${input.wide ? " is-wide" : ""}"><div class="section-head"><div class="headmain">`,
     `<h2>${html(input.title)}</h2>`,
     input.blurb ? `<p class="subtle">${html(input.blurb)}</p>` : "",
     "</div>",

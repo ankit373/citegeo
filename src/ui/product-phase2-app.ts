@@ -76,6 +76,8 @@ export function renderProductPhase2AppHtml(): string {
     .dtile small { font-size:var(--type-xs); color:var(--weak); line-height:1.45; }
     .dgrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(322px,1fr)); gap:12px; margin-bottom:12px; }
     .dgrid > .section-card { margin:0; }
+    /* A table with five columns cannot fit a 322px card. */
+    .dgrid > .section-card.is-wide { grid-column:1 / -1; }
     .dbars { display:grid; gap:9px; margin-top:14px; }
     .dbar { display:grid; gap:3px; font-size:var(--type-sm); }
     .dbar-name { color:var(--text); font-weight:550; overflow-wrap:anywhere; }

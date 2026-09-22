@@ -645,3 +645,7 @@
 @utility changed-headline {
   @apply m-0 mb-[10px] font-[550] text-text;
 }
+
+@utility mcols-brand {
+  @apply grid items-center gap-[10px] grid-cols-[minmax(0,1.4fr)_70px_70px_92px_minmax(0,1.3fr)];
+}
