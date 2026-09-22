@@ -130,3 +130,22 @@ test("the model search repaints the rows, not the page", () => {
   const header = html.lastIndexOf("catalogHead()", at);
   assert.ok(header > 0 && header < at, "the column header is inside the repainted region");
 });
+
+test("prompt volume has a screen, and says so when nothing is indexed", () => {
+  const html = productAppSource();
+  // The endpoint has existed since the corpus work and nothing ever asked
+  // for it, so the figure was computed and invisible.
+  assert.equal(html.includes('"/prompt-demand"'), true);
+  assert.equal(html.includes("function renderDemand()"), true);
+  assert.equal(html.includes("No corpus is indexed."), true);
+  // Not built is not zero demand, and the screen has to hold that line.
+  assert.equal(html.includes("which is not the same as nobody asking"), true);
+});
+
+test("the brand visibility board collects the panels rather than scattering them", () => {
+  const html = productAppSource();
+  assert.equal(html.includes("function renderBrandVisibility()"), true);
+  assert.equal(html.includes('const wanted = ["trend", "named", "described", "sources"];'), true);
+  // It draws the same panels the dashboard does, not a second copy of them.
+  assert.equal(html.includes("dashboardPanels(view).filter"), true);
+});

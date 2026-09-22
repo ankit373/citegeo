@@ -769,3 +769,15 @@
   .ch-tip-row i { width: 9px; height: 9px; border-radius: 50%; }
   .ch-tip-value { font-variant-numeric: tabular-nums; color: var(--muted); }
 }
+
+@utility mcols-demand {
+  @apply grid items-center gap-[10px] grid-cols-[minmax(0,1.6fr)_110px_120px_128px];
+}
+
+@utility tagrow {
+  @apply mt-[10px] flex flex-wrap gap-[6px];
+}
+
+@utility mt-lg {
+  @apply mt-[22px];
+}

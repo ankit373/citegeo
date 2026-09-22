@@ -399,6 +399,9 @@ export function renderProductPhase2AppHtml(): string {
       .mcols-catalog > .mcell:empty,.mcols-promptrow > .mcell:empty,.mcols-engine > .mcell:empty { display:none; }
       /* A provider row is four columns of prose and URLs. In 112px the
          endpoint broke mid-word, so it stacks and each part gets the width. */
+      .mcols-demand { grid-template-columns:minmax(0,1fr); row-gap:4px; }
+      .mcols-demand > * { grid-column:1; }
+      .mhead.mcols-demand { display:none; }
       .mcols-provider { grid-template-columns:minmax(0,1fr); row-gap:4px; }
       .mcols-provider > * { grid-column:1; }
       /* Those stack their cells into one column, so the header stacks too and
