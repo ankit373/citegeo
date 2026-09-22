@@ -49,33 +49,56 @@ sources it cited, and stores the unedited response behind every claim.
 
 ## What it looks like
 
-Real screens from a real project, not mockups. The brand being measured scores
-zero: no answer named it, and the tool says so rather than rounding it into
-something kinder.
+Real screens from a real project, measured through the models, not mockups.
 
 <p align="center">
-  <img src="assets/readme/dashboard.png" alt="The CiteGEO dashboard: a visibility score of 0, presence 0%, prominence and sentiment reported as not measurable, and the strongest levers read off the archived answers" width="880">
+  <img src="assets/readme/receipt.gif" alt="Clicking a count on the dashboard opens the archived answers behind it, each shown with the question that produced it" width="900">
 </p>
 
-Every figure states what it is built from. Prominence and sentiment read "not
-measurable" because nothing was named, which is a different finding from
-scoring badly on them.
+**Every number opens onto the answer it came from.** A count is a link. Behind
+it sits each archived answer, the question that produced it, the model that
+wrote it and the sentences themselves.
 
 <p align="center">
-  <img src="assets/readme/compare.png" alt="Share of voice: a line per brand across two runs, with the measured brand flat along the bottom at zero" width="880">
+  <img src="assets/readme/hero.png" alt="A visibility score of 76.3, up 3.7, ranked first of 71 brands, with presence 84 percent, prominence 82 percent and sentiment 96 percent beside it" width="900">
 </p>
 
-Every brand named in the answers is drawn on one axis, with the standings beside
-it. A brand that appears in no answer still gets a line along the bottom,
-because that absence is the finding rather than missing data.
+The score is never shown alone. Presence, prominence and sentiment sit beside
+it with the counts they came from, because a composite with no components is a
+number you cannot argue with.
 
 <p align="center">
-  <img src="assets/readme/evidence.png" alt="An evidence pane listing, for each competitor, how many answers named it and the exact sentences the models wrote" width="880">
+  <img src="assets/readme/share-of-voice.png" alt="Share of voice: a line per brand across runs, with a ranked list beside it showing each brand's share and movement in percentage points" width="900">
 </p>
 
-Any number opens onto the answers behind it: which models were asked, which of
-them named anything, and the sentences they actually wrote. This is the part
-that makes a number arguable.
+Share of voice, with the standings beside the chart rather than a colour key to
+decode. Brands level on share take the same place. A brand nobody named still
+gets a line, along the bottom, because that absence is the finding.
+
+<p align="center">
+  <img src="assets/readme/heatmap.gif" alt="The topics by competitor heatmap, where opening a topic row reveals the individual questions under it" width="900">
+</p>
+
+<p align="center">
+  <img src="assets/readme/topics-heatmap.png" alt="A grid of topics against competitor brands, each cell shaded by share, with a verdict per row reading never named or leading" width="900">
+</p>
+
+**Every topic against every brand the answers named.** The fill is the share, so
+a row reads without comparing eight numbers by eye. Open a row for its subtopics
+and the questions under them. The verdict on the left is the gap to the best
+brand on that row.
+
+<p align="center">
+  <img src="assets/readme/sentiment.png" alt="A table of brands with how many answers named each, their share, how early they appear, and whether they were recommended" width="900">
+</p>
+
+<p align="center">
+  <img src="assets/readme/arrange.gif" alt="Arranging the dashboard: setting a panel to two columns and taking another off the board" width="900">
+</p>
+
+The board is the product's opinion, not a rule. Drag to reorder, set any panel
+to one column, two, or the full row, and take panels off. The arrangement stays
+in your browser.
 
 <a id="quick-start"></a>
 
