@@ -27,8 +27,13 @@ const blocksOf = (html, tag) => {
     if (bodyStart === -1) break;
     const close = html.indexOf(`</${tag}>`, bodyStart);
     if (close === -1) break;
+    const attributes = html.slice(open, bodyStart);
     const body = html.slice(bodyStart + 1, close);
-    if (body.trim()) blocks.push(body);
+    // A data block is not a script: type="application/json" carries the config
+    // the shell hands the application, and parsing it as JavaScript fails on
+    // its first colon. A module is loaded from a file already type checked.
+    const parseable = !attributes.includes('type="application/json"') && !attributes.includes('type="module"');
+    if (body.trim() && parseable) blocks.push(body);
     cursor = close + tag.length + 3;
   }
   return blocks;
@@ -60,8 +65,13 @@ const scriptBlocks = (html) => {
     if (bodyStart === -1) break;
     const close = html.indexOf('</script>', bodyStart);
     if (close === -1) break;
+    const attributes = html.slice(open, bodyStart);
     const body = html.slice(bodyStart + 1, close);
-    if (body.trim()) blocks.push(body);
+    // A data block is not a script: type="application/json" carries the config
+    // the shell hands the application, and parsing it as JavaScript fails on
+    // its first colon. A module is loaded from a file already type checked.
+    const parseable = !attributes.includes('type="application/json"') && !attributes.includes('type="module"');
+    if (body.trim() && parseable) blocks.push(body);
     cursor = close + 9;
   }
   return blocks;

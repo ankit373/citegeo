@@ -1,4 +1,4 @@
-import { integrationIds } from "./integrations.js";
+import { INTEGRATIONS, integrationIds } from "./integrations.js";
 import type { CredentialService } from "./credential-service.js";
 
 export type CredentialJsonSender = (status: number, body: unknown) => void;
@@ -16,6 +16,25 @@ export async function handleCredentialApi(input: {
   readJson: () => Promise<Record<string, unknown>>;
 }): Promise<boolean> {
   const { method, route, send, service } = input;
+
+  // What this product can connect to, with no credential state in it. It is
+  // the same list the source carries, so a closed server can still say what
+  // Setup would ask for rather than showing an empty page.
+  if (method === "GET" && route[0] === "api" && route[1] === "integrations" && route.length === 2) {
+    send(200, {
+      integrations: INTEGRATIONS.map((row) => ({
+        providerId: row.id,
+        label: row.label,
+        kind: row.kind,
+        purpose: row.purpose,
+        help: row.help,
+        envKeys: row.envKeys,
+        settings: (row.settings || []).map((setting) => ({ key: setting.key, label: setting.label, envKey: setting.envKey })),
+      })),
+    });
+    return true;
+  }
+
   if (route[0] !== "api" || route[1] !== "credentials") return false;
 
   if (!input.authEnabled) {

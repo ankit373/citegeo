@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, readdir, rename, rm, rmdir, writeFile } from "node:fs/promises";
 import { dirname, join, resolve, sep } from "node:path";
+import { objectReadConcurrency } from "../../config/env.js";
 
 // Everything this product stores is a small JSON document under a key. That is
 // the whole surface, which is why it can sit on a disk or on a bucket.
@@ -13,7 +14,21 @@ export interface ObjectStore {
   list(prefix: string): Promise<string[]>;
   /** Where this is writing, for the interface to show. */
   describe(): string;
+  /** Reads this backend is happy to have in flight. Absent takes the default. */
+  readonly readConcurrency?: number | undefined;
 }
+
+/**
+ * A remote bucket pays a round trip per object, so the bound is sockets and
+ * latency rather than CPU. Sixteen hides the latency without a burst of them.
+ */
+export const DEFAULT_READ_CONCURRENCY = 16;
+
+/**
+ * libuv runs filesystem work on four threads by default, so past roughly twice
+ * that a queued read only adds latency to the ones already running.
+ */
+export const LOCAL_READ_CONCURRENCY = 8;
 
 export class ObjectStoreError extends Error {}
 
@@ -32,6 +47,8 @@ export function assertSafeKey(key: string): string {
 
 /** The disk, which is the default and needs nothing configured. */
 export class LocalObjectStore implements ObjectStore {
+  readonly readConcurrency = LOCAL_READ_CONCURRENCY;
+
   constructor(private readonly rootDir: string) {}
 
   private pathFor(key: string): string {
@@ -132,16 +149,51 @@ export async function putJson(store: ObjectStore, key: string, value: unknown): 
   await store.put(key, `${JSON.stringify(value, null, 2)}\n`);
 }
 
+/** The JSON documents in a listing, keeping the order the store gave them. */
+export function jsonKeys(keys: string[]): string[] {
+  return keys.filter((key) => key.endsWith(".json"));
+}
+
+/** What a read of a whole prefix produced, paired with the key it came from. */
+export interface JsonEntry<T> {
+  key: string;
+  value: T;
+}
+
+/** How many reads this backend wants in flight, the environment winning. */
+export function readConcurrencyFor(store: ObjectStore): number {
+  return objectReadConcurrency() ?? store.readConcurrency ?? DEFAULT_READ_CONCURRENCY;
+}
+
+/**
+ * Reads keys with a bounded number of reads in flight. Results are placed by
+ * position, so the order is the order of the keys however they finish.
+ */
+export async function readJsonEntries<T>(store: ObjectStore, keys: string[], concurrency?: number): Promise<Array<JsonEntry<T>>> {
+  if (!keys.length) return [];
+  const bound = Math.max(1, Math.min(concurrency ?? readConcurrencyFor(store), keys.length));
+  const slots: Array<JsonEntry<T> | null> = new Array(keys.length).fill(null);
+  let next = 0;
+  const worker = async (): Promise<void> => {
+    for (;;) {
+      const position = next++;
+      const key = keys[position];
+      if (key === undefined) return;
+      const value = await getJson<T>(store, key);
+      // Falsy, not just null, because that is what the serial read dropped
+      // and a stored 0 or false has never been a document here.
+      if (value) slots[position] = { key, value };
+    }
+  };
+  await Promise.all(Array.from({ length: bound }, () => worker()));
+  return slots.filter((entry): entry is JsonEntry<T> => entry !== null);
+}
+
 /** Every JSON document under a prefix. A document mid-write is skipped rather
  * than failing the read of every other one. */
-export async function listJson<T>(store: ObjectStore, prefix: string): Promise<T[]> {
-  const rows: T[] = [];
-  for (const key of await store.list(prefix)) {
-    if (!key.endsWith(".json")) continue;
-    const row = await getJson<T>(store, key);
-    if (row) rows.push(row);
-  }
-  return rows;
+export async function listJson<T>(store: ObjectStore, prefix: string, concurrency?: number): Promise<T[]> {
+  const entries = await readJsonEntries<T>(store, jsonKeys(await store.list(prefix)), concurrency);
+  return entries.map((entry) => entry.value);
 }
 
 /** Resolves its backend on first use. Construction of the service graph stays
@@ -149,13 +201,19 @@ export async function listJson<T>(store: ObjectStore, prefix: string): Promise<T
 export class DeferredObjectStore implements ObjectStore {
   private resolved: Promise<ObjectStore> | null = null;
   private described = "not resolved yet";
+  private bound: number | undefined = undefined;
 
   constructor(private readonly resolve: () => Promise<ObjectStore>) {}
+
+  // Read after the listing that resolves the backend, so by the time a caller
+  // needs the bound the real one is known.
+  get readConcurrency(): number | undefined { return this.bound; }
 
   private store(): Promise<ObjectStore> {
     if (!this.resolved) {
       this.resolved = this.resolve().then((store) => {
         this.described = store.describe();
+        this.bound = store.readConcurrency;
         return store;
       });
     }

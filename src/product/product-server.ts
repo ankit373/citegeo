@@ -7,6 +7,7 @@ import { catchErrors, compose, exchangeFor, lifecycleGate, observability, probes
 import { startExporter } from "../runtime/otlp.js";
 import { stat } from "node:fs/promises";
 import { existsSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import { loadDotEnv } from "../config/env.js";
@@ -19,6 +20,7 @@ import { handleActionApi } from "./actions/action-http.js";
 import { handleInsightsApi } from "./insights/insights-http.js";
 import { handleCrawlerApi } from "./crawlers/crawler-http.js";
 import { handleCredentialApi } from "./auth/credential-http.js";
+import { handleSiteIconApi } from "./discovery/site-icon-http.js";
 import { handleProviderStatusApi } from "./configuration/provider-http.js";
 import { authorise, passwordMatches } from "./auth/auth-guard.js";
 import { clearedCookie, issueSession, sessionCookie } from "./auth/session.js";
@@ -81,6 +83,25 @@ async function handle(req: IncomingMessage, res: ServerResponse, services: Produ
     return send(res, 200, measurementView ? renderProductPhase5AppHtml() : renderProductPhase4AppHtml(), "text/html; charset=utf-8");
   }
   if (method === "GET" && url.pathname === "/health") return send(res, 200, { ok: true });
+  // The application, compiled. Served from the build output so the browser
+  // runs exactly what the type checker read, rather than a copy in a string.
+  if (method === "GET" && route[0] === "app" && route.length > 1) {
+    const wanted = route.slice(1).join("/");
+    // The stylesheet is generated beside the compiled modules, so one root
+    // serves both and the container image cannot copy one without the other.
+    const isCss = wanted.endsWith(".css");
+    const root = resolve("dist", "src", "ui", "app");
+    const path = resolve(root, wanted);
+    if (!path.startsWith(root + sep) || !(isCss || path.endsWith(".js")) || !existsSync(path)) {
+      return send(res, 404, { error: "not found" });
+    }
+    res.writeHead(200, {
+      "Content-Type": isCss ? "text/css; charset=utf-8" : "text/javascript; charset=utf-8",
+      "Cache-Control": "no-cache",
+    });
+    res.end(await readFile(path, "utf8"));
+    return;
+  }
   if (method === "GET" && route[0] === "assets" && route.length > 1) {
     const root = resolve("assets");
     const path = resolve(root, route.slice(1).join("/"));
@@ -95,6 +116,7 @@ async function handle(req: IncomingMessage, res: ServerResponse, services: Produ
   if (await handleStorageApi({ method, route, send: json, settings: services.storageSettings, dataDir: services.dataDir, readJson: body })) return;
   if (await handleProviderStatusApi({ method, route, send: json, catalog })) return;
   if (await handleCredentialApi({ method, route, send: json, service: services.credentials, authEnabled: services.auth.enabled, readJson: body })) return;
+  if (await handleSiteIconApi({ method, route, send: json, service: services.icons, readJson: body })) return;
   if (await handleInsightsApi({ method, route, send: json, service: insights })) return;
   if (await handleCrawlerApi({ method, route, send: json, crawlerLog, insights,
     answers: (id) => promptRuns.listAnswers(id),

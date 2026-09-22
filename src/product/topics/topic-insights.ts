@@ -39,6 +39,7 @@ export interface ModelStanding {
 export interface PromptStanding {
   promptId: string;
   topicId: string;
+  subtopic: string | null;
   text: string;
   intent: PromptIntent;
   /** False when the prompt names the brand, so its presence is not earned. */
@@ -50,6 +51,16 @@ export interface PromptStanding {
   byModel: ModelStanding[];
   /** Who outranks the brand here, strongest first. The actionable list. */
   ahead: EntityStanding[];
+  /** Everyone named on this prompt, strongest first, the brand included. */
+  standing: EntityStanding[];
+}
+
+export interface SubtopicStanding {
+  name: string;
+  score: VisibilityScore;
+  rank: number | null;
+  standing: EntityStanding[];
+  prompts: PromptStanding[];
 }
 
 export interface TopicStanding {
@@ -58,6 +69,9 @@ export interface TopicStanding {
   description: string;
   score: VisibilityScore;
   rank: number | null;
+  /** Everyone named under this topic, strongest first. One row of the heatmap. */
+  standing: EntityStanding[];
+  subtopics: SubtopicStanding[];
   prompts: PromptStanding[];
 }
 
@@ -268,6 +282,32 @@ function trackedStandings(competitors: Competitor[], leaderboard: EntityStanding
     .sort((left, right) => right.appearances - left.appearances);
 }
 
+/** Prompts grouped one level below their topic. A set that was never grouped
+ * has no subtopics rather than one called "other". */
+function subtopicStandings(rows: PromptStanding[], answers: PromptAnswer[], set: TopicSet): SubtopicStanding[] {
+  const groups = new Map<string, PromptStanding[]>();
+  for (const row of rows) {
+    if (!row.subtopic) continue;
+    const held = groups.get(row.subtopic);
+    if (held) held.push(row); else groups.set(row.subtopic, [row]);
+  }
+  const out: SubtopicStanding[] = [];
+  for (const [name, held] of groups) {
+    const ids = new Set(held.map((row) => row.promptId));
+    const mine = answers.filter((answer) => ids.has(answer.promptId));
+    if (!mine.length) continue;
+    out.push({
+      name,
+      score: scoreAnswers(mine),
+      rank: rankOfTarget(standings(mine)),
+      standing: standings(mine),
+      prompts: held,
+    });
+  }
+  out.sort((left, right) => (left.score.score || 0) - (right.score.score || 0));
+  return out;
+}
+
 export function buildTopicInsights(input: {
   projectId: string;
   set: TopicSet;
@@ -291,6 +331,7 @@ export function buildTopicInsights(input: {
     promptRows.push({
       promptId: prompt.id,
       topicId: prompt.topicId,
+      subtopic: prompt.subtopic || null,
       text: prompt.text,
       intent: prompt.intent,
       measuresVisibility: prompt.measuresVisibility,
@@ -300,6 +341,7 @@ export function buildTopicInsights(input: {
       byModel: modelStandings(mine),
       // Everyone the model reached for before it reached for this brand.
       ahead: rank === null ? local.slice(0, 5) : local.slice(0, rank - 1),
+      standing: local,
     });
   }
 
@@ -307,15 +349,18 @@ export function buildTopicInsights(input: {
   for (const topic of set.topics) {
     const mine = answers.filter((answer) => answer.topicId === topic.id);
     if (!mine.length) continue;
+    const own = promptRows
+      .filter((row) => row.topicId === topic.id)
+      .sort((left, right) => (left.score.score || 0) - (right.score.score || 0));
     topics.push({
       topicId: topic.id,
       name: topic.name,
       description: topic.description,
       score: scoreAnswers(mine),
       rank: rankOfTarget(standings(mine)),
-      prompts: promptRows
-        .filter((row) => row.topicId === topic.id)
-        .sort((left, right) => (left.score.score || 0) - (right.score.score || 0)),
+      standing: standings(mine),
+      subtopics: subtopicStandings(own, answers, set),
+      prompts: own,
     });
   }
   topics.sort((left, right) => (left.score.score || 0) - (right.score.score || 0));
@@ -340,6 +385,7 @@ export function buildTopicInsights(input: {
       runs: input.runs || [],
       answers,
       rankOf: (group) => rankOfTarget(standings(group)),
+      sharesOf: (group) => standings(group),
     }),
     byRegion: regionStandings(answers),
     byLanguage: languageStandings(answers),

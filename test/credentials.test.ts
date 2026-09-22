@@ -5,6 +5,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { CredentialFileStore, credentialKey, decryptSecret, encryptSecret } from "../src/product/auth/credential-store.js";
 import { CredentialService } from "../src/product/auth/credential-service.js";
+import { handleCredentialApi } from "../src/product/auth/credential-http.js";
+import { productAppSource } from "../src/ui/app-source.js";
 
 const KEY_B64 = Buffer.alloc(32, 7).toString("base64");
 const SECRET = "sk-or-v1-abcdefghijklmnop";
@@ -150,4 +152,85 @@ test("the credentials file is written owner-only", async () => {
       assert.equal(raw.includes(SECRET), false, "the file holds ciphertext only");
     });
   });
+});
+
+test("a record moved into another provider's name is refused, not decrypted into it", () => {
+  const key = Buffer.alloc(32, 7);
+  const stolen = encryptSecret(key, "sk-openrouter-live-9999", "openrouter");
+  // Anyone who can write credentials.json could otherwise file OpenRouter's
+  // key under google and the app would send it to Google.
+  assert.equal(decryptSecret(key, stolen, "google"), null);
+  assert.equal(decryptSecret(key, stolen, "openrouter"), "sk-openrouter-live-9999");
+});
+
+test("a record written before the name was bound in still opens", () => {
+  const key = Buffer.alloc(32, 7);
+  const legacy = encryptSecret(key, "older-secret-1234");
+  delete (legacy as { version?: number }).version;
+  delete (legacy as { keyId?: string }).keyId;
+  assert.equal(decryptSecret(key, legacy, "openrouter"), "older-secret-1234", "upgrading must not orphan what is already stored");
+});
+
+test("a rotated key is reported as a rotated key, not as an empty store", async () => {
+  const { readSecret, keyFingerprint } = await import("../src/product/auth/credential-store.js");
+  const wrote = Buffer.alloc(32, 1);
+  const now = Buffer.alloc(32, 2);
+  const record = encryptSecret(wrote, "secret-abcd", "google");
+
+  assert.deepEqual(readSecret(wrote, record, "google"), { state: "ok", secret: "secret-abcd" });
+  assert.deepEqual(readSecret(now, record, "google"), { state: "wrong_key", keyId: keyFingerprint(wrote) });
+  assert.deepEqual(readSecret(wrote, undefined, "google"), { state: "absent" });
+
+  const tampered = { ...record, ciphertext: Buffer.from("not the ciphertext").toString("base64") };
+  assert.deepEqual(readSecret(wrote, tampered, "google"), { state: "unreadable" });
+});
+
+test("the key fingerprint names a key without being reversible to it", async () => {
+  const { keyFingerprint } = await import("../src/product/auth/credential-store.js");
+  const one = keyFingerprint(Buffer.alloc(32, 1));
+  const two = keyFingerprint(Buffer.alloc(32, 2));
+  assert.notEqual(one, two);
+  assert.equal(one, keyFingerprint(Buffer.alloc(32, 1)));
+  assert.equal(one.length, 16);
+  assert.equal(one.includes(Buffer.alloc(32, 1).toString("hex")), false);
+});
+
+test("a stored record never carries the secret in the clear beyond its last four", () => {
+  const record = encryptSecret(Buffer.alloc(32, 3), "ghp_verysecrettokenvalue", "github");
+  const serialised = JSON.stringify(record);
+  assert.equal(serialised.includes("verysecret"), false);
+  assert.equal(record.last4, "alue");
+});
+
+test("what the product can connect to is readable without a password", async () => {
+  // The credentials endpoint refuses without AUTH_PASSWORD, and it should.
+  // The catalogue is not a secret, so a closed server can still say what
+  // Setup would ask for rather than showing an empty page.
+  const sent: Array<{ status: number; body: unknown }> = [];
+  const handled = await handleCredentialApi({
+    method: "GET",
+    route: ["api", "integrations"],
+    send: (status, body) => { sent.push({ status, body }); },
+    service: {} as never,
+    authEnabled: false,
+    readJson: async () => ({}),
+  });
+  assert.equal(handled, true);
+  assert.equal(sent[0]?.status, 200);
+  const rows = (sent[0]?.body as { integrations: Array<Record<string, unknown>> }).integrations;
+  const google = rows.find((row) => row.providerId === "google");
+  assert.ok(google, "Search Console is not offered");
+  assert.equal((google?.settings as Array<{ key: string }>)[0]?.key, "siteUrl");
+  // Neither a key nor its last four characters may appear here.
+  assert.equal(JSON.stringify(rows).includes("last4"), false);
+  assert.equal(JSON.stringify(rows).includes("source"), false);
+});
+
+test("Setup names both ways into a Google property", () => {
+  const html = productAppSource();
+  // A self-hosted copy registers no OAuth application, so the second way in
+  // is a client the reader owns. Offering only one strands half the readers.
+  assert.equal(html.includes("A service account key."), true);
+  assert.equal(html.includes("An OAuth client you own."), true);
+  assert.equal(html.includes('data-connection="'), true);
 });

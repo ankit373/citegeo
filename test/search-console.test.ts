@@ -103,3 +103,26 @@ test("position is weighted by impressions, and nothing matched is null rather th
   assert.equal(unmatched?.position, null);
   assert.equal(unmatched?.impressions, 0);
 });
+
+test("the signed assertion covers both APIs, because one token serves both", () => {
+  const token = assertionFor(parseServiceAccount(KEY), 1_700_000_000);
+  const claims = decode(token.split(".")[1] || "");
+  const scopes = String(claims.scope).split(" ");
+  assert.ok(scopes.includes("https://www.googleapis.com/auth/webmasters.readonly"));
+  assert.ok(scopes.includes("https://www.googleapis.com/auth/analytics.readonly"),
+    "Analytics was asked with a Search-Console-only token, and the 403 read as a permission fault");
+});
+
+test("two accounts through one token source never share a token", async () => {
+  let issued = 0;
+  const tokens = new ServiceAccountTokens(async () => {
+    issued += 1;
+    return new Response(JSON.stringify({ access_token: `token-${issued}`, expires_in: 3600 }), { status: 200 });
+  });
+  const one = { ...parseServiceAccount(KEY), clientEmail: "one@example.iam.gserviceaccount.com" };
+  const two = { ...parseServiceAccount(KEY), clientEmail: "two@example.iam.gserviceaccount.com" };
+  assert.equal(await tokens.token(one), "token-1");
+  assert.equal(await tokens.token(two), "token-2", "the second account must not be handed the first one's token");
+  assert.equal(await tokens.token(one), "token-1", "and each is still held");
+  assert.equal(issued, 2);
+});

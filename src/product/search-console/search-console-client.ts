@@ -1,4 +1,5 @@
-import { ServiceAccountError, ServiceAccountTokens, parseServiceAccount, type ServiceAccount } from "./service-account.js";
+import { ServiceAccountError } from "./service-account.js";
+import { GoogleTokens, type GoogleCredential, type GoogleTokenSource } from "./google-auth.js";
 
 // Four fields from one endpoint. The rest of the API is not needed and is not
 // wrapped for the sake of wrapping it.
@@ -33,13 +34,9 @@ export function recentWindow(days = 90, now = new Date()): SearchWindow {
 }
 
 export class SearchConsoleClient {
-  constructor(private readonly tokens = new ServiceAccountTokens(), private readonly call: typeof fetch = fetch) {}
+  constructor(private readonly tokens: GoogleTokenSource = new GoogleTokens(), private readonly call: typeof fetch = fetch) {}
 
-  static accountFrom(raw: string): ServiceAccount {
-    return parseServiceAccount(raw);
-  }
-
-  async queries(input: { account: ServiceAccount; siteUrl: string; window: SearchWindow; limit?: number | undefined }): Promise<SearchRow[]> {
+  async queries(input: { account: GoogleCredential; siteUrl: string; window: SearchWindow; limit?: number | undefined }): Promise<SearchRow[]> {
     const token = await this.tokens.token(input.account);
     const url = `${API}/${encodeURIComponent(input.siteUrl)}/searchAnalytics/query`;
     const response = await this.call(url, {

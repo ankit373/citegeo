@@ -1,4 +1,5 @@
-import { ServiceAccountError, ServiceAccountTokens, type ServiceAccount } from "./service-account.js";
+import { ServiceAccountError } from "./service-account.js";
+import { GoogleTokens, type GoogleCredential, type GoogleTokenSource } from "./google-auth.js";
 
 // Whether the assistants send anybody. Visibility says you were named; this
 // says somebody arrived because of it, which is a different claim.
@@ -47,9 +48,9 @@ export function assistantFor(source: string): string | null {
 }
 
 export class AnalyticsClient {
-  constructor(private readonly tokens = new ServiceAccountTokens(), private readonly call: typeof fetch = fetch) {}
+  constructor(private readonly tokens: GoogleTokenSource = new GoogleTokens(), private readonly call: typeof fetch = fetch) {}
 
-  async referrals(input: { account: ServiceAccount; propertyId: string; from: string; to: string }): Promise<ReferralReport> {
+  async referrals(input: { account: GoogleCredential; propertyId: string; from: string; to: string }): Promise<ReferralReport> {
     const token = await this.tokens.token(input.account);
     const response = await this.call(`${API}/${encodeURIComponent(input.propertyId)}:runReport`, {
       method: "POST",
@@ -64,7 +65,7 @@ export class AnalyticsClient {
     const text = await response.text();
     if (!response.ok) {
       throw new ServiceAccountError(response.status === 403
-        ? `Analytics refused property ${input.propertyId} (403). Add the service account as a viewer on it, then try again.`
+        ? `Analytics refused property ${input.propertyId} (403). Whoever the credential speaks for needs viewer access on that property: the service account, or the account that granted consent.`
         : `Analytics answered ${response.status}. ${text.slice(0, 200)}`);
     }
     const parsed = JSON.parse(text) as { rows?: unknown };

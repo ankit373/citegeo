@@ -16,18 +16,33 @@ export interface TrendPoint {
   regionIds: string[];
 }
 
+/** One brand's share across the runs, so several can be drawn on one axis.
+ * Share rather than score: a rival has no score, only a presence. */
+export interface RivalSeries {
+  name: string;
+  isTarget: boolean;
+  /** Null at a run where the brand was not named, which is a zero share and
+   * not a gap, so the line is drawn through it. */
+  points: Array<{ runId: string; at: string; share: number }>;
+}
+
 export interface PromptTrend {
   points: TrendPoint[];
   /** Score now minus score at the first comparable point. Null with fewer than two. */
   change: number | null;
   /** The run the change is measured from. */
   since: string | null;
+  /** The brands named most often overall, each across every run. Absent
+   * when the caller did not ask for them. */
+  rivals?: RivalSeries[];
 }
 
 export function buildPromptTrend(input: {
   runs: PromptRun[];
   answers: PromptAnswer[];
   rankOf: (answers: PromptAnswer[]) => number | null;
+  /** Optional, because a caller that only wants the target's line pays nothing. */
+  sharesOf?: (answers: PromptAnswer[]) => Array<{ name: string; isTarget: boolean; shareOfAnswers: number | null }>;
 }): PromptTrend {
   const byRun = new Map<string, PromptAnswer[]>();
   for (const answer of input.answers) {
@@ -58,5 +73,34 @@ export function buildPromptTrend(input: {
     points,
     change: comparable ? Math.round(((last.score.score as number) - (first.score.score as number)) * 10) / 10 : null,
     since: comparable ? first.at : null,
+    rivals: input.sharesOf ? rivalSeries(points, byRun, input.sharesOf) : [],
   };
+}
+
+/** The brands worth drawing, and their share at every run. Chosen by total
+ * appearances so the lines stay the same set as the run count grows. */
+function rivalSeries(
+  points: TrendPoint[],
+  byRun: Map<string, PromptAnswer[]>,
+  sharesOf: (answers: PromptAnswer[]) => Array<{ name: string; isTarget: boolean; shareOfAnswers: number | null }>,
+  limit = 5,
+): RivalSeries[] {
+  const totals = new Map<string, { name: string; isTarget: boolean; total: number }>();
+  for (const point of points) {
+    for (const row of sharesOf(byRun.get(point.runId) || [])) {
+      const held = totals.get(row.name) || { name: row.name, isTarget: row.isTarget, total: 0 };
+      held.total += row.shareOfAnswers || 0;
+      totals.set(row.name, held);
+    }
+  }
+  // The target is always drawn, even at zero, because its absence is the point.
+  const ranked = [...totals.values()].sort((left, right) => Number(right.isTarget) - Number(left.isTarget) || right.total - left.total);
+  return ranked.slice(0, limit).map((entry) => ({
+    name: entry.name,
+    isTarget: entry.isTarget,
+    points: points.map((point) => {
+      const row = sharesOf(byRun.get(point.runId) || []).find((item) => item.name === entry.name);
+      return { runId: point.runId, at: point.at, share: row ? row.shareOfAnswers || 0 : 0 };
+    }),
+  }));
 }

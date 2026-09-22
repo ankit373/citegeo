@@ -42,6 +42,9 @@ export interface Prompt {
   text: string;
   normalizedText: string;
   intent: PromptIntent;
+  /** One level finer than the topic. Absent on every prompt written before
+   * grouping existed, which reads as the topic itself, not as an empty group. */
+  subtopic?: string | null;
   source: EntitySource;
   /** False when the prompt names the brand: the model will discuss it whatever
    * it thinks, so an appearance is not evidence of being found. */

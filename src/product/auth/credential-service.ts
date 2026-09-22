@@ -90,7 +90,7 @@ export class CredentialService {
     const key = credentialKey();
     if (!key) return null;
     const record = (await this.store.read())[providerId];
-    return record ? decryptSecret(key, record) : null;
+    return record ? decryptSecret(key, record, providerId) : null;
   }
 
   async save(providerId: string, secret: unknown): Promise<CredentialWriteResult> {
@@ -113,7 +113,7 @@ export class CredentialService {
       return { outcome: "rejected", detail: "That does not look like a provider key." };
     }
     const file = await this.store.read();
-    file[providerId] = encryptSecret(key, secret.trim());
+    file[providerId] = encryptSecret(key, secret.trim(), providerId);
     await this.store.write(file);
     return { outcome: "saved", detail: "Stored. Restart is not required." };
   }

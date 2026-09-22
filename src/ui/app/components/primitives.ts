@@ -6,6 +6,18 @@ import { html, join } from "../dom.js";
 
 export type Tone = "" | "good" | "bad" | "flat" | "warning" | "ready";
 
+/** A brand's own mark where the site publishes one, and a monogram where it
+ * does not. The mark comes from a crawl, never from a guessed path. */
+export function brandIcon(name: string, icon?: string | null, ink?: string): string {
+  const letter = (name.trim()[0] || "?").toUpperCase();
+  // Deterministic, so a brand keeps its colour between runs and between readers.
+  let sum = 0;
+  for (let at = 0; at < name.length; at += 1) sum = (sum + name.charCodeAt(at) * (at + 1)) % 360;
+  const ring = ink ? ` style="border-color:${ink}"` : "";
+  const mark = icon ? `<img src="${html(icon)}" alt="" loading="lazy" decoding="async">` : "";
+  return `<span class="bicon"${ring}><i style="background:hsl(${sum} 42% 46%);color:hsl(${sum} 44% 96%)">${html(letter)}</i>${mark}</span>`;
+}
+
 export function pill(text: string, tone: Tone = ""): string {
   return `<span class="pill ${tone}">${html(text)}</span>`;
 }
@@ -27,11 +39,18 @@ export interface TileInput {
   tone?: string;
 }
 
+/** One row of figures. The utilities are the styling; there is no .dtile rule
+ * behind this any more, so nothing can style it from a distance. */
 export function tiles(rows: TileInput[]): string {
-  return `<div class="dtiles">${rows.map((row) => join([
-    '<div class="dtile"><span>', html(row.label), "</span>",
-    `<strong class="${html(row.tone || "")}">`, html(row.value), "</strong>",
-    "<small>", html(row.note), "</small>",
+  const shell = "grid auto-rows-min gap-1 bg-surface px-[17px] py-[15px]";
+  const caption = "text-[10px] font-semibold uppercase tracking-[.09em] text-weak";
+  const figure = "font-display text-[26px] font-medium leading-[1.1] tracking-[-0.02em]";
+  // The column count follows the tile count. auto-fit left empty cells,
+  // and the separator background showed through them as a grey block.
+  return `<div class="tilegrid" style="--tile-columns:${rows.length}">${rows.map((row) => join([
+    `<div class="${shell}"><span class="${caption}">`, html(row.label), "</span>",
+    `<strong class="${figure} ${html(row.tone || "")}">`, html(row.value), "</strong>",
+    `<small class="text-xs leading-[1.45] text-weak">`, html(row.note), "</small>",
     bar(row.fraction),
     "</div>",
   ])).join("")}</div>`;
@@ -68,12 +87,29 @@ export interface SectionInput {
   blurb?: string;
   aside?: string;
   body: string;
+  /** Spans the whole dashboard row. For a table too wide for a card. */
+  wide?: boolean;
+  /** Stable name for this panel, so a reader can rearrange the dashboard
+   * and have the arrangement survive the next render. */
+  id?: string;
+  /** Panel to open on a click anywhere that is not already a control. */
+  open?: string;
+  /** Tracks this card spans: 1, 2, or 0 for the whole row. */
+  span?: number;
+  /** Taken off the board, drawn only while the board is being arranged. */
+  off?: boolean;
 }
 
 export function section(input: SectionInput): string {
   return join([
-    '<section class="section-card"><div class="section-head"><div class="headmain">',
-    `<h2>${html(input.title)}</h2>`,
+    `<section class="section-card${input.wide || input.span === 0 ? " is-wide" : ""}${input.span === 2 ? " is-two" : ""}`
+      + `${input.open ? " is-openable" : ""}${input.off ? " is-off" : ""}"`,
+    input.id ? ` data-panel="${html(input.id)}" draggable="true"` : "",
+    input.open ? ` data-expand-panel="${html(input.open)}"` : "",
+    `><div class="section-head"><div class="headmain">`,
+    input.open
+      ? `<h2><button type="button" class="panel-open" data-expand-panel="${html(input.open)}">${html(input.title)}</button></h2>`
+      : `<h2>${html(input.title)}</h2>`,
     input.blurb ? `<p class="subtle">${html(input.blurb)}</p>` : "",
     "</div>",
     input.aside ? `<div class="headaside">${input.aside}</div>` : "",

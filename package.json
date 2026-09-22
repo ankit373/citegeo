@@ -9,7 +9,7 @@
   },
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && npm run build:css",
     "audit": "tsx src/cli.ts audit",
     "server": "tsx src/product/product-server.ts",
     "schedule:worker": "tsx src/product/scheduling/schedule-worker.ts",
@@ -45,7 +45,8 @@
     "check:docs": "node scripts/check-doc-links.mjs",
     "check:all": "npm run self-check && npm run check:scripts && npm run check:docs",
     "build:site": "npm run build && node scripts/build-site.mjs",
-    "demand:index": "npm run build && node scripts/index-demand-corpus.mjs"
+    "demand:index": "npm run build && node scripts/index-demand-corpus.mjs",
+    "build:css": "tailwindcss -i src/ui/theme.css -o dist/src/ui/app/app.css --minify"
   },
   "dependencies": {
     "cheerio": "^1.2.0",
@@ -56,8 +57,10 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
+    "@tailwindcss/cli": "^4.3.3",
     "@types/node": "^24.13.5",
     "@types/nodemailer": "^8.0.2",
+    "tailwindcss": "^4.3.3",
     "tsx": "^4.20.5",
     "typescript": "^6.0.3"
   },

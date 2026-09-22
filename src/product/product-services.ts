@@ -1,4 +1,5 @@
-import { browserDebugEndpoint, productDataDir } from "../config/env.js";
+import { answerIndexDir, browserDebugEndpoint, productDataDir } from "../config/env.js";
+import { AnswerIndexService } from "./index/answer-index-service.js";
 import { PROVIDER_MODEL_CAPABILITIES } from "../providers/catalog.js";
 import { ProductConfigurationFileStore } from "./configuration/configuration-store.js";
 import { OpenRouterProductModelCatalog } from "./configuration/model-catalog.js";
@@ -20,6 +21,7 @@ import { createStructuredAsk } from "./topics/structured-ask.js";
 import { PromptScheduleFileStore, PromptScheduleService } from "./topics/prompt-schedule.js";
 import { DemandReportFileStore } from "./demand/demand-store.js";
 import { BrandProfileFileStore, BrandProfileService } from "./discovery/brand-profile-service.js";
+import { SiteIconService, SiteIconStore } from "./discovery/site-icon-service.js";
 import { StorageSettingsStore } from "./storage/storage-settings.js";
 import { CompetitorFileStore, CompetitorService } from "./topics/competitor-set.js";
 import { SegmentFileStore, SegmentService } from "./topics/segment-set.js";
@@ -121,6 +123,7 @@ export interface ProductServices {
   promptSchedule: PromptScheduleService;
   demand: DemandReportFileStore;
   profiles: BrandProfileService;
+  icons: SiteIconService;
   competitors: CompetitorService;
   segments: SegmentService;
   engines: EngineService;
@@ -165,13 +168,17 @@ export function createProductServices(dependencies: ProductServerDependencies = 
   // and configured exactly like a recognition run.
   const executor = dependencies.recognitionExecutor || new OpenRouterRecognitionAnswerExecutor();
   const profiles = new BrandProfileService(new BrandProfileFileStore(projectStore), projects);
+  const icons = new SiteIconService(new SiteIconStore(projectStore));
   const topics = new TopicService(new TopicFileStore(projectStore), projects, insights, profiles);
   const ask = createStructuredAsk({ baselines, executor });
   const personas = new PersonaService(projectStore);
   // Browser engines read the surfaces a buyer uses, through the user's own
   // signed-in browser, and are the only source here that carries citations.
   const engines = new EngineService(projectStore, ask, { endpoint: browserDebugEndpoint() });
-  const promptRuns = new PromptRunService(new PromptRunFileStore(projectStore), topics, projects, baselines, executor, catalog, {
+  // The answers index is a local cache of what is in the store, so losing it
+  // costs a scan and nothing else.
+  const promptRunStore = new PromptRunFileStore(projectStore, new AnswerIndexService({ dir: answerIndexDir() }));
+  const promptRuns = new PromptRunService(promptRunStore, topics, projects, baselines, executor, catalog, {
     saved: (projectId) => engines.saved(projectId),
     lookup: (engineId) => engines.lookup(engineId),
     ask: (input) => engines.askOne(input),
@@ -202,7 +209,7 @@ export function createProductServices(dependencies: ProductServerDependencies = 
   return {
     projects, catalog, selections, baselines, recognition, reports, insights,
     signals, crawlerLog, watchSets, measurements, stats, schedules,
-    topics, promptRuns, promptSchedule, demand, profiles, competitors, segments, ask, engines, actions, sourcePages, searchConsole, personas,
+    topics, promptRuns, promptSchedule, demand, profiles, icons, competitors, segments, ask, engines, actions, sourcePages, searchConsole, personas,
     storageSettings, dataDir: productDataDir(),
     credentials,
     auth: authConfig(),

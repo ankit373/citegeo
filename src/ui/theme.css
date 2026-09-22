@@ -1,0 +1,852 @@
+@import "tailwindcss";
+
+/* The design tokens are the Tailwind scale. Declaring them here means a token
+   and its utility cannot drift, because they are the same declaration. */
+@theme {
+  --color-paper: #F7F6F3;
+  --color-surface: #FFFFFF;
+  --color-raised: #F2F0EA;
+  --color-sunken: #EDEBE4;
+  --color-line: #E4E1D8;
+  --color-line-strong: #D2CEC2;
+  --color-text: #1A1916;
+  --color-muted: #6D6A62;
+  --color-weak: #959187;
+  --color-accent: #C15F3C;
+  --color-accent-hover: #A94F30;
+  --color-accent-ink: #FFFFFF;
+  --color-accent-wash: rgba(193,95,60,.09);
+  --color-confirmed: #3F7D58;
+  --color-confirmed-text: #356B4B;
+  --color-confirmed-wash: rgba(63,125,88,.10);
+  --color-unknown: #9A6B18;
+  --color-unknown-text: #8A5F15;
+  --color-unknown-wash: rgba(154,107,24,.10);
+  --color-failed: #A8402F;
+  --color-failed-text: #96392A;
+  --color-failed-wash: rgba(168,64,47,.10);
+  --color-skeleton: #ECE9E1;
+  --color-skeleton-sheen: rgba(255,255,255,.70);
+  /* Behind a drawer or a panel, so the page reads as out of reach. */
+  --color-scrim: rgba(20,18,14,.34);
+  --font-display: "Newsreader",ui-serif,Georgia,"Times New Roman",serif;
+  --font-ui: "Instrument Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono: "JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --figures: tabular-nums;
+  --text-micro: 10px;
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-md: 13px;
+  --text-base: 14px;
+  --text-lg: 16px;
+  --text-xl: 20px;
+  --text-2xl: 26px;
+  --text-hero: clamp(30px,3.2vw,40px);
+  --leading-tight: 1.14;
+  --leading-snug: 1.34;
+  --leading-normal: 1.55;
+  --tracking-tight: -0.018em;
+  --tracking-snug: -0.006em;
+  --tracking-wide: 0.085em;
+  --spacing-2xs: 2px;
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 20px;
+  --spacing-xl: 32px;
+  --spacing-2xl: 48px;
+  --radius: 8px;
+  --radius-sm: 5px;
+  --radius-xs: 3px;
+  --radius-pill: 999px;
+  --gutter: clamp(20px,3.6vw,56px);
+  --hairline: 1px solid var(--line);
+  --hairline-strong: 1px solid var(--line-strong);
+  --shadow-sm: 0 1px 2px rgba(26,25,22,.04);
+  --shadow: 0 1px 3px rgba(26,25,22,.05),0 1px 1px rgba(26,25,22,.03);
+  --motion-fast: 140ms;
+  --motion-normal: 260ms;
+  --motion-shimmer: 1500ms;
+  --ease-standard: cubic-bezier(.22,1,.36,1);
+  --ease-press: cubic-bezier(.2,.8,.2,1);
+}
+
+/* The short names every existing surface still uses, pointing at the same
+   declarations, so a token has one value and two spellings. */
+:root {
+  --paper: var(--color-paper);
+  --surface: var(--color-surface);
+  --raised: var(--color-raised);
+  --sunken: var(--color-sunken);
+  --line: var(--color-line);
+  --line-strong: var(--color-line-strong);
+  --text: var(--color-text);
+  --muted: var(--color-muted);
+  --weak: var(--color-weak);
+  --accent: var(--color-accent);
+  --accent-hover: var(--color-accent-hover);
+  --accent-ink: var(--color-accent-ink);
+  --accent-wash: var(--color-accent-wash);
+  --confirmed: var(--color-confirmed);
+  --confirmed-text: var(--color-confirmed-text);
+  --confirmed-wash: var(--color-confirmed-wash);
+  --unknown: var(--color-unknown);
+  --unknown-text: var(--color-unknown-text);
+  --unknown-wash: var(--color-unknown-wash);
+  --failed: var(--color-failed);
+  --failed-text: var(--color-failed-text);
+  --failed-wash: var(--color-failed-wash);
+  --skeleton: var(--color-skeleton);
+  --skeleton-sheen: var(--color-skeleton-sheen);
+  --scrim: var(--color-scrim);
+  --type-micro: var(--text-micro);
+  --type-xs: var(--text-xs);
+  --type-sm: var(--text-sm);
+  --type-md: var(--text-md);
+  --type-base: var(--text-base);
+  --type-lg: var(--text-lg);
+  --type-xl: var(--text-xl);
+  --type-2xl: var(--text-2xl);
+  --type-hero: var(--text-hero);
+  --space-2xs: var(--spacing-2xs);
+  --space-xs: var(--spacing-xs);
+  --space-sm: var(--spacing-sm);
+  --space-md: var(--spacing-md);
+  --space-lg: var(--spacing-lg);
+  --space-xl: var(--spacing-xl);
+  --space-2xl: var(--spacing-2xl);
+}
+
+/* Dark follows the system and is overridden by data-theme on the root, applied
+   by an inline script before first paint. */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --color-paper: #1E1D1B;
+      --paper: #1E1D1B;
+      --color-surface: #262523;
+      --surface: #262523;
+      --color-raised: #2E2D2A;
+      --raised: #2E2D2A;
+      --color-sunken: #1A1917;
+      --sunken: #1A1917;
+      --color-line: #38362F;
+      --line: #38362F;
+      --color-line-strong: #4A4740;
+      --line-strong: #4A4740;
+
+      --color-text: #F4F2EC;
+      --text: #F4F2EC;
+      --color-muted: #A8A49B;
+      --muted: #A8A49B;
+      --color-weak: #77736B;
+      --weak: #77736B;
+
+      --color-accent: #D97757;
+      --accent: #D97757;
+      --color-accent-hover: #E08D70;
+      --accent-hover: #E08D70;
+      --color-accent-ink: #1A1108;
+      --accent-ink: #1A1108;
+      --color-accent-wash: rgba(217,119,87,.14);
+      --accent-wash: rgba(217,119,87,.14);
+
+      --color-confirmed: #6FBF8F;
+      --confirmed: #6FBF8F;
+      --color-confirmed-text: #7FCE9E;
+      --confirmed-text: #7FCE9E;
+      --color-confirmed-wash: rgba(111,191,143,.13);
+      --confirmed-wash: rgba(111,191,143,.13);
+      --color-unknown: #D9A94E;
+      --unknown: #D9A94E;
+      --color-unknown-text: #E2B865;
+      --unknown-text: #E2B865;
+      --color-unknown-wash: rgba(217,169,78,.13);
+      --unknown-wash: rgba(217,169,78,.13);
+      --color-failed: #DE8271;
+      --failed: #DE8271;
+      --color-failed-text: #E89583;
+      --failed-text: #E89583;
+      --color-failed-wash: rgba(222,130,113,.13);
+      --failed-wash: rgba(222,130,113,.13);
+
+      --color-skeleton: #2C2B28;
+      --skeleton: #2C2B28;
+      --color-skeleton-sheen: rgba(255,255,255,.06);
+      --skeleton-sheen: rgba(255,255,255,.06);
+      --color-scrim: rgba(0,0,0,.52);
+      --scrim: rgba(0,0,0,.52);
+
+      --shadow-sm:0 1px 2px rgba(0,0,0,.28);
+      --shadow:0 1px 3px rgba(0,0,0,.32),0 1px 1px rgba(0,0,0,.22);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --color-paper: #1E1D1B; --surface:#262523; --raised:#2E2D2A; --sunken:#1A1917;
+    --paper: #1E1D1B; --surface:#262523; --raised:#2E2D2A; --sunken:#1A1917;
+    --color-line: #38362F; --line-strong:#4A4740;
+    --line: #38362F; --line-strong:#4A4740;
+    --color-text: #F4F2EC; --muted:#A8A49B; --weak:#77736B;
+    --text: #F4F2EC; --muted:#A8A49B; --weak:#77736B;
+    --color-accent: #D97757; --accent-hover:#E08D70; --accent-ink:#1A1108; --accent-wash:rgba(217,119,87,.14);
+    --accent: #D97757; --accent-hover:#E08D70; --accent-ink:#1A1108; --accent-wash:rgba(217,119,87,.14);
+    --color-confirmed: #6FBF8F; --confirmed-text:#7FCE9E; --confirmed-wash:rgba(111,191,143,.13);
+    --confirmed: #6FBF8F; --confirmed-text:#7FCE9E; --confirmed-wash:rgba(111,191,143,.13);
+    --color-unknown: #D9A94E; --unknown-text:#E2B865; --unknown-wash:rgba(217,169,78,.13);
+    --unknown: #D9A94E; --unknown-text:#E2B865; --unknown-wash:rgba(217,169,78,.13);
+    --color-failed: #DE8271; --failed-text:#E89583; --failed-wash:rgba(222,130,113,.13);
+    --failed: #DE8271; --failed-text:#E89583; --failed-wash:rgba(222,130,113,.13);
+    --color-skeleton: #2C2B28; --skeleton-sheen:rgba(255,255,255,.06);
+    --skeleton: #2C2B28; --skeleton-sheen:rgba(255,255,255,.06);
+    --color-scrim: rgba(0,0,0,.52); --scrim: rgba(0,0,0,.52);
+    --shadow-sm:0 1px 2px rgba(0,0,0,.28);
+    --shadow:0 1px 3px rgba(0,0,0,.32),0 1px 1px rgba(0,0,0,.22);
+  }
+
+@layer base {
+
+  * { box-sizing:border-box; }
+  body {
+    margin:0; min-height:100vh; background:var(--paper); color:var(--text);
+    font-family:var(--font-ui); font-size:var(--type-base); line-height:var(--leading-normal);
+    font-variant-numeric:var(--figures); -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3 { font-family:var(--font-display); font-weight:500; letter-spacing:var(--tracking-tight); margin:0; text-wrap:balance; }
+  h1 { font-size:var(--type-hero); line-height:var(--leading-tight); }
+  h2 { font-size:var(--type-xl); line-height:var(--leading-snug); }
+  h3 { font-size:var(--type-lg); line-height:var(--leading-snug); letter-spacing:var(--tracking-snug); }
+  h4 { font-family:var(--font-ui); font-size:var(--type-md); font-weight:600; line-height:var(--leading-snug); letter-spacing:var(--tracking-snug); margin:0; }
+  p { margin:0; }
+  a { color:var(--accent); text-underline-offset:2px; }
+  hr { border:0; border-top:var(--hairline); margin:0; }
+  .mono,.domain,code { font-family:var(--font-mono); font-size:.92em; font-variant-numeric:var(--figures); }
+  th,td,.num,time { font-variant-numeric:var(--figures); }
+  .subtle,.field-help,.model-meta { color:var(--muted); font-size:var(--type-md); }
+  button,input,select,textarea { font:inherit; color:inherit; font-variant-numeric:var(--figures); }
+  button { cursor:pointer; background:none; border:0; }
+  button:disabled { cursor:not-allowed; opacity:.5; }
+  :focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:var(--radius-xs); }
+  ::selection { background:var(--accent-wash); }
+  @media (prefers-reduced-motion: reduce) {
+    *,*::before,*::after { animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; scroll-behavior:auto !important; }
+  }
+}
+
+
+/* The vocabulary this product is written in. Each one is a Tailwind utility
+   built from the scale above, so it is generated only where it is used and a
+   colour in it cannot be a literal. Markup stays terse; nothing styles from a
+   distance, because these compose the same utilities a caller would write. */
+
+@utility subtle {
+  @apply text-[13px] text-muted;
+}
+
+@utility view {
+  @apply block;
+}
+
+@utility heading {
+  @apply mb-2 flex flex-wrap items-start justify-between gap-4;
+}
+
+@utility inline-actions {
+  @apply flex flex-wrap gap-[9px];
+}
+
+@utility section-card {
+  @apply mt-3 rounded-[var(--radius)] border border-line bg-surface p-[clamp(16px,1.8vw,24px)] shadow-[var(--shadow-sm)];
+}
+
+@utility section-head {
+  @apply mb-1 flex flex-wrap items-start justify-between gap-4;
+}
+
+@utility mtable {
+  @apply mt-[14px];
+}
+
+@utility mhead {
+  @apply grid items-center gap-4 border-b border-line px-2 py-[10px] text-[10px] font-semibold uppercase tracking-[.09em] text-weak;
+}
+
+@utility mrow {
+  @apply grid items-center gap-4 border-b border-line px-2 py-[10px] last:border-b-0;
+  transition: background-color var(--motion-fast) var(--ease-standard);
+}
+
+@utility mcell {
+  @apply min-w-0 break-words text-[13px] text-muted;
+}
+
+@utility mname {
+  @apply min-w-0;
+}
+
+@utility empty {
+  @apply grid min-h-[230px] place-items-center rounded-lg border border-dashed border-line-strong p-[30px] text-center;
+}
+
+@utility empty-copy {
+  @apply max-w-[500px];
+}
+
+@utility warning-box {
+  @apply rounded-[var(--radius-sm)] border border-unknown bg-unknown-wash px-[14px] py-3 text-unknown-text;
+}
+
+@utility success-box {
+  @apply rounded-[var(--radius-sm)] border border-confirmed bg-confirmed-wash px-[14px] py-3 text-confirmed-text;
+}
+
+@utility pill {
+  @apply inline-flex items-center gap-[5px] rounded-[999px] border border-line-strong px-2 py-[2px] text-[11px] font-semibold;
+}
+
+@utility tag {
+  @apply rounded-[999px] border border-line px-2 py-[3px] text-xs;
+}
+
+@utility linklike {
+  @apply cursor-pointer border-0 bg-transparent p-0 font-[inherit] text-text underline;
+}
+
+@utility bar {
+  @apply mt-2 h-1 overflow-hidden rounded-[2px] bg-sunken;
+}
+
+@utility statgrid {
+  @apply mt-[18px] grid grid-cols-1 gap-px overflow-hidden rounded-[var(--radius)] border border-line bg-line;
+  @media (min-width: 640px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (min-width: 1024px) { grid-template-columns: repeat(var(--tile-columns, 3), minmax(0, 1fr)); }
+}
+
+@utility stat {
+  @apply grid gap-1 bg-surface px-[18px] py-4;
+}
+
+
+/* Column shapes. A table's layout is the one thing genuinely per table,
+   so each is a utility rather than a string repeated at every row. */
+@utility mcols-project {
+  @apply grid-cols-[minmax(0,1.1fr)_minmax(0,1.2fr)_86px_148px_auto];
+}
+@utility mcols-provider {
+  @apply grid-cols-[minmax(0,1fr)_210px_124px_minmax(0,1.5fr)] items-start;
+}
+@utility mcols-promptrow {
+  @apply grid-cols-[20px_minmax(0,1fr)_96px_82px_104px] items-start;
+}
+@utility mcols-engine {
+  @apply grid-cols-[20px_minmax(0,1fr)_150px] items-start;
+}
+@utility mcols-source {
+  @apply grid-cols-[minmax(0,1fr)_110px_100px] items-start;
+}
+@utility mcols-search {
+  @apply grid-cols-[minmax(0,1fr)_104px_74px_92px] items-start;
+}
+@utility mcols-persona {
+  @apply grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)_110px] items-start;
+}
+@utility mcols-selected {
+  @apply grid-cols-[minmax(0,1fr)_104px_92px_178px];
+}
+@utility mcols-readonly {
+  @apply grid-cols-[minmax(0,1fr)_104px_178px];
+}
+@utility mcols-catalog {
+  @apply grid-cols-[20px_minmax(0,1fr)_116px_96px_178px];
+}
+@utility mcols-board {
+  @apply grid-cols-[28px_minmax(0,1.3fr)_minmax(190px,1fr)_96px] items-center;
+}
+@utility mcols-topic {
+  @apply grid-cols-[minmax(0,1.3fr)_80px_110px_90px_minmax(0,1.4fr)] items-start;
+}
+@utility mcols-aemodel {
+  @apply grid-cols-[minmax(0,1.6fr)_80px_110px_90px] items-start;
+}
+@utility mcols-prompt {
+  @apply grid-cols-[minmax(0,1fr)_110px_120px] items-start;
+}
+@utility mcols-step {
+  @apply grid-cols-[28px_minmax(0,1fr)_90px] items-center;
+}
+@utility mcols-vis {
+  @apply grid-cols-[minmax(0,1fr)_120px_110px];
+}
+@utility mcols-voice {
+  @apply grid-cols-[minmax(0,1fr)_110px_120px];
+}
+@utility mcols-cited {
+  @apply grid-cols-[minmax(0,1fr)_100px_minmax(0,1fr)];
+}
+@utility mcols-crawler {
+  @apply grid-cols-[minmax(0,1fr)_92px_84px_84px_108px];
+}
+@utility mcols-signal {
+  @apply grid-cols-[130px_minmax(0,1fr)] items-start;
+}
+@utility mcols-credential {
+  @apply grid-cols-[minmax(0,1fr)_120px_minmax(0,1.3fr)];
+}
+@utility mcols-rank {
+  @apply grid-cols-[minmax(0,1fr)_92px_84px];
+}
+
+/* The frame. One shell, one rail, one header, one footer. */
+
+@utility shell {
+  @apply grid min-h-screen grid-cols-[244px_minmax(0,1fr)];
+  background: linear-gradient(to right, var(--sunken) 0 244px, var(--paper) 244px);
+  /* Collapsing the rail has to be written here: a utility outranks any layer
+     underneath it, so the same rule in @layer components never applies. */
+  body.nav-closed & {
+    grid-template-columns: minmax(0, 1fr);
+    background: var(--paper);
+  }
+  @media (max-width: 840px) {
+    grid-template-columns: minmax(0, 1fr);
+    background: var(--paper);
+  }
+}
+
+@utility sidebar {
+  @apply sticky top-0 flex h-screen flex-col overflow-y-auto border-r border-line bg-transparent px-[14px] py-[22px];
+  body.nav-closed & { display: none; }
+  @media (max-width: 840px) {
+    /* Off canvas rather than hidden, so a phone keeps every destination one
+       tap away and the rail keeps its scroll position. */
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 7;
+    width: 244px;
+    max-width: 82vw;
+    height: 100dvh;
+    background: var(--sunken);
+    transform: translateX(-100%);
+    transition: transform var(--motion-normal) var(--ease-standard);
+    /* The remembered desktop choice must not hide the drawer on a phone. */
+    body.nav-closed & { display: flex; }
+    body.nav-open & { transform: translateX(0); }
+  }
+}
+
+@utility workspace {
+  @apply flex min-h-screen min-w-0 flex-col px-[var(--gutter)] pb-6;
+}
+
+@utility topbar {
+  @apply sticky top-0 z-[3] flex items-center justify-between gap-[16px] border-b border-line px-0 py-[16px];
+  background: color-mix(in srgb, var(--paper) 86%, transparent);
+  backdrop-filter: saturate(180%) blur(14px);
+}
+
+@utility nav {
+  @apply mt-5 grid gap-px;
+}
+
+/* The rail's two small-caps labels. A compound rule used to set these and a
+   bare one used to override it; both are here now so neither can win by
+   accident of source order. */
+/* The effective style was the union of a compound rule and a bare one that
+   overrode part of it: size and spacing from the bare, weight from the
+   compound. Copying either alone changed the height of every label. */
+@utility nav-label {
+  @apply mx-[8px] mb-[6px] mt-[16px] text-[11px] font-semibold uppercase tracking-[.08em] text-weak;
+}
+
+@utility project-label {
+  @apply mx-[10px] mb-[6px] mt-[18px] text-[10px] font-semibold uppercase tracking-[.1em] text-weak;
+}
+
+@utility sidebar-bottom {
+  @apply mt-auto px-[8px] pb-0 pt-[16px] text-[12px] text-weak;
+}
+
+@utility appfoot {
+  @apply mt-auto flex flex-wrap justify-between gap-[16px] border-t border-line px-0 pb-[6px] pt-[18px] text-[12px] text-weak;
+}
+
+@utility crumb {
+  @apply text-[13px] text-weak;
+}
+
+@utility crumb-home {
+  @apply cursor-pointer border-0 bg-transparent p-0 font-[inherit] font-bold text-text;
+}
+
+@utility rowlink {
+  @apply block w-full cursor-pointer border-0 bg-transparent p-0 text-left;
+}
+
+@utility runfield {
+  @apply grid grid-cols-[104px_minmax(0,1fr)] items-start gap-3 border-t border-line px-[15px] py-[11px];
+}
+
+
+/* Controls that sit on one line share one height. A 40px button beside a
+   34px select reads as a mistake even when nobody can say which is wrong. */
+
+@utility control-row {
+  @apply flex flex-wrap items-center gap-[9px];
+}
+
+@utility filter {
+  @apply inline-flex min-h-[34px] cursor-pointer items-center rounded-[7px] border border-line bg-transparent px-[10px] text-[13px] text-muted;
+  transition: background-color var(--motion-fast) var(--ease-standard),
+              border-color var(--motion-fast) var(--ease-standard),
+              transform var(--motion-fast) var(--ease-press);
+}
+
+@utility theme-toggle {
+  @apply grid h-[34px] w-[34px] place-items-center rounded-[var(--radius-xs)] border border-line bg-surface text-muted;
+  transition: color var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard);
+}
+
+@utility topbar-actions {
+  @apply flex items-center gap-[10px];
+}
+
+/* A grid, not a wrapping row. Six controls of six different widths wrapped
+   into ragged lines with nothing under anything, which is what a filter bar
+   must not look like. Every control is one column wide, so they line up. */
+@utility promptbar {
+  @apply mb-[10px] mt-[22px] grid items-center gap-[9px] grid-cols-[repeat(auto-fit,minmax(158px,1fr))];
+}
+
+@layer components {
+  /* The search box earns two, and the count sits under the row it counts. */
+  .promptbar > input[type="search"] { grid-column: span 2; }
+  .promptbar > .prompt-result-summary { grid-column: 1 / -1; margin-left: 0; }
+  @media (max-width: 420px) {
+    .promptbar > input[type="search"] { grid-column: 1 / -1; }
+  }
+}
+
+/* Every button in the product, in one place.
+
+   One geometry, two size steps, a handful of weights. Variants never change
+   the shape, so a row of mixed kinds lines up. Base and modifiers share the
+   components layer on purpose: a utility layer would beat every modifier
+   whatever its specificity, which is how primary lost its accent once. */
+
+@layer components {
+  .btn, .button, .card-action {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    min-height: 34px;
+    padding: 0 13px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    font-size: var(--type-md);
+    font-weight: 500;
+    color: inherit;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+    transition: transform var(--motion-fast) var(--ease-press),
+                background-color var(--motion-fast) var(--ease-standard),
+                border-color var(--motion-fast) var(--ease-standard),
+                color var(--motion-fast) var(--ease-standard);
+  }
+
+  /* The only thing a size changes. A small button is the same button. */
+  .btn-sm, .card-action {
+    min-height: 32px;
+    padding: 0 9px;
+    border-radius: 6px;
+    font-size: var(--type-sm);
+  }
+
+  /* Square, and whichever size step is in play decides how square. */
+  .btn-icon {
+    aspect-ratio: 1 / 1;
+    padding: 0;
+    border-color: var(--line);
+  }
+
+  .btn:hover, .btn:focus-visible,
+  .button:hover, .button:focus-visible,
+  .card-action:hover, .card-action:focus-visible {
+    background: var(--raised);
+    border-color: var(--line-strong);
+    color: var(--text);
+  }
+  .btn:active, .button:active, .card-action:active { transform: translateY(1px); }
+  /* The base layer sets this on the element; a component layer outranks it. */
+  .btn:disabled, .button:disabled, .card-action:disabled { cursor: not-allowed; }
+
+  .btn-primary, .button.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-ink);
+    font-weight: 550;
+  }
+  .btn-primary:hover, .btn-primary:focus-visible,
+  .button.primary:hover, .button.primary:focus-visible {
+    background: var(--accent-hover);
+    border-color: var(--accent-hover);
+    color: var(--accent-ink);
+  }
+
+  .btn-quiet, .card-action {
+    background: var(--sunken);
+    font-weight: 700;
+    color: var(--muted);
+    box-shadow: none;
+  }
+  .btn-quiet.is-on, .card-action.is-on {
+    background: var(--accent-wash);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .btn-danger, .button.danger, .card-action.danger { color: var(--text); border-color: var(--line-strong); }
+  .btn-danger:hover, .button.danger:hover, .card-action.danger:hover { border-color: var(--text); }
+
+  /* The state a long action reports on itself, so no caller has to. */
+  .btn[data-action-state="loading"], .button[data-action-state="loading"] { color: var(--muted); }
+  .btn[data-action-state="loading"]::before,
+  .button[data-action-state="loading"]::before {
+    content: ""; display: inline-block; width: 12px; height: 12px;
+    margin-right: 7px; vertical-align: -1px;
+    border: 2px solid currentColor; border-right-color: transparent;
+    border-radius: 50%; animation: spin 700ms linear infinite;
+  }
+  .btn[data-action-state="success"], .button[data-action-state="success"] { color: var(--confirmed-text); border-color: var(--confirmed); }
+  .btn[data-action-state="error"], .button[data-action-state="error"] { color: var(--failed-text); border-color: var(--failed); }
+}
+
+/* The rail collapses on a desktop and slides over the page on a phone. One
+   toggle drives both, so there is one closed state rather than two. */
+
+@layer components {
+  .nav-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 6;
+    opacity: 0;
+    pointer-events: none;
+    background: var(--scrim);
+    transition: opacity var(--motion-normal) var(--ease-standard);
+  }
+
+  .topbar-lead {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  body.nav-open .nav-scrim { opacity: 1; pointer-events: auto; }
+
+  /* A pointer can reach a 34px target; a thumb needs the room back. */
+  @media (max-width: 840px) and (pointer: coarse) {
+    .btn, .button { min-height: 40px; }
+    .btn-sm, .card-action { min-height: 34px; }
+  }
+}
+
+@utility changed-headline {
+  @apply m-0 mb-[10px] font-[550] text-text;
+}
+
+@utility mcols-brand {
+  @apply grid items-center gap-[10px] grid-cols-[minmax(0,1.4fr)_70px_70px_92px_minmax(0,1.3fr)];
+}
+
+@utility ch {
+  @apply block h-[230px] w-full;
+}
+
+@utility ch-legend {
+  @apply mt-[10px] flex flex-wrap gap-x-[16px] gap-y-[6px] text-[12px] text-muted;
+}
+
+@utility ch-key {
+  @apply inline-flex items-center gap-[6px];
+}
+
+@layer components {
+  .ch-line { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+  /* A hairline for the baseline, lighter still for the rest. */
+  .ch-axis { stroke: var(--line-strong); stroke-width: 1; }
+  .ch-grid { stroke: var(--line); stroke-width: 1; opacity: .55; }
+  .ch-tick { fill: var(--weak); font-size: 10px; font-variant-numeric: tabular-nums; }
+  .ch-name { font-size: 11px; }
+  .ch-name.is-you { font-weight: 650; }
+  .ch-value { fill: var(--muted); font-variant-numeric: tabular-nums; }
+  .ch-key i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+}
+
+@utility asked-split {
+  @apply grid gap-[14px] sm:grid-cols-2;
+}
+
+@utility asked-half {
+  @apply grid gap-[3px];
+}
+
+@utility asked-label {
+  @apply text-[10px] font-semibold uppercase tracking-[.09em] text-weak;
+}
+
+@utility asked-figure {
+  @apply font-display text-[21px] font-medium tracking-[-0.015em];
+}
+
+/* Tiles are white cards on a hairline background, so an empty cell is a grey
+   hole. The count is set per instance rather than guessed by auto-fit, and
+   every breakpoint lives in here: a responsive utility would outrank a rule
+   for the same thing written in any layer below. */
+@utility tilegrid {
+  @apply my-[18px] grid grid-cols-1 gap-px overflow-hidden rounded-[var(--radius)] border border-line bg-line;
+  @media (min-width: 640px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (min-width: 1024px) { grid-template-columns: repeat(var(--tile-columns, 3), minmax(0, 1fr)); }
+}
+
+/* A figure that opens the answers behind it. Underlined on hover only, so a
+   table of them does not read as a wall of links. */
+@utility countlink {
+  @apply cursor-pointer border-0 bg-transparent p-0 text-left font-[inherit] text-[inherit] underline decoration-transparent underline-offset-2;
+  transition: text-decoration-color var(--motion-fast) var(--ease-standard);
+}
+
+@layer components {
+  .countlink:hover, .countlink:focus-visible { text-decoration-color: currentColor; }
+}
+
+@layer components {
+  /* A panel you can pick up. The cursor is the only hint until you do. */
+  [data-panel] { cursor: grab; }
+  [data-panel].is-dragging { opacity: .45; cursor: grabbing; }
+  [data-panel].is-drop-target { outline: 2px solid var(--accent); outline-offset: 2px; }
+  /* A drag has to start on the card, not on a control inside it. */
+  [data-panel] button, [data-panel] a, [data-panel] select, [data-panel] input { cursor: pointer; }
+}
+
+@layer components {
+  /* The card is the way in, so it takes the pointer and lifts its edge on
+     hover. Nothing announces itself with a button nobody needed. */
+  .section-card.is-openable { cursor: pointer; }
+  .section-card.is-openable:hover { border-color: var(--line-strong); box-shadow: var(--shadow); }
+  /* The title is the same action for a keyboard, so it stays a heading. */
+  .panel-open { border: 0; background: none; padding: 0; margin: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+  .panel-open:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: var(--radius-xs); }
+  /* Inside the card, a control is its own target and not the card's. */
+  .section-card.is-openable button:not(.panel-open), .section-card.is-openable a,
+  .section-card.is-openable select, .section-card.is-openable input { cursor: auto; }
+  .section-card.is-openable button:not(.panel-open), .section-card.is-openable a { cursor: pointer; }
+}
+
+@layer components {
+  /* One topic per row, one brand per column, the fill carrying the share so a
+     row reads without comparing five numbers by eye. */
+  .mxtable .mxrow { gap: 8px; }
+  .mxcell { display: block; padding: 4px 6px; border-radius: var(--radius-xs); text-align: right; font-variant-numeric: tabular-nums; font-size: var(--type-sm); }
+  /* The reader's own column is marked by a rule, not a second hue, so the
+     fills down a row stay comparable. */
+  .mxcell.is-you { box-shadow: inset 0 0 0 1px var(--line-strong); }
+  .mxcell.is-strong { color: var(--accent-ink); }
+  .mxrow:hover .mxcell { box-shadow: inset 0 0 0 1px var(--line); }
+  .mxname { min-width: 0; }
+  .mxopen { display: flex; align-items: center; gap: 6px; width: 100%; border: 0; background: none; padding: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+  .mxopen small { color: var(--weak); font-size: var(--type-xs); }
+  .mxchev { display: inline-flex; width: 14px; height: 14px; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: var(--radius-xs); color: var(--muted); font-size: var(--type-xs); }
+  /* A span does not clip, so the label is a block and the flex row is told
+     it may shrink. Without both, long prompt text runs over the cells. */
+  .mxflat, .mxlabel { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mxopen { min-width: 0; }
+  .mxrow.d1 .mxname { padding-left: 16px; }
+  .mxrow.d2 .mxname { padding-left: 32px; }
+  .mxrow.d1, .mxrow.d2 { background: var(--sunken); }
+  .mxrow.d2 .mxflat { color: var(--muted); font-size: var(--type-sm); }
+  .mxtable .mhead span:not(:first-child):not(:nth-child(2)) { text-align: right; }
+  .mxtable .mhead .is-you { color: var(--text); font-weight: 600; }
+}
+
+@layer components {
+  /* A panel opened on its own gets the width the grid could not give it. */
+  .panel.is-wide-panel { width: min(960px, 100vw); }
+  .panel-body { padding: 0 var(--space-lg) var(--space-lg); overflow-y: auto; }
+  .panel-body .mtable { max-height: none; }
+}
+
+@utility ch-wrap {
+  @apply relative;
+}
+
+@utility ch-tip {
+  @apply pointer-events-none absolute top-[10px] z-[2] grid gap-[3px] rounded-[var(--radius-sm)] border border-line-strong bg-surface px-[10px] py-[8px] text-[12px] shadow-[var(--shadow)];
+}
+
+@layer components {
+  .ch-fill { opacity: .10; }
+  .ch-cross { stroke: var(--line-strong); stroke-width: 1; stroke-dasharray: 3 3; opacity: 0; }
+  .ch-hit { fill: transparent; }
+  .ch-tip[hidden] { display: none; }
+  .ch-tip-when { display: block; margin-bottom: 3px; font-size: 11px; color: var(--muted); }
+  .ch-tip-row { display: grid; grid-template-columns: 9px minmax(0, 1fr) auto; align-items: center; gap: 7px; }
+  .ch-tip-row.is-you { font-weight: 650; }
+  .ch-tip-row i { width: 9px; height: 9px; border-radius: 50%; }
+  .ch-tip-value { font-variant-numeric: tabular-nums; color: var(--muted); }
+
+  /* Chart on one side, the order on the other. The list is the legend, so
+     nobody has to match a colour to a name to read the picture. */
+  .split { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(210px, 1fr); }
+  .split-main { padding-right: var(--space-lg); }
+  .split-side { border-left: 1px solid var(--line); padding-left: var(--space-lg); }
+  .split-head { margin: 0 0 10px; font-size: var(--type-sm); font-weight: 500; color: var(--muted); }
+  @media (max-width: 840px) {
+    .split { grid-template-columns: minmax(0, 1fr); }
+    .split-main { padding-right: 0; }
+    .split-side { border-left: 0; border-top: 1px solid var(--line); margin-top: var(--space-md); padding: var(--space-md) 0 0; }
+  }
+
+  /* The figure a reader came for, printed rather than left to be read off
+     the chart. */
+  .figure-lead { display: flex; align-items: baseline; gap: 10px; margin: 0 0 10px; }
+  .figure-lead strong { font-size: var(--type-2xl); font-weight: 600; letter-spacing: -0.01em; }
+  .figure-lead span { font-size: var(--type-sm); color: var(--muted); }
+
+  /* A brand's own mark where the site publishes one, and a monogram where it
+     does not, so a row always has something to recognise. */
+  .bicon { position: relative; display: inline-block; width: 16px; height: 16px; flex: 0 0 16px; border: 1px solid transparent; border-radius: var(--radius-xs); overflow: hidden; vertical-align: -3px; }
+  .bicon i { display: grid; width: 100%; height: 100%; place-items: center; font-style: normal; font-size: 9px; font-weight: 600; }
+  .bicon img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+  .mname .bicon { margin-right: 7px; }
+  .mxhead { display: flex; align-items: center; justify-content: flex-end; gap: 5px; min-width: 0; }
+  .mxhead b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: inherit; }
+  .ranklist { display: grid; margin: 0; padding: 0; list-style: none; }
+  .rankrow { display: grid; grid-template-columns: 18px 18px minmax(0, 1fr) auto 54px; align-items: center; gap: 9px; min-height: 34px; border-bottom: 1px solid var(--line); font-size: var(--type-md); }
+  .rankrow:last-child { border-bottom: 0; }
+  .rankrow.is-you { font-weight: 600; }
+  .rankplace { color: var(--weak); font-variant-numeric: tabular-nums; }
+  .rankname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rankvalue { font-variant-numeric: tabular-nums; }
+  .rankmove { font-variant-numeric: tabular-nums; font-size: var(--type-sm); text-align: right; }
+  .rankmove.is-up { color: var(--confirmed-text); }
+  .rankmove.is-down { color: var(--failed-text); }
+  .rankmove.is-flat { color: var(--weak); }
+}
+
+@utility mcols-demand {
+  @apply grid items-center gap-[10px] grid-cols-[minmax(0,1.6fr)_110px_120px_128px];
+}
+
+@utility tagrow {
+  @apply mt-[10px] flex flex-wrap gap-[6px];
+}
+
+@utility mt-lg {
+  @apply mt-[22px];
+}

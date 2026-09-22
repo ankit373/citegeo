@@ -4,11 +4,11 @@ import { createSign } from "node:crypto";
 // Written here rather than taken from an SDK, the same judgement as the
 // GitHub client and the S3 signing: four calls do not justify the surface.
 
-const SCOPE = "https://www.googleapis.com/auth/webmasters.readonly";
-const DEFAULT_TOKEN_URI = "https://oauth2.googleapis.com/token";
+const SCOPE = ["https://www.googleapis.com/auth/webmasters.readonly", "https://www.googleapis.com/auth/analytics.readonly"].join(" ");
+export const DEFAULT_TOKEN_URI = "https://oauth2.googleapis.com/token";
 const LIFETIME_SECONDS = 3600;
 /** Renew before the edge, so a long report does not expire mid-run. */
-const RENEW_BEFORE_MS = 120000;
+export const RENEW_BEFORE_MS = 120000;
 
 export class ServiceAccountError extends Error {}
 
@@ -63,13 +63,15 @@ export interface AccessToken {
 }
 
 export class ServiceAccountTokens {
-  private held: AccessToken | null = null;
+  private readonly held = new Map<string, AccessToken>();
 
   constructor(private readonly post: typeof fetch = fetch) {}
 
   async token(account: ServiceAccount): Promise<string> {
     const now = Date.now();
-    if (this.held && this.held.expiresAt - RENEW_BEFORE_MS > now) return this.held.token;
+    const identity = `${account.clientEmail}\u0000${account.tokenUri}`;
+    const holding = this.held.get(identity);
+    if (holding && holding.expiresAt - RENEW_BEFORE_MS > now) return holding.token;
     const body = new URLSearchParams({
       grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
       assertion: assertionFor(account, Math.floor(now / 1000)),
@@ -87,7 +89,7 @@ export class ServiceAccountTokens {
     const token = typeof parsed.access_token === "string" ? parsed.access_token : "";
     if (!token) throw new ServiceAccountError("Google returned no access token for that key.");
     const seconds = typeof parsed.expires_in === "number" ? parsed.expires_in : LIFETIME_SECONDS;
-    this.held = { token, expiresAt: now + seconds * 1000 };
+    this.held.set(identity, { token, expiresAt: now + seconds * 1000 });
     return token;
   }
 }
