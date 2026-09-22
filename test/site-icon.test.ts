@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { declaredIcons } from "../src/product/discovery/site-icon.js";
+import { declaredIcons, isPublicHost } from "../src/product/discovery/site-icon.js";
 
 test("the mark is the one the site declares, resolved against the page", () => {
   const found = declaredIcons('<link rel="icon" href="/static/mark.png">', "https://example.com/");
@@ -31,4 +31,15 @@ test("a mask icon is skipped, because it is a silhouette and reads as a square",
 test("a scheme nobody should follow is refused", () => {
   assert.deepEqual(declaredIcons('<link rel="icon" href="javascript:alert(1)">', "https://example.com/"), []);
   assert.deepEqual(declaredIcons('<link rel="icon" href="data:image/png;base64,AA">', "https://example.com/"), []);
+});
+
+test("a host that is not a public name is never fetched", () => {
+  // A rival's domain arrives from a model's answer, not from the user, so it
+  // is not trusted enough to point a server request at.
+  for (const host of ["localhost", "127.0.0.1", "10.0.0.5", "box.internal", "printer.local", "nas.lan", "", "no-dot"]) {
+    assert.equal(isPublicHost(host), false, `${host} should be refused`);
+  }
+  for (const host of ["example.com", "sub.example.co.uk", "screener.in"]) {
+    assert.equal(isPublicHost(host), true, `${host} should be allowed`);
+  }
 });

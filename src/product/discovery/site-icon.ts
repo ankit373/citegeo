@@ -37,6 +37,22 @@ function absoluteUrl(href: string, base: string): string | null {
   }
 }
 
+const PRIVATE_SUFFIXES = [".local", ".internal", ".localhost", ".home.arpa", ".lan"];
+
+/** A rival's domain comes out of a model's answer, not out of the user, so the
+ * server refuses to fetch anything that is not a public name. */
+export function isPublicHost(domain: string): boolean {
+  const host = domain.trim().toLocaleLowerCase();
+  if (!host || !host.includes(".") || host.includes("/") || host.includes(":") || host.includes(" ")) return false;
+  if (host === "localhost") return false;
+  for (const suffix of PRIVATE_SUFFIXES) if (host.endsWith(suffix)) return false;
+  // An address literal is never a brand's site, and it is how a fetch reaches
+  // something on this machine or in this network.
+  const labels = host.split(".");
+  const numeric = labels.every((label) => label.length > 0 && [...label].every((char) => char >= "0" && char <= "9"));
+  return !numeric;
+}
+
 async function head(url: string, timeoutMs: number): Promise<boolean> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -55,6 +71,7 @@ async function head(url: string, timeoutMs: number): Promise<boolean> {
 /** The icon a domain declares, or null. Null is a real answer: it means the
  * site publishes no mark, not that the read failed silently. */
 export async function readSiteIcon(domain: string, options: { timeoutMs?: number } = {}): Promise<string | null> {
+  if (!isPublicHost(domain)) return null;
   const timeoutMs = options.timeoutMs || 8000;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
