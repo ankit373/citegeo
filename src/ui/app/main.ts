@@ -967,11 +967,14 @@ export function boot(): void {
       const markets = [option("", "All markets", state.filters.regionId)].concat((state.regions || []).map((row) => option(row.id, row.label, state.filters.regionId)));
       const tongues = [option("", "All languages", state.filters.languageId)].concat((state.languages || []).map((row) => option(row.id, row.label, state.filters.languageId)));
       const applied = filtersApplied();
+      // A dashed edge means nothing is chosen, a solid one means something is,
+      // so the bar says what it is filtering by without a badge or a count.
+      const set = (value: any) => value ? ' class="is-set"' : '';
       return '<div class="segment">'
-        + '<select data-filter="topicId" aria-label="Topic">' + topics.join("") + '</select>'
-        + '<select data-filter="modelId" aria-label="Model">' + models.join("") + '</select>'
-        + '<select data-filter="regionId" aria-label="Market">' + markets.join("") + '</select>'
-        + '<select data-filter="languageId" aria-label="Language">' + tongues.join("") + '</select>'
+        + '<select data-filter="topicId" aria-label="Topic"' + set(state.filters.topicId) + '>' + topics.join("") + '</select>'
+        + '<select data-filter="modelId" aria-label="Model"' + set(state.filters.modelId) + '>' + models.join("") + '</select>'
+        + '<select data-filter="regionId" aria-label="Market"' + set(state.filters.regionId) + '>' + markets.join("") + '</select>'
+        + '<select data-filter="languageId" aria-label="Language"' + set(state.filters.languageId) + '>' + tongues.join("") + '</select>'
         + (applied ? '<button type="button" class="linklike applied" data-clear-filters>Clear ' + applied + '</button>' : '')
         + '<span class="spacer"></span>'
         + exportMenu() + '</div>';
@@ -2044,10 +2047,10 @@ export function boot(): void {
       const states = PROMPT_STATES.map((row) => '<option value="' + row[0] + '"' + (filters.status === row[0] ? ' selected' : '') + '>' + row[1] + '</option>').join("");
       return '<div class="promptbar">'
         + '<input id="prompt-search" type="search" placeholder="Search questions" aria-label="Search questions" value="' + html(filters.query) + '">'
-        + '<select data-prompt-filter="topicId" aria-label="Filter by topic"><option value="">All topics</option>' + topics + '</select>'
-        + '<select data-prompt-filter="intent" aria-label="Filter by intent"><option value="">Any intent</option>' + intents + '</select>'
-        + '<select data-prompt-filter="status" aria-label="Filter by state">' + states + '</select>'
-        + '<select data-prompt-sort aria-label="Order"><option value="topic"' + (state.promptSort === "topic" ? " selected" : "") + '>Group by topic</option><option value="open"' + (state.promptSort === "open" ? " selected" : "") + '>Open fields first</option><option value="worst"' + (state.promptSort === "worst" ? " selected" : "") + '>Worst score first</option></select>'
+        + '<select data-prompt-filter="topicId" aria-label="Filter by topic"' + (filters.topicId ? ' class="is-set"' : '') + '><option value="">All topics</option>' + topics + '</select>'
+        + '<select data-prompt-filter="intent" aria-label="Filter by intent"' + (filters.intent ? ' class="is-set"' : '') + '><option value="">Any intent</option>' + intents + '</select>'
+        + '<select data-prompt-filter="status" aria-label="Filter by state"' + (filters.status ? ' class="is-set"' : '') + '>' + states + '</select>'
+        + '<select data-prompt-sort aria-label="Order" class="is-set"><option value="topic"' + (state.promptSort === "topic" ? " selected" : "") + '>Group by topic</option><option value="open"' + (state.promptSort === "open" ? " selected" : "") + '>Open fields first</option><option value="worst"' + (state.promptSort === "worst" ? " selected" : "") + '>Worst score first</option></select>'
         + (shown ? '<button type="button" class="filter" data-prompt-select-all>Select all shown</button>' : '')
         + '<span class="prompt-result-summary subtle">' + promptResultSummary(shown, livePrompts(set).length) + '</span></div>';
     }

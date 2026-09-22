@@ -164,6 +164,11 @@ export interface RivalSeries {
   points: Array<{ at: string; share: number }>;
 }
 
+/** One rule for a line's colour, so the list beside the chart can key to it. */
+export function seriesInk(isTarget: boolean, index: number): string {
+  return isTarget ? (SERIES_INK[0] as string) : (SERIES_INK[(index % (SERIES_INK.length - 1)) + 1] as string);
+}
+
 const SERIES_INK = ["var(--accent)", "#6B8CAE", "#8B7FBF", "#6FA88A", "#B98A5E", "#A6748F"];
 
 /** Pushes labels apart so two lines ending at the same height do not print
@@ -187,23 +192,33 @@ function runLabel(at: string): string {
   return when.toLocaleDateString(undefined, { day: "numeric", month: "short" });
 }
 
-/** Every brand's share across the runs, on one axis. Share rather than score,
- * because a rival has no score here, only a presence in the answers. */
-export function rivalChart(series: RivalSeries[], domain: string): string {
+/** A brand nobody named has no series at all, and that absence is the whole
+ * finding, so it is carried at zero rather than left out of the picture. */
+export function withTarget(series: RivalSeries[], domain: string): RivalSeries[] {
+  if (series.some((line) => line.isTarget)) return series;
+  const first = series[0];
+  if (!first) return series;
+  return [{ name: domain, isTarget: true, points: first.points.map((point) => ({ at: point.at, share: 0 })) }, ...series];
+}
+
+export interface ChartOptions {
+  /** Off when a ranked list beside the chart already names every line, which
+   * gives the plot back the width the labels were using. */
+  labels?: boolean;
+}
+
+export function rivalChart(series: RivalSeries[], domain: string, options: ChartOptions = {}): string {
+  const named = options.labels !== false;
   const runs = series[0] ? series[0].points.length : 0;
   if (runs < 2) return '<p class="subtle">One run so far. Run again to see movement.</p>';
 
   const first = series[0];
   if (!first) return '<p class="subtle">Nothing has been named yet.</p>';
-  // A brand nobody named has no series at all, and that absence is the whole
-  // finding, so it is drawn flat at zero rather than left off the chart.
-  const drawn = series.some((row) => row.isTarget)
-    ? series
-    : [{ name: domain, isTarget: true, points: first.points.map((point) => ({ at: point.at, share: 0 })) }, ...series];
+  const drawn = withTarget(series, domain);
 
   const width = 760;
   const height = 230;
-  const pad = { left: 38, right: 168, top: 14, bottom: 30 };
+  const pad = { left: 38, right: named ? 168 : 16, top: 14, bottom: 30 };
   const plot = { w: width - pad.left - pad.right, h: height - pad.top - pad.bottom };
   const x = (index: number) => pad.left + (runs === 1 ? plot.w : (index * plot.w) / (runs - 1));
   const y = (share: number) => pad.top + (1 - Math.max(0, Math.min(1, share))) * plot.h;
@@ -224,7 +239,7 @@ export function rivalChart(series: RivalSeries[], domain: string): string {
     }).join(""),
   ]);
 
-  const inkFor = (row: RivalSeries, index: number) => (row.isTarget ? SERIES_INK[0] : SERIES_INK[(index % (SERIES_INK.length - 1)) + 1]);
+  const inkFor = (row: RivalSeries, index: number) => seriesInk(row.isTarget, index);
   const ends = spread(drawn.map((row) => y(row.points[row.points.length - 1]?.share || 0)), 15);
 
   const lines = drawn.map((row, index) => {
@@ -240,7 +255,7 @@ export function rivalChart(series: RivalSeries[], domain: string): string {
     return `${fill}<path class="ch-line" d="${path}" stroke="${ink}" stroke-width="${row.isTarget ? 2.5 : 1.5}"></path>${dots}`;
   }).join("");
 
-  const labels = drawn.map((row, index) => {
+  const labels = !named ? "" : drawn.map((row, index) => {
     const now = row.points[row.points.length - 1];
     const ink = inkFor(row, index);
     return join([
@@ -274,6 +289,81 @@ export function rivalChart(series: RivalSeries[], domain: string): string {
     grid, axis, `${crosshair}${lines}`, labels, hits,
     "</svg>",
     '<div class="ch-tip" hidden></div>',
+    "</div>",
+  ]);
+}
+
+export interface RivalStanding {
+  name: string;
+  isTarget: boolean;
+  share: number;
+  /** Percentage points moved since the run before, or null on a first run. */
+  moved: number | null;
+  /** Ties share a place, so two brands level on share are both second. */
+  place: number;
+  ink: string;
+}
+
+/** Where every brand stands at the latest run, in order. Ranked rather than
+ * charted, because a reader wants the order before they want the shape. */
+export function rivalStandings(series: RivalSeries[]): RivalStanding[] {
+  const scored = series
+    .map((line, index) => {
+      const points = line.points;
+      const last = points[points.length - 1];
+      const prior = points.length > 1 ? points[points.length - 2] : undefined;
+      return {
+        name: line.name,
+        isTarget: line.isTarget,
+        share: last ? last.share : 0,
+        moved: last && prior ? last.share - prior.share : null,
+        ink: seriesInk(line.isTarget, index),
+      };
+    })
+    .sort((left, right) => right.share - left.share);
+  // Competition ranking: equal shares take the same place, and the next
+  // brand skips the places they used up.
+  let place = 0;
+  let seen = 0;
+  let previous = Number.NaN;
+  return scored.map((entry) => {
+    seen += 1;
+    if (entry.share !== previous) { place = seen; previous = entry.share; }
+    return { ...entry, place };
+  });
+}
+
+/** The ranked list that sits beside the chart. It doubles as the legend, so
+ * no reader has to match a colour to a name. */
+export function rivalRanks(standings: RivalStanding[]): string {
+  if (!standings.length) return '<p class="subtle">Nothing has been named yet.</p>';
+  return `<ol class="ranklist">${standings.map((entry) => join([
+    `<li class="rankrow${entry.isTarget ? " is-you" : ""}">`,
+    `<span class="rankplace">${entry.place}</span>`,
+    `<i class="rankink" style="background:${entry.ink}"></i>`,
+    `<span class="rankname">${html(entry.name)}${entry.isTarget ? ` ${pill("You", "good")}` : ""}</span>`,
+    `<span class="rankvalue">${percent(entry.share)}</span>`,
+    entry.moved === null
+      ? '<span class="rankmove is-flat" title="No earlier run to compare with">&ndash;</span>'
+      : `<span class="rankmove ${entry.moved > 0 ? "is-up" : entry.moved < 0 ? "is-down" : "is-flat"}">`
+        + `${entry.moved > 0 ? "+" : ""}${Math.round(entry.moved * 1000) / 10}pp</span>`,
+    "</li>",
+  ])).join("")}</ol>`;
+}
+
+/** Chart on the left, standings on the right, in one card. The number a reader
+ * came for is printed above the chart rather than left to be read off it. */
+export function rivalPanel(series: RivalSeries[], domain: string): string {
+  const standings = rivalStandings(withTarget(series, domain));
+  const mine = standings.find((entry) => entry.isTarget);
+  const headline = mine
+    ? `<p class="figure-lead"><strong>${percent(mine.share)}</strong>`
+      + `<span>${rankText(mine.place)} of ${standings.length}</span></p>`
+    : "";
+  return join([
+    '<div class="split">',
+    `<div class="split-main">${headline}${rivalChart(series, domain, { labels: false })}</div>`,
+    `<div class="split-side"><h3 class="split-head">Share of voice rank</h3>${rivalRanks(standings)}</div>`,
     "</div>",
   ]);
 }
@@ -382,7 +472,7 @@ export interface Panel {
 export function dashboardPanels(data: DashboardData): Panel[] {
   return [
     { id: "moves", title: "Recommendations", blurb: "The strongest levers, read off the answers.", body: movesList(data.moves) },
-    { id: "trend", title: "Share of voice", blurb: "Every brand on one axis, so a gap that is closing looks different from one that is not.", body: rivalChart(data.rivalTrend || [], data.domain), wide: true },
+    { id: "trend", title: "Share of voice", blurb: "Every brand on one axis, so a gap that is closing looks different from one that is not.", body: rivalPanel(data.rivalTrend || [], data.domain), wide: true },
     { id: "named", title: "Brand mentions", blurb: "You against everyone else the answers named.", body: leaderboardBars(data.leaderboard) },
     { id: "described", title: "Sentiment by brand", blurb: "Where each brand appears in the answer, and how it is spoken about.", body: brandsTable(data.leaderboard), wide: true },
     { id: "asked", title: "Branded and unbranded", blurb: "A question that names you cannot show whether you are found. The two are counted apart.", body: data.asked ? askedSplit(data.asked) : '<p class="subtle">Nothing asked yet.</p>' },

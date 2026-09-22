@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   dashboardBody, heroStats, leaderboardBars, movesList, sourcesPanel, splitRows, summaryTiles,
   rivalChart,
+  rivalPanel, rivalRanks, rivalStandings, withTarget,
   dashboardPanels,
   type DashboardData,
 } from "../src/ui/app/pages/dashboard-view.js";
@@ -171,4 +172,54 @@ test("every panel can be opened on its own", () => {
   // Ids have to be unique or the order and the expand both pick the wrong one.
   const ids = panels.map((panel) => panel.id);
   assert.deepEqual(ids, [...new Set(ids)]);
+});
+
+test("brands level on share take the same place, and the next one skips", () => {
+  const standings = rivalStandings([
+    { name: "A", isTarget: false, points: [{ at: "a", share: 0.5 }] },
+    { name: "B", isTarget: false, points: [{ at: "a", share: 0.5 }] },
+    { name: "C", isTarget: true, points: [{ at: "a", share: 0.2 }] },
+  ]);
+  // Two brands level are both first, so the third is third, never second.
+  assert.deepEqual(standings.map((entry) => entry.place), [1, 1, 3]);
+});
+
+test("a first run reports no movement rather than a movement of nought", () => {
+  const [only] = rivalStandings([{ name: "A", isTarget: true, points: [{ at: "a", share: 0.4 }] }]);
+  assert.equal((only as { moved: number | null }).moved, null);
+  assert.equal(rivalRanks(rivalStandings([{ name: "A", isTarget: true, points: [{ at: "a", share: 0.4 }] }])).includes("0pp"), false);
+});
+
+test("the list beside the chart carries the order, the share and the move", () => {
+  const list = rivalRanks(rivalStandings([
+    { name: "Rival", isTarget: false, points: [{ at: "a", share: 0.2 }, { at: "b", share: 0.6 }] },
+    { name: "Mine", isTarget: true, points: [{ at: "a", share: 0.5 }, { at: "b", share: 0.3 }] },
+  ]));
+  assert.ok(list.includes("Rival"));
+  assert.ok(list.includes("60%"));
+  assert.ok(list.includes("+40pp"), "a brand that gained says so");
+  assert.ok(list.includes("-20pp"), "and one that lost says so");
+  assert.ok(list.includes("is-you"), "the reader's own brand is marked");
+});
+
+test("the panel prints the figure rather than leaving it to be read off the chart", () => {
+  const panel = rivalPanel([
+    { name: "Rival", isTarget: false, points: [{ at: "a", share: 0.9 }, { at: "b", share: 0.9 }] },
+    { name: "Mine", isTarget: true, points: [{ at: "a", share: 0.4 }, { at: "b", share: 0.4 }] },
+  ], "mine.example");
+  assert.ok(panel.includes("figure-lead"));
+  assert.ok(panel.includes("40%"), "the reader's own share is printed");
+  assert.ok(panel.includes("#2 of 2"), "and so is the place it puts them in");
+  assert.ok(panel.includes("split-side"), "the list sits beside the chart, not under it");
+});
+
+test("a brand nobody named still takes its place in the order, at nought", () => {
+  const panel = rivalPanel([
+    { name: "Rival", isTarget: false, points: [{ at: "a", share: 0.8 }, { at: "b", share: 0.8 }] },
+  ], "mine.example");
+  // Being absent is the finding. Leaving the reader's own brand off the list
+  // would hide the one row they came to read.
+  assert.ok(panel.includes("mine.example"));
+  assert.ok(panel.includes("0%"));
+  assert.ok(panel.includes("#2 of 2"));
 });

@@ -139,6 +139,9 @@ export function renderProductPhase2AppHtml(): string {
     .segment .exportmenu { justify-self:end; }
     .segment .applied { grid-column:1 / -1; }
     .segment select { width:auto; min-width:120px; max-width:200px; }
+    /* Dashed means nothing is chosen. The filter bar says what it is filtering
+       by from across the room, with no badge and no count to read. */
+    .segment select:not(.is-set),.promptbar select:not(.is-set) { border-style:dashed; color:var(--muted); }
     .segment .spacer { flex:1 1 auto; }
     .segment .applied { font-size:12px; color:var(--accent); }
 
@@ -289,7 +292,10 @@ export function renderProductPhase2AppHtml(): string {
     .model-catalog-controls select { min-width:0; }
     .catalog-result-summary { color:var(--weak); font-size:12px; margin:0 0 12px; }
     .model-list { display:grid; gap:8px; max-height:620px; overflow:auto; padding-right:3px; }
-    .mhead,.mrow { display:grid; align-items:center; gap:16px; padding:10px 8px; border-bottom:1px solid var(--line); }
+    .mhead,.mrow { display:grid; align-items:center; gap:16px; min-height:42px; padding:8px; border-bottom:1px solid var(--line); }
+    /* The head rides the top of whichever box scrolls, one surface step above
+       the rows so they visibly pass behind it rather than through it. */
+    .mhead { position:sticky; top:0; z-index:2; background:var(--raised); font-size:var(--type-sm); font-weight:500; color:var(--muted); }
     .mrow:last-child { border-bottom:0; }
     .mrow:hover,.mrow:focus-within { background:var(--raised); border-radius:var(--radius-sm); }
     .mname strong { display:block; font-size:13px; line-height:1.4; font-weight:550; color:var(--text); }
