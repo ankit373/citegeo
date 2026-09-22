@@ -1594,6 +1594,28 @@ export function boot(): void {
         citedPages: outreach ? outreach.cited : null,
         missingFrom: outreach ? (outreach.targets as any[]).filter((t: any) => !t.namesYou).length : null,
         spark: data ? sparkline(data.trend.points, 170, 30) : "",
+        asked: (() => {
+          if (!data) return undefined;
+          const prompts = (data.topics as any[]).flatMap((topic: any) => topic.prompts as any[]);
+          const earned = prompts.filter((row: any) => row.measuresVisibility);
+          const byName = prompts.filter((row: any) => !row.measuresVisibility);
+          const sum = (rows: any[], pick: (row: any) => number) => rows.reduce((total, row) => total + pick(row), 0);
+          const judged = byName.filter((row: any) => row.score.sentiment !== null);
+          return {
+            unbranded: {
+              prompts: earned.length,
+              answers: sum(earned, (row) => row.score.answers),
+              appearances: sum(earned, (row) => row.score.appearances),
+              score: earned.length ? Math.round(sum(earned, (row) => row.score.score || 0) / earned.length) : null,
+            },
+            branded: {
+              prompts: byName.length,
+              answers: sum(byName, (row) => row.score.answers),
+              // Averaging over the judged ones only: an unjudged answer is not a zero.
+              sentiment: judged.length ? sum(judged, (row) => row.score.sentiment) / judged.length : null,
+            },
+          };
+        })(),
         rivalTrend: data && data.trend && data.trend.rivals ? (data.trend.rivals as any[]).map((row: any) => ({
           name: row.name, isTarget: row.isTarget,
           points: (row.points as any[]).map((point: any) => ({ at: point.at, share: point.share })),

@@ -45,6 +45,7 @@ export interface Move {
 export interface DashboardData {
   /** Empty until two runs exist, which the chart reports rather than hides. */
   rivalTrend?: RivalSeries[];
+  asked?: AskedSplit | undefined;
   domain: string;
   score: number | null;
   change: number | null;
@@ -207,6 +208,42 @@ export function rivalChart(series: RivalSeries[], domain: string): string {
   ]);
 }
 
+export interface AskedSplit {
+  /** Questions that never name the brand, so being named there is earned. */
+  unbranded: { prompts: number; answers: number; score: number | null; appearances: number };
+  /** Questions that name the brand. Presence is given, so only the framing counts. */
+  branded: { prompts: number; answers: number; sentiment: number | null };
+}
+
+/** The two halves of a prompt set, which measure different things. Mixing
+ * them into one score is how a brand looks visible because it asked about
+ * itself. */
+export function askedSplit(split: AskedSplit): string {
+  const rows = [
+    join([
+      '<div class="asked-half">',
+      `<span class="asked-label">Asked without naming you</span>`,
+      `<strong class="asked-figure">${scoreText(split.unbranded.score)}</strong>`,
+      `<span class="subtle">${split.unbranded.prompts} question(s), ${split.unbranded.answers} answer(s). `,
+      split.unbranded.answers === 0
+        ? "Nothing asked yet."
+        : `Named in ${split.unbranded.appearances}. This is the number that is earned.`,
+      "</span></div>",
+    ]),
+    join([
+      '<div class="asked-half">',
+      `<span class="asked-label">Asked by name</span>`,
+      `<strong class="asked-figure">${split.branded.sentiment === null ? "Not judged" : percent(split.branded.sentiment)}</strong>`,
+      `<span class="subtle">${split.branded.prompts} question(s), ${split.branded.answers} answer(s). `,
+      split.branded.prompts === 0
+        ? "None tracked. A question that names you measures how you are described, not whether you are found."
+        : "Presence is given here, so only how you are described counts.",
+      "</span></div>",
+    ]),
+  ];
+  return `<div class="asked-split">${rows.join("")}</div>`;
+}
+
 export function splitRows(rows: Split[], empty: string): string {
   return table({
     layout: "mcols-rank",
@@ -273,6 +310,7 @@ export function dashboardBody(held: Loadable<DashboardData>): string {
       section({ title: "Share of the answers, run by run", blurb: "Every brand on one axis, so a gap that is closing looks different from one that is not.", body: rivalChart(data.rivalTrend || [], data.domain), wide: true }),
       section({ title: "Who the answers name", blurb: "You against everyone else named.", body: leaderboardBars(data.leaderboard) }),
       section({ title: "How each one is described", blurb: "Where each brand appears in the answer, and how it is spoken about.", body: brandsTable(data.leaderboard), wide: true }),
+      section({ title: "Found, or already known", blurb: "A question that names you cannot show whether you are found. The two are counted apart.", body: data.asked ? askedSplit(data.asked) : '<p class="subtle">Nothing asked yet.</p>' }),
       section({ title: "By assistant", blurb: "Who was asked, and how each one answered.", body: splitRows(data.byModel, "No assistant has answered yet.") }),
       section({ title: "By market", blurb: "Fills in once a run states more than one.", body: splitRows(data.byRegion, "Every answer was asked without a market stated.") }),
       section({ title: "By persona", blurb: "Fills in once a run asks on behalf of more than one.", body: splitRows(data.byPersona, "Every answer was asked on nobody’s behalf.") }),

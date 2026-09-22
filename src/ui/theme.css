@@ -668,3 +668,19 @@
   .ch-tick { fill: var(--weak); font-size: 10px; }
   .ch-key i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
 }
+
+@utility asked-split {
+  @apply grid gap-[14px] sm:grid-cols-2;
+}
+
+@utility asked-half {
+  @apply grid gap-[3px];
+}
+
+@utility asked-label {
+  @apply text-[10px] font-semibold uppercase tracking-[.09em] text-weak;
+}
+
+@utility asked-figure {
+  @apply font-display text-[21px] font-medium tracking-[-0.015em];
+}
