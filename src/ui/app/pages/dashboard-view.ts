@@ -3,7 +3,7 @@ import { percent, rank as rankText, score as scoreText } from "../format.js";
 import { bar, cell, nameCell, pill, row, section, table, tiles, type TileInput } from "../components/primitives.js";
 import { loading, skeletonCard, skeletonTiles } from "../components/skeleton.js";
 import { match, type Loadable } from "../loadable.js";
-import { panelOrder } from "../components/reorder.js";
+import { panelLayout } from "../components/reorder.js";
 
 // The dashboard answers four questions in order: where do I stand, what moved,
 // what would move it, and who is taking the ground. Everything here comes from
@@ -576,26 +576,46 @@ export function dashboardPanels(data: DashboardData): Panel[] {
   ];
 }
 
-export function dashboardBody(held: Loadable<DashboardData>): string {
+/** The width controls and the remove, shown only while the board is being
+ * arranged, so a card a reader is only looking at carries nothing extra. */
+function panelTools(id: string, span: number): string {
+  const width = (value: number, label: string) =>
+    `<button type="button" class="ptool${span === value ? " is-on" : ""}" data-panel-span="${html(id)}:${value}"`
+    + ` title="${html(label)}" aria-pressed="${span === value ? "true" : "false"}">${html(label)}</button>`;
+  return `<div class="ptools">${width(1, "1")}${width(2, "2")}${width(0, "Full")}`
+    + `<button type="button" class="ptool is-drop" data-panel-hide="${html(id)}" title="Take this off the board">Remove</button></div>`;
+}
+
+export function dashboardBody(held: Loadable<DashboardData>, editing = false): string {
   return match(held, {
     loading: () => dashboardSkeleton(),
     error: (error) => `<div class="warning-box">${html(error)}</div>`,
     ready: (data) => {
       const panels = dashboardPanels(data);
       const byId = new Map(panels.map((panel) => [panel.id, panel]));
-      const drawn = panelOrder(panels.map((panel) => panel.id)).map((id) => {
+      const layout = panelLayout(panels.map((panel) => panel.id));
+      const drawn = layout.order.map((id) => {
         const panel = byId.get(id);
         if (!panel) return "";
+        if (!editing && layout.hidden.includes(id)) return "";
+        // A panel that declared itself wide keeps that as its default width,
+        // and a width the reader chose overrides it.
+        const span = layout.spans[id] ?? (panel.wide ? 0 : 1);
         return section({
           id: panel.id,
           title: panel.title,
           blurb: panel.blurb,
           body: panel.body,
-          ...(panel.wide ? { wide: true } : {}),
-          open: panel.id,
+          span,
+          off: layout.hidden.includes(id),
+          ...(editing ? { aside: panelTools(id, span) } : { open: panel.id }),
         });
       }).join("");
-      return join([summaryTiles(data), '<div class="dgrid">', drawn, "</div>"]);
+      return join([
+        summaryTiles(data),
+        editing ? '<p class="subtle boardnote">Drag a card to move it, set its width, or take it off the board. The arrangement is yours and stays in this browser.</p>' : "",
+        '<div class="dgrid">', drawn, "</div>",
+      ]);
     },
   });
 }

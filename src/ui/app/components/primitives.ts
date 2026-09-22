@@ -82,11 +82,16 @@ export interface SectionInput {
   id?: string;
   /** Panel to open on a click anywhere that is not already a control. */
   open?: string;
+  /** Tracks this card spans: 1, 2, or 0 for the whole row. */
+  span?: number;
+  /** Taken off the board, drawn only while the board is being arranged. */
+  off?: boolean;
 }
 
 export function section(input: SectionInput): string {
   return join([
-    `<section class="section-card${input.wide ? " is-wide" : ""}${input.open ? " is-openable" : ""}"`,
+    `<section class="section-card${input.wide || input.span === 0 ? " is-wide" : ""}${input.span === 2 ? " is-two" : ""}`
+      + `${input.open ? " is-openable" : ""}${input.off ? " is-off" : ""}"`,
     input.id ? ` data-panel="${html(input.id)}" draggable="true"` : "",
     input.open ? ` data-expand-panel="${html(input.open)}"` : "",
     `><div class="section-head"><div class="headmain">`,

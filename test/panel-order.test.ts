@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { panelOrder } from "../src/ui/app/components/reorder.js";
+import { panelLayout, panelOrder, setPanelSpan, togglePanelHidden } from "../src/ui/app/components/reorder.js";
 
 function withStorage(value: string | null, run: () => void): void {
   const store: Record<string, string> = {};
@@ -46,5 +46,41 @@ test("a panel that no longer exists is dropped rather than left as a hole", () =
 test("unreadable storage falls back to the default order", () => {
   withStorage("not json", () => {
     assert.deepEqual(panelOrder(["a", "b"]), ["a", "b"]);
+  });
+});
+
+test("a board arranged before widths existed is not made to be arranged again", () => {
+  // The first version stored a bare array. Reading it as a layout keeps the
+  // order somebody already chose.
+  withStorage(JSON.stringify(["c", "a"]), () => {
+    const layout = panelLayout(["a", "b", "c"]);
+    assert.deepEqual(layout.order, ["c", "a", "b"]);
+    assert.deepEqual(layout.spans, {});
+    assert.deepEqual(layout.hidden, []);
+  });
+});
+
+test("a width is kept, and one nobody offered is refused rather than stored", () => {
+  withStorage(null, () => {
+    setPanelSpan("a", 2);
+    setPanelSpan("b", 7);
+    const layout = panelLayout(["a", "b"]);
+    assert.equal(layout.spans["a"], 2);
+    assert.equal(layout.spans["b"], undefined);
+  });
+});
+
+test("a panel taken off the board comes back the same way it went", () => {
+  withStorage(null, () => {
+    togglePanelHidden("a");
+    assert.deepEqual(panelLayout(["a", "b"]).hidden, ["a"]);
+    togglePanelHidden("a");
+    assert.deepEqual(panelLayout(["a", "b"]).hidden, []);
+  });
+});
+
+test("a panel that no longer exists is dropped from the hidden list too", () => {
+  withStorage(JSON.stringify({ order: ["a"], spans: {}, hidden: ["gone"] }), () => {
+    assert.deepEqual(panelLayout(["a", "b"]).hidden, []);
   });
 });

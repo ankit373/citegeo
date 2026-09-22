@@ -90,6 +90,16 @@ export function renderProductPhase2AppHtml(): string {
     .dgrid > .section-card { margin:0; }
     /* A table with five columns cannot fit a 322px card. */
     .dgrid > .section-card.is-wide { grid-column:1 / -1; }
+    .dgrid > .section-card.is-two { grid-column:span 2; }
+    /* Arranging the board. A card taken off is still drawn here, faded, so
+       putting it back is one click rather than a hunt through a menu. */
+    .dgrid > .section-card.is-off { opacity:.42; }
+    .dgrid > .section-card.is-off .ptool.is-drop { color:var(--accent); }
+    .boardnote { margin:0 0 10px; }
+    .ptools { display:flex; gap:4px; align-items:center; }
+    .ptool { min-height:26px; padding:0 8px; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--surface); color:var(--muted); font-size:11px; cursor:pointer; }
+    .ptool:hover { border-color:var(--line-strong); color:var(--text); }
+    .ptool.is-on { border-color:var(--text); color:var(--text); font-weight:550; }
     .dbars { display:grid; gap:9px; margin-top:14px; }
     .dbar { display:grid; gap:3px; font-size:var(--type-sm); }
     .dbar-name { color:var(--text); font-weight:550; overflow-wrap:anywhere; }

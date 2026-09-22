@@ -3,26 +3,72 @@
 
 const REMEMBERED = "citegeo.dashboard.panels";
 
-/** Reads the saved order. Unknown ids are dropped and new ones appended, so
- * adding a panel does not strand it and removing one does not break the rest. */
-export function panelOrder(known: string[]): string[] {
-  let saved: string[] = [];
-  try {
-    const raw = localStorage.getItem(REMEMBERED);
-    if (raw) saved = JSON.parse(raw) as string[];
-  } catch (error) {
-    saved = [];
-  }
-  const kept = saved.filter((id) => known.includes(id));
-  return [...kept, ...known.filter((id) => !kept.includes(id))];
+export interface PanelLayout {
+  order: string[];
+  /** Tracks a panel spans: 1, 2, or 0 for the whole row. */
+  spans: Record<string, number>;
+  hidden: string[];
 }
 
-function remember(order: string[]): void {
+function stored(): PanelLayout {
+  const empty: PanelLayout = { order: [], spans: {}, hidden: [] };
   try {
-    localStorage.setItem(REMEMBERED, JSON.stringify(order));
+    const raw = localStorage.getItem(REMEMBERED);
+    if (!raw) return empty;
+    const held = JSON.parse(raw) as unknown;
+    // The first version of this stored a bare array of ids. A reader who
+    // arranged their board then is not made to arrange it again.
+    if (Array.isArray(held)) return { order: held as string[], spans: {}, hidden: [] };
+    const object = held as Partial<PanelLayout>;
+    return {
+      order: Array.isArray(object.order) ? object.order : [],
+      spans: object.spans && typeof object.spans === "object" ? object.spans : {},
+      hidden: Array.isArray(object.hidden) ? object.hidden : [],
+    };
+  } catch (error) {
+    return empty;
+  }
+}
+
+function remember(layout: PanelLayout): void {
+  try {
+    localStorage.setItem(REMEMBERED, JSON.stringify(layout));
   } catch (error) {
     /* the arrangement just will not persist */
   }
+}
+
+/** The saved layout reconciled with the panels that exist. Unknown ids are
+ * dropped and new ones appended, so a new panel is never stranded. */
+export function panelLayout(known: string[]): PanelLayout {
+  const held = stored();
+  const kept = held.order.filter((id) => known.includes(id));
+  return {
+    order: [...kept, ...known.filter((id) => !kept.includes(id))],
+    spans: held.spans,
+    hidden: held.hidden.filter((id) => known.includes(id)),
+  };
+}
+
+/** The order alone, for callers that do not arrange anything. */
+export function panelOrder(known: string[]): string[] {
+  return panelLayout(known).order;
+}
+
+/** 1 track, 2 tracks, or the whole row. Anything else is ignored rather than
+ * written, because a stored width nobody can undo is worse than none. */
+export function setPanelSpan(id: string, span: number): void {
+  if (span !== 0 && span !== 1 && span !== 2) return;
+  const held = stored();
+  held.spans[id] = span;
+  remember(held);
+}
+
+export function togglePanelHidden(id: string): void {
+  const held = stored();
+  const at = held.hidden.indexOf(id);
+  if (at >= 0) held.hidden.splice(at, 1); else held.hidden.push(id);
+  remember(held);
 }
 
 export function resetPanelOrder(): void {
@@ -85,7 +131,9 @@ export function wirePanelDrag(onChange: () => void): void {
     const box = over.getBoundingClientRect();
     const after = (event as DragEvent).clientY > box.top + box.height / 2;
     grid.insertBefore(dragging, after ? over.nextSibling : over);
-    remember(idsIn(grid));
+    const held = stored();
+    held.order = idsIn(grid);
+    remember(held);
     onChange();
   });
 }
