@@ -381,9 +381,13 @@ export function renderProductPhase2AppHtml(): string {
       .mcols-catalog > *:nth-child(n+3),.mcols-promptrow > *:nth-child(n+3),.mcols-engine > *:nth-child(n+3) { grid-column:2; }
       /* A cell with nothing in it still took a row and a gap. */
       .mcols-catalog > .mcell:empty,.mcols-promptrow > .mcell:empty,.mcols-engine > .mcell:empty { display:none; }
-      /* Those three stack their cells into one column, so the header stacks
-         too and becomes a list of column names labelling nothing. */
-      .mhead.mcols-catalog,.mhead.mcols-promptrow,.mhead.mcols-engine { display:none; }
+      /* A provider row is four columns of prose and URLs. In 112px the
+         endpoint broke mid-word, so it stacks and each part gets the width. */
+      .mcols-provider { grid-template-columns:minmax(0,1fr); row-gap:4px; }
+      .mcols-provider > * { grid-column:1; }
+      /* Those stack their cells into one column, so the header stacks too and
+         becomes a list of column names labelling nothing. */
+      .mhead.mcols-catalog,.mhead.mcols-promptrow,.mhead.mcols-engine,.mhead.mcols-provider { display:none; }
       .promptbar .prompt-result-summary { margin-left:0; }
       .card-actions { margin-top:2px; }
       /* Anchored to the right of a control that can sit anywhere in a wrapped
