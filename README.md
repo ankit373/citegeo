@@ -16,7 +16,7 @@
 **Point CiteGEO at a domain. It asks several models the same questions, keeps every raw answer, and shows you the receipts.**
 
 <p align="center">
-  <strong><a href="#quick-start">Quick start</a> · <a href="#how-it-works">How it works</a> · <a href="#what-you-get">What you get</a> · <a href="#monitoring">Monitoring</a> · <a href="#docs">Docs</a></strong>
+  <strong><a href="#what-it-looks-like">Screens</a> · <a href="#quick-start">Quick start</a> · <a href="#how-it-works">How it works</a> · <a href="#what-you-get">What you get</a> · <a href="#monitoring">Monitoring</a> · <a href="#docs">Docs</a></strong>
 </p>
 
 People increasingly ask an assistant for tool recommendations instead of searching. If your product does not come up, or comes up described wrongly, you currently have no way to see that happening.
@@ -24,6 +24,38 @@ People increasingly ask an assistant for tool recommendations instead of searchi
 CiteGEO is a self-hosted tool for watching it directly. You give it a domain. It queries the models you choose, records what each one said about the brand, which competitors it named, and which sources it cited, and stores the unedited response behind every claim.
 
 > Every number in the interface opens onto the answer it came from. If the evidence is not there, the result stays marked uncertain rather than being rounded into a score.
+
+<a id="what-it-looks-like"></a>
+
+## What it looks like
+
+These are real screens from a real project, not mockups. The brand being
+measured scores zero: no answer named it, and the tool says so rather than
+rounding it into something kinder.
+
+<p align="center">
+  <img src="assets/readme/dashboard.png" alt="The dashboard: a score of 0, presence 0%, prominence and sentiment reported as not measurable, and the strongest levers read off the archived answers" width="880">
+</p>
+
+Every figure states what it is built from. Prominence and sentiment are "not
+measurable" here because nothing was named, which is a different finding from
+scoring badly on them.
+
+<p align="center">
+  <img src="assets/readme/compare.png" alt="A line per brand showing share of the answers across two runs, with the measured brand flat along the bottom at zero" width="880">
+</p>
+
+Every brand named in the answers is drawn on one axis. A brand that appears in
+no answer still gets a line, along the bottom, because that absence is the
+finding rather than missing data.
+
+<p align="center">
+  <img src="assets/readme/evidence.png" alt="An evidence pane listing, for each competitor, how many answers named it and the exact sentences the models wrote" width="880">
+</p>
+
+Any question opens onto the answers behind it: which models were asked, which
+of them named anything, and the sentences they actually wrote. This is the
+part that makes a number arguable.
 
 <a id="quick-start"></a>
 
