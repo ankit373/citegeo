@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   dashboardBody, heroStats, leaderboardBars, movesList, sourcesPanel, splitRows, summaryTiles,
+  rivalChart,
   type DashboardData,
 } from "../src/ui/app/pages/dashboard-view.js";
 
@@ -93,4 +94,29 @@ test("every figure on the dashboard is escaped on its way out", () => {
   const nasty = dashboardBody({ status: "ready", value: data({ leaderboard: [{ name: '<img onerror="x">', isTarget: false, appearances: 1, shareOfAnswers: 1 }] }) });
   assert.equal(nasty.includes("<img onerror"), false);
   assert.ok(nasty.includes("&lt;img"));
+});
+
+test("a brand nobody named is drawn flat at zero, not left off the chart", () => {
+  const series = [
+    { name: "Rival", isTarget: false, points: [{ at: "2026-01-01", share: 0.5 }, { at: "2026-01-02", share: 1 }] },
+  ];
+  const html = rivalChart(series, "mine.example");
+  // Absent from every answer is the finding, so the line has to be there.
+  assert.equal(html.includes("mine.example"), true);
+  assert.equal(html.includes("(you)"), true);
+});
+
+test("one run reports that it is one run rather than drawing a flat line", () => {
+  const series = [{ name: "Rival", isTarget: false, points: [{ at: "2026-01-01", share: 0.5 }] }];
+  assert.equal(rivalChart(series, "mine.example").includes("Run again"), true);
+});
+
+test("a brand named in no answer of a run is plotted at zero, not skipped", () => {
+  const series = [
+    { name: "Mine", isTarget: true, points: [{ at: "a", share: 0 }, { at: "b", share: 0.4 }] },
+    { name: "Rival", isTarget: false, points: [{ at: "a", share: 1 }, { at: "b", share: 1 }] },
+  ];
+  const html = rivalChart(series, "mine.example");
+  // Two points per line, so four circles, and no gap in either path.
+  assert.equal(html.split("<circle").length - 1, 4);
 });

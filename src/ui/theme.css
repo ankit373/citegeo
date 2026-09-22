@@ -649,3 +649,22 @@
 @utility mcols-brand {
   @apply grid items-center gap-[10px] grid-cols-[minmax(0,1.4fr)_70px_70px_92px_minmax(0,1.3fr)];
 }
+
+@utility ch {
+  @apply block h-[190px] w-full;
+}
+
+@utility ch-legend {
+  @apply mt-[10px] flex flex-wrap gap-x-[16px] gap-y-[6px] text-[12px] text-muted;
+}
+
+@utility ch-key {
+  @apply inline-flex items-center gap-[6px];
+}
+
+@layer components {
+  .ch-line { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+  .ch-axis { stroke: var(--line); stroke-width: 1; }
+  .ch-tick { fill: var(--weak); font-size: 10px; }
+  .ch-key i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+}

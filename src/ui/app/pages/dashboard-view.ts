@@ -43,6 +43,8 @@ export interface Move {
 }
 
 export interface DashboardData {
+  /** Empty until two runs exist, which the chart reports rather than hides. */
+  rivalTrend?: RivalSeries[];
   domain: string;
   score: number | null;
   change: number | null;
@@ -150,6 +152,61 @@ export function brandsTable(rows: NamedEntity[]): string {
   });
 }
 
+export interface RivalSeries {
+  name: string;
+  isTarget: boolean;
+  points: Array<{ at: string; share: number }>;
+}
+
+const SERIES_INK = ["var(--accent)", "#6B8CAE", "#8B7FBF", "#6FA88A", "#B98A5E", "#A6748F"];
+
+/** Every brand's share across the runs, on one axis. Share rather than score,
+ * because a rival has no score here, only a presence in the answers. */
+export function rivalChart(series: RivalSeries[], domain: string): string {
+  const runs = series[0] ? series[0].points.length : 0;
+  if (runs < 2) return '<p class="subtle">One run so far. Run again to see movement.</p>';
+
+  // A brand nobody named has no series at all, and that absence is the whole
+  // finding, so it is drawn flat at zero rather than left off the chart.
+  const first = series[0];
+  if (!first) return '<p class="subtle">Nothing has been named yet.</p>';
+  const drawn = series.some((row) => row.isTarget)
+    ? series
+    : [{ name: domain, isTarget: true, points: first.points.map((point) => ({ at: point.at, share: 0 })) }, ...series];
+
+  const width = 720;
+  const height = 190;
+  const pad = { left: 34, right: 12, top: 12, bottom: 22 };
+  const x = (index: number) => pad.left + (index * (width - pad.left - pad.right)) / (runs - 1);
+  const y = (share: number) => pad.top + (1 - Math.max(0, Math.min(1, share))) * (height - pad.top - pad.bottom);
+
+  const gridlines = [0, 0.5, 1].map((value) => join([
+    `<line class="ch-axis" x1="${pad.left}" x2="${width - pad.right}" y1="${y(value).toFixed(1)}" y2="${y(value).toFixed(1)}"></line>`,
+    `<text class="ch-tick" x="${pad.left - 7}" y="${(y(value) + 4).toFixed(1)}" text-anchor="end">${Math.round(value * 100)}%</text>`,
+  ])).join("");
+
+  const lines = drawn.map((row, index) => {
+    const ink = row.isTarget ? SERIES_INK[0] : SERIES_INK[(index % (SERIES_INK.length - 1)) + 1];
+    const path = row.points.map((point, at) => `${at ? "L" : "M"} ${x(at).toFixed(1)} ${y(point.share).toFixed(1)}`).join(" ");
+    const dots = row.points.map((point, at) => `<circle cx="${x(at).toFixed(1)}" cy="${y(point.share).toFixed(1)}" r="${row.isTarget ? 4 : 3}" fill="${ink}"></circle>`).join("");
+    return `<path class="ch-line" d="${path}" stroke="${ink}" stroke-width="${row.isTarget ? 3 : 2}"></path>${dots}`;
+  }).join("");
+
+  const key = drawn.map((row, index) => {
+    const ink = row.isTarget ? SERIES_INK[0] : SERIES_INK[(index % (SERIES_INK.length - 1)) + 1];
+    const now = row.points[row.points.length - 1];
+    return `<span class="ch-key"><i style="background:${ink}"></i>${html(row.name)}${row.isTarget ? " (you)" : ""} · ${percent(now ? now.share : null)}</span>`;
+  }).join("");
+
+  return join([
+    `<svg class="ch" viewBox="0 0 ${width} ${height}" role="img" aria-label="Share of the answers over ${runs} runs">`,
+    gridlines,
+    lines,
+    "</svg>",
+    `<div class="ch-legend">${key}</div>`,
+  ]);
+}
+
 export function splitRows(rows: Split[], empty: string): string {
   return table({
     layout: "mcols-rank",
@@ -213,6 +270,7 @@ export function dashboardBody(held: Loadable<DashboardData>): string {
       summaryTiles(data),
       '<div class="dgrid">',
       section({ title: "What would move this", blurb: "The strongest levers, from the answers.", body: movesList(data.moves) }),
+      section({ title: "Share of the answers, run by run", blurb: "Every brand on one axis, so a gap that is closing looks different from one that is not.", body: rivalChart(data.rivalTrend || [], data.domain), wide: true }),
       section({ title: "Who the answers name", blurb: "You against everyone else named.", body: leaderboardBars(data.leaderboard) }),
       section({ title: "How each one is described", blurb: "Where each brand appears in the answer, and how it is spoken about.", body: brandsTable(data.leaderboard), wide: true }),
       section({ title: "By assistant", blurb: "Who was asked, and how each one answered.", body: splitRows(data.byModel, "No assistant has answered yet.") }),

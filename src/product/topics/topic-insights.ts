@@ -340,6 +340,7 @@ export function buildTopicInsights(input: {
       runs: input.runs || [],
       answers,
       rankOf: (group) => rankOfTarget(standings(group)),
+      sharesOf: (group) => standings(group),
     }),
     byRegion: regionStandings(answers),
     byLanguage: languageStandings(answers),

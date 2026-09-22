@@ -1594,6 +1594,10 @@ export function boot(): void {
         citedPages: outreach ? outreach.cited : null,
         missingFrom: outreach ? (outreach.targets as any[]).filter((t: any) => !t.namesYou).length : null,
         spark: data ? sparkline(data.trend.points, 170, 30) : "",
+        rivalTrend: data && data.trend && data.trend.rivals ? (data.trend.rivals as any[]).map((row: any) => ({
+          name: row.name, isTarget: row.isTarget,
+          points: (row.points as any[]).map((point: any) => ({ at: point.at, share: point.share })),
+        })) : [],
         alerts: (home.alerts as any[]).length,
       };
 

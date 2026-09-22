@@ -65,7 +65,13 @@ export interface ModelStandingRow { providerId: string; modelId: string; display
 export interface SplitRow { label: string; score: ScoreShape; rank: number | null; regionId?: string; languageId?: string; personaId?: string }
 export interface TopicStandingRow { topicId: string; name: string; description: string; score: ScoreShape; rank: number | null; prompts: PromptStandingRow[] }
 
-export interface TrendShape { points: Array<{ at: string; score: number | null; answers: number }>; change: number | null; since: string | null }
+export interface TrendShape {
+  points: Array<{ at: string; score: number | null; answers: number }>;
+  change: number | null;
+  since: string | null;
+  /** One line per brand across the runs. Absent until the server sends it. */
+  rivals?: Array<{ name: string; isTarget: boolean; points: Array<{ at: string; share: number }> }>;
+}
 
 export interface InsightsShape {
   answers: number;
