@@ -223,3 +223,33 @@ test("a brand nobody named still takes its place in the order, at nought", () =>
   assert.ok(panel.includes("0%"));
   assert.ok(panel.includes("#2 of 2"));
 });
+
+test("opening a panel carries what the card had to leave out", () => {
+  const many = Array.from({ length: 14 }, (unused, index) => ({
+    name: `Brand ${index}`, isTarget: index === 0, appearances: 14 - index, shareOfAnswers: (14 - index) / 14,
+  }));
+  const panels = dashboardPanels(data({ leaderboard: many }));
+  const named = panels.find((panel) => panel.id === "named");
+  // A deep dive that draws the same six rows larger is not a deep dive.
+  assert.ok(named);
+  assert.equal((named as { body: string }).body.includes("Brand 13"), false);
+  assert.ok((named as { detail: string }).detail.includes("Brand 13"));
+});
+
+test("the share panel opens onto the figures the chart is drawn from", () => {
+  const rivals = [
+    { name: "Rival", isTarget: false, points: [{ at: "2026-01-01", share: 0.5 }, { at: "2026-01-02", share: 0.8 }] },
+    { name: "Mine", isTarget: true, points: [{ at: "2026-01-01", share: 0.3 }, { at: "2026-01-02", share: 0.2 }] },
+  ];
+  const trend = dashboardPanels(data({ rivalTrend: rivals })).find((panel) => panel.id === "trend");
+  assert.ok(trend);
+  assert.ok((trend as { detail: string }).detail.includes("Every run, in figures"));
+  assert.equal((trend as { body: string }).body.includes("Every run, in figures"), false);
+});
+
+test("a panel is opened by its card, not by a button beside the title", () => {
+  const drawn = dashboardBody({ status: "ready", value: data() });
+  assert.equal(drawn.includes("panel-expand"), false);
+  assert.ok(drawn.includes('data-expand-panel="trend"'));
+  assert.ok(drawn.includes("panel-open"), "the title stays reachable from a keyboard");
+});

@@ -734,13 +734,18 @@
   [data-panel] button, [data-panel] a, [data-panel] select, [data-panel] input { cursor: pointer; }
 }
 
-@utility panel-expand {
-  @apply cursor-pointer rounded-[6px] border border-transparent bg-transparent px-[7px] py-[3px] text-[11px] font-semibold uppercase tracking-[.06em] text-weak;
-  transition: color var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard);
-}
-
 @layer components {
-  .panel-expand:hover, .panel-expand:focus-visible { color: var(--text); border-color: var(--line-strong); }
+  /* The card is the way in, so it takes the pointer and lifts its edge on
+     hover. Nothing announces itself with a button nobody needed. */
+  .section-card.is-openable { cursor: pointer; }
+  .section-card.is-openable:hover { border-color: var(--line-strong); box-shadow: var(--shadow); }
+  /* The title is the same action for a keyboard, so it stays a heading. */
+  .panel-open { border: 0; background: none; padding: 0; margin: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+  .panel-open:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: var(--radius-xs); }
+  /* Inside the card, a control is its own target and not the card's. */
+  .section-card.is-openable button:not(.panel-open), .section-card.is-openable a,
+  .section-card.is-openable select, .section-card.is-openable input { cursor: auto; }
+  .section-card.is-openable button:not(.panel-open), .section-card.is-openable a { cursor: pointer; }
 }
 
 @layer components {

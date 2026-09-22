@@ -80,14 +80,19 @@ export interface SectionInput {
   /** Stable name for this panel, so a reader can rearrange the dashboard
    * and have the arrangement survive the next render. */
   id?: string;
+  /** Panel to open on a click anywhere that is not already a control. */
+  open?: string;
 }
 
 export function section(input: SectionInput): string {
   return join([
-    `<section class="section-card${input.wide ? " is-wide" : ""}"`,
+    `<section class="section-card${input.wide ? " is-wide" : ""}${input.open ? " is-openable" : ""}"`,
     input.id ? ` data-panel="${html(input.id)}" draggable="true"` : "",
+    input.open ? ` data-expand-panel="${html(input.open)}"` : "",
     `><div class="section-head"><div class="headmain">`,
-    `<h2>${html(input.title)}</h2>`,
+    input.open
+      ? `<h2><button type="button" class="panel-open" data-expand-panel="${html(input.open)}">${html(input.title)}</button></h2>`
+      : `<h2>${html(input.title)}</h2>`,
     input.blurb ? `<p class="subtle">${html(input.blurb)}</p>` : "",
     "</div>",
     input.aside ? `<div class="headaside">${input.aside}</div>` : "",

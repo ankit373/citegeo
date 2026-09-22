@@ -115,9 +115,9 @@ export function summaryTiles(data: DashboardData): string {
 
 /** Share of the answers, drawn against the strongest so the gap is the length
  * of the bar rather than a number to be compared by eye. */
-export function leaderboardBars(rows: NamedEntity[]): string {
+export function leaderboardBars(rows: NamedEntity[], limit = 6): string {
   if (!rows.length) return '<p class="subtle">No organisation has been named yet.</p>';
-  const top = rows.slice(0, 6);
+  const top = rows.slice(0, limit);
   const most = Math.max(1, ...top.map((entry) => entry.appearances));
   return `<div class="dbars">${top.map((entry) => join([
     `<div class="dbar${entry.isTarget ? " is-you" : ""}">`,
@@ -130,12 +130,12 @@ export function leaderboardBars(rows: NamedEntity[]): string {
 
 /** The same brands as the bars, with the three things a bar cannot carry:
  * how early each one appears, and how it is spoken about. */
-export function brandsTable(rows: NamedEntity[]): string {
+export function brandsTable(rows: NamedEntity[], limit = 8): string {
   return table({
     layout: "mcols-brand",
     columns: ["Brand", "Named in", "Share", "Prominence", "Described"],
     empty: "No organisation has been named yet.",
-    rows: rows.slice(0, 8).map((entry) => {
+    rows: rows.slice(0, limit).map((entry) => {
       const judged = (entry.positive || 0) + (entry.negative || 0);
       // Every count opens the answers it counted, because a number nobody can
       // check is the thing this tool exists not to print.
@@ -368,6 +368,28 @@ export function rivalPanel(series: RivalSeries[], domain: string): string {
   ]);
 }
 
+/** Every run's share for every brand. The card has room for a shape and an
+ * order; this is the arithmetic under both. */
+export function rivalRuns(series: RivalSeries[], domain: string): string {
+  const drawn = withTarget(series, domain);
+  const first = drawn[0];
+  if (!first || first.points.length < 2) return "";
+  const ordered = rivalStandings(drawn);
+  const columns = `grid-template-columns:minmax(0,1.5fr) repeat(${first.points.length},minmax(58px,1fr))`;
+  const heads = first.points.map((point) => `<span>${html(runLabel(point.at) || "Run")}</span>`).join("");
+  const body = ordered.map((entry) => {
+    const line = drawn.find((row) => row.name === entry.name);
+    const cells = (line ? line.points : []).map((point) => `<span class="mcell">${percent(point.share)}</span>`).join("");
+    return `<div class="mrow" style="${columns}">`
+      + `<div class="mname"><strong>${html(entry.name)}</strong>${entry.isTarget ? " " + pill("You", "good") : ""}</div>`
+      + `${cells}</div>`;
+  }).join("");
+  return join([
+    '<h3 class="panel-section">Every run, in figures</h3>',
+    `<div class="mtable"><div class="mhead" style="${columns}"><span>Brand</span>${heads}</div>${body}</div>`,
+  ]);
+}
+
 export interface AskedSplit {
   /** Questions that never name the brand, so being named there is earned. */
   unbranded: { prompts: number; answers: number; score: number | null; appearances: number };
@@ -404,12 +426,12 @@ export function askedSplit(split: AskedSplit): string {
   return `<div class="asked-split">${rows.join("")}</div>`;
 }
 
-export function splitRows(rows: Split[], empty: string): string {
+export function splitRows(rows: Split[], empty: string, limit = 6): string {
   return table({
     layout: "mcols-rank",
     columns: ["", "Score", "Rank"],
     empty,
-    rows: rows.slice(0, 6).map((entry) => row("mcols-rank", [
+    rows: rows.slice(0, limit).map((entry) => row("mcols-rank", [
       nameCell(html(entry.label), `${entry.answers} answer(s)`),
       cell(scoreText(entry.score), entry.score === null ? "" : entry.score > 0 ? "state-ok" : "state-bad"),
       cell(rankText(entry.rank)),
@@ -417,11 +439,11 @@ export function splitRows(rows: Split[], empty: string): string {
   });
 }
 
-export function movesList(moves: Move[]): string {
+export function movesList(moves: Move[], limit = 3): string {
   if (!moves.length) return '<p class="subtle">Nothing in the archived answers points at a move that would raise the score.</p>';
   return join([
     '<ol class="dmoves">',
-    moves.slice(0, 3).map((move) => `<li><strong>${html(move.title)}</strong><span class="subtle">${html(move.evidence)}</span></li>`).join(""),
+    moves.slice(0, limit).map((move) => `<li><strong>${html(move.title)}</strong><span class="subtle">${html(move.evidence)}</span></li>`).join(""),
     "</ol>",
     '<div class="inline-actions"><button type="button" class="button" data-page="answer-engine">The whole plan</button></div>',
   ]);
@@ -464,22 +486,27 @@ export interface Panel {
   title: string;
   blurb: string;
   body: string;
+  /** What the card had to leave out. Opening a panel is a deep dive, so it
+   * carries the whole set and the figures under it, not the same view larger. */
+  detail: string;
   wide?: boolean;
 }
 
 /** Every dashboard panel, once. The grid draws them in the reader's order and
  * the side pane draws one of them at full width, from the same list. */
 export function dashboardPanels(data: DashboardData): Panel[] {
+  const every = Number.MAX_SAFE_INTEGER;
+  const rivals = data.rivalTrend || [];
   return [
-    { id: "moves", title: "Recommendations", blurb: "The strongest levers, read off the answers.", body: movesList(data.moves) },
-    { id: "trend", title: "Share of voice", blurb: "Every brand on one axis, so a gap that is closing looks different from one that is not.", body: rivalPanel(data.rivalTrend || [], data.domain), wide: true },
-    { id: "named", title: "Brand mentions", blurb: "You against everyone else the answers named.", body: leaderboardBars(data.leaderboard) },
-    { id: "described", title: "Sentiment by brand", blurb: "Where each brand appears in the answer, and how it is spoken about.", body: brandsTable(data.leaderboard), wide: true },
-    { id: "asked", title: "Branded and unbranded", blurb: "A question that names you cannot show whether you are found. The two are counted apart.", body: data.asked ? askedSplit(data.asked) : '<p class="subtle">Nothing asked yet.</p>' },
-    { id: "models", title: "By AI platform", blurb: "Who was asked, and how each one answered.", body: splitRows(data.byModel, "No assistant has answered yet.") },
-    { id: "regions", title: "By market", blurb: "Fills in once a run states more than one.", body: splitRows(data.byRegion, "Every answer was asked without a market stated.") },
-    { id: "personas", title: "By persona", blurb: "Fills in once a run asks on behalf of more than one.", body: splitRows(data.byPersona, "Every answer was asked on nobody\u2019s behalf.") },
-    { id: "sources", title: "Cited sources", blurb: "The pages the answers actually read.", body: sourcesPanel(data) },
+    { id: "moves", title: "Recommendations", blurb: "The strongest levers, read off the answers.", body: movesList(data.moves), detail: movesList(data.moves, every) },
+    { id: "trend", title: "Share of voice", blurb: "Every brand on one axis, so a gap that is closing looks different from one that is not.", body: rivalPanel(rivals, data.domain), detail: rivalPanel(rivals, data.domain) + rivalRuns(rivals, data.domain), wide: true },
+    { id: "named", title: "Brand mentions", blurb: "You against everyone else the answers named.", body: leaderboardBars(data.leaderboard), detail: leaderboardBars(data.leaderboard, every) },
+    { id: "described", title: "Sentiment by brand", blurb: "Where each brand appears in the answer, and how it is spoken about.", body: brandsTable(data.leaderboard), detail: brandsTable(data.leaderboard, every), wide: true },
+    { id: "asked", title: "Branded and unbranded", blurb: "A question that names you cannot show whether you are found. The two are counted apart.", body: data.asked ? askedSplit(data.asked) : '<p class="subtle">Nothing asked yet.</p>', detail: data.asked ? askedSplit(data.asked) : '<p class="subtle">Nothing asked yet.</p>' },
+    { id: "models", title: "By AI platform", blurb: "Who was asked, and how each one answered.", body: splitRows(data.byModel, "No assistant has answered yet."), detail: splitRows(data.byModel, "No assistant has answered yet.", every) },
+    { id: "regions", title: "By market", blurb: "Fills in once a run states more than one.", body: splitRows(data.byRegion, "Every answer was asked without a market stated."), detail: splitRows(data.byRegion, "Every answer was asked without a market stated.", every) },
+    { id: "personas", title: "By persona", blurb: "Fills in once a run asks on behalf of more than one.", body: splitRows(data.byPersona, "Every answer was asked on nobody\u2019s behalf."), detail: splitRows(data.byPersona, "Every answer was asked on nobody\u2019s behalf.", every) },
+    { id: "sources", title: "Cited sources", blurb: "The pages the answers actually read.", body: sourcesPanel(data), detail: sourcesPanel(data) },
   ];
 }
 
@@ -499,7 +526,7 @@ export function dashboardBody(held: Loadable<DashboardData>): string {
           blurb: panel.blurb,
           body: panel.body,
           ...(panel.wide ? { wide: true } : {}),
-          aside: `<button type="button" class="panel-expand" data-expand-panel="${html(panel.id)}" title="Open this on its own">Expand</button>`,
+          open: panel.id,
         });
       }).join("");
       return join([summaryTiles(data), '<div class="dgrid">', drawn, "</div>"]);
