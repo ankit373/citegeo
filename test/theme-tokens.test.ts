@@ -231,3 +231,23 @@ test("a disabled button still reads as disabled", () => {
   // The element default lives in the base layer, which a component outranks.
   assert.ok(css.includes(".btn:disabled, .button:disabled, .card-action:disabled { cursor: not-allowed; }"));
 });
+
+test("every measurement nav item has a section of its own", () => {
+  const source = readFileSync(join(process.cwd(), "src", "ui", "product-phase5-app.ts"), "utf8");
+  // Two items pointed at the same anchor, so clicking either lit both and
+  // scrolled to the wrong place. A nav item without a section is worse than
+  // no nav item.
+  const targets: string[] = [];
+  let at = source.indexOf("navButton(");
+  while (at >= 0) {
+    const call = source.slice(at, source.indexOf(")", at));
+    const parts = call.split('"');
+    if (parts.length >= 4) targets.push(parts[3] as string);
+    at = source.indexOf("navButton(", at + 10);
+  }
+  assert.ok(targets.length > 0, "no nav items found");
+  assert.deepEqual(targets, [...new Set(targets)], "two nav items share one anchor");
+  for (const target of targets) {
+    assert.ok(source.includes(`id="${target}"`), `${target} has no section`);
+  }
+});
