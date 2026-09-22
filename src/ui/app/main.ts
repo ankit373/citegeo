@@ -787,7 +787,7 @@ export function boot(): void {
 
     function renderScoreBreakdown(score: any) {
       if (!score || score.answers === 0) return '<p class="subtle">Nothing has been answered yet, so there is nothing to score. This is not a zero.</p>';
-      return '<div class="statgrid">'
+      return '<div class="statgrid" style="--tile-columns:3">'
         + stat("Presence", pct(score.presenceRate), score.appearances + ' of ' + score.answers + ' answers named you', score.presenceRate)
         + stat("Prominence", pct(score.prominence), score.prominence === null ? 'No answer gave a readable order' : 'Full marks means always named first', score.prominence)
         + stat("Sentiment", pct(score.sentiment), score.sentiment === null ? 'Nothing named, so nothing judged' : 'Full marks means always recommended', score.sentiment)
@@ -1870,7 +1870,7 @@ export function boot(): void {
       const measuring = tracked.filter((prompt) => prompt.measuresVisibility).length;
       const answered = tracked.filter((prompt) => { const row = standings.get(prompt.id); return Boolean(row) && row.score.answers > 0; }).length;
       const forecast = runForecast(tracked.length);
-      return '<div class="statgrid">'
+      return '<div class="statgrid" style="--tile-columns:6">'
         + stat("Tracked", String(tracked.length), tracked.length ? "asked on every run" : "nothing is being asked", live.length ? tracked.length / live.length : null)
         + stat("Needs review", String(proposed), proposed ? "proposed, never asked until tracked" : "nothing waiting on you", null)
         + stat("Topics", String(set.topics.length), set.topics.length + " group(s) of questions", null)

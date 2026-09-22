@@ -33,7 +33,9 @@ export function tiles(rows: TileInput[]): string {
   const shell = "grid auto-rows-min gap-1 bg-surface px-[17px] py-[15px]";
   const caption = "text-[10px] font-semibold uppercase tracking-[.09em] text-weak";
   const figure = "font-display text-[26px] font-medium leading-[1.1] tracking-[-0.02em]";
-  return `<div class="my-[18px] grid grid-cols-[repeat(auto-fit,minmax(186px,1fr))] gap-px overflow-hidden rounded-[var(--radius)] border border-line bg-line">${rows.map((row) => join([
+  // The column count follows the tile count. auto-fit left empty cells,
+  // and the separator background showed through them as a grey block.
+  return `<div class="tilegrid" style="--tile-columns:${rows.length}">${rows.map((row) => join([
     `<div class="${shell}"><span class="${caption}">`, html(row.label), "</span>",
     `<strong class="${figure} ${html(row.tone || "")}">`, html(row.value), "</strong>",
     `<small class="text-xs leading-[1.45] text-weak">`, html(row.note), "</small>",

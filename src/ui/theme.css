@@ -316,7 +316,9 @@
 }
 
 @utility statgrid {
-  @apply mt-[18px] grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-px overflow-hidden rounded-[var(--radius)] border border-line bg-line;
+  @apply mt-[18px] grid grid-cols-1 gap-px overflow-hidden rounded-[var(--radius)] border border-line bg-line;
+  @media (min-width: 640px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (min-width: 1024px) { grid-template-columns: repeat(var(--tile-columns, 3), minmax(0, 1fr)); }
 }
 
 @utility stat {
@@ -683,4 +685,14 @@
 
 @utility asked-figure {
   @apply font-display text-[21px] font-medium tracking-[-0.015em];
+}
+
+/* Tiles are white cards on a hairline background, so an empty cell is a grey
+   hole. The count is set per instance rather than guessed by auto-fit, and
+   every breakpoint lives in here: a responsive utility would outrank a rule
+   for the same thing written in any layer below. */
+@utility tilegrid {
+  @apply my-[18px] grid grid-cols-1 gap-px overflow-hidden rounded-[var(--radius)] border border-line bg-line;
+  @media (min-width: 640px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (min-width: 1024px) { grid-template-columns: repeat(var(--tile-columns, 3), minmax(0, 1fr)); }
 }
