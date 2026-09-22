@@ -292,3 +292,12 @@ test("a cell nobody was named in reads as absent, not as nought percent", () => 
 test("nothing scored against a topic says so rather than drawing an empty grid", () => {
   assert.ok(topicMatrix({ columns: [], rows: [] }, []).includes("No answer has been scored"));
 });
+
+test("a brand outside the leading columns is still judged against them", () => {
+  // Cutting the reader's own column made every row read "Never named", which
+  // is the one thing this grid must never invent.
+  const columns = [{ name: "Mine", isTarget: true }, { name: "A", isTarget: false }];
+  assert.equal(rowVerdict([0.4, 0.9], columns).text, "Far behind");
+  const cut = [{ name: "A", isTarget: false }, { name: "B", isTarget: false }];
+  assert.equal(rowVerdict([0.9, 0.9], cut).text, "Never named", "with no column of their own there is nothing to judge");
+});

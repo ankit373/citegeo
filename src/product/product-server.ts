@@ -20,6 +20,7 @@ import { handleActionApi } from "./actions/action-http.js";
 import { handleInsightsApi } from "./insights/insights-http.js";
 import { handleCrawlerApi } from "./crawlers/crawler-http.js";
 import { handleCredentialApi } from "./auth/credential-http.js";
+import { handleSiteIconApi } from "./discovery/site-icon-http.js";
 import { handleProviderStatusApi } from "./configuration/provider-http.js";
 import { authorise, passwordMatches } from "./auth/auth-guard.js";
 import { clearedCookie, issueSession, sessionCookie } from "./auth/session.js";
@@ -115,6 +116,7 @@ async function handle(req: IncomingMessage, res: ServerResponse, services: Produ
   if (await handleStorageApi({ method, route, send: json, settings: services.storageSettings, dataDir: services.dataDir, readJson: body })) return;
   if (await handleProviderStatusApi({ method, route, send: json, catalog })) return;
   if (await handleCredentialApi({ method, route, send: json, service: services.credentials, authEnabled: services.auth.enabled, readJson: body })) return;
+  if (await handleSiteIconApi({ method, route, send: json, service: services.icons, readJson: body })) return;
   if (await handleInsightsApi({ method, route, send: json, service: insights })) return;
   if (await handleCrawlerApi({ method, route, send: json, crawlerLog, insights,
     answers: (id) => promptRuns.listAnswers(id),

@@ -310,6 +310,9 @@ export function renderProductPhase2AppHtml(): string {
     .mrow:hover,.mrow:focus-within { background:var(--raised); border-radius:var(--radius-sm); }
     .mname strong { display:block; font-size:13px; line-height:1.4; font-weight:550; color:var(--text); }
     .mname span { display:block; font-size:12px; color:var(--weak); overflow-wrap:anywhere; margin-top:2px; }
+    /* A span inside the title is part of the title, not the note under it. */
+    .mname strong { display:flex; align-items:center; }
+    .mname strong span { display:inline; font-size:inherit; color:inherit; margin-top:0; }
     /* A badge is part of the name line, so it must not take the block
        display the rule above gives every other span in the cell. */
     .mname .pill,.mname .tag { display:inline-flex; width:auto; margin-top:0; }

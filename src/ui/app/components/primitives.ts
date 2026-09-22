@@ -6,6 +6,18 @@ import { html, join } from "../dom.js";
 
 export type Tone = "" | "good" | "bad" | "flat" | "warning" | "ready";
 
+/** A brand's own mark where the site publishes one, and a monogram where it
+ * does not. The mark comes from a crawl, never from a guessed path. */
+export function brandIcon(name: string, icon?: string | null, ink?: string): string {
+  const letter = (name.trim()[0] || "?").toUpperCase();
+  // Deterministic, so a brand keeps its colour between runs and between readers.
+  let sum = 0;
+  for (let at = 0; at < name.length; at += 1) sum = (sum + name.charCodeAt(at) * (at + 1)) % 360;
+  const ring = ink ? ` style="border-color:${ink}"` : "";
+  const mark = icon ? `<img src="${html(icon)}" alt="" loading="lazy" decoding="async">` : "";
+  return `<span class="bicon"${ring}><i style="background:hsl(${sum} 42% 46%);color:hsl(${sum} 44% 96%)">${html(letter)}</i>${mark}</span>`;
+}
+
 export function pill(text: string, tone: Tone = ""): string {
   return `<span class="pill ${tone}">${html(text)}</span>`;
 }

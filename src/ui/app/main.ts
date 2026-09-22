@@ -79,9 +79,10 @@ export function boot(): void {
     actions: Unshaped[]; actionsState: LoadState;
     matrixOpen: string[];
     editingBoard: boolean;
+    brandIcons: Record<string, string | null>;
   }
 
-    const state: State = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, integrations:[], integrationsState:"idle", digest:null, digestState:"idle", demand:null, demandState:"idle", dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", promptFilters:{ query:"", topicId:"", intent:"", status:"" }, promptSelection:[], answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", rivals:null, rivalsState:"idle", segments:null, segmentsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, lastRun:null, runPollTimer:0, runFeed:[], runFeedState:"idle", runFeedTimer:0, rankPlan:null, rankPlanState:"idle", brief:null, briefState:"idle", outreach:null, outreachState:"idle", harvesting:false, searchDemand:null, searchDemandState:"idle", pulling:false, personas:null, personasState:"idle", priority:null, priorityState:"idle", promptSort:"topic", referrals:null, referralsState:"idle", pullingReferrals:false, engines:null, enginesState:"idle", actions:[], actionsState:"idle", matrixOpen:[], editingBoard:false };
+    const state: State = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, integrations:[], integrationsState:"idle", digest:null, digestState:"idle", demand:null, demandState:"idle", dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", promptFilters:{ query:"", topicId:"", intent:"", status:"" }, promptSelection:[], answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", rivals:null, rivalsState:"idle", segments:null, segmentsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, lastRun:null, runPollTimer:0, runFeed:[], runFeedState:"idle", runFeedTimer:0, rankPlan:null, rankPlanState:"idle", brief:null, briefState:"idle", outreach:null, outreachState:"idle", harvesting:false, searchDemand:null, searchDemandState:"idle", pulling:false, personas:null, personasState:"idle", priority:null, priorityState:"idle", promptSort:"topic", referrals:null, referralsState:"idle", pullingReferrals:false, engines:null, enginesState:"idle", actions:[], actionsState:"idle", matrixOpen:[], editingBoard:false, brandIcons:{} };
     const app = document.getElementById("app") as HTMLElement;
     let renderOverride: (() => void) | null = null;
     // render() was a hoisted declaration that a later line reassigned. A
@@ -305,12 +306,30 @@ export function boot(): void {
       return ["modelId", "regionId", "languageId", "topicId"].filter((key) => state.filters[key]).length;
     }
 
+    /** The mark each rival's own site declares, read once by the server and
+     * kept. A domain with no mark is remembered as having none. */
+    async function loadBrandIcons(domains: string[]) {
+      const wanted = domains.filter((domain) => domain && !(domain in state.brandIcons));
+      if (!wanted.length) return;
+      // Marked as read before the call, so a slow crawl is not asked for twice.
+      for (const domain of wanted) state.brandIcons[domain] = null;
+      try {
+        const answer: Unshaped = await request("/api/brand-icons", { method: "POST", body: JSON.stringify({ domains: wanted }) });
+        Object.assign(state.brandIcons, (answer.icons as Record<string, string | null>) || {});
+        render();
+      } catch (error) {
+        /* a mark is decoration; the table reads the same without it */
+      }
+    }
+
     async function loadAnswerEngine() {
       if (!state.selectedId || state.answerEngineState === "loading") return;
       state.answerEngineState = "loading";
       try {
         state.answerEngine = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/prompt-insights" + filterQuery());
         state.answerEngineState = "ready";
+        const board = ((state.answerEngine as Unshaped).leaderboard as Unshaped[]) || [];
+        loadBrandIcons(board.map((row) => String(row.domain || "")).filter(Boolean).slice(0, 24));
       } catch (error) {
         state.answerEngineState = "error";
       }
@@ -1591,9 +1610,17 @@ export function boot(): void {
      * renderer, so the side pane can redraw one panel from the same figures. */
     /** Topics, their subtopics and their prompts against every brand named,
      * with the columns fixed by the overall order so rows stay comparable. */
-    function buildMatrix(data: any): any {
+    function buildMatrix(data: any, own: string): any {
       if (!data || !data.topics || !data.topics.length) return undefined;
-      const columns = (data.leaderboard || []).slice(0, 8).map((row: any) => ({ name: String(row.name), isTarget: !!row.isTarget }));
+      // The reader's own column is never cut. Taking the top eight outright
+      // drops a brand ranked ninth, and every row then reads as never named.
+      const board = (data.leaderboard || []);
+      // Never being named keeps a brand off the leaderboard entirely, and a
+      // grid with no column for the reader cannot show them anything.
+      const found = board.filter((row: any) => row.isTarget);
+      const mine = found.length ? found : [{ name: own, domain: null, isTarget: true }];
+      const rivals = board.filter((row: any) => !row.isTarget).slice(0, 7);
+      const columns = [...mine, ...rivals].map((row: any) => ({ name: String(row.name), domain: row.domain ?? null, icon: row.domain ? state.brandIcons[row.domain] ?? null : null, isTarget: !!row.isTarget }));
       if (!columns.length) return undefined;
       const shareIn = (standing: any[]) => columns.map((column: any) => {
         const found = (standing || []).find((row: any) => row.name === column.name);
@@ -1633,7 +1660,7 @@ export function boot(): void {
       const measurable = data ? data.topics.reduce((total: number, topic: any) => total + topic.prompts.filter((p: any) => p.measuresVisibility).length, 0) : 0;
 
       const view: DashboardData = {
-        matrix: buildMatrix(data),
+        matrix: buildMatrix(data, String(home.domain || selected.normalizedDomain)),
         matrixOpen: state.matrixOpen,
         domain: String(home.domain || selected.normalizedDomain),
         score: home.score ?? null,
@@ -1642,6 +1669,8 @@ export function boot(): void {
         overall: data ? data.overall : { score: null, presenceRate: null, prominence: null, sentiment: null, answers: 0, appearances: 0 },
         leaderboard: data ? (data.leaderboard as any[]).map((row: any) => ({
           name: row.name,
+          domain: row.domain ?? null,
+          icon: row.domain ? state.brandIcons[row.domain] ?? null : null,
           isTarget: row.isTarget,
           appearances: row.appearances,
           shareOfAnswers: row.shareOfAnswers,
@@ -1686,6 +1715,8 @@ export function boot(): void {
         })(),
         rivalTrend: data && data.trend && data.trend.rivals ? (data.trend.rivals as any[]).map((row: any) => ({
           name: row.name, isTarget: row.isTarget,
+          domain: ((data.leaderboard as any[]) || []).find((entry: any) => entry.name === row.name)?.domain ?? null,
+          icon: state.brandIcons[((data.leaderboard as any[]) || []).find((entry: any) => entry.name === row.name)?.domain || ""] ?? null,
           points: (row.points as any[]).map((point: any) => ({ at: point.at, share: point.share })),
         })) : [],
         alerts: (home.alerts as any[]).length,

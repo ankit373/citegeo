@@ -21,6 +21,7 @@ import { createStructuredAsk } from "./topics/structured-ask.js";
 import { PromptScheduleFileStore, PromptScheduleService } from "./topics/prompt-schedule.js";
 import { DemandReportFileStore } from "./demand/demand-store.js";
 import { BrandProfileFileStore, BrandProfileService } from "./discovery/brand-profile-service.js";
+import { SiteIconService, SiteIconStore } from "./discovery/site-icon-service.js";
 import { StorageSettingsStore } from "./storage/storage-settings.js";
 import { CompetitorFileStore, CompetitorService } from "./topics/competitor-set.js";
 import { SegmentFileStore, SegmentService } from "./topics/segment-set.js";
@@ -122,6 +123,7 @@ export interface ProductServices {
   promptSchedule: PromptScheduleService;
   demand: DemandReportFileStore;
   profiles: BrandProfileService;
+  icons: SiteIconService;
   competitors: CompetitorService;
   segments: SegmentService;
   engines: EngineService;
@@ -166,6 +168,7 @@ export function createProductServices(dependencies: ProductServerDependencies = 
   // and configured exactly like a recognition run.
   const executor = dependencies.recognitionExecutor || new OpenRouterRecognitionAnswerExecutor();
   const profiles = new BrandProfileService(new BrandProfileFileStore(projectStore), projects);
+  const icons = new SiteIconService(new SiteIconStore(projectStore));
   const topics = new TopicService(new TopicFileStore(projectStore), projects, insights, profiles);
   const ask = createStructuredAsk({ baselines, executor });
   const personas = new PersonaService(projectStore);
@@ -206,7 +209,7 @@ export function createProductServices(dependencies: ProductServerDependencies = 
   return {
     projects, catalog, selections, baselines, recognition, reports, insights,
     signals, crawlerLog, watchSets, measurements, stats, schedules,
-    topics, promptRuns, promptSchedule, demand, profiles, competitors, segments, ask, engines, actions, sourcePages, searchConsole, personas,
+    topics, promptRuns, promptSchedule, demand, profiles, icons, competitors, segments, ask, engines, actions, sourcePages, searchConsole, personas,
     storageSettings, dataDir: productDataDir(),
     credentials,
     auth: authConfig(),

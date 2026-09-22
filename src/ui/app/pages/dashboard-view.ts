@@ -1,6 +1,6 @@
 import { html, join } from "../dom.js";
 import { percent, rank as rankText, score as scoreText } from "../format.js";
-import { bar, cell, nameCell, pill, row, section, table, tiles, type TileInput } from "../components/primitives.js";
+import { bar, brandIcon, cell, nameCell, pill, row, section, table, tiles, type TileInput } from "../components/primitives.js";
 import { loading, skeletonCard, skeletonTiles } from "../components/skeleton.js";
 import { match, type Loadable } from "../loadable.js";
 import { panelLayout } from "../components/reorder.js";
@@ -20,6 +20,9 @@ export interface Standing {
 
 export interface NamedEntity {
   name: string;
+  domain?: string | null;
+  /** The mark the site declares, read by the crawl. Null when it declares none. */
+  icon?: string | null;
   isTarget: boolean;
   appearances: number;
   shareOfAnswers: number | null;
@@ -151,7 +154,7 @@ export function brandsTable(rows: NamedEntity[], limit = 8): string {
           ? open(`${entry.positive || 0} positive · ${entry.negative} negative`, "")
           : open(`${entry.positive || 0} positive`, "positive", "state-ok");
       return row("mcols-brand", [
-        nameCell(html(entry.name), entry.isTarget ? "You" : ""),
+        nameCell(`${brandIcon(entry.name, entry.icon)}<span>${html(entry.name)}</span>`, entry.isTarget ? "You" : ""),
         open(String(entry.appearances), ""),
         cell(percent(entry.shareOfAnswers)),
         cell(entry.prominence === null || entry.prominence === undefined ? "not readable" : percent(entry.prominence)),
@@ -163,6 +166,8 @@ export function brandsTable(rows: NamedEntity[], limit = 8): string {
 
 export interface RivalSeries {
   name: string;
+  domain?: string | null;
+  icon?: string | null;
   isTarget: boolean;
   points: Array<{ at: string; share: number }>;
 }
@@ -298,6 +303,8 @@ export function rivalChart(series: RivalSeries[], domain: string, options: Chart
 
 export interface RivalStanding {
   name: string;
+  domain?: string | null;
+  icon?: string | null;
   isTarget: boolean;
   share: number;
   /** Percentage points moved since the run before, or null on a first run. */
@@ -317,6 +324,8 @@ export function rivalStandings(series: RivalSeries[]): RivalStanding[] {
       const prior = points.length > 1 ? points[points.length - 2] : undefined;
       return {
         name: line.name,
+        domain: line.domain ?? null,
+        icon: line.icon ?? null,
         isTarget: line.isTarget,
         share: last ? last.share : 0,
         moved: last && prior ? last.share - prior.share : null,
@@ -343,7 +352,7 @@ export function rivalRanks(standings: RivalStanding[]): string {
   return `<ol class="ranklist">${standings.map((entry) => join([
     `<li class="rankrow${entry.isTarget ? " is-you" : ""}">`,
     `<span class="rankplace">${entry.place}</span>`,
-    `<i class="rankink" style="background:${entry.ink}"></i>`,
+    brandIcon(entry.name, entry.icon, entry.ink),
     `<span class="rankname">${html(entry.name)}${entry.isTarget ? ` ${pill("You", "good")}` : ""}</span>`,
     `<span class="rankvalue">${percent(entry.share)}</span>`,
     entry.moved === null
@@ -496,7 +505,7 @@ export interface MatrixRow {
 }
 
 export interface MatrixData {
-  columns: Array<{ name: string; isTarget: boolean }>;
+  columns: Array<{ name: string; domain?: string | null; icon?: string | null; isTarget: boolean }>;
   rows: MatrixRow[];
 }
 
@@ -520,16 +529,18 @@ export function topicMatrix(data: MatrixData, open: string[] = []): string {
   const shown = new Set(open);
   const columns = `grid-template-columns:minmax(150px,1.4fr) 92px repeat(${data.columns.length},minmax(52px,1fr))`;
   const heads = data.columns.map((column) =>
-    `<span class="${column.isTarget ? "is-you" : ""}">${html(column.name.length > 13 ? column.name.slice(0, 12) + "…" : column.name)}</span>`).join("");
+    `<span class="mxhead ${column.isTarget ? "is-you" : ""}" title="${html(column.name)}">${brandIcon(column.name, column.icon)}<b>${html(column.name.length > 11 ? column.name.slice(0, 10) + "…" : column.name)}</b></span>`).join("");
   const visible = data.rows.filter((row) => !row.parent || shown.has(row.parent));
   const body = visible.map((row) => {
     const verdict = rowVerdict(row.shares, data.columns);
     const cells = row.shares.map((share, index) => {
-      const tint = share === null ? 0 : Math.round(share * 100);
       const target = data.columns[index]?.isTarget;
-      // The fill is the figure, so a row can be read without stopping to
-      // compare five numbers by eye.
-      return `<span class="mxcell${target ? " is-you" : ""}" style="background:color-mix(in srgb, var(--accent) ${Math.round(tint * 0.55)}%, transparent)">`
+      // Mixed in oklab so the steps are even to the eye, and started at 10 so a
+      // small share still reads as a value rather than as an empty cell.
+      const mix = share === null || share === 0 ? 0 : Math.round(10 + share * 62);
+      const fill = mix === 0 ? "" : ` style="background:color-mix(in oklab, var(--accent) ${mix}%, transparent)"`;
+      const dark = mix >= 52 ? " is-strong" : "";
+      return `<span class="mxcell${target ? " is-you" : ""}${dark}"${fill}>`
         + (share === null ? "&ndash;" : percent(share)) + "</span>";
     }).join("");
     const opens = row.children > 0;
