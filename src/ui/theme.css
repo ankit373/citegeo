@@ -749,3 +749,23 @@
   .panel-body { padding: 0 var(--space-lg) var(--space-lg); overflow-y: auto; }
   .panel-body .mtable { max-height: none; }
 }
+
+@utility ch-wrap {
+  @apply relative;
+}
+
+@utility ch-tip {
+  @apply pointer-events-none absolute top-[10px] z-[2] grid gap-[3px] rounded-[var(--radius-sm)] border border-line-strong bg-surface px-[10px] py-[8px] text-[12px] shadow-[var(--shadow)];
+}
+
+@layer components {
+  .ch-fill { opacity: .10; }
+  .ch-cross { stroke: var(--line-strong); stroke-width: 1; stroke-dasharray: 3 3; opacity: 0; }
+  .ch-hit { fill: transparent; }
+  .ch-tip[hidden] { display: none; }
+  .ch-tip-when { display: block; margin-bottom: 3px; font-size: 11px; color: var(--muted); }
+  .ch-tip-row { display: grid; grid-template-columns: 9px minmax(0, 1fr) auto; align-items: center; gap: 7px; }
+  .ch-tip-row.is-you { font-weight: 650; }
+  .ch-tip-row i { width: 9px; height: 9px; border-radius: 50%; }
+  .ch-tip-value { font-variant-numeric: tabular-nums; color: var(--muted); }
+}

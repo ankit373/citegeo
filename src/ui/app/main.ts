@@ -4,6 +4,7 @@ import { emptyState, notice } from "./components/primitives.js";
 import { button } from "./components/button.js";
 import { navScrim, navToggle, wireNav } from "./components/nav.js";
 import { hasPanelOrder, resetPanelOrder, wirePanelDrag } from "./components/reorder.js";
+import { wireChartHover } from "./components/chart-hover.js";
 import { setupView, type CredentialRow, type IntegrationRow, type ProviderRow, type SetupData, type StorageCheck, type StorageSettings } from "./pages/setup-view.js";
 
 /** What moved since the previous run, in sentences. Only built when
@@ -2486,6 +2487,7 @@ export function boot(): void {
     // The grid is replaced on every render, so the drag is delegated once and
     // a drop re-renders from the order it just saved.
     wirePanelDrag(() => render());
+    wireChartHover();
     (window as any).__citegeoPhase2 = { state, app, html, element, project, formatTime, brandMark, brandLockup, request, refreshRecognition, phase2Render, render: () => render() };
 }
 

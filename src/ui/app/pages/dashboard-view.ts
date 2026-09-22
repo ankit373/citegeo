@@ -208,7 +208,6 @@ export function rivalChart(series: RivalSeries[], domain: string): string {
   const x = (index: number) => pad.left + (runs === 1 ? plot.w : (index * plot.w) / (runs - 1));
   const y = (share: number) => pad.top + (1 - Math.max(0, Math.min(1, share))) * plot.h;
 
-  // Light gridlines, labelled only at the ends and the middle.
   const grid = [0, 0.25, 0.5, 0.75, 1].map((value) => {
     const labelled = value === 0 || value === 0.5 || value === 1;
     return join([
@@ -217,7 +216,6 @@ export function rivalChart(series: RivalSeries[], domain: string): string {
     ]);
   }).join("");
 
-  // The hairline the runs sit on, and when each one happened.
   const axis = join([
     `<line class="ch-axis" x1="${pad.left}" x2="${width - pad.right}" y1="${y(0).toFixed(1)}" y2="${y(0).toFixed(1)}"></line>`,
     first.points.map((point, index) => {
@@ -232,15 +230,16 @@ export function rivalChart(series: RivalSeries[], domain: string): string {
   const lines = drawn.map((row, index) => {
     const ink = inkFor(row, index);
     const path = row.points.map((point, at) => `${at ? "L" : "M"} ${x(at).toFixed(1)} ${y(point.share).toFixed(1)}`).join(" ");
-    const dots = row.points.map((point, at) => join([
-      `<circle cx="${x(at).toFixed(1)}" cy="${y(point.share).toFixed(1)}" r="${row.isTarget ? 4 : 3}" fill="${ink}">`,
-      `<title>${html(row.name)}: ${percent(point.share)} of the answers on ${html(runLabel(point.at) || "this run")}</title>`,
-      "</circle>",
-    ])).join("");
-    return `<path class="ch-line" d="${path}" stroke="${ink}" stroke-width="${row.isTarget ? 2.5 : 1.5}"></path>${dots}`;
+    // The reader's own line is filled, so it reads as the subject rather than
+    // as one of seven.
+    const fill = row.isTarget
+      ? `<path class="ch-fill" d="${path} L ${x(runs - 1).toFixed(1)} ${y(0).toFixed(1)} L ${x(0).toFixed(1)} ${y(0).toFixed(1)} Z" fill="${ink}"></path>`
+      : "";
+    const dots = row.points.map((point, at) =>
+      `<circle class="ch-dot" data-run="${at}" cx="${x(at).toFixed(1)}" cy="${y(point.share).toFixed(1)}" r="${row.isTarget ? 4 : 3}" fill="${ink}"></circle>`).join("");
+    return `${fill}<path class="ch-line" d="${path}" stroke="${ink}" stroke-width="${row.isTarget ? 2.5 : 1.5}"></path>${dots}`;
   }).join("");
 
-  // Named at the line's own end, so nobody has to match six colours to a key.
   const labels = drawn.map((row, index) => {
     const now = row.points[row.points.length - 1];
     const ink = inkFor(row, index);
@@ -252,7 +251,31 @@ export function rivalChart(series: RivalSeries[], domain: string): string {
     ]);
   }).join("");
 
-  return `<svg class="ch" viewBox="0 0 ${width} ${height}" role="img" aria-label="Share of the answers across ${runs} runs, one line per brand">${grid}${axis}${lines}${labels}</svg>`;
+  // One target per run, the full height of the plot, so the pointer does not
+  // have to find a three pixel dot.
+  const step = runs > 1 ? plot.w / (runs - 1) : plot.w;
+  const hits = first.points.map((point, index) => {
+    const rows = drawn
+      .map((row, at) => ({ name: row.name, isTarget: row.isTarget, share: row.points[index]?.share || 0, ink: inkFor(row, at) }))
+      .sort((left, right) => right.share - left.share)
+      .map((row) => `${row.isTarget ? "1" : "0"}|${row.ink}|${row.name}|${percent(row.share)}`)
+      .join(";");
+    return join([
+      `<rect class="ch-hit" data-run="${index}" data-when="${html(runLabel(point.at))}" data-rows="${html(rows)}"`,
+      ` x="${(x(index) - step / 2).toFixed(1)}" y="${pad.top}" width="${step.toFixed(1)}" height="${plot.h.toFixed(1)}"></rect>`,
+    ]);
+  }).join("");
+
+  const crosshair = `<line class="ch-cross" x1="0" x2="0" y1="${pad.top}" y2="${(pad.top + plot.h).toFixed(1)}"></line>`;
+
+  return join([
+    '<div class="ch-wrap">',
+    `<svg class="ch" viewBox="0 0 ${width} ${height}" role="img" aria-label="Share of the answers across ${runs} runs, one line per brand">`,
+    grid, axis, `${crosshair}${lines}`, labels, hits,
+    "</svg>",
+    '<div class="ch-tip" hidden></div>',
+    "</div>",
+  ]);
 }
 
 export interface AskedSplit {
