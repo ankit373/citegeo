@@ -76,7 +76,9 @@ export function renderProductPhase2AppHtml(): string {
     .dtile small { font-size:var(--type-xs); color:var(--weak); line-height:1.45; }
     /* start, not stretch: one card with sixteen rows in it was pulling every
        card beside it to its own height, and one of them holds a single line. */
-    .dgrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(322px,1fr)); align-items:start; gap:12px; margin-bottom:12px; }
+    /* dense: a full width card would otherwise leave the narrow card before
+       it sitting alone with a hole beside it. */
+    .dgrid { display:grid; grid-auto-flow:dense; grid-template-columns:repeat(auto-fit,minmax(322px,1fr)); align-items:start; gap:12px; margin-bottom:12px; }
     .dgrid > .section-card { margin:0; }
     /* A table with five columns cannot fit a 322px card. */
     .dgrid > .section-card.is-wide { grid-column:1 / -1; }
@@ -373,7 +375,15 @@ export function renderProductPhase2AppHtml(): string {
       .headmain { flex-basis:auto; }
       .topbar { flex-wrap:wrap; }
       /* Fixed column widths do not fit, so every table stacks. */
+      /* Two columns, not five: the three unused tracks were still reserving
+         their desktop widths, leaving the question less than half the row. */
+      .mcols-catalog,.mcols-promptrow,.mcols-engine { grid-template-columns:20px minmax(0,1fr); row-gap:6px; align-items:start; }
       .mcols-catalog > *:nth-child(n+3),.mcols-promptrow > *:nth-child(n+3),.mcols-engine > *:nth-child(n+3) { grid-column:2; }
+      /* A cell with nothing in it still took a row and a gap. */
+      .mcols-catalog > .mcell:empty,.mcols-promptrow > .mcell:empty,.mcols-engine > .mcell:empty { display:none; }
+      /* Those three stack their cells into one column, so the header stacks
+         too and becomes a list of column names labelling nothing. */
+      .mhead.mcols-catalog,.mhead.mcols-promptrow,.mhead.mcols-engine { display:none; }
       .promptbar .prompt-result-summary { margin-left:0; }
       .card-actions { margin-top:2px; }
       /* Anchored to the right of a control that can sit anywhere in a wrapped
