@@ -376,7 +376,10 @@ export function renderProductPhase2AppHtml(): string {
       .workspace { overflow-wrap:anywhere; }
       /* stretch, not flex-start: a flex-start child is sized to max-content,
          so every heading refused to wrap and pushed the page sideways. */
-      .heading,.section-head { flex-direction:column; align-items:stretch; }
+      .heading { flex-direction:column; align-items:stretch; }
+      /* A card header stays a row so Expand sits beside the title rather than
+         on a line of its own. It wraps when there is genuinely no room. */
+      .section-head { flex-wrap:wrap; align-items:flex-start; column-gap:10px; }
       /* The 300px basis is a width in a row and a height in a column, so
          turning the head sideways gave every card a 300px tall header with
          one line in it, and pushed the content to the bottom. */
