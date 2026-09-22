@@ -3,6 +3,7 @@ import { percent, rank as rankText, score as scoreText } from "../format.js";
 import { bar, cell, nameCell, pill, row, section, table, tiles, type TileInput } from "../components/primitives.js";
 import { loading, skeletonCard, skeletonTiles } from "../components/skeleton.js";
 import { match, type Loadable } from "../loadable.js";
+import { panelOrder } from "../components/reorder.js";
 
 // The dashboard answers four questions in order: where do I stand, what moved,
 // what would move it, and who is taking the ground. Everything here comes from
@@ -345,6 +346,13 @@ export function dashboardSkeleton(): string {
   ]);
 }
 
+/** The panels, in the reader's own order. The default order is the argument
+ * this dashboard makes; theirs is the one they care about. */
+function arrangePanels(panels: Array<[string, string]>): string {
+  const byId = new Map(panels);
+  return panelOrder(panels.map(([id]) => id)).map((id) => byId.get(id) || "").join("");
+}
+
 export function dashboardBody(held: Loadable<DashboardData>): string {
   return match(held, {
     loading: () => dashboardSkeleton(),
@@ -352,15 +360,17 @@ export function dashboardBody(held: Loadable<DashboardData>): string {
     ready: (data) => join([
       summaryTiles(data),
       '<div class="dgrid">',
-      section({ title: "What would move this", blurb: "The strongest levers, from the answers.", body: movesList(data.moves) }),
-      section({ title: "Share of the answers, run by run", blurb: "Every brand on one axis, so a gap that is closing looks different from one that is not.", body: rivalChart(data.rivalTrend || [], data.domain), wide: true }),
-      section({ title: "Who the answers name", blurb: "You against everyone else named.", body: leaderboardBars(data.leaderboard) }),
-      section({ title: "How each one is described", blurb: "Where each brand appears in the answer, and how it is spoken about.", body: brandsTable(data.leaderboard), wide: true }),
-      section({ title: "Found, or already known", blurb: "A question that names you cannot show whether you are found. The two are counted apart.", body: data.asked ? askedSplit(data.asked) : '<p class="subtle">Nothing asked yet.</p>' }),
-      section({ title: "By assistant", blurb: "Who was asked, and how each one answered.", body: splitRows(data.byModel, "No assistant has answered yet.") }),
-      section({ title: "By market", blurb: "Fills in once a run states more than one.", body: splitRows(data.byRegion, "Every answer was asked without a market stated.") }),
-      section({ title: "By persona", blurb: "Fills in once a run asks on behalf of more than one.", body: splitRows(data.byPersona, "Every answer was asked on nobody’s behalf.") }),
-      section({ title: "Sources", blurb: "The pages the answers actually read.", body: sourcesPanel(data) }),
+      arrangePanels([
+        ["moves", section({ id: "moves", title: "What would move this", blurb: "The strongest levers, from the answers.", body: movesList(data.moves) })],
+        ["trend", section({ id: "trend", title: "Share of the answers, run by run", blurb: "Every brand on one axis, so a gap that is closing looks different from one that is not.", body: rivalChart(data.rivalTrend || [], data.domain), wide: true })],
+        ["named", section({ id: "named", title: "Who the answers name", blurb: "You against everyone else named.", body: leaderboardBars(data.leaderboard) })],
+        ["described", section({ id: "described", title: "How each one is described", blurb: "Where each brand appears in the answer, and how it is spoken about.", body: brandsTable(data.leaderboard), wide: true })],
+        ["asked", section({ id: "asked", title: "Found, or already known", blurb: "A question that names you cannot show whether you are found. The two are counted apart.", body: data.asked ? askedSplit(data.asked) : '<p class="subtle">Nothing asked yet.</p>' })],
+        ["models", section({ id: "models", title: "By assistant", blurb: "Who was asked, and how each one answered.", body: splitRows(data.byModel, "No assistant has answered yet.") })],
+        ["regions", section({ id: "regions", title: "By market", blurb: "Fills in once a run states more than one.", body: splitRows(data.byRegion, "Every answer was asked without a market stated.") })],
+        ["personas", section({ id: "personas", title: "By persona", blurb: "Fills in once a run asks on behalf of more than one.", body: splitRows(data.byPersona, "Every answer was asked on nobody’s behalf.") })],
+        ["sources", section({ id: "sources", title: "Sources", blurb: "The pages the answers actually read.", body: sourcesPanel(data) })],
+      ]),
       "</div>",
     ]),
   });

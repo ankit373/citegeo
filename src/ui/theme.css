@@ -712,3 +712,12 @@
 @layer components {
   .countlink:hover, .countlink:focus-visible { text-decoration-color: currentColor; }
 }
+
+@layer components {
+  /* A panel you can pick up. The cursor is the only hint until you do. */
+  [data-panel] { cursor: grab; }
+  [data-panel].is-dragging { opacity: .45; cursor: grabbing; }
+  [data-panel].is-drop-target { outline: 2px solid var(--accent); outline-offset: 2px; }
+  /* A drag has to start on the card, not on a control inside it. */
+  [data-panel] button, [data-panel] a, [data-panel] select, [data-panel] input { cursor: pointer; }
+}

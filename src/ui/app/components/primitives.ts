@@ -77,11 +77,16 @@ export interface SectionInput {
   body: string;
   /** Spans the whole dashboard row. For a table too wide for a card. */
   wide?: boolean;
+  /** Stable name for this panel, so a reader can rearrange the dashboard
+   * and have the arrangement survive the next render. */
+  id?: string;
 }
 
 export function section(input: SectionInput): string {
   return join([
-    `<section class="section-card${input.wide ? " is-wide" : ""}"><div class="section-head"><div class="headmain">`,
+    `<section class="section-card${input.wide ? " is-wide" : ""}"`,
+    input.id ? ` data-panel="${html(input.id)}" draggable="true"` : "",
+    `><div class="section-head"><div class="headmain">`,
     `<h2>${html(input.title)}</h2>`,
     input.blurb ? `<p class="subtle">${html(input.blurb)}</p>` : "",
     "</div>",
