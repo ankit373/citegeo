@@ -10,7 +10,16 @@ function asObject(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
 }
 
+// functions is the capability list: text_chat, text_generation, embedding,
+// rerank and the rest. task_ids is null on many rows, so it decides nothing.
 function answersChat(row: Record<string, unknown>): boolean {
+  const functions = Array.isArray(row.functions) ? row.functions : null;
+  if (functions) {
+    return functions.some((entry) => {
+      const id = asObject(entry)?.id;
+      return id === "text_chat" || id === "text_generation";
+    });
+  }
   const tasks = Array.isArray(row.task_ids) ? row.task_ids : [];
   if (tasks.length === 0) return true;
   return tasks.some((task) => typeof task === "string" && (task.includes("generation") || task.includes("chat")));
