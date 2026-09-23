@@ -5,6 +5,9 @@ import { GeminiProvider } from "./gemini.js";
 import { dedupeCitations, extractAnnotationCitations, extractPerplexityCitations } from "./citation-extractors.js";
 import { AzureOpenAIProvider } from "./azure-openai.js";
 import { BedrockProvider } from "./bedrock.js";
+import { DatabricksProvider } from "./databricks.js";
+import { VertexAIProvider } from "./vertex-ai.js";
+import { WatsonxProvider } from "./watsonx.js";
 import { OpenAICompatibleGatewayProvider } from "./openai-compatible-gateway.js";
 import { OpenAICompatibleProvider, perplexityCitationExtractor } from "./openai-compatible.js";
 import { openRouterNativeWebSearch } from "./openrouter-native-search.js";
@@ -133,6 +136,44 @@ export const PROVIDER_DEFINITIONS: ProviderDefinition[] = [
     resultCaveat: API_CAVEAT,
   },
   {
+    id: "vertex-ai",
+    label: "Google Vertex AI",
+    sourceType: "api",
+    envKeys: ["GOOGLE_VERTEX_PRIVATE_KEY"],
+    defaultModels: [],
+    // Read from the publisher listings, which are the authority on what this
+    // project can reach in this region.
+    supportsAnyModel: true,
+    supportsJsonSchema: true,
+    supportsNativeCitations: true,
+    supportsWebSearch: true,
+    resultCaveat: API_CAVEAT,
+  },
+  {
+    id: "databricks",
+    label: "Databricks",
+    sourceType: "api",
+    envKeys: ["DATABRICKS_TOKEN"],
+    defaultModels: [],
+    supportsAnyModel: true,
+    supportsJsonSchema: true,
+    supportsNativeCitations: false,
+    supportsWebSearch: false,
+    resultCaveat: API_CAVEAT,
+  },
+  {
+    id: "watsonx",
+    label: "IBM watsonx.ai",
+    sourceType: "api",
+    envKeys: ["WATSONX_API_KEY"],
+    defaultModels: [],
+    supportsAnyModel: true,
+    supportsJsonSchema: true,
+    supportsNativeCitations: false,
+    supportsWebSearch: false,
+    resultCaveat: API_CAVEAT,
+  },
+  {
     id: "azure-openai",
     label: "Azure OpenAI",
     sourceType: "api",
@@ -199,7 +240,14 @@ export const PROVIDER_MODEL_CAPABILITIES = new ProviderModelCapabilityCatalog(PR
 const ROUTED_ID_PROVIDERS = new Set(["openrouter"]);
 // These three name models their own way: a deployment, whatever the gateway
 // behind it uses, or an ARN, so a slash in the id is not a paste error.
-const OWN_MODEL_ID_PROVIDERS = new Set(["azure-openai", "openai-compatible", "bedrock"]);
+const OWN_MODEL_ID_PROVIDERS = new Set([
+  "azure-openai",
+  "openai-compatible",
+  "bedrock",
+  "vertex-ai",
+  "databricks",
+  "watsonx",
+]);
 
 function definition(id: string): ProviderDefinition {
   const found = PROVIDER_DEFINITIONS.find((item) => item.id === id);
@@ -268,6 +316,9 @@ export class ProviderCatalog {
     );
 
     this.providers.set("bedrock", new BedrockProvider(definition("bedrock")));
+    this.providers.set("vertex-ai", new VertexAIProvider(definition("vertex-ai")));
+    this.providers.set("databricks", new DatabricksProvider(definition("databricks")));
+    this.providers.set("watsonx", new WatsonxProvider(definition("watsonx")));
 
     const compatibleBaseUrl = openAICompatibleBaseUrl();
     this.providers.set(

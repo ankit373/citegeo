@@ -12,6 +12,9 @@ const PROVIDER_ENV_KEYS: Record<string, string[]> = {
   "openai-compatible": ["OPENAI_COMPATIBLE_API_KEY"],
   "azure-openai": ["AZURE_OPENAI_API_KEY"],
   bedrock: ["AWS_BEDROCK_SECRET_ACCESS_KEY", "AWS_SECRET_ACCESS_KEY"],
+  "vertex-ai": ["GOOGLE_VERTEX_PRIVATE_KEY"],
+  databricks: ["DATABRICKS_TOKEN"],
+  watsonx: ["WATSONX_API_KEY"],
 };
 
 export function loadDotEnv(cwd = process.cwd()): void {
@@ -71,6 +74,17 @@ export function hasProviderKey(providerId: string): boolean {
   }
   if (providerId === "bedrock") {
     return Boolean(bedrockRegion()) && Boolean(bedrockAccessKeyId())
+      && providerEnvKeys(providerId).some((key) => Boolean(envSecretValue(key)));
+  }
+  if (providerId === "vertex-ai") {
+    return Boolean(vertexProjectId()) && Boolean(vertexLocation()) && Boolean(vertexClientEmail())
+      && providerEnvKeys(providerId).some((key) => Boolean(envSecretValue(key)));
+  }
+  if (providerId === "databricks") {
+    return Boolean(databricksHost()) && providerEnvKeys(providerId).some((key) => Boolean(envSecretValue(key)));
+  }
+  if (providerId === "watsonx") {
+    return Boolean(watsonxProjectId()) && Boolean(watsonxRegion())
       && providerEnvKeys(providerId).some((key) => Boolean(envSecretValue(key)));
   }
   return providerEnvKeys(providerId).some((key) => Boolean(envSecretValue(key)));
@@ -166,4 +180,66 @@ export function bedrockControlEndpoint(): string | undefined {
 export function bedrockRuntimeEndpoint(): string | undefined {
   const region = bedrockRegion();
   return region ? `https://bedrock-runtime.${region}.amazonaws.com` : undefined;
+}
+
+// Vertex needs the project and the region as well as the key, so each is read
+// on its own and a missing one can be named instead of read as a bad credential.
+export function vertexProjectId(): string | undefined {
+  return envSecretValue("GOOGLE_VERTEX_PROJECT_ID") || envSecretValue("GOOGLE_CLOUD_PROJECT") || undefined;
+}
+
+export function vertexLocation(): string | undefined {
+  return envSecretValue("GOOGLE_VERTEX_LOCATION") || envSecretValue("GOOGLE_CLOUD_REGION") || undefined;
+}
+
+export function vertexClientEmail(): string | undefined {
+  return envSecretValue("GOOGLE_VERTEX_CLIENT_EMAIL") || undefined;
+}
+
+// A PEM carries newlines that most secret stores flatten to the two characters
+// backslash and n, so both spellings have to arrive at the same key.
+export function vertexPrivateKey(): string | undefined {
+  const raw = envSecretValue("GOOGLE_VERTEX_PRIVATE_KEY");
+  return raw ? raw.split("\\n").join("\n") : undefined;
+}
+
+export function vertexTokenHost(): string {
+  return process.env.GOOGLE_VERTEX_TOKEN_HOST?.trim() || "oauth2.googleapis.com";
+}
+
+// Vertex is regional: the region is part of the hostname, never pasted in.
+export function vertexEndpoint(): string | undefined {
+  const location = vertexLocation();
+  return location ? `https://${location}-aiplatform.googleapis.com` : undefined;
+}
+
+export function databricksHost(): string | undefined {
+  const raw = envSecretValue("DATABRICKS_HOST");
+  if (!raw) return undefined;
+  const trimmed = raw.trim().replace("http://", "https://");
+  const withScheme = trimmed.startsWith("https://") ? trimmed : `https://${trimmed}`;
+  return withScheme.endsWith("/") ? withScheme.slice(0, -1) : withScheme;
+}
+
+export function watsonxProjectId(): string | undefined {
+  return envSecretValue("WATSONX_PROJECT_ID") || undefined;
+}
+
+export function watsonxRegion(): string | undefined {
+  return envSecretValue("WATSONX_REGION") || undefined;
+}
+
+export function watsonxEndpoint(): string | undefined {
+  const region = watsonxRegion();
+  return region ? `https://${region}.ml.cloud.ibm.com` : undefined;
+}
+
+export function watsonxIamHost(): string {
+  return process.env.WATSONX_IAM_HOST?.trim() || "iam.cloud.ibm.com";
+}
+
+// The data-plane API is versioned by date and the service rejects a call
+// without one, so it is configurable but never absent.
+export function watsonxApiVersion(): string {
+  return process.env.WATSONX_API_VERSION?.trim() || "2024-10-10";
 }
