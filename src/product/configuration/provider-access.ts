@@ -1,4 +1,11 @@
-import { azureOpenAIEndpoint, bedrockRuntimeEndpoint, openAICompatibleBaseUrl } from "../../config/env.js";
+import {
+  azureOpenAIEndpoint,
+  bedrockRuntimeEndpoint,
+  databricksHost,
+  openAICompatibleBaseUrl,
+  vertexEndpoint,
+  watsonxEndpoint,
+} from "../../config/env.js";
 import type { ProductProviderId } from "./provider-id.js";
 
 // What each provider costs and whether it can produce a citation. This used to
@@ -143,6 +150,49 @@ export const PROVIDER_ACCESS: ProviderAccess[] = [
     settings: [
       { key: "region", label: "Region", envKey: "AWS_BEDROCK_REGION" },
       { key: "accessKeyId", label: "Access key id", envKey: "AWS_BEDROCK_ACCESS_KEY_ID" },
+    ],
+  },
+  {
+    id: "vertex-ai",
+    label: "Google Vertex AI",
+    cost: "metered",
+    search: "optional",
+    endpoint: null,
+    resolveEndpoint: () => vertexEndpoint() || null,
+    cost_note: "Billed per token to your Google Cloud project, at whatever each model's publisher charges on Vertex.",
+    setup_note:
+      "A service account key with the Vertex AI User role, plus the project and the region. The model id carries its publisher, as in google/gemini-2.5-pro. Google Search grounding is available per run and returns the pages an answer used, but Vertex refuses it alongside a response schema.",
+    settings: [
+      { key: "projectId", label: "Project id", envKey: "GOOGLE_VERTEX_PROJECT_ID" },
+      { key: "location", label: "Region", envKey: "GOOGLE_VERTEX_LOCATION" },
+      { key: "clientEmail", label: "Service account email", envKey: "GOOGLE_VERTEX_CLIENT_EMAIL" },
+    ],
+  },
+  {
+    id: "databricks",
+    label: "Databricks",
+    cost: "metered",
+    search: "never",
+    endpoint: null,
+    resolveEndpoint: () => databricksHost() || null,
+    cost_note: "Billed to your Databricks workspace, per token on pay-per-token endpoints and per hour on provisioned ones.",
+    setup_note:
+      "A workspace URL and a personal access token. The model id is the serving endpoint name, not a vendor model name, so it is whatever the workspace called it. No web search, so answers carry no citations.",
+    settings: [{ key: "host", label: "Workspace URL", envKey: "DATABRICKS_HOST" }],
+  },
+  {
+    id: "watsonx",
+    label: "IBM watsonx.ai",
+    cost: "metered",
+    search: "never",
+    endpoint: null,
+    resolveEndpoint: () => watsonxEndpoint() || null,
+    cost_note: "Billed per token to your IBM Cloud account, against the plan attached to the project.",
+    setup_note:
+      "An IBM Cloud API key, the project id and the region. Models are listed per region, so one absent from the listing is absent from that region. No web search, so answers carry no citations.",
+    settings: [
+      { key: "region", label: "Region", envKey: "WATSONX_REGION" },
+      { key: "projectId", label: "Project id", envKey: "WATSONX_PROJECT_ID" },
     ],
   },
 ];

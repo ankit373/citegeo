@@ -109,7 +109,10 @@ export type ProviderEndpointProtocol =
   | "messages"
   | "gemini_generate_content"
   | "perplexity_sonar"
-  | "bedrock_converse";
+  | "bedrock_converse"
+  | "vertex_generate_content"
+  | "databricks_serving"
+  | "watsonx_text_chat";
 
 export interface NativeWebSearchCapability {
   endpointProtocol: ProviderEndpointProtocol;

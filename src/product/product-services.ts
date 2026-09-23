@@ -6,6 +6,9 @@ import { OpenRouterProductModelCatalog } from "./configuration/model-catalog.js"
 import { AzureOpenAiProductModelCatalog, CompositeProductModelCatalog, OpenAiCompatibleProductModelCatalog } from "./configuration/local-model-catalog.js";
 import { DirectProviderModelCatalog } from "./configuration/direct-model-catalog.js";
 import { BedrockProductModelCatalog } from "./configuration/bedrock-model-catalog.js";
+import { DatabricksProductModelCatalog } from "./configuration/databricks-model-catalog.js";
+import { VertexProductModelCatalog } from "./configuration/vertex-model-catalog.js";
+import { WatsonxProductModelCatalog } from "./configuration/watsonx-model-catalog.js";
 import type { ProductProviderId } from "./configuration/provider-id.js";
 import { hasProviderKey } from "../config/env.js";
 import { ProductModelSelectionService } from "./configuration/model-selection-service.js";
@@ -86,6 +89,9 @@ function defaultProductCatalog(): ProductModelCatalog {
   if (hasProviderKey("openai-compatible")) catalogs.push(new OpenAiCompatibleProductModelCatalog());
   if (hasProviderKey("azure-openai")) catalogs.push(new AzureOpenAiProductModelCatalog());
   if (hasProviderKey("bedrock")) catalogs.push(new BedrockProductModelCatalog());
+  if (hasProviderKey("vertex-ai")) catalogs.push(new VertexProductModelCatalog());
+  if (hasProviderKey("databricks")) catalogs.push(new DatabricksProductModelCatalog());
+  if (hasProviderKey("watsonx")) catalogs.push(new WatsonxProductModelCatalog());
   // With nothing configured the product still has to render a provider page, and
   // an empty catalogue says "nothing is set up" more clearly than an error does.
   return new CompositeProductModelCatalog(catalogs);
