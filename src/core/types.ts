@@ -108,7 +108,8 @@ export type ProviderEndpointProtocol =
   | "responses"
   | "messages"
   | "gemini_generate_content"
-  | "perplexity_sonar";
+  | "perplexity_sonar"
+  | "bedrock_converse";
 
 export interface NativeWebSearchCapability {
   endpointProtocol: ProviderEndpointProtocol;

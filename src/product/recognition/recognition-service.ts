@@ -124,6 +124,9 @@ function answerWasTruncated(rawProviderResponse: unknown): boolean {
   const finishReason = normalizeReason(firstChoice?.finish_reason);
   const nativeFinishReason = normalizeReason(firstChoice?.native_finish_reason);
   if (finishReason === "length" || finishReason === "max_tokens" || nativeFinishReason === "length" || nativeFinishReason === "max_tokens" || nativeFinishReason === "max_output_tokens") return true;
+  // Converse reports it on the response itself, so a truncated answer there is
+  // retried with more tokens instead of being read as a broken payload.
+  if (normalizeReason(root.stopReason) === "max_tokens") return true;
   const incompleteDetails = root.incomplete_details && typeof root.incomplete_details === "object" && !Array.isArray(root.incomplete_details)
     ? root.incomplete_details as Record<string, unknown>
     : null;

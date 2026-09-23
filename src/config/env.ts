@@ -11,6 +11,7 @@ const PROVIDER_ENV_KEYS: Record<string, string[]> = {
   deepseek: ["DEEPSEEK_API_KEY"],
   "openai-compatible": ["OPENAI_COMPATIBLE_API_KEY"],
   "azure-openai": ["AZURE_OPENAI_API_KEY"],
+  bedrock: ["AWS_BEDROCK_SECRET_ACCESS_KEY", "AWS_SECRET_ACCESS_KEY"],
 };
 
 export function loadDotEnv(cwd = process.cwd()): void {
@@ -67,6 +68,10 @@ export function hasProviderKey(providerId: string): boolean {
   }
   if (providerId === "openai-compatible") {
     return Boolean(openAICompatibleBaseUrl()) && providerEnvKeys(providerId).some((key) => Boolean(envSecretValue(key)));
+  }
+  if (providerId === "bedrock") {
+    return Boolean(bedrockRegion()) && Boolean(bedrockAccessKeyId())
+      && providerEnvKeys(providerId).some((key) => Boolean(envSecretValue(key)));
   }
   return providerEnvKeys(providerId).some((key) => Boolean(envSecretValue(key)));
 }
@@ -133,4 +138,32 @@ export function azureOpenAIApiVersion(): string {
 export function azureOpenAIDeployments(): string[] {
   const raw = envSecretValue("AZURE_OPENAI_DEPLOYMENTS") || "";
   return raw.split(",").map((value) => value.trim()).filter(Boolean);
+}
+
+// A Bedrock call needs four things rather than one key, so each is read on its
+// own and a missing one can be named instead of read as a bad credential.
+export function bedrockRegion(): string | undefined {
+  return envSecretValue("AWS_BEDROCK_REGION") || envSecretValue("AWS_REGION") || undefined;
+}
+
+export function bedrockAccessKeyId(): string | undefined {
+  return envSecretValue("AWS_BEDROCK_ACCESS_KEY_ID") || envSecretValue("AWS_ACCESS_KEY_ID") || undefined;
+}
+
+// Only temporary credentials carry one. Signing without it when it exists is
+// rejected, so it is read rather than assumed absent.
+export function bedrockSessionToken(): string | undefined {
+  return envSecretValue("AWS_BEDROCK_SESSION_TOKEN") || envSecretValue("AWS_SESSION_TOKEN") || undefined;
+}
+
+// Bedrock has one regional endpoint per API: the control plane lists models and
+// the runtime answers. Both are built from the region, never pasted in.
+export function bedrockControlEndpoint(): string | undefined {
+  const region = bedrockRegion();
+  return region ? `https://bedrock.${region}.amazonaws.com` : undefined;
+}
+
+export function bedrockRuntimeEndpoint(): string | undefined {
+  const region = bedrockRegion();
+  return region ? `https://bedrock-runtime.${region}.amazonaws.com` : undefined;
 }

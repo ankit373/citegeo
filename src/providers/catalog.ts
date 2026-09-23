@@ -1,9 +1,10 @@
 import type { AnswerProvider, ProviderDefinition } from "../core/types.js";
-import { azureOpenAIApiVersion, azureOpenAIEndpoint, openAICompatibleBaseUrl } from "../config/env.js";
+import { azureOpenAIApiVersion, azureOpenAIEndpoint, bedrockRegion, openAICompatibleBaseUrl } from "../config/env.js";
 import { AnthropicProvider } from "./anthropic.js";
 import { GeminiProvider } from "./gemini.js";
 import { dedupeCitations, extractAnnotationCitations, extractPerplexityCitations } from "./citation-extractors.js";
 import { AzureOpenAIProvider } from "./azure-openai.js";
+import { BedrockProvider } from "./bedrock.js";
 import { OpenAICompatibleGatewayProvider } from "./openai-compatible-gateway.js";
 import { OpenAICompatibleProvider, perplexityCitationExtractor } from "./openai-compatible.js";
 import { openRouterNativeWebSearch } from "./openrouter-native-search.js";
@@ -159,6 +160,20 @@ export const PROVIDER_DEFINITIONS: ProviderDefinition[] = [
     },
     resultCaveat: API_CAVEAT,
   },
+  {
+    id: "bedrock",
+    label: "Amazon Bedrock",
+    sourceType: "api",
+    envKeys: ["AWS_BEDROCK_SECRET_ACCESS_KEY", "AWS_SECRET_ACCESS_KEY"],
+    defaultModels: [],
+    // Read from ListFoundationModels, which is the authority on what this
+    // account has been granted in this region.
+    supportsAnyModel: true,
+    supportsJsonSchema: true,
+    supportsNativeCitations: false,
+    supportsWebSearch: false,
+    resultCaveat: API_CAVEAT,
+  },
 ];
 
 const openRouterModels = new OpenRouterModelCatalog();
@@ -180,10 +195,11 @@ export const PROVIDER_MODEL_CAPABILITIES = new ProviderModelCapabilityCatalog(PR
 
 // Only an aggregator routes by "vendor/model". A direct provider given one
 // answers 404 in the middle of a run, which reads as the model being gone
-// rather than as an id pasted into the wrong provider. The two user-supplied
-// endpoints are exempt: their ids follow whatever the gateway behind them uses.
+// rather than as an id pasted into the wrong provider.
 const ROUTED_ID_PROVIDERS = new Set(["openrouter"]);
-const USER_SUPPLIED_ENDPOINTS = new Set(["azure-openai", "openai-compatible"]);
+// These three name models their own way: a deployment, whatever the gateway
+// behind it uses, or an ARN, so a slash in the id is not a paste error.
+const OWN_MODEL_ID_PROVIDERS = new Set(["azure-openai", "openai-compatible", "bedrock"]);
 
 function definition(id: string): ProviderDefinition {
   const found = PROVIDER_DEFINITIONS.find((item) => item.id === id);
@@ -251,6 +267,8 @@ export class ProviderCatalog {
       new AzureOpenAIProvider(definition("azure-openai"), azureOpenAIEndpoint() || "", azureOpenAIApiVersion()),
     );
 
+    this.providers.set("bedrock", new BedrockProvider(definition("bedrock")));
+
     const compatibleBaseUrl = openAICompatibleBaseUrl();
     this.providers.set(
       "openai-compatible",
@@ -269,6 +287,9 @@ export class ProviderCatalog {
     if (providerId === "openai-compatible" && !openAICompatibleBaseUrl()) {
       throw new Error("Missing OPENAI_COMPATIBLE_BASE_URL for provider \"openai-compatible\".");
     }
+    if (providerId === "bedrock" && !bedrockRegion()) {
+      throw new Error("Missing AWS_BEDROCK_REGION for provider \"bedrock\".");
+    }
     const provider = this.providers.get(providerId);
     if (!provider) throw new Error(`Provider "${providerId}" is not registered.`);
     return provider;
@@ -276,7 +297,7 @@ export class ProviderCatalog {
 
   validate(providerId: string, model: string): void {
     const provider = this.get(providerId);
-    if (ROUTED_ID_PROVIDERS.has(providerId) === false && USER_SUPPLIED_ENDPOINTS.has(providerId) === false && model.includes("/")) {
+    if (ROUTED_ID_PROVIDERS.has(providerId) === false && OWN_MODEL_ID_PROVIDERS.has(providerId) === false && model.includes("/")) {
       throw new Error(
         `Model "${model}" is a routed id, which only an aggregator accepts. Provider "${providerId}" wants a bare model id.`,
       );
