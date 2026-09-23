@@ -341,7 +341,7 @@ test("the Vertex listing reads the shapes the API actually returns", async () =>
   });
 });
 
-test("a model behind a request for access is not offered as callable", async () => {
+test("a model card asking for access is still offered, because the card is not this project", async () => {
   await withEnv(VERTEX_ENV, async () => {
     await withFetch(async (input) => {
       const url = String(input);
@@ -357,8 +357,10 @@ test("a model behind a request for access is not offered as callable", async () 
       return json({ error: { message: "not enabled" } }, 403);
     }, async () => {
       const models = await new VertexProductModelCatalog().list();
-      assert.equal(models[0]!.available, false);
-      assert.equal(models[0]!.unavailableReason?.includes("Access has to be requested"), true);
+      // Unavailable disables the checkbox outright, so a listing that cannot
+      // know whether access was already granted must not decide it here.
+      assert.equal(models[0]!.available, true);
+      assert.equal(models[0]!.unavailableReason, null);
     });
   });
 });

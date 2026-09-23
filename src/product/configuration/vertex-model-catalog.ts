@@ -31,9 +31,9 @@ interface Reachability {
 function reachability(row: Record<string, unknown>): Reachability {
   const actions = asObject(row.supportedActions);
   if (!actions) return { available: true, unavailableReason: null };
-  if (actions.requestAccess) {
-    return { available: false, unavailableReason: "Access has to be requested for this model before a call reaches it." };
-  }
+  // requestAccess describes the model's card rather than this project's
+  // entitlement, and marking unavailable disables the checkbox, so a model
+  // already enabled here would be unselectable. A run says 403 honestly.
   // A model offered only as a deployment answers through an endpoint you stand
   // up yourself, so a publisher request cannot reach it.
   const deployOnly = !actions.viewRestApi
@@ -118,8 +118,7 @@ export class VertexProductModelCatalog implements ProductModelCatalog {
         collect(items, rows, publisher, checkedAt);
         pageToken = typeof payload?.nextPageToken === "string" ? payload.nextPageToken : "";
         pages += 1;
-      } while (pageToken && pages < MAX_PAGES);
-      if (failed) continue;
+      } while (!failed && pageToken && pages < MAX_PAGES);
     }
     if (!reached) {
       throw new ProductModelCatalogUnavailableError(
