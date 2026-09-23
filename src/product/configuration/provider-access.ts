@@ -1,4 +1,4 @@
-import { azureOpenAIEndpoint, openAICompatibleBaseUrl } from "../../config/env.js";
+import { azureOpenAIEndpoint, bedrockRuntimeEndpoint, openAICompatibleBaseUrl } from "../../config/env.js";
 import type { ProductProviderId } from "./provider-id.js";
 
 // What each provider costs and whether it can produce a citation. This used to
@@ -129,6 +129,21 @@ export const PROVIDER_ACCESS: ProviderAccess[] = [
     cost_note: "Runs cost nothing and never leave this machine.",
     setup_note: "Any OpenAI-compatible endpoint. The key may be a placeholder.",
     settings: [{ key: "baseUrl", label: "Base URL", envKey: "OPENAI_COMPATIBLE_BASE_URL" }],
+  },
+  {
+    id: "bedrock",
+    label: "Amazon Bedrock",
+    cost: "metered",
+    search: "never",
+    endpoint: null,
+    resolveEndpoint: () => bedrockRuntimeEndpoint() || null,
+    cost_note: "Billed per token to your AWS account, at whatever each model's vendor charges on Bedrock.",
+    setup_note:
+      "An IAM access key allowed bedrock:ListFoundationModels and bedrock:InvokeModel, plus the region. Access to each model is granted per account and per region, so a listed model still answers a 403 until it is enabled there. No web search, so answers carry no citations.",
+    settings: [
+      { key: "region", label: "Region", envKey: "AWS_BEDROCK_REGION" },
+      { key: "accessKeyId", label: "Access key id", envKey: "AWS_BEDROCK_ACCESS_KEY_ID" },
+    ],
   },
 ];
 

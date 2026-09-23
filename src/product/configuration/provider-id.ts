@@ -10,7 +10,8 @@ export type ProductProviderId =
   | "perplexity"
   | "deepseek"
   | "azure-openai"
-  | "openai-compatible";
+  | "openai-compatible"
+  | "bedrock";
 
 export const PRODUCT_PROVIDER_IDS: ProductProviderId[] = [
   "openrouter",
@@ -21,6 +22,7 @@ export const PRODUCT_PROVIDER_IDS: ProductProviderId[] = [
   "deepseek",
   "azure-openai",
   "openai-compatible",
+  "bedrock",
 ];
 
 export function isProductProviderId(value: unknown): value is ProductProviderId {

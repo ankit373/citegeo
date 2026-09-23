@@ -29,6 +29,12 @@ export function encodeKeyPath(key: string): string {
   return key.split("/").map(encodeSegment).join("/");
 }
 
+// S3 signs the path once. Every other service signs the already-encoded path a
+// second time, so a resource id carrying a colon or a slash still verifies.
+function canonicalPath(url: URL, service: string): string {
+  return service === "s3" ? encodeKeyPath(decodeURIComponent(url.pathname)) : encodeKeyPath(url.pathname);
+}
+
 /** Exported so it can be checked against the vector AWS publishes. */
 export function deriveSigningKey(secretAccessKey: string, date: string, region: string, service: string): Buffer {
   const dateKey = hmac(`AWS4${secretAccessKey}`, date);
@@ -79,7 +85,7 @@ export function signRequest(
 
   const canonicalRequest = [
     request.method,
-    encodeKeyPath(decodeURIComponent(request.url.pathname)),
+    canonicalPath(request.url, keys.service),
     query,
     canonicalHeaders,
     signedHeaders,

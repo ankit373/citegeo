@@ -186,7 +186,7 @@ nothing anywhere except to the model APIs you configure.
 
 | | |
 | :--- | :--- |
-| **Providers** | OpenRouter, OpenAI, Anthropic, Gemini, Perplexity, DeepSeek, Azure OpenAI, and any OpenAI-compatible endpoint including a local gateway. |
+| **Providers** | OpenRouter, OpenAI, Anthropic, Gemini, Perplexity, DeepSeek, Azure OpenAI, Amazon Bedrock, and any OpenAI-compatible endpoint including a local gateway. |
 | **Web search, stated per model** | Per-model web search with the real execution conditions stored beside the result. Offline and web-enabled answers are never averaged together. |
 | **Integrations** | Google Search Console, Google Analytics 4, and GitHub for opening a pull request with the fixes against your own site repository. |
 | **Storage** | Disk, anything S3-compatible (AWS, Cloudflare R2, Google Cloud Storage, MinIO, Spaces, Backblaze B2) or Azure Blob. A connection counts as connected only once it has written, read back, listed and deleted a probe object. |
@@ -244,8 +244,8 @@ or merely listed). Every figure links to the answers it was computed from.
 ### Which AI models can it track?
 
 Any model reachable through OpenRouter, the OpenAI, Anthropic, Google Gemini,
-Perplexity and DeepSeek APIs, Azure OpenAI, or any OpenAI-compatible endpoint,
-including a local gateway. Engines with no API, such as Google AI Overviews, are
+Perplexity and DeepSeek APIs, Azure OpenAI, Amazon Bedrock, or any
+OpenAI-compatible endpoint, including a local gateway. Engines with no API, such as Google AI Overviews, are
 on the [roadmap](ROADMAP.md) and blocked on browser automation.
 
 ### Does it need my data to leave my machine?

@@ -106,6 +106,9 @@ function missingConfiguration(access: ProviderAccess): string {
   if (access.id === "openai-compatible") {
     return "No local gateway set. Point OPENAI_COMPATIBLE_BASE_URL at an OpenAI-compatible endpoint.";
   }
+  if (access.id === "bedrock") {
+    return `No AWS credentials set. Add ${keys}, AWS_BEDROCK_ACCESS_KEY_ID and AWS_BEDROCK_REGION.`;
+  }
   return `No key set. Add ${keys} to use ${access.label}.`;
 }
 
@@ -116,11 +119,7 @@ function detailFor(access: ProviderAccess, state: {
   balance: OpenRouterAccountBalance | null;
 }): string {
   if (!state.configured) return `${missingConfiguration(access)} ${access.setup_note}`;
-  if (!state.models) {
-    return access.id === "azure-openai"
-      ? "Key set, but no deployments declared. List them in AZURE_OPENAI_DEPLOYMENTS."
-      : "Configured, but the provider listed no models. It may be unreachable, or the key may have no access.";
-  }
+  if (!state.models) return noModels(access);
   if (state.balance && !state.balance.paidModelsRunnable) {
     const head = state.balance.purchased === 0
       ? "This account has never purchased credits"
@@ -134,6 +133,14 @@ function detailFor(access: ProviderAccess, state: {
     return `${money(state.balance.remaining)} of credit left. ${access.cost_note}`;
   }
   return `${access.cost_note} ${searchNote(access)}`;
+}
+
+function noModels(access: ProviderAccess): string {
+  if (access.id === "azure-openai") return "Key set, but no deployments declared. List them in AZURE_OPENAI_DEPLOYMENTS.";
+  if (access.id === "bedrock") {
+    return "Configured, but this region listed no text model. The credentials may lack bedrock:ListFoundationModels, or no model is enabled here yet.";
+  }
+  return "Configured, but the provider listed no models. It may be unreachable, or the key may have no access.";
 }
 
 function searchNote(access: ProviderAccess): string {
