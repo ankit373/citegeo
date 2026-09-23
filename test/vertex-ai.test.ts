@@ -301,27 +301,89 @@ test("a refused assertion is named rather than surfacing on the first model call
   });
 });
 
-test("the Vertex listing keeps the publisher and survives one publisher being closed", async () => {
+test("the Vertex listing reads the shapes the API actually returns", async () => {
   await withEnv(VERTEX_ENV, async () => {
     await withFetch(async (input) => {
       const url = String(input);
       if (url.includes("oauth2")) return json(TOKEN_BODY);
       if (url.includes("/publishers/google/models")) {
+        // PublisherModel as the discovery document defines it: no displayName,
+        // and supportedActions is a CallToAction that names no inference call.
         return json({
           publisherModels: [
-            { name: "publishers/google/models/gemini-2.5-pro", displayName: "Gemini 2.5 Pro" },
-            { name: "publishers/google/models/gemini-1.0-pro", launchStage: "DEPRECATED" },
+            {
+              name: "publishers/google/models/gemini-2.5-pro",
+              versionId: "001",
+              launchStage: "GA",
+              versionState: "VERSION_STATE_STABLE",
+              supportedActions: { viewRestApi: { references: {} }, openGenerationAiStudio: { references: {} } },
+            },
+            {
+              name: "publishers/google/models/gemma-3-27b",
+              launchStage: "PUBLIC_PREVIEW",
+              supportedActions: { deploy: { modelDisplayName: "gemma" }, openNotebook: { references: {} } },
+            },
           ],
         });
       }
       return json({ error: { message: "not enabled" } }, 403);
     }, async () => {
       const models = await new VertexProductModelCatalog().list();
-      assert.deepEqual(models.map((model) => model.modelId), ["google/gemini-2.5-pro", "google/gemini-1.0-pro"]);
+      assert.deepEqual(models.map((model) => model.modelId), ["google/gemini-2.5-pro", "google/gemma-3-27b"]);
+      // A launch stage of GA is not a reachability signal, and a model exposing
+      // a REST surface is callable.
       assert.equal(models[0]!.available, true);
+      assert.equal(models[0]!.displayName, "google/gemini-2.5-pro");
+      // Deploy without a REST surface means an endpoint has to exist first.
       assert.equal(models[1]!.available, false);
-      assert.equal(models[1]!.unavailableReason?.includes("deprecated"), true);
+      assert.equal(models[1]!.unavailableReason?.includes("endpoint of your own"), true);
     });
+  });
+});
+
+test("a model behind a request for access is not offered as callable", async () => {
+  await withEnv(VERTEX_ENV, async () => {
+    await withFetch(async (input) => {
+      const url = String(input);
+      if (url.includes("oauth2")) return json(TOKEN_BODY);
+      if (url.includes("/publishers/google/models")) {
+        return json({
+          publisherModels: [{
+            name: "publishers/google/models/gated-model",
+            supportedActions: { requestAccess: { references: {} }, viewRestApi: { references: {} } },
+          }],
+        });
+      }
+      return json({ error: { message: "not enabled" } }, 403);
+    }, async () => {
+      const models = await new VertexProductModelCatalog().list();
+      assert.equal(models[0]!.available, false);
+      assert.equal(models[0]!.unavailableReason?.includes("Access has to be requested"), true);
+    });
+  });
+});
+
+test("every page of the listing is read, not just the first", async () => {
+  await withEnv(VERTEX_ENV, async () => {
+    const seen: string[] = [];
+    await withFetch(async (input) => {
+      const url = String(input);
+      if (url.includes("oauth2")) return json(TOKEN_BODY);
+      if (!url.includes("/publishers/google/models")) return json({ error: { message: "no" } }, 403);
+      seen.push(url);
+      if (!url.includes("pageToken")) {
+        return json({
+          publisherModels: [{ name: "publishers/google/models/first" }],
+          nextPageToken: "page-2",
+        });
+      }
+      return json({ publisherModels: [{ name: "publishers/google/models/second" }] });
+    }, async () => {
+      const models = await new VertexProductModelCatalog().list();
+      assert.deepEqual(models.map((model) => model.modelId), ["google/first", "google/second"]);
+    });
+    assert.equal(seen.length, 2);
+    assert.equal(seen[1]!.includes("pageToken=page-2"), true);
   });
 });
 
@@ -420,16 +482,33 @@ test("a refused IBM key is named, and a withdrawn model is not offered as availa
   await withEnv(WATSONX_ENV, async () => {
     await withFetch(async (input) => {
       if (String(input).includes("iam.cloud.ibm.com")) return json({ access_token: "iam-token", expires_in: 3600 });
+      // Shapes taken from a live foundation_model_specs response: task_ids is
+      // null on most rows and functions carries the real capability list.
       return json({
         resources: [
-          { model_id: "ibm/granite-3-8b-instruct", label: "Granite 3 8B", provider: "IBM", task_ids: ["generation"] },
-          { model_id: "ibm/granite-13b-chat-v2", task_ids: ["generation"], lifecycle: [{ id: "withdrawn" }] },
+          {
+            model_id: "ibm/granite-3-8b-instruct", label: "Granite 3 8B", provider: "IBM",
+            task_ids: null, functions: [{ id: "text_chat" }, { id: "text_generation" }],
+            lifecycle: [{ id: "available", start_date: "2024-09-17" }],
+          },
+          {
+            model_id: "ibm/granite-13b-chat-v2", task_ids: null, functions: [{ id: "text_generation" }],
+            lifecycle: [{ id: "available" }, { id: "deprecated" }, { id: "withdrawn" }],
+          },
+          {
+            model_id: "cross-encoder/ms-marco-minilm-l-12-v2", label: "ms-marco", provider: "cross-encoder",
+            task_ids: null, functions: [{ id: "rerank" }],
+          },
+          { model_id: "ibm/slate-125m-english-rtrvr", task_ids: null, functions: [{ id: "embedding" }] },
         ],
       });
     }, async () => {
       const models = await new WatsonxProductModelCatalog().list();
+      // A reranker and an embedding model answer neither chat nor generation,
+      // so offering them as models to ask a question of would be a lie.
       assert.deepEqual(models.map((model) => model.modelId), ["ibm/granite-3-8b-instruct", "ibm/granite-13b-chat-v2"]);
       assert.equal(models[0]!.displayName, "Granite 3 8B");
+      assert.equal(models[0]!.available, true);
       assert.equal(models[1]!.available, false);
       assert.equal(models[1]!.unavailableReason?.includes("Withdrawn"), true);
     });

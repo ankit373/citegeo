@@ -6,6 +6,7 @@ import type { ProductModelCatalog, ProviderModelCatalogItem } from "./model-sele
 // Vertex lists per publisher, so the models offered are the ones the region
 // actually publishes rather than a list compiled here.
 const PUBLISHERS = ["google", "anthropic", "meta", "mistralai"];
+const MAX_PAGES = 20;
 
 function asObject(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
@@ -25,18 +26,55 @@ interface Reachability {
   unavailableReason: string | null;
 }
 
+// supportedActions is a CallToAction, whose fields are deploy, viewRestApi,
+// requestAccess and the rest. It never carries the name of an inference call.
 function reachability(row: Record<string, unknown>): Reachability {
-  const stage = typeof row.launchStage === "string" ? row.launchStage : "";
-  if (stage === "DEPRECATED") {
-    return { available: false, unavailableReason: "Marked deprecated in this region, so it may stop answering without notice." };
-  }
   const actions = asObject(row.supportedActions);
-  // Absent actions is the common shape for a generally available model, so it
-  // is only unavailable when the listing says the call is not offered.
-  if (actions && !("predict" in actions) && !("rawPredict" in actions) && !("generateContent" in actions)) {
-    return { available: false, unavailableReason: "The listing does not offer generateContent for this model in this region." };
+  if (!actions) return { available: true, unavailableReason: null };
+  if (actions.requestAccess) {
+    return { available: false, unavailableReason: "Access has to be requested for this model before a call reaches it." };
+  }
+  // A model offered only as a deployment answers through an endpoint you stand
+  // up yourself, so a publisher request cannot reach it.
+  const deployOnly = !actions.viewRestApi
+    && Boolean(actions.deploy || actions.multiDeployVertex || actions.deployGke);
+  if (deployOnly) {
+    return {
+      available: false,
+      unavailableReason: "Served by deploying it to an endpoint of your own, so a publisher request cannot reach it.",
+    };
   }
   return { available: true, unavailableReason: null };
+}
+
+// PublisherModel carries no human label, so the id is the only name there is.
+function collect(
+  into: ProviderModelCatalogItem[],
+  rows: unknown[],
+  publisher: string,
+  checkedAt: string,
+): void {
+  for (const value of rows) {
+    const row = asObject(value);
+    const name = typeof row?.name === "string" ? row.name : "";
+    const modelId = name ? vertexModelId(name) : null;
+    if (!row || !modelId) continue;
+    const { available, unavailableReason } = reachability(row);
+    into.push({
+      providerId: "vertex-ai" as const,
+      modelId,
+      displayName: modelId,
+      vendor: publisher,
+      releasedAt: null,
+      available,
+      unavailableReason,
+      // Grounding is a request-time tool rather than a model property, and the
+      // listing does not say which models accept it.
+      nativeWebSearchSupported: publisher === "google",
+      checkedAt,
+      source: "provider_catalog" as const,
+    });
+  }
 }
 
 export class VertexProductModelCatalog implements ProductModelCatalog {
@@ -51,46 +89,38 @@ export class VertexProductModelCatalog implements ProductModelCatalog {
     let reached = false;
     let lastFailure = "";
     for (const publisher of PUBLISHERS) {
-      const url = `${endpoint}/v1beta1/publishers/${encodeURIComponent(publisher)}/models`;
-      let response: Response;
-      try {
-        response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-      } catch (error) {
-        lastFailure = `Vertex AI could not be reached: ${error instanceof Error ? error.message : String(error)}`;
-        continue;
-      }
-      if (!response.ok) {
-        // A publisher the project has not enabled answers 403, which is a fact
-        // about that publisher rather than a broken listing.
-        lastFailure = `Vertex AI answered ${response.status} listing ${publisher} models.`;
-        continue;
-      }
-      reached = true;
-      const payload = asObject(await response.json().catch(() => null));
-      const rows = Array.isArray(payload?.publisherModels) ? payload.publisherModels : [];
-      for (const value of rows) {
-        const row = asObject(value);
-        const name = typeof row?.name === "string" ? row.name : "";
-        const modelId = name ? vertexModelId(name) : null;
-        if (!row || !modelId) continue;
-        const { available, unavailableReason } = reachability(row);
-        items.push({
-          providerId: "vertex-ai" as const,
-          modelId,
-          displayName: typeof row.displayName === "string" && row.displayName.trim() ? row.displayName : modelId,
-          vendor: publisher,
-          releasedAt: null,
-          available,
-          unavailableReason,
-          // Grounding is a request-time tool rather than a model property, and
-          // the listing does not say which models accept it.
-          nativeWebSearchSupported: publisher === "google",
-          checkedAt,
-          source: "provider_catalog" as const,
-        });
-      }
+      const base = `${endpoint}/v1beta1/publishers/${encodeURIComponent(publisher)}/models`;
+      let pageToken = "";
+      let pages = 0;
+      let failed = false;
+      // The listing is paged, so reading only the first page quietly hides
+      // every model past it.
+      do {
+        const url = pageToken ? `${base}?pageToken=${encodeURIComponent(pageToken)}` : base;
+        let response: Response;
+        try {
+          response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+        } catch (error) {
+          lastFailure = `Vertex AI could not be reached: ${error instanceof Error ? error.message : String(error)}`;
+          failed = true;
+          break;
+        }
+        if (!response.ok) {
+          // A publisher the project has not enabled answers 403, which is a
+          // fact about that publisher rather than a broken listing.
+          lastFailure = `Vertex AI answered ${response.status} listing ${publisher} models.`;
+          failed = true;
+          break;
+        }
+        reached = true;
+        const payload = asObject(await response.json().catch(() => null));
+        const rows = Array.isArray(payload?.publisherModels) ? payload.publisherModels : [];
+        collect(items, rows, publisher, checkedAt);
+        pageToken = typeof payload?.nextPageToken === "string" ? payload.nextPageToken : "";
+        pages += 1;
+      } while (pageToken && pages < MAX_PAGES);
+      if (failed) continue;
     }
-
     if (!reached) {
       throw new ProductModelCatalogUnavailableError(
         lastFailure || "Vertex AI returned no readable model listing. The service account may lack aiplatform.models.list.",
