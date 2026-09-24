@@ -874,3 +874,12 @@ select[data-filter].is-set {
 @utility mt-lg {
   @apply mt-[22px];
 }
+
+/* The deep dive carries the whole set, so it needs a way to narrow it and a
+   way to take it away. */
+.panel-search {
+  @apply min-h-[34px] rounded-[7px] border border-line bg-surface px-[10px] text-[13px] text-text;
+  min-width: 190px;
+}
+.panel-search::placeholder { color: var(--weak); }
+.panel-filter-note { font-size: 12px; white-space: nowrap; }
