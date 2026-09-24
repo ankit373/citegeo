@@ -4,7 +4,7 @@ import { bar, brandIcon, cell, nameCell, pill, row, section, table, tiles, type 
 import { loading, skeletonCard, skeletonTiles } from "../components/skeleton.js";
 import { match, type Loadable } from "../loadable.js";
 import { panelLayout } from "../components/reorder.js";
-import type { PositionReport } from "../../../product/topics/position-metrics.js";
+import type { CitationStanding, PositionReport } from "../../../product/topics/position-metrics.js";
 
 // The dashboard answers four questions in order: where do I stand, what moved,
 // what would move it, and who is taking the ground. Everything here comes from
@@ -76,6 +76,8 @@ export interface DashboardData {
   alerts: number;
   /** Where the brand sits when it is named, which presence cannot say. */
   position?: PositionReport | undefined;
+  /** Where the brand's own domain sits among the domains being cited. */
+  citation?: CitationStanding | undefined;
 }
 
 /** The four figures the score is built from, never the composite alone. */
@@ -484,7 +486,27 @@ export function sourcesPanel(data: DashboardData): string {
     ]);
   }
   if (data.citedPages === null) return '<p class="subtle">Reading the cited pages.</p>';
+  const cite = data.citation;
+  // Being cited at all and being cited more than the rivals are two different
+  // findings, and a page count alone reports only the first.
+  const standing: TileInput[] = !cite ? [] : [
+    {
+      label: "Citation rank",
+      value: rankText(cite.rank),
+      note: cite.rank === null
+        ? cite.leader ? `${cite.leader.domain} is cited most` : "no domain was cited"
+        : `among ${cite.ahead.length + 1} cited domains`,
+      tone: cite.rank === null ? "state-bad" : cite.rank === 1 ? "state-ok" : "",
+    },
+    {
+      label: "Citation share",
+      value: percent(cite.share),
+      note: cite.ahead.length === 0 ? "nobody is cited more" : `${cite.ahead[0]?.domain} is ahead`,
+      fraction: cite.share,
+    },
+  ];
   return tiles([
+    ...standing,
     { label: "Pages cited", value: String(data.citedPages), note: "read back from the answers" },
     {
       label: "You are missing from",

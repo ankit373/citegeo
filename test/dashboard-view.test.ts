@@ -71,6 +71,31 @@ test("pages not read back yet are distinguished from no pages cited", () => {
   assert.ok(sourcesPanel(data({ citedPages: 0, missingFrom: 0 })).includes("Pages cited"));
 });
 
+test("the sources panel says where you rank among cited domains, not just that you were cited", () => {
+  const drawn = sourcesPanel(data({
+    citation: { rank: 2, share: 0.3, ahead: [{ domain: "rival.com", answers: 10 }], leader: { domain: "rival.com", answers: 10 } },
+  }));
+  assert.ok(drawn.includes("Citation rank"));
+  assert.ok(drawn.includes("#2"));
+  assert.ok(drawn.includes("rival.com is ahead"));
+});
+
+test("an uncited brand is told who is being cited instead", () => {
+  const drawn = sourcesPanel(data({
+    citation: { rank: null, share: null, ahead: [], leader: { domain: "rival.com", answers: 9 } },
+  }));
+  // Not named is a finding. Reporting it as rank nought would be a number
+  // nobody could act on.
+  assert.ok(drawn.includes("Not named"));
+  assert.ok(drawn.includes("rival.com is cited most"));
+});
+
+test("a panel with no citation standing draws the page counts alone", () => {
+  const drawn = sourcesPanel(data({}));
+  assert.equal(drawn.includes("Citation rank"), false);
+  assert.ok(drawn.includes("Pages cited"));
+});
+
 test("only the moves that raise the score are offered, and the rest is one link", () => {
   const list = movesList(data().moves);
   assert.ok(list.includes("Win the 3 you are never named in"));

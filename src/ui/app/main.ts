@@ -1698,6 +1698,7 @@ export function boot(): void {
         missingFrom: outreach ? (outreach.targets as any[]).filter((t: any) => !t.namesYou).length : null,
         spark: data ? sparkline(data.trend.points, 170, 30) : "",
         position: data ? positionReport(data.topics.flatMap((topic: any) => topic.prompts)) : undefined,
+        citation: state.cited ? ((state.cited as Unshaped).standing as any) : undefined,
         asked: (() => {
           if (!data) return undefined;
           const prompts = (data.topics as any[]).flatMap((topic: any) => topic.prompts as any[]);

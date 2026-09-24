@@ -2,6 +2,7 @@ import { buildTopicInsights, type TopicInsights } from "./topic-insights.js";
 import { buildHomeSummary } from "../alerts/home-summary.js";
 import { buildAnswerDigest } from "../alerts/answer-digest.js";
 import { buildCitationAnalysis } from "./citation-analysis.js";
+import { citationStanding } from "./position-metrics.js";
 import { buildRankingPlan, type RankingPlan } from "./ranking-plan.js";
 import { projectInsights } from "./project-insights.js";
 import { NO_PERSONA, type PersonaService } from "./persona.js";
@@ -358,7 +359,10 @@ export async function handleTopicApi(input: {
         runs.listAnswers(projectId),
         topics.targetIdentity(projectId),
       ]);
-      return buildCitationAnalysis({ answers: sliced(answers, url), identity });
+      const analysis = buildCitationAnalysis({ answers: sliced(answers, url), identity });
+      // Computed here so the rank the dashboard draws and the rank an export
+      // carries come from one place rather than two readings of the domains.
+      return { ...analysis, standing: citationStanding(analysis) };
     }, 404);
     return true;
   }
