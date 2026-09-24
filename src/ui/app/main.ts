@@ -301,6 +301,9 @@ export function boot(): void {
       for (const key of ["modelId", "regionId", "languageId", "topicId"]) {
         if (state.filters[key]) parts.push(key + "=" + encodeURIComponent(state.filters[key]));
       }
+      // The range narrowed the chart and nothing else, so a bar reading 7 days
+      // sat above figures counted over the whole archive.
+      if (state.dashRange && state.dashRange !== "all") parts.push("range=" + encodeURIComponent(state.dashRange));
       return parts.length ? "?" + parts.join("&") : "";
     }
 
@@ -2603,7 +2606,16 @@ export function boot(): void {
     document.addEventListener("click", async (event) => { const target = el(event.target) as any; if (target && target.closest && target.closest("[data-reload-providers]")) { state.providersState = "idle"; loadProviders(); return; }
       if (target && target.closest && target.closest("[data-reload-insights]")) { state.insightsState = "idle"; state.crawlersState = "idle"; state.planState = "idle"; state.signalsState = "idle"; loadInsights(); loadCrawlers(); loadPlan(); loadSignals(); return; }
       const rangeButton = target && target.closest ? target.closest("[data-dash-range]") : null;
-      if (rangeButton) { state.dashRange = rangeButton.getAttribute("data-dash-range") || "all"; savePreference("range", state.dashRange); render(); return; }
+      if (rangeButton) {
+        state.dashRange = rangeButton.getAttribute("data-dash-range") || "all";
+        savePreference("range", state.dashRange);
+        // The figures are counted server side now, so the range has to refetch
+        // rather than redraw what was already narrowed to something else.
+        state.answerEngineState = "idle";
+        state.citedState = "idle";
+        render();
+        return;
+      }
       const metricButton = target && target.closest ? target.closest("[data-dash-metric]") : null;
       if (metricButton) { state.dashMetric = metricButton.getAttribute("data-dash-metric") || "visibility"; savePreference("metric", state.dashMetric); render(); return; }
       const saveCred = target && target.closest ? target.closest("[data-credential-save]") : null;
