@@ -251,3 +251,18 @@ test("every measurement nav item has a section of its own", () => {
     assert.ok(source.includes(`id="${target}"`), `${target} has no section`);
   }
 });
+
+test("a row that hides has a rule saying so, because its class beats [hidden]", () => {
+  const css = readFileSync(join(process.cwd(), "src", "ui", "theme.css"), "utf8");
+  // .mrow applies display:grid from a class, and an author class beats the
+  // user agent rule behind [hidden], so the attribute alone hides nothing.
+  const rows = ["mrow", "rankrow"];
+  for (const row of rows) {
+    const declaresDisplay = css.includes(`@utility ${row} {`);
+    if (!declaresDisplay) continue;
+    assert.ok(
+      css.includes(`.${row}[hidden]`),
+      `.${row} sets display by class, so it needs a [hidden] rule or filtering it will do nothing`,
+    );
+  }
+});

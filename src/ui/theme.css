@@ -495,6 +495,23 @@
   @apply flex flex-wrap items-center gap-[9px];
 }
 
+/* A filter with nothing chosen carries a dashed edge, so the bar says what it
+   is filtering by without a badge or a count. The markup already said which
+   ones are set and nothing drew it. */
+.segment select:not(.is-set),
+select[data-filter]:not(.is-set) {
+  border-style: dashed;
+  border-color: var(--line-strong);
+  color: var(--muted);
+}
+
+.segment select.is-set,
+select[data-filter].is-set {
+  border-style: solid;
+  border-color: color-mix(in oklab, var(--accent) 52%, transparent);
+  color: var(--text);
+}
+
 @utility filter {
   @apply inline-flex min-h-[34px] cursor-pointer items-center rounded-[7px] border border-line bg-transparent px-[10px] text-[13px] text-muted;
   transition: background-color var(--motion-fast) var(--ease-standard),
@@ -857,3 +874,18 @@
 @utility mt-lg {
   @apply mt-[22px];
 }
+
+/* The deep dive carries the whole set, so it needs a way to narrow it and a
+   way to take it away. */
+.panel-search {
+  @apply min-h-[34px] rounded-[7px] border border-line bg-surface px-[10px] text-[13px] text-text;
+  min-width: 190px;
+}
+.panel-search::placeholder { color: var(--weak); }
+.panel-filter-note { font-size: 12px; white-space: nowrap; }
+
+/* A row is a grid or a flex box by class, and an author class beats the user
+   agent rule behind [hidden], so hiding one needs saying here. */
+.mrow[hidden],
+.rankrow[hidden],
+.panel-body li[hidden] { display: none; }

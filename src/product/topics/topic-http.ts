@@ -2,6 +2,8 @@ import { buildTopicInsights, type TopicInsights } from "./topic-insights.js";
 import { buildHomeSummary } from "../alerts/home-summary.js";
 import { buildAnswerDigest } from "../alerts/answer-digest.js";
 import { buildCitationAnalysis } from "./citation-analysis.js";
+import { citationStanding } from "./position-metrics.js";
+import { sliceByWindow, windowFor } from "./period-window.js";
 import { buildRankingPlan, type RankingPlan } from "./ranking-plan.js";
 import { projectInsights } from "./project-insights.js";
 import { NO_PERSONA, type PersonaService } from "./persona.js";
@@ -42,7 +44,12 @@ function sliced(answers: PromptAnswer[], url: URL | undefined): PromptAnswer[] {
   const regionId = want("regionId");
   const languageId = want("languageId");
   const topicId = want("topicId");
-  return answers.filter((answer) =>
+  // A range the client already tracked never reached here, so every figure was
+  // read over the whole archive whatever the bar said.
+  const explicit = want("from") && want("to") ? { from: want("from"), to: want("to") } : null;
+  const window = explicit || windowFor(want("range"), new Date());
+  const within = sliceByWindow(answers, window);
+  return within.filter((answer) =>
     (!modelId || answer.modelId === modelId)
     && (!regionId || answer.regionId === regionId)
     && (!languageId || answer.languageId === languageId)
@@ -358,7 +365,10 @@ export async function handleTopicApi(input: {
         runs.listAnswers(projectId),
         topics.targetIdentity(projectId),
       ]);
-      return buildCitationAnalysis({ answers: sliced(answers, url), identity });
+      const analysis = buildCitationAnalysis({ answers: sliced(answers, url), identity });
+      // Computed here so the rank the dashboard draws and the rank an export
+      // carries come from one place rather than two readings of the domains.
+      return { ...analysis, standing: citationStanding(analysis) };
     }, 404);
     return true;
   }

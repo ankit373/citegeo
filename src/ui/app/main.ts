@@ -1,5 +1,7 @@
 import { CONFIG } from "./config.js";
 import { dashboardBody, dashboardPanels, heroStats, type DashboardData } from "./pages/dashboard-view.js";
+import { positionReport } from "../../product/topics/position-metrics.js";
+import { exportName, filterSummary, matchesQuery, panelCsv } from "./components/panel-tools.js";
 import { emptyState, notice, section } from "./components/primitives.js";
 import { button } from "./components/button.js";
 import { navScrim, navToggle, wireNav } from "./components/nav.js";
@@ -299,6 +301,9 @@ export function boot(): void {
       for (const key of ["modelId", "regionId", "languageId", "topicId"]) {
         if (state.filters[key]) parts.push(key + "=" + encodeURIComponent(state.filters[key]));
       }
+      // The range narrowed the chart and nothing else, so a bar reading 7 days
+      // sat above figures counted over the whole archive.
+      if (state.dashRange && state.dashRange !== "all") parts.push("range=" + encodeURIComponent(state.dashRange));
       return parts.length ? "?" + parts.join("&") : "";
     }
 
@@ -1563,7 +1568,11 @@ export function boot(): void {
       if (state.panel.kind === "panel") {
         return '<div class="panel-scrim" data-close-panel></div><aside class="panel is-wide-panel" role="dialog" aria-label="' + html(state.panel.title) + '">'
           + '<div class="panel-head"><div><h2>' + html(state.panel.title) + '</h2><p class="subtle">' + html(String(state.panel.blurb || "")) + '</p></div>'
-          + '<div class="panel-actions">' + button({ label: "Close", kind: "quiet", on: { "data-close-panel": true } }) + '</div></div>'
+          + '<div class="panel-actions">'
+          + '<input type="search" class="panel-search" data-panel-search placeholder="Search this panel" aria-label="Search this panel">'
+          + '<span class="panel-filter-note subtle" data-panel-filter-note aria-live="polite"></span>'
+          + button({ label: "Export CSV", kind: "quiet", on: { "data-panel-export": true } })
+          + button({ label: "Close", kind: "quiet", on: { "data-close-panel": true } }) + '</div></div>'
           + '<div class="panel-body">' + String(state.panel.body || "") + '</div></aside>';
       }
       const body = state.panelState === "loading"
@@ -1696,6 +1705,8 @@ export function boot(): void {
         citedPages: outreach ? outreach.cited : null,
         missingFrom: outreach ? (outreach.targets as any[]).filter((t: any) => !t.namesYou).length : null,
         spark: data ? sparkline(data.trend.points, 170, 30) : "",
+        position: data ? positionReport(data.topics.flatMap((topic: any) => topic.prompts)) : undefined,
+        citation: state.cited ? ((state.cited as Unshaped).standing as any) : undefined,
         asked: (() => {
           if (!data) return undefined;
           const prompts = (data.topics as any[]).flatMap((topic: any) => topic.prompts as any[]);
@@ -1841,7 +1852,7 @@ export function boot(): void {
       const hero = '<div class="hero"><div class="hero-figure"><span class="scorebig">' + scoreText(home.score) + '</span>'
         + '<span class="hero-sub">' + deltaPill(data ? data.trend : { change: home.change }) + '<span>'
         + (home.rank === null || home.rank === undefined ? "Not named" : "#" + home.rank + " of " + ((home.rivals || 0) + 1)) + '</span></span>'
-        + '<span class="hero-spark">' + view.spark + '</span></div>' + heroStats(view.overall) + '</div>';
+        + '<span class="hero-spark">' + view.spark + '</span></div>' + heroStats(view.overall, view.position) + '</div>';
 
       const alerts = (home.alerts as any[]).length
         ? '<div class="alertlist">' + (home.alerts as any[]).map((alert: any) => '<div class="alertrow"><span class="pill ' + alertPill(alert.severity) + '">' + html(alert.severity) + '</span><div><strong>' + html(alert.headline) + '</strong><p class="subtle">' + html(alert.detail) + '</p></div></div>').join("") + '</div>'
@@ -2595,7 +2606,16 @@ export function boot(): void {
     document.addEventListener("click", async (event) => { const target = el(event.target) as any; if (target && target.closest && target.closest("[data-reload-providers]")) { state.providersState = "idle"; loadProviders(); return; }
       if (target && target.closest && target.closest("[data-reload-insights]")) { state.insightsState = "idle"; state.crawlersState = "idle"; state.planState = "idle"; state.signalsState = "idle"; loadInsights(); loadCrawlers(); loadPlan(); loadSignals(); return; }
       const rangeButton = target && target.closest ? target.closest("[data-dash-range]") : null;
-      if (rangeButton) { state.dashRange = rangeButton.getAttribute("data-dash-range") || "all"; savePreference("range", state.dashRange); render(); return; }
+      if (rangeButton) {
+        state.dashRange = rangeButton.getAttribute("data-dash-range") || "all";
+        savePreference("range", state.dashRange);
+        // The figures are counted server side now, so the range has to refetch
+        // rather than redraw what was already narrowed to something else.
+        state.answerEngineState = "idle";
+        state.citedState = "idle";
+        render();
+        return;
+      }
       const metricButton = target && target.closest ? target.closest("[data-dash-metric]") : null;
       if (metricButton) { state.dashMetric = metricButton.getAttribute("data-dash-metric") || "visibility"; savePreference("metric", state.dashMetric); render(); return; }
       const saveCred = target && target.closest ? target.closest("[data-credential-save]") : null;
@@ -2606,6 +2626,70 @@ export function boot(): void {
       if (probeButton) { await captureSignals(probeButton); state.signalsState = "idle"; loadSignals(); return; } if (!(target instanceof Element)) return; const pageButton = target.closest("[data-page]"); if (pageButton) { await setPage(pageButton.getAttribute("data-page") || "overview"); return; } const listModeButton = target.closest("[data-list-mode]"); if (listModeButton) { state.mode = listModeButton.getAttribute("data-list-mode") || "current"; await refreshProjects(); render(); return; } if (target.id === "new-project" || target.id === "empty-new-project") { openDrawer(); return; } if (target.id === "close-drawer" || target.id === "cancel-draft" || target.id === "drawer-backdrop") { closeDrawer(); return; } if (target.id === "retry-catalog") { state.catalogState = "idle"; await loadCatalog(); return; } const opened = target.closest("[data-matrix-open]"); if (opened) { const key = opened.getAttribute("data-matrix-open") || ""; const at = state.matrixOpen.indexOf(key); if (at >= 0) state.matrixOpen.splice(at, 1); else state.matrixOpen.push(key); render(); return; } const expand = target.closest("[data-expand-panel]"); if (expand && !target.closest("button:not(.panel-open),a,select,input,textarea,label")) { openPanel(expand.getAttribute("data-expand-panel") || ""); return; } if (target.closest("[data-edit-board]")) { state.editingBoard = !state.editingBoard; render(); return; } const span = target.closest("[data-panel-span]"); if (span) { const parts = (span.getAttribute("data-panel-span") || "").split(":"); setPanelSpan(parts[0] || "", Number(parts[1])); render(); return; } const hide = target.closest("[data-panel-hide]"); if (hide) { togglePanelHidden(hide.getAttribute("data-panel-hide") || ""); render(); return; } if (target.closest("[data-reset-panels]")) { resetPanelOrder(); state.editingBoard = false; render(); return; } const brand = target.closest("[data-brand-evidence]"); if (brand) { await openBrandEvidence(brand.getAttribute("data-brand-evidence") || "", brand.getAttribute("data-brand-tone") || ""); return; } const dropped = target.closest("[data-drop-selection]"); if (dropped) { dropSelection(dropped.getAttribute("data-drop-selection") || ""); return; } if (target.id === "save-models") { await saveModels((target as any)); return; } if (target.id === "save-monitoring-configuration") { await saveMonitoringConfiguration(); return; } if (target.id === "archive-project") { const selected = project(); if (selected) await projectAction("archive", selected.id, (target as any)); return; } if (target.id === "delete-project") { const selected = project(); if (selected) await projectAction("delete", selected.id, (target as any)); return; } const action = target.closest("[data-project-action]"); if (action) { const projectId = action.getAttribute("data-project-id"); const name = action.getAttribute("data-project-action"); if (projectId && name) await projectAction(name, projectId, (action as any)); } });
     document.addEventListener("change", async (event) => { const target = el(event.target) as any; if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) return; if (target.id === "project-select") { setSelectedProject(target.value); state.selectionsDirty = false; await refreshConfiguration(); loadLiveRun(); render(); return; } if (target instanceof HTMLInputElement && target.hasAttribute("data-model-checkbox")) { changeModel(target.getAttribute("data-model-checkbox") || "", target.checked); return; } if (target instanceof HTMLSelectElement && target.hasAttribute("data-model-mode")) { changeModelMode(target.getAttribute("data-model-mode") || "", target.value); return; } if (target instanceof HTMLSelectElement && target.hasAttribute("data-selected-model-mode")) { changeModelMode(target.getAttribute("data-selected-model-mode") || "", target.value); return; } });
     document.addEventListener("change", (event) => { const target = el(event.target) as any; if (!(target instanceof HTMLSelectElement)) return; if (target.id === "model-provider-filter") { state.catalogProvider = target.value; render(); return; } if (target.id === "model-native-search-filter") { state.catalogNativeSearch = target.value; render(); return; } if (target.id === "model-catalog-sort") { state.catalogSort = target.value; render(); } });
+    // The drawer filters in place rather than through a re-render, because a
+    // re-render takes the focus out of the box you are typing in.
+    const PANEL_ROWS = ".mrow, .rankrow, .panel-body li";
+
+    function panelRowText(node: Element): string {
+      return String(node.textContent || "").split("\n").join(" ").trim();
+    }
+
+    function filterPanel(query: string): void {
+      const body = document.querySelector(".panel-body");
+      const note = document.querySelector("[data-panel-filter-note]");
+      if (!body) return;
+      let shown = 0;
+      let hidden = 0;
+      for (const node of Array.from(body.querySelectorAll(PANEL_ROWS))) {
+        if (node.classList.contains("mhead")) continue;
+        const on = matchesQuery(panelRowText(node), query);
+        (node as HTMLElement).hidden = !on;
+        if (on) shown += 1; else hidden += 1;
+      }
+      if (note) note.textContent = filterSummary({ shown, hidden }, query);
+    }
+
+    /** Exports what is on screen, so a filtered panel exports the filtered set. */
+    function exportPanel(): void {
+      const body = document.querySelector(".panel-body");
+      if (!body || !state.panel) return;
+      const head = body.querySelector(".mhead");
+      const columns = head
+        ? Array.from(head.children).map((cell) => String(cell.textContent || "").trim())
+        : ["Row"];
+      const rows: string[][] = [];
+      for (const node of Array.from(body.querySelectorAll(PANEL_ROWS))) {
+        if (node.classList.contains("mhead") || (node as HTMLElement).hidden) continue;
+        const cells = Array.from(node.children).map((cell) => panelRowText(cell));
+        rows.push(cells.length ? cells : [panelRowText(node)]);
+      }
+      const csv = panelCsv(columns, rows);
+      const name = exportName(String(state.panel.title || "panel"), new Date().toISOString().slice(0, 10));
+      const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = name;
+      // A detached anchor does not download in every browser, and revoking the
+      // url in the same tick can cancel the download before it starts.
+      link.hidden = true;
+      document.body.appendChild(link);
+      link.click();
+      window.setTimeout(() => {
+        link.remove();
+        URL.revokeObjectURL(url);
+      }, 0);
+    }
+
+    document.addEventListener("input", (event) => {
+      const box = el(event.target) as any;
+      if (box instanceof HTMLInputElement && box.hasAttribute("data-panel-search")) filterPanel(box.value);
+    });
+
+    document.addEventListener("click", (event) => {
+      const target = el(event.target) as any;
+      if (target instanceof Element && target.closest("[data-panel-export]")) exportPanel();
+    });
+
     document.addEventListener("input", (event) => { const target = el(event.target) as any; if (target instanceof HTMLInputElement && target.id === "model-search") { state.query = target.value; refreshCatalogSearchResults(); return; } if (target instanceof HTMLInputElement && target.id === "prompt-search") { state.promptFilters.query = target.value; refreshPromptResults(); } });
     document.addEventListener("submit", (event) => { const target = el(event.target) as any; if (!(target instanceof HTMLFormElement)) return; if (target.id === "project-form") createDraft(event); if (target.id === "project-edit-form") saveProject(event); });
     refreshProjects().then(async () => { await refreshConfiguration(); loadLiveRun(); render(); }).catch((error) => { app.innerHTML = '<main class="workspace"><div class="warning-box">' + html(error instanceof Error ? error.message : String(error)) + '</div></main>'; });
