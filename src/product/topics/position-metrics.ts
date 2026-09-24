@@ -17,10 +17,8 @@ export interface PositionReport {
   worst: number | null;
 }
 
-/**
- * A prompt that never named the brand has no place, and scoring it as last
- * would invent a number that depends on how many rivals happened to be listed.
- */
+// Scoring an absence as last would invent a number that depends on how many
+// rivals happened to be listed, which is a fact about the answer.
 export function positionReport(prompts: PromptStanding[]): PositionReport {
   const places: number[] = [];
   let unranked = 0;
@@ -53,10 +51,8 @@ export interface CitationStanding {
   leader: { domain: string; answers: number } | null;
 }
 
-/**
- * Ties share a place and the next place skips, so two domains level on second
- * are both second and nobody is third.
- */
+// Ties share a place and the next skips, so two domains level on second are
+// both second and nobody is third.
 export function citationStanding(analysis: CitationAnalysis): CitationStanding {
   const ordered = [...analysis.domains].sort((left, right) => right.answers - left.answers);
   const leader = ordered[0] ? { domain: ordered[0].domain, answers: ordered[0].answers } : null;
