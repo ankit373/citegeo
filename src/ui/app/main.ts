@@ -1,5 +1,6 @@
 import { CONFIG } from "./config.js";
 import { dashboardBody, dashboardPanels, heroStats, type DashboardData } from "./pages/dashboard-view.js";
+import { positionReport } from "../../product/topics/position-metrics.js";
 import { emptyState, notice, section } from "./components/primitives.js";
 import { button } from "./components/button.js";
 import { navScrim, navToggle, wireNav } from "./components/nav.js";
@@ -1696,6 +1697,7 @@ export function boot(): void {
         citedPages: outreach ? outreach.cited : null,
         missingFrom: outreach ? (outreach.targets as any[]).filter((t: any) => !t.namesYou).length : null,
         spark: data ? sparkline(data.trend.points, 170, 30) : "",
+        position: data ? positionReport(data.topics.flatMap((topic: any) => topic.prompts)) : undefined,
         asked: (() => {
           if (!data) return undefined;
           const prompts = (data.topics as any[]).flatMap((topic: any) => topic.prompts as any[]);
@@ -1841,7 +1843,7 @@ export function boot(): void {
       const hero = '<div class="hero"><div class="hero-figure"><span class="scorebig">' + scoreText(home.score) + '</span>'
         + '<span class="hero-sub">' + deltaPill(data ? data.trend : { change: home.change }) + '<span>'
         + (home.rank === null || home.rank === undefined ? "Not named" : "#" + home.rank + " of " + ((home.rivals || 0) + 1)) + '</span></span>'
-        + '<span class="hero-spark">' + view.spark + '</span></div>' + heroStats(view.overall) + '</div>';
+        + '<span class="hero-spark">' + view.spark + '</span></div>' + heroStats(view.overall, view.position) + '</div>';
 
       const alerts = (home.alerts as any[]).length
         ? '<div class="alertlist">' + (home.alerts as any[]).map((alert: any) => '<div class="alertrow"><span class="pill ' + alertPill(alert.severity) + '">' + html(alert.severity) + '</span><div><strong>' + html(alert.headline) + '</strong><p class="subtle">' + html(alert.detail) + '</p></div></div>').join("") + '</div>'

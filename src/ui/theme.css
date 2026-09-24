@@ -495,6 +495,23 @@
   @apply flex flex-wrap items-center gap-[9px];
 }
 
+/* A filter with nothing chosen carries a dashed edge, so the bar says what it
+   is filtering by without a badge or a count. The markup already said which
+   ones are set and nothing drew it. */
+.segment select:not(.is-set),
+select[data-filter]:not(.is-set) {
+  border-style: dashed;
+  border-color: var(--line-strong);
+  color: var(--muted);
+}
+
+.segment select.is-set,
+select[data-filter].is-set {
+  border-style: solid;
+  border-color: color-mix(in oklab, var(--accent) 52%, transparent);
+  color: var(--text);
+}
+
 @utility filter {
   @apply inline-flex min-h-[34px] cursor-pointer items-center rounded-[7px] border border-line bg-transparent px-[10px] text-[13px] text-muted;
   transition: background-color var(--motion-fast) var(--ease-standard),

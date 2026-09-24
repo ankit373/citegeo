@@ -4,6 +4,7 @@ import { bar, brandIcon, cell, nameCell, pill, row, section, table, tiles, type 
 import { loading, skeletonCard, skeletonTiles } from "../components/skeleton.js";
 import { match, type Loadable } from "../loadable.js";
 import { panelLayout } from "../components/reorder.js";
+import type { PositionReport } from "../../../product/topics/position-metrics.js";
 
 // The dashboard answers four questions in order: where do I stand, what moved,
 // what would move it, and who is taking the ground. Everything here comes from
@@ -73,15 +74,29 @@ export interface DashboardData {
   missingFrom: number | null;
   spark: string;
   alerts: number;
+  /** Where the brand sits when it is named, which presence cannot say. */
+  position?: PositionReport | undefined;
 }
 
 /** The four figures the score is built from, never the composite alone. */
-export function heroStats(standing: Standing): string {
+export function heroStats(standing: Standing, position?: PositionReport | undefined): string {
   const stat = (label: string, value: string, note: string): string =>
     `<div class="hero-stat"><span>${html(label)}</span><strong>${html(value)}</strong><small>${html(note)}</small></div>`;
+  // Presence counts the answers naming you. Position says where in them, and a
+  // brand named last in every answer looks the same as a leader without it.
+  const place = !position || position.averagePosition === null
+    ? stat("Average position", "Not named", position && position.unranked > 0
+        ? `${position.unranked} questions named someone else`
+        : "no question resolved a place")
+    : stat(
+        "Average position",
+        String(position.averagePosition),
+        `best ${position.best}, worst ${position.worst}, over ${position.ranked} questions`,
+      );
   return join([
     '<div class="hero-stats">',
     stat("Presence", percent(standing.presenceRate), `${standing.appearances} of ${standing.answers} named you`),
+    place,
     stat("Prominence", percent(standing.prominence), "how early you appear"),
     stat("Sentiment", percent(standing.sentiment), "recommended or listed"),
     "</div>",
@@ -356,7 +371,7 @@ export function rivalRanks(standings: RivalStanding[]): string {
     `<span class="rankname">${html(entry.name)}${entry.isTarget ? ` ${pill("You", "good")}` : ""}</span>`,
     `<span class="rankvalue">${percent(entry.share)}</span>`,
     entry.moved === null
-      ? '<span class="rankmove is-flat" title="No earlier run to compare with">&ndash;</span>'
+      ? '<span class="rankmove is-flat" title="No earlier run to compare with">&middot;</span>'
       : `<span class="rankmove ${entry.moved > 0 ? "is-up" : entry.moved < 0 ? "is-down" : "is-flat"}">`
         + `${entry.moved > 0 ? "+" : ""}${Math.round(entry.moved * 1000) / 10}pp</span>`,
     "</li>",
@@ -541,7 +556,8 @@ export function topicMatrix(data: MatrixData, open: string[] = []): string {
       const fill = mix === 0 ? "" : ` style="background:color-mix(in oklab, var(--accent) ${mix}%, transparent)"`;
       const dark = mix >= 52 ? " is-strong" : "";
       return `<span class="mxcell${target ? " is-you" : ""}${dark}"${fill}>`
-        + (share === null ? "&ndash;" : percent(share)) + "</span>";
+        + (share === null ? '<span class="mxnone" title="Never named under this topic">&middot;</span>' : percent(share))
+        + "</span>";
     }).join("");
     const opens = row.children > 0;
     return `<div class="mrow mxrow d${row.depth}" style="${columns}">`
