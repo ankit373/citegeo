@@ -2669,8 +2669,15 @@ export function boot(): void {
       const link = document.createElement("a");
       link.href = url;
       link.download = name;
+      // A detached anchor does not download in every browser, and revoking the
+      // url in the same tick can cancel the download before it starts.
+      link.hidden = true;
+      document.body.appendChild(link);
       link.click();
-      URL.revokeObjectURL(url);
+      window.setTimeout(() => {
+        link.remove();
+        URL.revokeObjectURL(url);
+      }, 0);
     }
 
     document.addEventListener("input", (event) => {

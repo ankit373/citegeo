@@ -883,3 +883,9 @@ select[data-filter].is-set {
 }
 .panel-search::placeholder { color: var(--weak); }
 .panel-filter-note { font-size: 12px; white-space: nowrap; }
+
+/* A row is a grid or a flex box by class, and an author class beats the user
+   agent rule behind [hidden], so hiding one needs saying here. */
+.mrow[hidden],
+.rankrow[hidden],
+.panel-body li[hidden] { display: none; }
