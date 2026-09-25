@@ -52,16 +52,16 @@
     "cheerio": "^1.2.0",
     "cron-parser": "^5.10.1",
     "linkify-it": "^6.1.0",
-    "marked": "^18.0.13",
+    "marked": "^18.0.14",
     "nodemailer": "^10.0.10"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
     "@tailwindcss/cli": "^4.3.3",
-    "@types/node": "^24.13.5",
+    "@types/node": "^24.13.6",
     "@types/nodemailer": "^8.0.2",
     "tailwindcss": "^4.3.3",
-    "tsx": "^4.20.5",
+    "tsx": "^4.23.15",
     "typescript": "^6.0.3"
   },
   "engines": {
