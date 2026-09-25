@@ -35,9 +35,12 @@ test("the saved model count travels with the summary, so a run can be forecast b
 test("the prompts screen can be read, filtered and acted on in bulk", () => {
   const html = productAppSource();
 
-  for (const control of ['id="prompt-search"', 'data-prompt-filter="topicId"', 'data-prompt-filter="intent"', 'data-prompt-filter="status"', "data-prompt-select-all", "data-prompt-intent="]) {
+  for (const control of ['id="prompt-search"', 'data-prompt-filter="topicId"', 'data-prompt-filter="intent"', 'data-prompt-filter="status"', "data-prompt-intent="]) {
     assert.equal(html.includes(control), true, control);
   }
+  // Prompts feed paid runs. One click selecting every prompt on screen, then
+  // Run, is an expensive mistake with nothing between it and the spend.
+  assert.equal(html.includes("data-prompt-select-all"), false, "select all is deliberately gone");
   for (const action of ["data-prompt-checkbox=", "data-bulk-activate", "data-bulk-retire", "data-bulk-run", "data-bulk-clear", "data-prompt-review"]) {
     assert.equal(html.includes(action), true, action);
   }

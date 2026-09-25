@@ -365,14 +365,6 @@ export function boot(): void {
       }
     }
 
-    function selectAllShown() {
-      const set = state.topicSet || { topics: [], prompts: [] };
-      const rows = filteredPrompts(set, promptStandings());
-      const all = rows.length > 0 && rows.every((prompt) => state.promptSelection.indexOf(prompt.id) >= 0);
-      state.promptSelection = all ? [] : rows.map((prompt) => prompt.id);
-      refreshPromptResults();
-    }
-
     // Only the prompts the action can apply to: activating something already
     // tracked is a no-op the count should not claim.
     async function bulkPrompts(action: string) {
@@ -2157,7 +2149,6 @@ export function boot(): void {
         + '<select data-prompt-filter="intent" aria-label="Filter by intent"' + (filters.intent ? ' class="is-set"' : '') + '><option value="">Any intent</option>' + intents + '</select>'
         + '<select data-prompt-filter="status" aria-label="Filter by state"' + (filters.status ? ' class="is-set"' : '') + '>' + states + '</select>'
         + '<select data-prompt-sort aria-label="Order" class="is-set"><option value="topic"' + (state.promptSort === "topic" ? " selected" : "") + '>Group by topic</option><option value="open"' + (state.promptSort === "open" ? " selected" : "") + '>Open fields first</option><option value="worst"' + (state.promptSort === "worst" ? " selected" : "") + '>Worst score first</option></select>'
-        + (shown ? '<button type="button" class="filter" data-prompt-select-all>Select all shown</button>' : '')
         + '<span class="prompt-result-summary subtle">' + promptResultSummary(shown, livePrompts(set).length) + '</span></div>';
     }
 
@@ -2227,8 +2218,6 @@ export function boot(): void {
       if (summary) summary.textContent = promptResultSummary(rows.length, livePrompts(set).length);
       // The toolbar is not re-rendered on a filter, so the button that acts on
       // the rows has to be told when there are none to act on.
-      const selectAll = document.querySelector("[data-prompt-select-all]");
-      if (selectAll) (selectAll as any).hidden = rows.length === 0;
       const bulk = document.querySelector(".prompt-bulk");
       if (bulk) bulk.innerHTML = promptBulkInner();
     }
@@ -2455,7 +2444,6 @@ export function boot(): void {
         render();
         return;
       }
-      if (clicked.closest("[data-prompt-select-all]")) { selectAllShown(); return; }
       if (clicked.closest("[data-bulk-clear]")) { state.promptSelection = []; refreshPromptResults(); return; }
       if (clicked.closest("[data-bulk-activate]")) { await bulkPrompts("activate"); return; }
       if (clicked.closest("[data-bulk-retire]")) { await bulkPrompts("retire"); return; }
