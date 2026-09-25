@@ -1,6 +1,7 @@
 import { CONFIG } from "./config.js";
 import { dashboardBody, dashboardPanels, heroStats, type DashboardData } from "./pages/dashboard-view.js";
 import { positionReport } from "../../product/topics/position-metrics.js";
+import { REGION_CAVEAT } from "../../product/topics/region.js";
 import { exportName, filterSummary, matchesQuery, panelCsv } from "./components/panel-tools.js";
 import { emptyState, notice, section } from "./components/primitives.js";
 import { button } from "./components/button.js";
@@ -1697,6 +1698,7 @@ export function boot(): void {
         matrix: buildMatrix(data, String(home.domain || selected.normalizedDomain)),
         matrixOpen: state.matrixOpen,
         matrixHidden: state.matrixHidden,
+        regionCaveat: REGION_CAVEAT,
         domain: String(home.domain || selected.normalizedDomain),
         score: home.score ?? null,
         change: home.change ?? null,
@@ -1714,7 +1716,7 @@ export function boot(): void {
           negative: row.negative ?? 0,
         })) : [],
         byModel: data ? data.byModel.map((row: any) => ({ label: row.displayName, score: row.score.score, answers: row.score.answers, rank: null })) : [],
-        byRegion: data ? data.byRegion.map((row: any) => ({ label: row.label, score: row.score.score, answers: row.score.answers, rank: row.rank })) : [],
+        byRegion: data ? data.byRegion.map((row: any) => ({ id: row.regionId, label: row.label, score: row.score.score, answers: row.score.answers, rank: row.rank })) : [],
         byPersona: data ? data.byPersona.map((row: any) => ({ label: row.label, score: row.score.score, answers: row.score.answers, rank: row.rank })) : [],
         questions,
         measurable,
