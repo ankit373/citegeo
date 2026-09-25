@@ -61,6 +61,15 @@ const OUTWARD_INTEGRATIONS: IntegrationDefinition[] = [
     settings: [{ key: "siteUrl", label: "Property URL", envKey: "GOOGLE_SEARCH_CONSOLE_SITE" }],
   },
   {
+    id: "ahrefs",
+    label: "Ahrefs Brand Radar",
+    kind: "integration",
+    purpose: "Read AI citations from the surfaces this product cannot ask directly, such as AI Overviews, AI Mode, Copilot and Grok.",
+    envKeys: ["AHREFS_API_KEY"],
+    help: "An API key with Brand Radar access. A report id is optional and carries the brand, rivals and market as one, otherwise the brand is passed per read. Figures read here are measured by their panel and are reported beside this archive rather than inside it.",
+    settings: [{ key: "reportId", label: "Brand Radar report id", envKey: "AHREFS_BRAND_RADAR_REPORT" }],
+  },
+  {
     id: "google-analytics",
     label: "Google Analytics",
     kind: "integration",

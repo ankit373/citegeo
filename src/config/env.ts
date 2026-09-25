@@ -243,3 +243,13 @@ export function watsonxIamHost(): string {
 export function watsonxApiVersion(): string {
   return process.env.WATSONX_API_VERSION?.trim() || "2024-10-10";
 }
+
+// Brand Radar is read over the public v3 API. The host is configurable so a
+// test never reaches the real one, and never pasted anywhere else.
+export function ahrefsEndpoint(): string {
+  return process.env.AHREFS_API_ENDPOINT?.trim() || "https://api.ahrefs.com/v3";
+}
+
+export function ahrefsReportId(): string | undefined {
+  return envSecretValue("AHREFS_BRAND_RADAR_REPORT") || undefined;
+}
