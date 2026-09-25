@@ -889,3 +889,7 @@ select[data-filter].is-set {
 .mrow[hidden],
 .rankrow[hidden],
 .panel-body li[hidden] { display: none; }
+
+/* Chart or table, per panel. The data is the same either way. */
+.panel-views { @apply flex items-center gap-[4px]; }
+.panel-views .filter { @apply min-h-[28px] px-[9px] text-[12px]; }

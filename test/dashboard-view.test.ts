@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  dashboardBody, heroStats, leaderboardBars, movesList, sourcesPanel, splitRows, summaryTiles,
+  dashboardBody, heroStats, leaderboardBars, movesList, panelBody, panelToggle, sourcesPanel, splitRows, summaryTiles,
   rivalChart,
   rivalPanel, rivalRanks, rivalStandings, withTarget,
   topicMatrix, rowVerdict,
@@ -335,4 +335,28 @@ test("a brand outside the leading columns is still judged against them", () => {
   assert.equal(rowVerdict([0.4, 0.9], columns).text, "Far behind");
   const cut = [{ name: "A", isTarget: false }, { name: "B", isTarget: false }];
   assert.equal(rowVerdict([0.9, 0.9], cut).text, "Never named", "with no column of their own there is nothing to judge");
+});
+
+const CHART_PANEL = { id: "named", title: "Brand mentions", blurb: "", body: "<div class=dbars>bars</div>", detail: "", table: "<div class=mtable>rows</div>" };
+const PLAIN_PANEL = { id: "moves", title: "Recommendations", blurb: "", body: "<ol>moves</ol>", detail: "" };
+
+test("asking for the table gets the table, and asking for the chart gets the chart", () => {
+  assert.equal(panelBody(CHART_PANEL, "table"), "<div class=mtable>rows</div>");
+  assert.equal(panelBody(CHART_PANEL, "chart"), "<div class=dbars>bars</div>");
+});
+
+test("a panel with no table keeps its body rather than going blank", () => {
+  // The toggle is offered per panel, so a stored preference for table must not
+  // empty a panel that never had one.
+  assert.equal(panelBody(PLAIN_PANEL, "table"), "<ol>moves</ol>");
+  assert.equal(panelToggle(PLAIN_PANEL, "chart"), "");
+});
+
+test("the toggle marks which view is showing, for the pointer and the reader", () => {
+  const drawn = panelToggle(CHART_PANEL, "table");
+  assert.ok(drawn.includes('data-panel-view="named"'));
+  assert.ok(drawn.includes('data-panel-view-mode="table"'));
+  // aria-pressed is what a screen reader reads, and active is what the eye reads.
+  assert.ok(drawn.includes('data-panel-view-mode="table" aria-pressed="true"'));
+  assert.ok(drawn.includes('data-panel-view-mode="chart" aria-pressed="false"'));
 });

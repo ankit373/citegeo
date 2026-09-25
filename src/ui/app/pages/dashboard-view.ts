@@ -603,7 +603,25 @@ export interface Panel {
   /** What the card had to leave out. Opening a panel is a deep dive, so it
    * carries the whole set and the figures under it, not the same view larger. */
   detail: string;
+  /** The same figures as a table, for panels drawn as a chart. */
+  table?: string | undefined;
   wide?: boolean;
+}
+
+export type PanelView = "chart" | "table";
+
+/** A panel with no table stays as it is, so asking for one never blanks it. */
+export function panelBody(panel: Panel, view: PanelView): string {
+  return view === "table" && panel.table ? panel.table : panel.body;
+}
+
+export function panelToggle(panel: Panel, view: PanelView): string {
+  if (!panel.table) return "";
+  const button = (value: PanelView, label: string): string =>
+    `<button type="button" class="filter${view === value ? " active" : ""}"`
+    + ` data-panel-view="${html(panel.id)}" data-panel-view-mode="${value}"`
+    + ` aria-pressed="${view === value ? "true" : "false"}">${label}</button>`;
+  return `<div class="panel-views">${button("chart", "Chart")}${button("table", "Table")}</div>`;
 }
 
 /** Every dashboard panel, once. The grid draws them in the reader's order and
@@ -613,9 +631,9 @@ export function dashboardPanels(data: DashboardData): Panel[] {
   const rivals = data.rivalTrend || [];
   return [
     { id: "moves", title: "Recommendations", blurb: "The strongest levers, read off the answers.", body: movesList(data.moves), detail: movesList(data.moves, every) },
-    { id: "trend", title: "Share of voice", blurb: "Every brand on one axis, so a gap that is closing looks different from one that is not.", body: rivalPanel(rivals, data.domain), detail: rivalPanel(rivals, data.domain) + rivalRuns(rivals, data.domain), wide: true },
+    { id: "trend", title: "Share of voice", blurb: "Every brand on one axis, so a gap that is closing looks different from one that is not.", body: rivalPanel(rivals, data.domain), detail: rivalPanel(rivals, data.domain) + rivalRuns(rivals, data.domain), table: rivalRuns(rivals, data.domain), wide: true },
     { id: "topics", title: "Topics by competitor", blurb: "Every topic against every brand the answers named. Open a row for its subtopics and the questions under them.", body: topicMatrix(data.matrix || { columns: [], rows: [] }, data.matrixOpen || []), detail: topicMatrix(data.matrix || { columns: [], rows: [] }, (data.matrix || { rows: [] }).rows.map((row) => row.key)), wide: true },
-    { id: "named", title: "Brand mentions", blurb: "You against everyone else the answers named.", body: leaderboardBars(data.leaderboard), detail: leaderboardBars(data.leaderboard, every) },
+    { id: "named", title: "Brand mentions", blurb: "You against everyone else the answers named.", body: leaderboardBars(data.leaderboard), detail: leaderboardBars(data.leaderboard, every), table: brandsTable(data.leaderboard) },
     { id: "described", title: "Sentiment by brand", blurb: "Where each brand appears in the answer, and how it is spoken about.", body: brandsTable(data.leaderboard), detail: brandsTable(data.leaderboard, every), wide: true },
     { id: "asked", title: "Branded and unbranded", blurb: "A question that names you cannot show whether you are found. The two are counted apart.", body: data.asked ? askedSplit(data.asked) : '<p class="subtle">Nothing asked yet.</p>', detail: data.asked ? askedSplit(data.asked) : '<p class="subtle">Nothing asked yet.</p>' },
     { id: "models", title: "By AI platform", blurb: "Who was asked, and how each one answered.", body: splitRows(data.byModel, "No assistant has answered yet."), detail: splitRows(data.byModel, "No assistant has answered yet.", every) },
@@ -635,7 +653,7 @@ function panelTools(id: string, span: number): string {
     + `<button type="button" class="ptool is-drop" data-panel-hide="${html(id)}" title="Take this off the board">Remove</button></div>`;
 }
 
-export function dashboardBody(held: Loadable<DashboardData>, editing = false): string {
+export function dashboardBody(held: Loadable<DashboardData>, editing = false, views: Record<string, PanelView> = {}): string {
   return match(held, {
     loading: () => dashboardSkeleton(),
     error: (error) => `<div class="warning-box">${html(error)}</div>`,
@@ -650,14 +668,18 @@ export function dashboardBody(held: Loadable<DashboardData>, editing = false): s
         // A panel that declared itself wide keeps that as its default width,
         // and a width the reader chose overrides it.
         const span = layout.spans[id] ?? (panel.wide ? 0 : 1);
+        const view: PanelView = views[id] === "table" ? "table" : "chart";
+        const toggle = panelToggle(panel, view);
         return section({
           id: panel.id,
           title: panel.title,
           blurb: panel.blurb,
-          body: panel.body,
+          body: panelBody(panel, view),
           span,
           off: layout.hidden.includes(id),
-          ...(editing ? { aside: panelTools(id, span) } : { open: panel.id }),
+          ...(editing
+            ? { aside: panelTools(id, span) }
+            : { open: panel.id, ...(toggle ? { aside: toggle } : {}) }),
         });
       }).join("");
       return join([
