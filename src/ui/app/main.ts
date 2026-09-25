@@ -1,7 +1,5 @@
 import { CONFIG } from "./config.js";
 import { dashboardBody, dashboardPanels, heroStats, type DashboardData } from "./pages/dashboard-view.js";
-import { positionReport } from "../../product/topics/position-metrics.js";
-import { REGION_CAVEAT } from "../../product/topics/region.js";
 import { exportName, filterSummary, matchesQuery, panelCsv } from "./components/panel-tools.js";
 import { emptyState, notice, section } from "./components/primitives.js";
 import { button } from "./components/button.js";
@@ -1698,7 +1696,7 @@ export function boot(): void {
         matrix: buildMatrix(data, String(home.domain || selected.normalizedDomain)),
         matrixOpen: state.matrixOpen,
         matrixHidden: state.matrixHidden,
-        regionCaveat: REGION_CAVEAT,
+        regionCaveat: data ? data.regionCaveat : "",
         domain: String(home.domain || selected.normalizedDomain),
         score: home.score ?? null,
         change: home.change ?? null,
@@ -1728,7 +1726,7 @@ export function boot(): void {
         citedPages: outreach ? outreach.cited : null,
         missingFrom: outreach ? (outreach.targets as any[]).filter((t: any) => !t.namesYou).length : null,
         spark: data ? sparkline(data.trend.points, 170, 30) : "",
-        position: data ? positionReport(data.topics.flatMap((topic: any) => topic.prompts)) : undefined,
+        position: data ? (data.position as any) : undefined,
         citation: state.cited ? ((state.cited as Unshaped).standing as any) : undefined,
         asked: (() => {
           if (!data) return undefined;

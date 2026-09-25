@@ -1,4 +1,3 @@
-import { toCsv, type CsvTable } from "../../../product/insights/csv.js";
 
 // The deep dive carries the whole set, which is the point of opening it and
 // also what makes it unreadable without a way to narrow and a way to leave.
@@ -31,9 +30,19 @@ export function filterSummary(outcome: FilterOutcome, query: string): string {
  * A row of cells becomes a row of the export, so what leaves is what was on
  * screen rather than a second reading of the data that can disagree with it.
  */
+// RFC 4180, written here because the app route serves only this tree and an
+// import that climbs out of it is a 404 in the browser. Pinned by a test.
+function csvCell(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  const text = Array.isArray(value) ? value.join(" | ") : String(value);
+  const quote = text.includes(",") || text.includes("\"") || text.includes("\n") || text.includes("\r");
+  return quote ? `"${text.split("\"").join("\"\"")}"` : text;
+}
+
 export function panelCsv(columns: string[], rows: string[][]): string {
-  const table: CsvTable = { columns, rows };
-  return toCsv(table);
+  const lines = [columns.map(csvCell).join(",")];
+  for (const row of rows) lines.push(row.map(csvCell).join(","));
+  return `${lines.join("\r\n")}\r\n`;
 }
 
 /** A file name a reader can find again, dated and named after the panel. */
