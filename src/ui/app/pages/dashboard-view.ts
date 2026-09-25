@@ -5,7 +5,10 @@ import { loading, skeletonCard, skeletonTiles } from "../components/skeleton.js"
 import { match, type Loadable } from "../loadable.js";
 import { panelLayout } from "../components/reorder.js";
 import { regionMap, type RegionCell } from "./region-map.js";
-import type { CitationStanding, PositionReport } from "../../../product/topics/position-metrics.js";
+/** Mirrors the server shapes. A type import is erased, but keeping the view's
+ * types local keeps every import inside the tree the app route serves. */
+export interface PositionReport { averagePosition: number | null; ranked: number; unranked: number; best: number | null; worst: number | null }
+export interface CitationStanding { rank: number | null; share: number | null; ahead: Array<{ domain: string; answers: number }>; leader: { domain: string; answers: number } | null }
 
 // The dashboard answers four questions in order: where do I stand, what moved,
 // what would move it, and who is taking the ground. Everything here comes from

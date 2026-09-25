@@ -73,7 +73,17 @@ export interface TrendShape {
   rivals?: Array<{ name: string; isTarget: boolean; points: Array<{ at: string; share: number }> }>;
 }
 
+export interface PositionShape {
+  averagePosition: number | null;
+  ranked: number;
+  unranked: number;
+  best: number | null;
+  worst: number | null;
+}
+
 export interface InsightsShape {
+  /** Computed on the server, so the view never imports the module that holds it. */
+  position?: PositionShape | undefined;
   answers: number;
   answersFailed: number;
   overall: ScoreShape;

@@ -2,7 +2,7 @@ import { buildTopicInsights, type TopicInsights } from "./topic-insights.js";
 import { buildHomeSummary } from "../alerts/home-summary.js";
 import { buildAnswerDigest } from "../alerts/answer-digest.js";
 import { buildCitationAnalysis } from "./citation-analysis.js";
-import { citationStanding } from "./position-metrics.js";
+import { citationStanding, positionReport } from "./position-metrics.js";
 import { sliceByWindow, windowFor } from "./period-window.js";
 import { buildRankingPlan, type RankingPlan } from "./ranking-plan.js";
 import { projectInsights } from "./project-insights.js";
@@ -502,7 +502,13 @@ export async function handleTopicApi(input: {
   }
 
   if (method === "GET" && tail.length === 1 && tail[0] === "prompt-insights") {
-    await guard(() => projectInsights({ projectId, topics, runs, competitors, slice: (rows) => sliced(rows, url) }), 404);
+    await guard(async () => {
+      const insights = await projectInsights({ projectId, topics, runs, competitors, slice: (rows) => sliced(rows, url) });
+      // Computed here rather than in the browser, so the figure has one source
+      // and the page never imports a module the app route cannot serve.
+      const prompts = insights.topics.flatMap((topic) => topic.prompts);
+      return { ...insights, position: positionReport(prompts) };
+    }, 404);
     return true;
   }
 
