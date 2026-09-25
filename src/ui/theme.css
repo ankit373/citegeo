@@ -898,3 +898,18 @@ select[data-filter].is-set {
    because a grid without it reports Never named on every row. */
 .colpick { @apply flex flex-wrap items-center gap-[6px] pb-[10px]; }
 .colpick .filter { @apply min-h-[28px] px-[9px] text-[12px]; }
+
+/* Nine markets on a grid rather than a world nobody needs. A tile is a stated
+   market, not a place an answer was served. */
+.rgrid { @apply grid gap-[6px]; aspect-ratio: 7 / 4; max-width: 560px; }
+.rtile {
+  @apply relative grid place-items-center gap-[1px] rounded-[7px] border border-line p-[6px] text-center;
+  min-height: 46px;
+}
+.rtile.is-empty { border-style: dashed; }
+.rtile-fill { @apply absolute inset-0 rounded-[6px]; }
+.rtile-id { @apply relative font-mono text-[11px] tracking-[.08em] text-muted; }
+.rtile-score { @apply relative text-[12px] font-medium; }
+.rloose-list { @apply mt-[12px] grid gap-[6px] border-t border-line pt-[12px]; }
+.rloose { @apply flex flex-wrap items-baseline gap-[8px] text-[13px]; }
+.rcaveat { @apply mt-[10px] text-[12px]; max-width: 62ch; }

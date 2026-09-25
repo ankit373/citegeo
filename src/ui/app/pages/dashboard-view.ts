@@ -4,6 +4,7 @@ import { bar, brandIcon, cell, nameCell, pill, row, section, table, tiles, type 
 import { loading, skeletonCard, skeletonTiles } from "../components/skeleton.js";
 import { match, type Loadable } from "../loadable.js";
 import { panelLayout } from "../components/reorder.js";
+import { regionMap, type RegionCell } from "./region-map.js";
 import type { CitationStanding, PositionReport } from "../../../product/topics/position-metrics.js";
 
 // The dashboard answers four questions in order: where do I stand, what moved,
@@ -39,6 +40,8 @@ export interface Split {
   score: number | null;
   answers: number;
   rank: number | null;
+  /** Set for markets, so one can be placed on the grid. */
+  id?: string | undefined;
 }
 
 export interface Move {
@@ -55,6 +58,8 @@ export interface DashboardData {
   matrixOpen?: string[] | undefined;
   /** Rival columns the reader switched off. The target is never among them. */
   matrixHidden?: string[] | undefined;
+  /** What the UI must say beside any regional figure. */
+  regionCaveat?: string | undefined;
   asked?: AskedSplit | undefined;
   domain: string;
   score: number | null;
@@ -653,6 +658,16 @@ export function panelToggle(panel: Panel, view: PanelView): string {
 
 /** Every dashboard panel, once. The grid draws them in the reader's order and
  * the side pane draws one of them at full width, from the same list. */
+function regionCells(rows: Split[]): RegionCell[] {
+  return rows.map((row) => ({
+    regionId: row.id || "",
+    label: row.label,
+    score: row.score,
+    rank: row.rank,
+    answers: row.answers,
+  }));
+}
+
 export function dashboardPanels(data: DashboardData): Panel[] {
   const every = Number.MAX_SAFE_INTEGER;
   const matrix = data.matrix || { columns: [], rows: [] };
@@ -666,7 +681,7 @@ export function dashboardPanels(data: DashboardData): Panel[] {
     { id: "described", title: "Sentiment by brand", blurb: "Where each brand appears in the answer, and how it is spoken about.", body: brandsTable(data.leaderboard), detail: brandsTable(data.leaderboard, every), wide: true },
     { id: "asked", title: "Branded and unbranded", blurb: "A question that names you cannot show whether you are found. The two are counted apart.", body: data.asked ? askedSplit(data.asked) : '<p class="subtle">Nothing asked yet.</p>', detail: data.asked ? askedSplit(data.asked) : '<p class="subtle">Nothing asked yet.</p>' },
     { id: "models", title: "By AI platform", blurb: "Who was asked, and how each one answered.", body: splitRows(data.byModel, "No assistant has answered yet."), detail: splitRows(data.byModel, "No assistant has answered yet.", every) },
-    { id: "regions", title: "By market", blurb: "Fills in once a run states more than one.", body: splitRows(data.byRegion, "Every answer was asked without a market stated."), detail: splitRows(data.byRegion, "Every answer was asked without a market stated.", every) },
+    { id: "regions", title: "By market", blurb: "Fills in once a run states more than one.", body: regionMap(regionCells(data.byRegion), data.regionCaveat || ""), detail: regionMap(regionCells(data.byRegion), data.regionCaveat || "") + splitRows(data.byRegion, "Every answer was asked without a market stated.", every), table: splitRows(data.byRegion, "Every answer was asked without a market stated."), wide: true },
     { id: "personas", title: "By persona", blurb: "Fills in once a run asks on behalf of more than one.", body: splitRows(data.byPersona, "Every answer was asked on nobody\u2019s behalf."), detail: splitRows(data.byPersona, "Every answer was asked on nobody\u2019s behalf.", every) },
     { id: "sources", title: "Cited sources", blurb: "The pages the answers actually read.", body: sourcesPanel(data), detail: sourcesPanel(data) },
   ];
