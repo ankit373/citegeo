@@ -893,3 +893,8 @@ select[data-filter].is-set {
 /* Chart or table, per panel. The data is the same either way. */
 .panel-views { @apply flex items-center gap-[4px]; }
 .panel-views .filter { @apply min-h-[28px] px-[9px] text-[12px]; }
+
+/* Which rivals the grid carries. The reader's own column is never offered,
+   because a grid without it reports Never named on every row. */
+.colpick { @apply flex flex-wrap items-center gap-[6px] pb-[10px]; }
+.colpick .filter { @apply min-h-[28px] px-[9px] text-[12px]; }

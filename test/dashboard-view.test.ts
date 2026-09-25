@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  dashboardBody, heroStats, leaderboardBars, movesList, panelBody, panelToggle, sourcesPanel, splitRows, summaryTiles,
+  dashboardBody, heroStats, leaderboardBars, matrixColumnPicker, movesList, narrowMatrix, panelBody, panelToggle, sourcesPanel, splitRows, summaryTiles,
   rivalChart,
   rivalPanel, rivalRanks, rivalStandings, withTarget,
   topicMatrix, rowVerdict,
@@ -359,4 +359,47 @@ test("the toggle marks which view is showing, for the pointer and the reader", (
   // aria-pressed is what a screen reader reads, and active is what the eye reads.
   assert.ok(drawn.includes('data-panel-view-mode="table" aria-pressed="true"'));
   assert.ok(drawn.includes('data-panel-view-mode="chart" aria-pressed="false"'));
+});
+
+const WIDE = {
+  columns: [
+    { name: "Tickertape", isTarget: false },
+    { name: "Screener.in", isTarget: true },
+    { name: "Trendlyne", isTarget: false },
+  ],
+  rows: [{ key: "t:1", parent: "", depth: 0, label: "Screening", shares: [0.4, 0.5, 0.1], children: 0 }],
+};
+
+test("hiding a column drops the same index from every row", () => {
+  const narrowed = narrowMatrix(WIDE, ["Tickertape"]);
+  assert.deepEqual(narrowed.columns.map((column) => column.name), ["Screener.in", "Trendlyne"]);
+  // The shares have to move with their columns or the grid reports one brand's
+  // figure under another brand's name.
+  assert.deepEqual(narrowed.rows[0]!.shares, [0.5, 0.1]);
+});
+
+test("the reader's own column cannot be switched off", () => {
+  // Cutting it made every row read Never named once already.
+  const narrowed = narrowMatrix(WIDE, ["Screener.in", "Tickertape", "Trendlyne"]);
+  assert.deepEqual(narrowed.columns.map((column) => column.name), ["Screener.in"]);
+  assert.deepEqual(narrowed.rows[0]!.shares, [0.5]);
+});
+
+test("hiding nothing changes nothing", () => {
+  const narrowed = narrowMatrix(WIDE, []);
+  assert.deepEqual(narrowed.columns.map((column) => column.name), ["Tickertape", "Screener.in", "Trendlyne"]);
+  assert.deepEqual(narrowed.rows[0]!.shares, [0.4, 0.5, 0.1]);
+});
+
+test("the picker offers the rivals and never the reader", () => {
+  const drawn = matrixColumnPicker(WIDE, ["Trendlyne"]);
+  assert.ok(drawn.includes('data-matrix-column="Tickertape"'));
+  assert.ok(drawn.includes('data-matrix-column="Trendlyne"'));
+  assert.equal(drawn.includes('data-matrix-column="Screener.in"'), false);
+  assert.ok(drawn.includes('data-matrix-column="Trendlyne" aria-pressed="false"'));
+});
+
+test("a matrix with one rival offers no picker, because there is nothing to choose", () => {
+  const thin = { columns: [{ name: "Screener.in", isTarget: true }, { name: "Only", isTarget: false }], rows: [] };
+  assert.equal(matrixColumnPicker(thin, []), "");
 });
