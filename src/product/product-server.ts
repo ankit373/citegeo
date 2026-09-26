@@ -1,5 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { formOrJsonBody, httpsRequest, readJson, send, sendAsset } from "./http-io.js";
+import { SAFETY_HEADERS, formOrJsonBody, httpsRequest, readJson, send, sendAsset } from "./http-io.js";
+import { checkAttempt, recordFailure, recordSuccess } from "./auth/login-throttle.js";
 import { createServer } from "node:http";
 import { Lifecycle } from "../runtime/lifecycle.js";
 import { log } from "../runtime/logger.js";
@@ -20,6 +21,7 @@ import { handleActionApi } from "./actions/action-http.js";
 import { handleInsightsApi } from "./insights/insights-http.js";
 import { handleCrawlerApi } from "./crawlers/crawler-http.js";
 import { handleCredentialApi } from "./auth/credential-http.js";
+import { handleGoogleOAuth } from "./search-console/google-oauth-http.js";
 import { handleSiteIconApi } from "./discovery/site-icon-http.js";
 import { handleProviderStatusApi } from "./configuration/provider-http.js";
 import { authorise, passwordMatches } from "./auth/auth-guard.js";
@@ -51,20 +53,35 @@ async function handle(req: IncomingMessage, res: ServerResponse, services: Produ
   if (services.auth.enabled) {
     const secure = httpsRequest(req);
     if (method === "POST" && url.pathname === "/api/login") {
+      // One counter for the process, because the deployment is single writer
+      // and the password is all that stands in front of every credential.
+      const verdict = checkAttempt("login");
+      if (!verdict.allowed) {
+        res.writeHead(429, {
+          "Content-Type": "text/html; charset=utf-8",
+          "Retry-After": String(verdict.retryAfterSeconds),
+          ...SAFETY_HEADERS,
+        });
+        res.end(renderLoginPageHtml(true));
+        return;
+      }
       const body = await formOrJsonBody(req);
       if (!passwordMatches(services.auth, body.password)) {
+        recordFailure("login");
         // Same shape and timing for a wrong password as for a missing one.
         return send(res, 401, renderLoginPageHtml(true), "text/html; charset=utf-8");
       }
+      recordSuccess("login");
       res.writeHead(303, {
         Location: "/",
         "Set-Cookie": sessionCookie(issueSession(services.auth.secret, services.auth.lifetimeMs), services.auth.lifetimeMs, secure),
+        ...SAFETY_HEADERS,
       });
       res.end();
       return;
     }
     if (method === "POST" && url.pathname === "/api/logout") {
-      res.writeHead(303, { Location: "/login", "Set-Cookie": clearedCookie(secure) });
+      res.writeHead(303, { Location: "/login", "Set-Cookie": clearedCookie(secure), ...SAFETY_HEADERS });
       res.end();
       return;
     }
@@ -98,6 +115,7 @@ async function handle(req: IncomingMessage, res: ServerResponse, services: Produ
     res.writeHead(200, {
       "Content-Type": isCss ? "text/css; charset=utf-8" : "text/javascript; charset=utf-8",
       "Cache-Control": "no-cache",
+      ...SAFETY_HEADERS,
     });
     res.end(await readFile(path, "utf8"));
     return;
@@ -116,6 +134,17 @@ async function handle(req: IncomingMessage, res: ServerResponse, services: Produ
   if (await handleStorageApi({ method, route, send: json, settings: services.storageSettings, dataDir: services.dataDir, readJson: body })) return;
   if (await handleProviderStatusApi({ method, route, send: json, catalog })) return;
   if (await handleCredentialApi({ method, route, send: json, service: services.credentials, authEnabled: services.auth.enabled, readJson: body })) return;
+  if (await handleGoogleOAuth({
+    method, route, url,
+    origin: `${httpsRequest(req) ? "https" : "http"}://${req.headers.host || `${serverHost()}:8787`}`,
+    authSecret: services.auth.secret,
+    credentials: services.credentials,
+    // The callback is reached from Google, so it carries no session cookie and
+    // proves itself with the signed state instead.
+    signedIn: !services.auth.enabled || authorise({ config: services.auth, pathname: "/api/google/authorize", cookieHeader: req.headers.cookie }).allowed,
+    send: json,
+    redirect: (status, location, headers) => { res.writeHead(status, { Location: location, ...SAFETY_HEADERS, ...(headers || {}) }); res.end(); },
+  })) return;
   if (await handleSiteIconApi({ method, route, send: json, service: services.icons, readJson: body })) return;
   if (await handleInsightsApi({ method, route, send: json, service: insights })) return;
   if (await handleCrawlerApi({ method, route, send: json, crawlerLog, insights,

@@ -59,6 +59,7 @@ export interface CredentialRow {
   providerId: string;
   label: string;
   kind: "model_provider" | "integration";
+  sharedWith?: string;
   purpose: string;
   help: string;
   settings: CredentialSetting[];
@@ -169,13 +170,19 @@ function connectionsSection(data: SetupData) {
   // Absent when the server refuses to read keys, which is a state this has
   // to draw rather than a reason to draw nothing.
   const held = data.credentials?.credentials || [];
+  const callbackHint = typeof location === "undefined" ? "/api/google/callback" : `${location.origin}/api/google/callback`;
   const open = Boolean(data.credentials) && !data.credentials?.closed;
   const storageEnabled = Boolean(data.credentials?.storageEnabled);
   const rows = data.integrations.filter((row) => row.kind === "integration").map((row) => {
     const live = held.find((item) => item.providerId === row.providerId);
+    const hasKey = Boolean(live && (live.source === "environment" || live.source === "stored"));
+    // Done means the key and everything it needs beside it. A key with no
+    // property to read is not a finished connection.
+    const needed = (row.settings || []).map((setting) => (live && (live.settings || []).find((item) => item.key === setting.key)));
+    const done = hasKey && needed.every((value) => Boolean(value && value.value));
     const mark = !live ? '<span class="mcell state-flag" title="This server has no AUTH_PASSWORD, so it will not report whether a credential is held.">cannot be read here</span>'
-      : live.source === "environment" ? '<span class="mcell state-ok">set in the environment</span>'
-      : live.source === "stored" ? '<span class="mcell state-ok">stored here</span>'
+      : done ? '<span class="mcell state-ok connected-tick" title="Connected" aria-label="Connected">\u2713</span>'
+      : hasKey ? '<span class="mcell state-flag">needs a little more</span>'
       : '<span class="mcell state-flag">not connected</span>';
     // The two ways in, named. A self-hosted copy registers no OAuth app of
     // its own, so the second way is a client the reader owns.
@@ -188,6 +195,19 @@ function connectionsSection(data: SetupData) {
       const shown = value && value.value ? '<span class="mono">' + html(String(value.value)) + '</span>' : '<span class="state-flag">not set</span>';
       return '<li>' + html(setting.label) + ': ' + shown + ' \u00b7 <span class="mono">' + html(setting.envKey) + '</span></li>';
     }).join("");
+    // Consent is the hard part of a Google credential. Once a client is saved,
+    // the round trip is one button rather than a token obtained by hand.
+    const googly = row.providerId === "google" || row.providerId === "google-analytics";
+    const hasClient = Boolean(live && live.source === "stored");
+    const connect = googly
+      ? '<a class="button" href="/api/google/authorize">' + (hasClient ? "Reconnect Google" : "Connect Google") + '</a>'
+        + '<span class="step-note">Register a client of your own, add <span class="mono">' + html(callbackHint) + '</span> as a redirect URI, save it here as <span class="mono">{"client_id", "client_secret"}</span>, then connect.</span>'
+      : '';
+    const disconnect = live && live.sharedWith
+      ? '<span class="step-note">Uses the key held by Search Console.</span>'
+      : live && live.source === "stored"
+        ? button({ label: "Disconnect", kind: "quiet", on: { "data-credential-clear": row.providerId } })
+        : '<span class="step-note">Set in the environment.</span>';
     const control = !open
       ? '<span class="step-note">Key entry is closed on this server, so set ' + (row.envKeys || []).map((key) => '<span class="mono">' + html(String(key)) + '</span>').join(" or ") + ' in .env.</span>'
       : live && !live.editable
@@ -199,10 +219,12 @@ function connectionsSection(data: SetupData) {
             + (live && live.source === "stored" ? button({ label: "Remove", tone: "danger", on: { "data-credential-clear": row.providerId } }) : '') + '</span>';
     return '<div class="section-card connection-card" data-connection="' + html(String(row.providerId)) + '"><div class="section-head"><div><h3>' + html(row.label) + '</h3>'
       + '<p class="subtle">' + html(row.purpose) + '</p></div>' + mark + '</div>'
-      + ways
-      + (settings ? '<ul class="protocol-list">' + settings + '</ul>' : '')
-      + '<p class="field-help">' + html(row.help) + '</p>'
-      + '<div class="inline-actions">' + control + '</div></div>';
+      // A finished connection says so and stops talking. The instructions are
+      // only useful while something is still missing.
+      + (done ? '' : ways
+        + (settings ? '<ul class="protocol-list">' + settings + '</ul>' : '')
+        + '<p class="field-help">' + html(row.help) + '</p>')
+      + '<div class="inline-actions">' + (done ? disconnect : control + connect) + '</div></div>';
   }).join("");
   return head + (rows || '<p class="subtle">No outward connections are defined.</p>') + '</section>';
 }

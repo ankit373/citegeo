@@ -1,5 +1,6 @@
 import { SearchConsoleUnavailableError, type SearchConsoleService } from "./search-console-service.js";
 import type { TopicInsights } from "../topics/topic-insights.js";
+import { CORRELATION_CAVEAT, linkAssistants } from "../topics/assistant-correlation.js";
 import type { Prompt } from "../topics/topic-schema.js";
 
 type SearchJsonSender = (status: number, body: unknown) => void;
@@ -20,13 +21,27 @@ export async function handleSearchConsoleApi(input: {
   if (!projectId || tail.length !== 1) return false;
 
   if (tail[0] === "assistant-referrals") {
+    // The join is computed here because this is the only place that holds both
+    // halves. Doing it in the browser would need the view to import a module
+    // the app route cannot serve.
+    const withLink = async (payload: { report: { assistants?: Array<{ source: string; sessions: number; engaged: number }> } | null }) => {
+      const insights = await input.insights(projectId).catch(() => undefined);
+      const visibility = (insights?.byModel || []).map((row) => ({
+        providerId: row.providerId,
+        displayName: row.displayName,
+        score: row.score.score,
+        answers: row.score.answers,
+      }));
+      const arrivals = payload.report?.assistants || [];
+      return { ...payload, link: { rows: linkAssistants({ visibility, arrivals }), caveat: CORRELATION_CAVEAT } };
+    };
     if (method === "GET") {
-      send(200, await searchConsole.referrals(projectId));
+      send(200, await withLink(await searchConsole.referrals(projectId) as never));
       return true;
     }
     if (method === "POST") {
       try {
-        send(200, { report: await searchConsole.refreshReferrals(projectId) });
+        send(200, await withLink({ report: await searchConsole.refreshReferrals(projectId) } as never));
       } catch (error) {
         send(error instanceof SearchConsoleUnavailableError ? 400 : 500, { error: error instanceof Error ? error.message : String(error) });
       }
