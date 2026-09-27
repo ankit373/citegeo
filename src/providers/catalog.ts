@@ -181,8 +181,14 @@ export const PROVIDER_DEFINITIONS: ProviderDefinition[] = [
     defaultModels: [],
     supportsAnyModel: true,
     supportsJsonSchema: true,
-    supportsNativeCitations: false,
-    supportsWebSearch: false,
+    // Azure exposes web search through its Responses API for supported GPT-4+
+    // deployments. The deployment itself remains the account's authority.
+    supportsNativeCitations: true,
+    supportsWebSearch: true,
+    nativeWebSearch: {
+      endpointProtocol: "responses",
+      toolName: "web_search",
+    },
     resultCaveat: API_CAVEAT,
   },
   {

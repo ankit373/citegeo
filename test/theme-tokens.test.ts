@@ -233,7 +233,7 @@ test("a disabled button still reads as disabled", () => {
 });
 
 test("every measurement nav item has a section of its own", () => {
-  const source = readFileSync(join(process.cwd(), "src", "ui", "product-phase5-app.ts"), "utf8");
+  const source = readFileSync(join(process.cwd(), "src", "ui", "measurement-workbench-app.ts"), "utf8");
   // Two items pointed at the same anchor, so clicking either lit both and
   // scrolled to the wrong place. A nav item without a section is worse than
   // no nav item.

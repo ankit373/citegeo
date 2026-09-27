@@ -18,6 +18,8 @@ interface ResponsesCompatibleOptions {
   endpoint: string;
   endpointKind?: ProviderEndpointKind | undefined;
   extraHeaders?: Record<string, string> | undefined;
+  /** Azure Responses accepts its resource key in api-key rather than Bearer. */
+  authHeader?: "bearer" | string | undefined;
   webSearchToolName?: string | undefined;
   citationExtractor?: (raw: unknown) => Citation[];
 }
@@ -71,6 +73,7 @@ export class ResponsesCompatibleProvider implements AnswerProvider {
   private readonly endpoint: string;
   private readonly endpointKind: ProviderEndpointKind;
   private readonly extraHeaders: Record<string, string>;
+  private readonly authHeader: string;
   private readonly webSearchToolName: string;
   private readonly citationExtractor: (raw: unknown) => Citation[];
 
@@ -79,6 +82,7 @@ export class ResponsesCompatibleProvider implements AnswerProvider {
     this.endpoint = options.endpoint;
     this.endpointKind = options.endpointKind || "official_api";
     this.extraHeaders = options.extraHeaders || {};
+    this.authHeader = options.authHeader || "bearer";
     this.webSearchToolName = options.webSearchToolName || "web_search";
     this.citationExtractor = options.citationExtractor || extractResponseCitations;
   }
@@ -97,7 +101,7 @@ export class ResponsesCompatibleProvider implements AnswerProvider {
     const response = await postJsonWithRetry(this.endpoint, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${input.apiKey}`,
+        ...(this.authHeader === "bearer" ? { Authorization: `Bearer ${input.apiKey}` } : { [this.authHeader]: input.apiKey }),
         "Content-Type": "application/json",
         ...this.extraHeaders,
       },

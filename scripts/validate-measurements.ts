@@ -12,14 +12,14 @@ const sourceRoots = [
   "src/product/measurements",
   "src/product/scheduling",
   "src/product/product-server.ts",
-  "src/ui/product-phase5-app.ts",
-  "test/fixtures/phase5-fixture-adapter.ts",
-  "test/fixtures/phase5-product-server.ts",
+  "src/ui/measurement-workbench-app.ts",
+  "test/fixtures/measurement-fixture-adapter.ts",
+  "test/fixtures/measurement-product-server.ts",
   "test/product-measurements.test.ts",
-  "e2e/phase5-measurements.spec.ts",
-  "playwright.phase5.config.ts",
-  "scripts/validate-phase5.ts",
-  "scripts/run-phase5-unit.ts",
+  "e2e/measurements.spec.ts",
+  "playwright.measurements.config.ts",
+  "scripts/validate-measurements.ts",
+  "scripts/run-measurement-unit.ts",
 ];
 const codeRoots = ["src", "test", "e2e", "scripts"];
 const legacyDirectories = ["src/monitoring", "src/dashboard", "src/timeseries"];
@@ -139,9 +139,9 @@ function requirements(): Array<{ id: string; requirement: string; evidence: stri
 function frozenManifest(sourceFiles: FileHash[]) {
   const byPath = (path: string) => sourceFiles.find((item) => item.path === path)?.sha256 || null;
   return {
-    fixtureAdapterHash: byPath("test/fixtures/phase5-fixture-adapter.ts"),
+    fixtureAdapterHash: byPath("test/fixtures/measurement-fixture-adapter.ts"),
     unitTestHash: byPath("test/product-measurements.test.ts"),
-    browserTestHash: byPath("e2e/phase5-measurements.spec.ts"),
+    browserTestHash: byPath("e2e/measurements.spec.ts"),
     fixedExamples: ["A", "B", "C", "D", "E"],
     boundaryCases: Array.from({ length: 36 }, (_, index) => `T${String(index + 1).padStart(2, "0")}`),
     browserCases: Array.from({ length: 9 }, (_, index) => `B${String(index + 1).padStart(2, "0")}`),
@@ -150,7 +150,7 @@ function frozenManifest(sourceFiles: FileHash[]) {
 }
 
 function testAstCounts(content: string): { browserTestFiles: number; independentScenarios: number; assertionCalls: number; interactionCalls: number } {
-  const source = ts.createSourceFile("e2e/phase5-measurements.spec.ts", content, ts.ScriptTarget.Latest, true);
+  const source = ts.createSourceFile("e2e/measurements.spec.ts", content, ts.ScriptTarget.Latest, true);
   let independentScenarios = 0;
   let assertionCalls = 0;
   let interactionCalls = 0;
@@ -182,7 +182,7 @@ async function main(): Promise<void> {
   const sourceFiles = await hashes(sourceRoots);
   const sourceScan = await scan();
   const scope = await legacyScope();
-  const browserSource = await readFile(join(root, "e2e/phase5-measurements.spec.ts"), "utf8");
+  const browserSource = await readFile(join(root, "e2e/measurements.spec.ts"), "utf8");
   const browserCounts = testAstCounts(browserSource);
   const snapshot = {
     generatedAt: new Date().toISOString(),
@@ -197,7 +197,7 @@ async function main(): Promise<void> {
     await writeJson("measurement-contract.json", { domainProtocol: "domain-recognition/v1", keywordProtocol: "keyword-discovery/v1", metrics: 10, charts: 8, seriesKey: "modelId + webSearchMode + probe fingerprint", trendAttemptRule: "first attempt only", realProviderBudgetAuthorization: "required before any Phase 5 Provider request" });
     await writeJson("test-manifest.json", frozenManifest(sourceFiles));
     await writeJson("before.json", snapshot);
-    await writeJson("change-scope.json", { sourceRoots, implementationDirectories: ["src/product/measurements", "src/product/scheduling"], productEntrypoint: "src/product/product-server.ts", uiEntrypoint: "src/ui/product-phase5-app.ts", legacyDirectories });
+    await writeJson("change-scope.json", { sourceRoots, implementationDirectories: ["src/product/measurements", "src/product/scheduling"], productEntrypoint: "src/product/product-server.ts", uiEntrypoint: "src/ui/measurement-workbench-app.ts", legacyDirectories });
     await writeJson("preexisting-scope.json", scope);
     await writeJson("browser-ast-counts.json", browserCounts);
     process.stdout.write(`${JSON.stringify({ mode, validationRoot, sourceFileCount: sourceFiles.length, ...browserCounts, regexFindings: sourceScan.regexFindings.length, productLiteralFindings: sourceScan.productLiteralFindings.length }, null, 2)}\n`);

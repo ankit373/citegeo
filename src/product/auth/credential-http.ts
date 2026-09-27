@@ -50,6 +50,16 @@ export async function handleCredentialApi(input: {
   }
 
   const providerId = route[2] || "";
+  if (route.length === 4 && route[3] === "settings" && method === "PUT") {
+    if (!integrationIds().includes(providerId)) {
+      send(404, { error: `Unknown provider "${providerId}".` });
+      return true;
+    }
+    const body = await input.readJson();
+    const result = await service.saveSettings(providerId, body.settings);
+    send(result.outcome === "saved" ? 200 : 400, result);
+    return true;
+  }
   if (route.length === 3 && (method === "PUT" || method === "DELETE")) {
     if (!integrationIds().includes(providerId)) {
       send(404, { error: `Unknown provider "${providerId}".` });
