@@ -1,5 +1,7 @@
 import { html } from "../dom.js";
 import { button } from "../components/button.js";
+import { connectionCard, onboardingSteps, type ConnectionSettingView } from "../components/onboarding.js";
+import { externalMetricHistory, type ExternalMetricSnapshotView } from "../components/external-metric-history.js";
 
 // Setup answers one question: what can this machine actually do right now.
 // Providers it can ask, where it puts what it learns, and what it is allowed
@@ -53,13 +55,14 @@ export interface CredentialSetting {
   label: string;
   envKey: string;
   value?: string | null;
+  source?: "environment" | "stored" | "none";
+  editable?: boolean;
 }
 
 export interface CredentialRow {
   providerId: string;
   label: string;
   kind: "model_provider" | "integration";
-  sharedWith?: string;
   purpose: string;
   help: string;
   settings: CredentialSetting[];
@@ -67,6 +70,8 @@ export interface CredentialRow {
   source: "environment" | "stored" | "none";
   last4: string | null;
   editable: boolean;
+  /** Set when one key serves two cards, so the second says whose it is. */
+  sharedWith?: string;
 }
 
 /** What a credential could be held for, with no credential state in it, so a
@@ -93,6 +98,11 @@ export interface SetupData {
   credentialNotice: { text: string; kind: string };
   integrations: IntegrationRow[];
   integrationsState: SetupLoadState;
+  externalMetrics: ExternalMetricSnapshotView[];
+  externalMetricsState: SetupLoadState;
+  externalMetricsPulling: "" | "ahrefs" | "semrush";
+  externalMetricsNotice: { text: string; kind: string };
+  selectedProject: boolean;
 }
 
 function storageSection(data: SetupData) {
@@ -142,7 +152,7 @@ function credentialsSection(data: SetupData) {
   const disabled = held.storageEnabled
     ? ''
     : '<div class="warning-box">Storing keys here needs <span class="mono">CREDENTIAL_KEY</span>, 32 bytes. Without it a stored key could not survive a restart, so the form stays read-only.</div>';
-  const rows = (held.credentials || []).map((row) => {
+  const rows = (held.credentials || []).filter((row) => row.kind === "model_provider").map((row) => {
     const known = row.last4 ? '<span class="mono">••••' + html(row.last4) + '</span>' : '<span class="state-flag">not set</span>';
     const where = row.source === "environment"
       ? '<span class="mcell">from <span class="mono">' + html(row.envKeys.join(" or ")) + '</span></span>'
@@ -170,38 +180,29 @@ function connectionsSection(data: SetupData) {
   // Absent when the server refuses to read keys, which is a state this has
   // to draw rather than a reason to draw nothing.
   const held = data.credentials?.credentials || [];
-  const callbackHint = typeof location === "undefined" ? "/api/google/callback" : `${location.origin}/api/google/callback`;
   const open = Boolean(data.credentials) && !data.credentials?.closed;
   const storageEnabled = Boolean(data.credentials?.storageEnabled);
   const rows = data.integrations.filter((row) => row.kind === "integration").map((row) => {
     const live = held.find((item) => item.providerId === row.providerId);
-    const hasKey = Boolean(live && (live.source === "environment" || live.source === "stored"));
-    // Done means the key and everything it needs beside it. A key with no
-    // property to read is not a finished connection.
-    const needed = (row.settings || []).map((setting) => (live && (live.settings || []).find((item) => item.key === setting.key)));
-    const done = hasKey && needed.every((value) => Boolean(value && value.value));
-    const mark = !live ? '<span class="mcell state-flag" title="This server has no AUTH_PASSWORD, so it will not report whether a credential is held.">cannot be read here</span>'
-      : done ? '<span class="mcell state-ok connected-tick" title="Connected" aria-label="Connected">\u2713</span>'
-      : hasKey ? '<span class="mcell state-flag">needs a little more</span>'
-      : '<span class="mcell state-flag">not connected</span>';
     // The two ways in, named. A self-hosted copy registers no OAuth app of
     // its own, so the second way is a client the reader owns.
     const ways = row.providerId === "google" || row.providerId === "google-analytics"
       ? '<ul class="protocol-list"><li><strong>A service account key.</strong> Paste the JSON, then add the service account as a user on the property.</li>'
         + '<li><strong>An OAuth client you own.</strong> Paste <span class="mono">{"client_id", "client_secret", "refresh_token"}</span> consented to the scopes below.</li></ul>'
       : '';
-    const settings = (row.settings || []).map((setting) => {
+    const settings: ConnectionSettingView[] = (row.settings || []).map((setting) => {
       const value = live && (live.settings || []).find((item) => item.key === setting.key);
-      const shown = value && value.value ? '<span class="mono">' + html(String(value.value)) + '</span>' : '<span class="state-flag">not set</span>';
-      return '<li>' + html(setting.label) + ': ' + shown + ' \u00b7 <span class="mono">' + html(setting.envKey) + '</span></li>';
-    }).join("");
-    // Consent is the hard part of a Google credential. Once a client is saved,
-    // the round trip is one button rather than a token obtained by hand.
-    const googly = row.providerId === "google" || row.providerId === "google-analytics";
+      return { ...setting, value: value?.value || null, source: value?.source, editable: value?.editable };
+    });
+    const hasKey = Boolean(live && (live.source === "environment" || live.source === "stored"));
+    const done = hasKey && settings.every((setting) => Boolean(setting.value));
+    const callbackHint = typeof location === "undefined" ? "/api/google/callback" : `${location.origin}/api/google/callback`;
     const hasClient = Boolean(live && live.source === "stored");
-    const connect = googly
+    // Consent is the hard part of a Google credential. Once a client is saved
+    // the round trip is one button rather than a token obtained by hand.
+    const connect = ways
       ? '<a class="button" href="/api/google/authorize">' + (hasClient ? "Reconnect Google" : "Connect Google") + '</a>'
-        + '<span class="step-note">Register a client of your own, add <span class="mono">' + html(callbackHint) + '</span> as a redirect URI, save it here as <span class="mono">{"client_id", "client_secret"}</span>, then connect.</span>'
+        + '<span class="step-note">Register a client of your own and add <span class="mono">' + html(callbackHint) + '</span> as a redirect URI.</span>'
       : '';
     const disconnect = live && live.sharedWith
       ? '<span class="step-note">Uses the key held by Search Console.</span>'
@@ -217,14 +218,16 @@ function connectionsSection(data: SetupData) {
           : '<span class="credential-control"><input type="password" autocomplete="off" placeholder="' + (ways ? "Paste the JSON" : "Paste the token") + '" data-credential-input="' + html(row.providerId) + '">'
             + button({ label: "Save", on: { "data-credential-save": row.providerId } })
             + (live && live.source === "stored" ? button({ label: "Remove", tone: "danger", on: { "data-credential-clear": row.providerId } }) : '') + '</span>';
-    return '<div class="section-card connection-card" data-connection="' + html(String(row.providerId)) + '"><div class="section-head"><div><h3>' + html(row.label) + '</h3>'
-      + '<p class="subtle">' + html(row.purpose) + '</p></div>' + mark + '</div>'
-      // A finished connection says so and stops talking. The instructions are
-      // only useful while something is still missing.
-      + (done ? '' : ways
-        + (settings ? '<ul class="protocol-list">' + settings + '</ul>' : '')
-        + '<p class="field-help">' + html(row.help) + '</p>')
-      + '<div class="inline-actions">' + (done ? disconnect : control + connect) + '</div></div>';
+    return connectionCard({
+      providerId: row.providerId,
+      label: row.label,
+      purpose: row.purpose,
+      help: row.help,
+      status: !live ? "unavailable" : done ? "connected" : hasKey ? "incomplete" : "not_connected",
+      credentialControl: done ? disconnect : control + connect,
+      settings,
+      oauthHelp: ways,
+    });
   }).join("");
   return head + (rows || '<p class="subtle">No outward connections are defined.</p>') + '</section>';
 }
@@ -253,6 +256,14 @@ export function setupView(data: SetupData) {
       + '<span class="mcell">' + html(provider.detail) + '</span></div>';
   }).join("");
   const runnable = data.providers.filter((provider) => provider.runnableNow);
+  const integrations = data.credentials?.credentials || [];
+  const connected = integrations.filter((row) => row.kind === "integration" && row.source !== "none").length;
+  const secure = Boolean(data.credentials && !data.credentials.closed && data.credentials.storageEnabled);
+  const onboarding = onboardingSteps([
+    { label: "Secure this workspace", detail: secure ? "Password and encrypted credential storage are ready." : "Set AUTH_PASSWORD and CREDENTIAL_KEY once to enable secure UI onboarding.", complete: secure },
+    { label: "Connect an AI provider", detail: runnable.length ? runnable.length + " provider" + (runnable.length === 1 ? " is" : "s are") + " ready to run." : "Add one key below to run a measurement.", complete: runnable.length > 0 },
+    { label: "Connect your site data", detail: connected ? connected + " optional data connection" + (connected === 1 ? " is" : "s are") + " ready." : "Search Console, GA4, Ahrefs and Semrush remain optional.", complete: connected > 0 },
+  ]);
   const banner = runnable.length
     ? ''
     : '<div class="warning-box">Nothing can run right now. Every configured provider is either out of credit, unreachable or has no models. A run started now would fail once per selected model.</div>';
@@ -260,9 +271,17 @@ export function setupView(data: SetupData) {
     const keys = provider.envKeys.concat(provider.settingsEnvKeys || []);
     return '<li>' + html(provider.label) + ': <span class="mono">' + html(keys.join(", ")) + '</span></li>';
   }).join("");
-  return '<section class="view"><div class="heading"><div><h1>Setup</h1><p class="subtle">Which providers this machine can actually run, and what each one costs you.</p></div><div class="inline-actions">' + button({ label: "Re-check", on: { "data-reload-providers": true } }) + '</div></div>'
+  return '<section class="view"><div class="heading"><div><h1>Workspace setup</h1><p class="subtle">Connect only what CiteGEO needs. Credentials are encrypted, scopes are saved separately, and environment-managed values remain read-only.</p></div><div class="inline-actions">' + button({ label: "Re-check", on: { "data-reload-providers": true } }) + '</div></div>'
+    + '<section class="section-card"><div class="section-head"><div><h2>Get ready</h2><p class="subtle">Start with secure access, then add a model and only the data sources you use.</p></div></div>' + onboarding + '</section>'
     + banner
     + '<section class="section-card"><div class="section-head"><div><h2>Providers</h2><p class="subtle">A provider appears in the model picker only when it is configured and answering.</p></div></div><div class="mtable"><div class="mhead mcols-provider"><span>Provider</span><span>Catalog</span><span>Status</span><span>What this means</span></div>' + rows + '</div></section>'
     + '<section class="section-card"><div class="section-head"><div><h2>Where this is stored</h2><p class="subtle">Everything is small JSON documents, so it sits on a disk or a bucket equally well.</p></div></div>' + storageSection(data) + '</section>'
-    + credentialsSection(data) + connectionsSection(data) + '<section class="section-card"><div class="section-head"><div><h2>Where these come from</h2><p class="subtle">Set in .env at the repository root, then restart the server.</p></div></div><ul class="protocol-list">' + envRows + '</ul></section></section>';
+    + credentialsSection(data) + connectionsSection(data) + externalMetricHistory({
+      projectSelected: data.selectedProject,
+      state: data.externalMetricsState,
+      snapshots: data.externalMetrics,
+      connected: integrations.filter((row) => row.kind === "integration" && row.source !== "none").map((row) => row.providerId),
+      pulling: data.externalMetricsPulling,
+      notice: data.externalMetricsNotice,
+    }) + '<section class="section-card"><div class="section-head"><div><h2>Where these come from</h2><p class="subtle">Set in .env at the repository root, then restart the server.</p></div></div><ul class="protocol-list">' + envRows + '</ul></section></section>';
 }

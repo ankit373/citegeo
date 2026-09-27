@@ -244,7 +244,7 @@ into a file and vanished on paper. It is drawn inline and takes `currentColor`.
 cannot see inside them, so it will not catch a syntax error, an undefined
 variable or a broken CSS rule. Three things follow.
 
-**Escaping differs by template type.** `product-phase5-app.ts` uses
+**Escaping differs by template type.** `measurement-workbench-app.ts` uses
 `String.raw`, so one backslash. The others are ordinary template literals, so
 two. Getting this wrong has blanked the entire app before.
 

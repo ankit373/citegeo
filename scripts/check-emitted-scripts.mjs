@@ -9,7 +9,7 @@ import { basename, join } from 'node:path';
 
 const shells = [
   ['ui/product-phase4-app.js', 'renderProductPhase4AppHtml'],
-  ['ui/product-phase5-app.js', 'renderProductPhase5AppHtml'],
+  ['ui/measurement-workbench-app.js', 'renderMeasurementWorkbenchHtml'],
   ['ui/product-project-app.js', 'renderProductProjectAppHtml'],
   ['ui/app-html.js', 'renderAppHtml'],
   // The marketing page carries no script, but its stylesheet is checked for

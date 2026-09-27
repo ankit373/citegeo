@@ -37,7 +37,7 @@ import { handleCitationApi } from "./citations/citation-http.js";
 import { handleSearchConsoleApi } from "./search-console/search-console-http.js";
 import { projectInsights } from "./topics/project-insights.js";
 import { handleStorageApi } from "./storage/storage-http.js";
-import { renderProductPhase5AppHtml } from "../ui/product-phase5-app.js";
+import { renderMeasurementWorkbenchHtml } from "../ui/measurement-workbench-app.js";
 import { createProductServices } from "./product-services.js";
 import type { ProductServerDependencies, ProductServices } from "./product-services.js";
 
@@ -97,7 +97,7 @@ async function handle(req: IncomingMessage, res: ServerResponse, services: Produ
   }
   if (method === "GET" && url.pathname === "/") {
     const measurementView = url.searchParams.get("view") === "measurements";
-    return send(res, 200, measurementView ? renderProductPhase5AppHtml() : renderProductPhase4AppHtml(), "text/html; charset=utf-8");
+    return send(res, 200, measurementView ? renderMeasurementWorkbenchHtml() : renderProductPhase4AppHtml(), "text/html; charset=utf-8");
   }
   if (method === "GET" && url.pathname === "/health") return send(res, 200, { ok: true });
   // The application, compiled. Served from the build output so the browser
@@ -151,7 +151,7 @@ async function handle(req: IncomingMessage, res: ServerResponse, services: Produ
     answers: (id) => promptRuns.listAnswers(id),
     domain: async (id) => (await services.projects.get(id))?.normalizedDomain || "" })) return;
   if (await handleActionApi({ method, route, send: json, signals, insights })) return;
-  if (await handleSearchConsoleApi({ method, route, send: json, searchConsole: services.searchConsole, readJson: body,
+  if (await handleSearchConsoleApi({ method, route, send: json, searchConsole: services.searchConsole, externalMetrics: services.externalMetrics, readJson: body,
     prompts: async (id) => (await topics.get(id)).prompts.filter((prompt) => prompt.status === "active"),
     insights: (id) => projectInsights({ projectId: id, topics, runs: promptRuns, competitors: services.competitors, personas: services.personas }) })) return;
   if (await handleCitationApi({ method, route, send: json, pages: services.sourcePages,

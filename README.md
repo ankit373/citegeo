@@ -188,7 +188,7 @@ nothing anywhere except to the model APIs you configure.
 | :--- | :--- |
 | **Providers** | OpenRouter, OpenAI, Anthropic, Gemini, Perplexity, DeepSeek, Azure OpenAI, Amazon Bedrock, Google Vertex AI, Databricks, IBM watsonx.ai, and any OpenAI-compatible endpoint including a local gateway. |
 | **Web search, stated per model** | Per-model web search with the real execution conditions stored beside the result. Offline and web-enabled answers are never averaged together. |
-| **Integrations** | Google Search Console, Google Analytics 4, and GitHub for opening a pull request with the fixes against your own site repository. |
+| **Integrations** | Google Search Console, Google Analytics 4, Ahrefs, Semrush, and GitHub for opening a pull request with the fixes against your own site repository. Ahrefs and Semrush are explicitly labelled as third-party estimates, never as GA4 traffic. |
 | **Storage** | Disk, anything S3-compatible (AWS, Cloudflare R2, Google Cloud Storage, MinIO, Spaces, Backblaze B2) or Azure Blob. A connection counts as connected only once it has written, read back, listed and deleted a probe object. |
 | **Credentials** | Entered in the portal, encrypted at rest, never returned by any read, and refused entirely when the server has no password set. |
 | **Exports** | CSV for visibility, share of voice, citations, the gap, fanout and categories. |

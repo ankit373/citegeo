@@ -358,7 +358,10 @@
   @apply grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)_110px] items-start;
 }
 @utility mcols-selected {
-  @apply grid-cols-[minmax(0,1fr)_104px_92px_178px];
+  @apply grid-cols-[minmax(0,1fr)_104px_92px_178px_84px];
+}
+@utility mcols-external-metrics {
+  @apply grid-cols-[minmax(0,1.7fr)_90px_120px_120px] items-start;
 }
 @utility mcols-readonly {
   @apply grid-cols-[minmax(0,1fr)_104px_178px];
@@ -930,3 +933,23 @@ select[data-filter].is-set {
   color: var(--confirmed-text);
   font-size: 13px; font-weight: 600;
 }
+
+/* Shared onboarding components. A setup page should tell the reader what to
+   do next before exposing every integration field. */
+.setup-steps { @apply m-0 grid list-none gap-[10px] p-0; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.setup-steps li { @apply flex min-w-0 items-start gap-[10px] rounded-[8px] border border-line bg-sunken p-[12px]; }
+.setup-steps li.is-complete { border-color: var(--confirmed-text); }
+.setup-step-number { @apply grid size-[22px] shrink-0 place-items-center rounded-full border border-line text-[11px] font-semibold text-muted; }
+.setup-steps li.is-complete .setup-step-number { background: var(--confirmed-text); border-color: var(--confirmed-text); color: var(--paper); }
+.setup-steps strong,.setup-steps small { @apply block; }
+.setup-steps strong { @apply text-[13px] font-semibold; }
+.setup-steps small { @apply mt-[3px] text-[12px] leading-[1.4] text-muted; }
+.connection-settings { @apply mt-[14px] border-t border-line pt-[13px]; }
+.connection-settings h4 { @apply m-0 text-[13px] font-semibold; }
+.connection-settings-grid { @apply mt-[10px] grid gap-[10px]; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+.connection-setting { @apply grid gap-[5px] text-[12px] font-medium; }
+.connection-setting input { @apply min-h-[36px] rounded-[7px] border border-line bg-sunken px-[9px] text-[13px] text-text; }
+.connection-setting input[readonly] { @apply cursor-not-allowed bg-raised text-muted; }
+.connection-setting small { @apply text-[11px] font-normal text-weak; }
+.connection-settings .inline-actions { @apply mt-[10px]; }
+@media (max-width: 720px) { .setup-steps { grid-template-columns: 1fr; } }

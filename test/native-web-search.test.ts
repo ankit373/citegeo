@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import type { ProviderDefinition, ProviderRunInput } from "../src/core/types.js";
 import { AnthropicProvider } from "../src/providers/anthropic.js";
+import { AzureOpenAIProvider } from "../src/providers/azure-openai.js";
 import { GeminiProvider } from "../src/providers/gemini.js";
 import { OpenAICompatibleGatewayProvider } from "../src/providers/openai-compatible-gateway.js";
 import { OpenAICompatibleProvider, perplexityCitationExtractor } from "../src/providers/openai-compatible.js";
@@ -369,6 +370,20 @@ test("Responses-compatible provider sends web_search and reads returned citation
   assert.deepEqual(result.webQueries, ["CiteGEO AI visibility"]);
   assert.equal(result.citations[0]?.url, "https://citegeo.ai/");
   assert.equal(result.search?.endpointProtocol, "responses");
+});
+
+test("Azure uses its Responses endpoint and api-key header for web-grounded runs", async () => {
+  const captured: CapturedRequest[] = [];
+  mockFetch({
+    model: "gpt-4o-deployment",
+    output: [{ type: "message", content: [{ type: "output_text", text: "CiteGEO is cited.", annotations: [{ url: "https://citegeo.ai/" }] }] }],
+  }, captured);
+  const provider = new AzureOpenAIProvider(definition("azure-openai", "Azure OpenAI"), "https://example.openai.azure.com", "2024-10-21");
+  await provider.run(input({ model: "gpt-4o-deployment", webSearchEnabled: true }));
+  assert.equal(captured[0]?.url, "https://example.openai.azure.com/openai/v1/responses");
+  assert.equal(captured[0]?.headers["api-key"], "test-key");
+  assert.equal(captured[0]?.headers.Authorization, undefined);
+  assert.deepEqual(captured[0]?.body.tools, [{ type: "web_search" }]);
 });
 
 test("Anthropic provider sends Claude native web search tool", async () => {

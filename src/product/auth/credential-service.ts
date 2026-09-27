@@ -1,5 +1,5 @@
 import { credentialEnvKeys, integration } from "./integrations.js";
-import { CredentialFileStore, credentialKey, decryptSecret, encryptSecret } from "./credential-store.js";
+import { CredentialFileStore, IntegrationSettingsFileStore, credentialKey, decryptSecret, encryptSecret } from "./credential-store.js";
 
 // The rules live here rather than in the HTTP layer, so a future caller cannot
 // route round them by reaching for the store directly.
@@ -12,7 +12,15 @@ export interface CredentialStatus {
   kind: string;
   purpose: string;
   help: string;
-  settings: Array<{ key: string; label: string; envKey: string; value: string | null }>;
+  settings: Array<{
+    key: string;
+    label: string;
+    envKey: string;
+    value: string | null;
+    source: CredentialSource;
+    /** Environment-owned settings are displayed but cannot be overwritten. */
+    editable: boolean;
+  }>;
   source: CredentialSource;
   /** Enough to recognise the key, never enough to use it. */
   last4: string | null;
@@ -36,6 +44,19 @@ export interface CredentialWriteResult {
   detail: string;
 }
 
+export interface IntegrationSettingsWriteResult {
+  outcome: "saved" | "owned_by_environment" | "rejected";
+  detail: string;
+}
+
+function isPrintableSetting(value: string): boolean {
+  for (const character of value) {
+    const code = character.charCodeAt(0);
+    if (code < 32 || code === 127) return false;
+  }
+  return true;
+}
+
 function envValue(providerId: string): string | null {
   for (const key of credentialEnvKeys(providerId)) {
     const value = process.env[key]?.trim();
@@ -45,7 +66,10 @@ function envValue(providerId: string): string | null {
 }
 
 export class CredentialService {
-  constructor(private readonly store: CredentialFileStore) {}
+  constructor(
+    private readonly store: CredentialFileStore,
+    private readonly settingsStore = new IntegrationSettingsFileStore(store.dataDir),
+  ) {}
 
   storageEnabled(): boolean {
     return credentialKey() !== null;
@@ -53,6 +77,7 @@ export class CredentialService {
 
   async status(providerIds: string[]): Promise<CredentialStatus[]> {
     const file = await this.store.read();
+    const settingsFile = await this.settingsStore.read();
     return providerIds.map((providerId) => {
       const definition = integration(providerId);
       // Two integrations can share one credential. Reading the card's own id
@@ -62,10 +87,16 @@ export class CredentialService {
       const stored = file[slot];
       // Settings are not secrets, so their values are shown: a wrong endpoint
       // is a thing you have to see to fix.
-      const settings = (definition?.settings || []).map((setting) => ({
-        ...setting,
-        value: process.env[setting.envKey]?.trim() || null,
-      }));
+      const settings = (definition?.settings || []).map((setting) => {
+        const environment = process.env[setting.envKey]?.trim() || null;
+        const storedSetting = settingsFile[providerId]?.[setting.key]?.trim() || null;
+        return {
+          ...setting,
+          value: environment || storedSetting,
+          source: environment ? ("environment" as const) : storedSetting ? ("stored" as const) : ("none" as const),
+          editable: !environment,
+        };
+      });
       const shared = {
         providerId,
         label: definition?.label || providerId,
@@ -132,5 +163,38 @@ export class CredentialService {
     delete file[providerId];
     await this.store.write(file);
     return { outcome: "cleared", detail: "Removed." };
+  }
+
+  /** Stores only declared, short, printable settings. Secrets continue to use
+   * the encrypted credential path; this is deliberately for property IDs,
+   * country/database scope, and similar UI-onboarded configuration. */
+  async saveSettings(providerId: string, values: unknown): Promise<IntegrationSettingsWriteResult> {
+    const definition = integration(providerId);
+    if (!definition) return { outcome: "rejected", detail: `Unknown provider "${providerId}".` };
+    if (!values || typeof values !== "object" || Array.isArray(values)) return { outcome: "rejected", detail: "Settings must be a key-value object." };
+    const supplied = values as Record<string, unknown>;
+    const allowed = new Map((definition.settings || []).map((setting) => [setting.key, setting]));
+    const output: Record<string, string> = {};
+    for (const [key, setting] of allowed) {
+      if (process.env[setting.envKey]?.trim()) {
+        if (key in supplied) return { outcome: "owned_by_environment", detail: `${setting.label} comes from ${setting.envKey}; remove it from the environment before changing it here.` };
+        continue;
+      }
+      const value = supplied[key];
+      if (value === undefined || value === null) continue;
+      if (typeof value !== "string") return { outcome: "rejected", detail: `${setting.label} must be text.` };
+      const trimmed = value.trim();
+      if (!trimmed) continue;
+      if (trimmed.length > 500 || !isPrintableSetting(trimmed)) return { outcome: "rejected", detail: `${setting.label} is not a valid setting.` };
+      output[key] = trimmed;
+    }
+    for (const key of Object.keys(supplied)) {
+      if (!allowed.has(key)) return { outcome: "rejected", detail: `Unknown setting "${key}" for ${definition.label}.` };
+    }
+    const all = await this.settingsStore.read();
+    if (Object.keys(output).length) all[providerId] = output;
+    else delete all[providerId];
+    await this.settingsStore.write(all);
+    return { outcome: "saved", detail: Object.keys(output).length ? "Connection settings saved." : "Connection settings cleared." };
   }
 }

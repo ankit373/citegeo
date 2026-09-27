@@ -7,6 +7,7 @@ import { navScrim, navToggle, wireNav } from "./components/nav.js";
 import { hasPanelOrder, resetPanelOrder, setPanelSpan, togglePanelHidden, wirePanelDrag } from "./components/reorder.js";
 import { wireChartHover } from "./components/chart-hover.js";
 import { setupView, type CredentialRow, type IntegrationRow, type ProviderRow, type SetupData, type StorageCheck, type StorageSettings } from "./pages/setup-view.js";
+import { selectedModelTable, webSearchModeControl } from "./components/model-picker.js";
 
 /** What moved since the previous run, in sentences. Only built when
  * something did: a digest that usually says nothing stops being read. */
@@ -39,6 +40,8 @@ export function boot(): void {
     signals: Unshaped; signalsState: LoadState;
     credentials: CredentialFile | null; credentialsState: LoadState; credentialNotice: Notice;
     integrations: IntegrationRow[]; integrationsState: LoadState;
+    externalMetrics: { snapshots: any[] } | null; externalMetricsState: LoadState;
+    externalMetricsPulling: "" | "ahrefs" | "semrush"; externalMetricsNotice: Notice;
     digest: AnswerDigest | null; digestState: LoadState;
     demand: Unshaped; demandState: LoadState;
     dashMetric: string; dashRange: string;
@@ -87,7 +90,7 @@ export function boot(): void {
     matrixHidden: string[];
   }
 
-    const state: State = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, integrations:[], integrationsState:"idle", digest:null, digestState:"idle", demand:null, demandState:"idle", dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", promptFilters:{ query:"", topicId:"", intent:"", status:"" }, promptSelection:[], answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", rivals:null, rivalsState:"idle", segments:null, segmentsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, lastRun:null, runPollTimer:0, runFeed:[], runFeedState:"idle", runFeedTimer:0, rankPlan:null, rankPlanState:"idle", brief:null, briefState:"idle", outreach:null, outreachState:"idle", harvesting:false, searchDemand:null, searchDemandState:"idle", pulling:false, personas:null, personasState:"idle", priority:null, priorityState:"idle", promptSort:"topic", referrals:null, referralsState:"idle", pullingReferrals:false, engines:null, enginesState:"idle", actions:[], actionsState:"idle", matrixOpen:[], editingBoard:false, brandIcons:{}, panelViews:savedJson("panelViews"), matrixHidden:savedList("matrixHidden") };
+    const state: State = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, integrations:[], integrationsState:"idle", externalMetrics:null, externalMetricsState:"idle", externalMetricsPulling:"", externalMetricsNotice:{text:"",kind:""}, digest:null, digestState:"idle", demand:null, demandState:"idle", dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", promptFilters:{ query:"", topicId:"", intent:"", status:"" }, promptSelection:[], answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", rivals:null, rivalsState:"idle", segments:null, segmentsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, lastRun:null, runPollTimer:0, runFeed:[], runFeedState:"idle", runFeedTimer:0, rankPlan:null, rankPlanState:"idle", brief:null, briefState:"idle", outreach:null, outreachState:"idle", harvesting:false, searchDemand:null, searchDemandState:"idle", pulling:false, personas:null, personasState:"idle", priority:null, priorityState:"idle", promptSort:"topic", referrals:null, referralsState:"idle", pullingReferrals:false, engines:null, enginesState:"idle", actions:[], actionsState:"idle", matrixOpen:[], editingBoard:false, brandIcons:{}, panelViews:savedJson("panelViews"), matrixHidden:savedList("matrixHidden") };
     const app = document.getElementById("app") as HTMLElement;
     let renderOverride: (() => void) | null = null;
     // render() was a hoisted declaration that a later line reassigned. A
@@ -99,7 +102,7 @@ export function boot(): void {
     const formatTime = (value: string) => new Date(value).toLocaleString();
     const modeText = (mode: string) => mode === "provider_native" ? "Provider Native web search" : "Offline";
     const statusText = (status: string) => status === "draft" ? "Draft" : status === "active" ? "Running" : status === "archived" ? "Archived" : "Deleted";
-    function setSelectedProject(projectId: string) { if (projectId !== state.selectedId) { state.liveRun = null; state.lastRun = null; state.insights = null; state.insightsState = "idle"; state.plan = null; state.planState = "idle"; state.rankPlan = null; state.rankPlanState = "idle"; state.engines = null; state.enginesState = "idle"; state.actions = []; state.actionsState = "idle"; state.outreach = null; state.outreachState = "idle"; state.searchDemand = null; state.searchDemandState = "idle"; state.personas = null; state.personasState = "idle"; state.priority = null; state.priorityState = "idle"; state.referrals = null; state.referralsState = "idle"; state.crawlers = null; state.crawlersState = "idle"; state.signals = null; state.signalsState = "idle"; } state.selectedId = projectId || ""; if (state.selectedId) localStorage.setItem("citegeo.product.projectId", state.selectedId); else localStorage.removeItem("citegeo.product.projectId"); const next = new URL(window.location.href); if (state.selectedId) next.searchParams.set("projectId", state.selectedId); else next.searchParams.delete("projectId"); window.history.replaceState({ projectId:state.selectedId }, "", next); }
+    function setSelectedProject(projectId: string) { if (projectId !== state.selectedId) { state.liveRun = null; state.lastRun = null; state.insights = null; state.insightsState = "idle"; state.plan = null; state.planState = "idle"; state.rankPlan = null; state.rankPlanState = "idle"; state.engines = null; state.enginesState = "idle"; state.actions = []; state.actionsState = "idle"; state.outreach = null; state.outreachState = "idle"; state.searchDemand = null; state.searchDemandState = "idle"; state.personas = null; state.personasState = "idle"; state.priority = null; state.priorityState = "idle"; state.referrals = null; state.referralsState = "idle"; state.crawlers = null; state.crawlersState = "idle"; state.signals = null; state.signalsState = "idle"; state.externalMetrics = null; state.externalMetricsState = "idle"; state.externalMetricsPulling = ""; state.externalMetricsNotice = { text:"", kind:"" }; } state.selectedId = projectId || ""; if (state.selectedId) localStorage.setItem("citegeo.product.projectId", state.selectedId); else localStorage.removeItem("citegeo.product.projectId"); const next = new URL(window.location.href); if (state.selectedId) next.searchParams.set("projectId", state.selectedId); else next.searchParams.delete("projectId"); window.history.replaceState({ projectId:state.selectedId }, "", next); }
     function setDrawer(open: boolean) { document.body.classList.toggle("drawer-open", open); element("project-drawer").setAttribute("aria-hidden", String(!open)); }
     function openDrawer() { state.drawerSession += 1; setFormStatus("", ""); setDrawer(true); window.setTimeout(() => element("project-domain").focus(), 0); }
     function closeDrawer() { state.drawerSession += 1; setDrawer(false); }
@@ -817,6 +820,34 @@ export function boot(): void {
       render();
     }
 
+    async function loadExternalMetrics() {
+      if (!state.selectedId || state.externalMetricsState === "loading") return;
+      state.externalMetricsState = "loading";
+      try {
+        state.externalMetrics = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/external-metrics");
+        state.externalMetricsState = "ready";
+      } catch (error) {
+        state.externalMetricsState = "error";
+      }
+      render();
+    }
+
+    async function pullExternalMetrics(source: "ahrefs" | "semrush", control: HTMLElement | null) {
+      if (!state.selectedId || state.externalMetricsPulling) return;
+      state.externalMetricsPulling = source;
+      state.externalMetricsNotice = { text:"", kind:"" };
+      render();
+      try {
+        const result = await runAction(control, { loading:"Pulling…", success:"Saved", error:"Pull failed" }, () => request<{ snapshot: { source: string } }>("/api/projects/" + encodeURIComponent(state.selectedId) + "/external-metrics", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ source }) }));
+        state.externalMetricsNotice = { text: (result.snapshot.source === "ahrefs" ? "Ahrefs" : "Semrush") + " estimate saved as a dated snapshot.", kind:"success" };
+        state.externalMetricsState = "idle";
+      } catch (error) {
+        state.externalMetricsNotice = { text: error instanceof Error ? error.message : String(error), kind:"error" };
+      }
+      state.externalMetricsPulling = "";
+      await loadExternalMetrics();
+    }
+
     async function loadCredentials() {
       if (state.credentialsState === "loading") return;
       state.credentialsState = "loading";
@@ -857,6 +888,23 @@ export function boot(): void {
       state.providersState = "idle";
       loadCredentials();
       loadProviders();
+    }
+    async function saveIntegrationSettings(providerId: any, button: HTMLElement | null) {
+      const settings: Record<string, string> = {};
+      const prefix = String(providerId) + ":";
+      document.querySelectorAll<HTMLInputElement>("[data-integration-setting]").forEach((field) => {
+        const identity = field.getAttribute("data-integration-setting") || "";
+        if (!identity.startsWith(prefix)) return;
+        settings[identity.slice(prefix.length)] = field.value;
+      });
+      try {
+        const result = await runAction(button, { loading:"Saving scope…", success:"Scope saved", error:"Refused" }, () => request("/api/credentials/" + encodeURIComponent(providerId) + "/settings", { method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ settings }) }));
+        state.credentialNotice = { text:result.detail || "Connection settings saved.", kind:"success" };
+      } catch (error) {
+        state.credentialNotice = { text:error instanceof Error ? error.message : String(error), kind:"error" };
+      }
+      state.credentialsState = "idle";
+      loadCredentials();
     }
     function pct(value: any) { return value === null || value === undefined ? "Not measurable" : Math.round(value * 100) + "%"; }
     function scoreText(value: any) { return value === null || value === undefined ? "Not measurable" : String(value); }
@@ -2350,18 +2398,17 @@ export function boot(): void {
     function openRouterOutOfCredit() { return state.providers.some((provider) => provider.providerId === "openrouter" && provider.balance && !provider.balance.paidModelsRunnable); }
     function modelIsBlocked(model: any, modelId: any) { return Boolean(model) && model.providerId === "openrouter" && !modelId.endsWith(":free") && openRouterOutOfCredit(); }
     function runsNowCell(model: any, modelId: any) { if (model && model.available === false) return '<span class="mcell state-bad" title="' + html(model.unavailableReason || "") + '">Never</span>'; return modelIsBlocked(model, modelId) ? '<span class="mcell state-flag">No credit</span>' : '<span class="mcell state-ok">Yes</span>'; }
-    function webSearchSelect(modelId: any, mode: any, nativeSupported: any, attribute: any) { return '<select data-' + attribute + '="' + html(modelId) + '" ' + (nativeSupported ? "" : "disabled") + '><option value="off" ' + (mode === "off" ? "selected" : "") + '>Offline</option><option value="provider_native" ' + (mode === "provider_native" ? "selected" : "") + '>Native web search</option></select>'; }
     /** A selection the server will refuse. Its catalogue checkbox is disabled
      * for the same reason, so the row has to offer the only way to clear it. */
     function blockedSelection(row: any) { return !row.inCatalog || (row.model && row.model.available === false); }
-    function renderSelectedModels(readOnly?: any) { const rows = selectedRows(); if (rows.length === 0) return '<p class="subtle">No models selected yet.</p>'; const columns = readOnly ? "mcols-readonly" : "mcols-selected"; const head = '<div class="mhead ' + columns + '"><span>Model</span><span>Provider</span>' + (readOnly ? '' : '<span>Runs now</span>') + '<span>Web search</span></div>'; const body = rows.map((row) => { const nativeSupported = ((row.model as any).nativeWebSearchSupported as any) === true; const mode = readOnly ? '<span class="mcell">' + html(modeText(row.webSearchMode)) + '</span>' : webSearchSelect(row.modelId, row.webSearchMode, nativeSupported, "selected-model-mode"); return '<div class="mrow selection-row ' + columns + '"><div class="mname"><strong>' + html(((row.model as any).displayName as any)) + '</strong><span class="mono">' + html(row.modelId) + '</span></div><span class="mcell">' + html(providerShortLabel(((row.model as any).providerId as any))) + '</span>' + (readOnly ? '' : row.inCatalog ? runsNowCell(row.model, row.modelId) : '<span class="mcell state-bad" title="The provider no longer lists this model.">No longer offered</span>') + (readOnly || !blockedSelection(row) ? mode : button({ label: "Remove", kind: "quiet", tone: "danger", on: { "data-drop-selection": row.modelId } })) + '</div>'; }).join(""); return '<div class="mtable">' + head + body + '</div>' + (readOnly ? '' : '<p class="mlegend">Web search stays Offline for models with no provider-native search.</p>'); }
+    function renderSelectedModels(readOnly?: any) { return selectedModelTable({ readOnly, rows: selectedRows().map((row) => ({ modelId: row.modelId, displayName: String((row.model as any).displayName), providerLabel: providerShortLabel((row.model as any).providerId), webSearchMode: row.webSearchMode === "provider_native" ? "provider_native" as const : "off" as const, nativeWebSearchSupported: (row.model as any).nativeWebSearchSupported === true, runnable: row.inCatalog ? runsNowCell(row.model, row.modelId) : "", unavailable: blockedSelection(row) })) }); }
     function catalogVendor(item: any) { const supplied = typeof item.vendor === "string" ? item.vendor.trim() : ""; if (supplied) return supplied; const name = String(item.displayName || ""); const separator = name.indexOf(":"); if (separator > 0) return name.slice(0, separator).trim(); const modelId = String(item.modelId || ""); const namespaceEnd = modelId.indexOf("/"); return namespaceEnd > 0 ? modelId.slice(0, namespaceEnd) : modelId; }
     function catalogReleasedAt(item: any) { if (typeof item.releasedAt !== "string" || !item.releasedAt) return null; const timestamp = new Date(item.releasedAt).getTime(); return Number.isFinite(timestamp) ? timestamp : null; }
     function catalogVendors() { return Array.from(new Set(state.catalog.map((item) => catalogVendor(item)).filter((vendor) => vendor.length > 0))).sort((left, right) => left.localeCompare(right)); }
     function filteredCatalogModels() { const query = state.query.toLocaleLowerCase(); const results = state.catalog.filter((item) => { const vendor = catalogVendor(item); const matchesQuery = item.displayName.toLocaleLowerCase().includes(query) || item.modelId.toLocaleLowerCase().includes(query) || vendor.toLocaleLowerCase().includes(query); const matchesVendor = !state.catalogProvider || vendor === state.catalogProvider; const matchesSearch = state.catalogNativeSearch === "all" || (state.catalogNativeSearch === "supported" ? item.nativeWebSearchSupported : !item.nativeWebSearchSupported); return matchesQuery && matchesVendor && matchesSearch; }); results.sort((left, right) => { const leftVendor = catalogVendor(left); const rightVendor = catalogVendor(right); if (state.catalogSort === "vendor") { const vendorOrder = leftVendor.localeCompare(rightVendor); return vendorOrder || left.displayName.localeCompare(right.displayName); } if (state.catalogSort === "newest" || state.catalogSort === "oldest") { const leftReleasedAt = catalogReleasedAt(left); const rightReleasedAt = catalogReleasedAt(right); if (leftReleasedAt === null && rightReleasedAt === null) return left.displayName.localeCompare(right.displayName); if (leftReleasedAt === null) return 1; if (rightReleasedAt === null) return -1; return state.catalogSort === "newest" ? rightReleasedAt - leftReleasedAt : leftReleasedAt - rightReleasedAt; } return left.displayName.localeCompare(right.displayName); }); return results.slice(0, 80); }
     function catalogResultSummary(count: number) { return 'Show ' + count + '  models. When sorting by release date, models with no date in the catalog are listed last.'; }
     function catalogHead() { return '<div class="mhead mcols-catalog"><span></span><span>Model</span><span>Vendor</span><span>Runs now</span><span>Web search</span></div>'; }
-    function renderCatalogModelRows(results: any) { return results.map((item: any) => { const chosen = state.draftSelections.get(item.modelId); const isChosen = chosen !== undefined; const vendor = catalogVendor(item); const releasedAt = catalogReleasedAt(item); const released = releasedAt === null ? ' \u00b7 no release date' : ' \u00b7 ' + new Date(releasedAt).toLocaleDateString(); const releasedTitle = releasedAt === null ? ' title="Catalog does not provide a release date"' : ''; return '<div class="mrow mcols-catalog" data-testid="catalog-model" data-model-id="' + html(item.modelId) + '" data-model-vendor="' + html(vendor) + '" data-model-released-at="' + html(releasedAt === null ? "" : String(releasedAt)) + '" data-native-search="' + String(item.nativeWebSearchSupported) + '"><input type="checkbox" data-model-checkbox="' + html(item.modelId) + '" ' + (isChosen ? "checked" : "") + (item.available ? "" : " disabled") + ' aria-label="Select ' + html(item.displayName) + '"><div class="mname"><strong>' + html(item.displayName) + '</strong><span class="mono"' + releasedTitle + '>' + html(item.modelId) + html(released) + '</span>' + (item.available ? '' : '<span class="state-bad">' + html(item.unavailableReason || "Unavailable") + '</span>') + '</div><span class="mcell">' + html(vendor) + '</span>' + runsNowCell(item, item.modelId) + webSearchSelect(item.modelId, chosen || "off", isChosen && item.nativeWebSearchSupported, "model-mode") + '</div>'; }).join(""); }
+    function renderCatalogModelRows(results: any) { return results.map((item: any) => { const chosen = state.draftSelections.get(item.modelId); const isChosen = chosen !== undefined; const vendor = catalogVendor(item); const releasedAt = catalogReleasedAt(item); const released = releasedAt === null ? ' \u00b7 no release date' : ' \u00b7 ' + new Date(releasedAt).toLocaleDateString(); const releasedTitle = releasedAt === null ? ' title="Catalog does not provide a release date"' : ''; return '<div class="mrow mcols-catalog" data-testid="catalog-model" data-model-id="' + html(item.modelId) + '" data-model-vendor="' + html(vendor) + '" data-model-released-at="' + html(releasedAt === null ? "" : String(releasedAt)) + '" data-native-search="' + String(item.nativeWebSearchSupported) + '"><input type="checkbox" data-model-checkbox="' + html(item.modelId) + '" ' + (isChosen ? "checked" : "") + (item.available ? "" : " disabled") + ' aria-label="Select ' + html(item.displayName) + '"><div class="mname"><strong>' + html(item.displayName) + '</strong><span class="mono"' + releasedTitle + '>' + html(item.modelId) + html(released) + '</span>' + (item.available ? '' : '<span class="state-bad">' + html(item.unavailableReason || "Unavailable") + '</span>') + '</div><span class="mcell">' + html(vendor) + '</span>' + runsNowCell(item, item.modelId) + webSearchModeControl({ modelId:item.modelId, mode:chosen === "provider_native" ? "provider_native" : "off", supported:isChosen && item.nativeWebSearchSupported, attribute:"model-mode" }) + '</div>'; }).join(""); }
     // Repaints the rows alone. The whole page is 70KB of markup, so re-rendering
     // it per keystroke is felt; this needs .model-list to wrap only the rows.
     function refreshCatalogSearchResults() { const list = document.querySelector(".model-list"); const summary = document.querySelector(".catalog-result-summary"); if (!list || !summary || state.catalogState !== "ready") { render(); return; } const results = filteredCatalogModels(); summary.textContent = catalogResultSummary(results.length); list.innerHTML = results.length === 0 ? '<p class="subtle">No matching models.</p>' : renderCatalogModelRows(results); }
@@ -2432,6 +2479,7 @@ export function boot(): void {
       if (state.storageState === "idle") { loadStorage(); }
       if (state.credentialsState === "idle") { loadCredentials(); }
       if (state.integrationsState === "idle") { loadIntegrations(); }
+      if (state.externalMetricsState === "idle" && state.selectedId) { loadExternalMetrics(); }
       return setupView({
         providers: state.providers,
         providersState: state.providersState,
@@ -2444,6 +2492,11 @@ export function boot(): void {
         credentialNotice: state.credentialNotice,
         integrations: state.integrations,
         integrationsState: state.integrationsState,
+        externalMetrics: state.externalMetrics?.snapshots || [],
+        externalMetricsState: state.externalMetricsState,
+        externalMetricsPulling: state.externalMetricsPulling,
+        externalMetricsNotice: state.externalMetricsNotice,
+        selectedProject: Boolean(project()),
       });
     }
 
@@ -2697,6 +2750,16 @@ export function boot(): void {
       if (saveCred) { await saveCredential(saveCred.getAttribute("data-credential-save"), saveCred); return; }
       const clearCred = target && target.closest ? target.closest("[data-credential-clear]") : null;
       if (clearCred) { await clearCredential(clearCred.getAttribute("data-credential-clear"), clearCred); return; }
+      const pullExternal = target && target.closest ? target.closest("[data-pull-external-metrics]") : null;
+      if (pullExternal) {
+        const source = pullExternal.getAttribute("data-pull-external-metrics");
+        if (source === "ahrefs" || source === "semrush") await pullExternalMetrics(source, pullExternal);
+        return;
+      }
+      const saveSettings = target && target.closest ? target.closest("[data-integration-settings-save]") : null;
+      if (saveSettings) { await saveIntegrationSettings(saveSettings.getAttribute("data-integration-settings-save"), saveSettings); return; }
+      const removeSelectedModel = target && target.closest ? target.closest("[data-remove-selected-model]") : null;
+      if (removeSelectedModel) { dropSelection(removeSelectedModel.getAttribute("data-remove-selected-model") || ""); return; }
       const probeButton = target && target.closest ? target.closest("[data-probe-signals]") : null;
       if (probeButton) { await captureSignals(probeButton); state.signalsState = "idle"; loadSignals(); return; } if (!(target instanceof Element)) return; const pageButton = target.closest("[data-page]"); if (pageButton) { await setPage(pageButton.getAttribute("data-page") || "overview"); return; } const listModeButton = target.closest("[data-list-mode]"); if (listModeButton) { state.mode = listModeButton.getAttribute("data-list-mode") || "current"; await refreshProjects(); render(); return; } if (target.id === "new-project" || target.id === "empty-new-project") { openDrawer(); return; } if (target.id === "close-drawer" || target.id === "cancel-draft" || target.id === "drawer-backdrop") { closeDrawer(); return; } if (target.id === "retry-catalog") { state.catalogState = "idle"; await loadCatalog(); return; } const opened = target.closest("[data-matrix-open]"); if (opened) { const key = opened.getAttribute("data-matrix-open") || ""; const at = state.matrixOpen.indexOf(key); if (at >= 0) state.matrixOpen.splice(at, 1); else state.matrixOpen.push(key); render(); return; } const expand = target.closest("[data-expand-panel]"); if (expand && !target.closest("button:not(.panel-open),a,select,input,textarea,label")) { openPanel(expand.getAttribute("data-expand-panel") || ""); return; } if (target.closest("[data-edit-board]")) { state.editingBoard = !state.editingBoard; render(); return; } const span = target.closest("[data-panel-span]"); if (span) { const parts = (span.getAttribute("data-panel-span") || "").split(":"); setPanelSpan(parts[0] || "", Number(parts[1])); render(); return; } const hide = target.closest("[data-panel-hide]"); if (hide) { togglePanelHidden(hide.getAttribute("data-panel-hide") || ""); render(); return; } if (target.closest("[data-reset-panels]")) { resetPanelOrder(); state.editingBoard = false; render(); return; } const brand = target.closest("[data-brand-evidence]"); if (brand) { await openBrandEvidence(brand.getAttribute("data-brand-evidence") || "", brand.getAttribute("data-brand-tone") || ""); return; } const dropped = target.closest("[data-drop-selection]"); if (dropped) { dropSelection(dropped.getAttribute("data-drop-selection") || ""); return; } if (target.id === "save-models") { await saveModels((target as any)); return; } if (target.id === "save-monitoring-configuration") { await saveMonitoringConfiguration(); return; } if (target.id === "archive-project") { const selected = project(); if (selected) await projectAction("archive", selected.id, (target as any)); return; } if (target.id === "delete-project") { const selected = project(); if (selected) await projectAction("delete", selected.id, (target as any)); return; } const action = target.closest("[data-project-action]"); if (action) { const projectId = action.getAttribute("data-project-id"); const name = action.getAttribute("data-project-action"); if (projectId && name) await projectAction(name, projectId, (action as any)); } });
     document.addEventListener("change", async (event) => { const target = el(event.target) as any; if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) return; if (target.id === "project-select") { setSelectedProject(target.value); state.selectionsDirty = false; await refreshConfiguration(); loadLiveRun(); render(); return; } if (target instanceof HTMLInputElement && target.hasAttribute("data-model-checkbox")) { changeModel(target.getAttribute("data-model-checkbox") || "", target.checked); return; } if (target instanceof HTMLSelectElement && target.hasAttribute("data-model-mode")) { changeModelMode(target.getAttribute("data-model-mode") || "", target.value); return; } if (target instanceof HTMLSelectElement && target.hasAttribute("data-selected-model-mode")) { changeModelMode(target.getAttribute("data-selected-model-mode") || "", target.value); return; } });
