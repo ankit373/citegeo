@@ -113,7 +113,7 @@ function notFound(error: unknown): boolean {
 }
 
 export class CredentialFileStore {
-  constructor(private readonly dataDir: string) {}
+  constructor(readonly dataDir: string) {}
 
   private path(): string {
     return join(this.dataDir, "credentials.json");
@@ -136,6 +136,46 @@ export class CredentialFileStore {
     const temporary = `${path}.${randomUUID()}.tmp`;
     // Owner-only: the file holds ciphertext, but the mode is one more thing an
     // attacker with a shell would have to defeat.
+    await writeFile(temporary, `${JSON.stringify(file, null, 2)}\n`, { encoding: "utf8", mode: 0o600 });
+    await rename(temporary, path);
+  }
+}
+
+/** Non-secret connection settings live beside encrypted credentials, rather
+ * than in the browser or the project records. The mode is still owner-only:
+ * a Search Console property or analytics identifier is not a password, but
+ * should not become an unauthenticated configuration endpoint either. */
+export type IntegrationSettingsFile = Record<string, Record<string, string>>;
+
+export class IntegrationSettingsFileStore {
+  constructor(private readonly dataDir: string) {}
+
+  private path(): string {
+    return join(this.dataDir, "integration-settings.json");
+  }
+
+  async read(): Promise<IntegrationSettingsFile> {
+    try {
+      const parsed = JSON.parse(await readFile(this.path(), "utf8")) as unknown;
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+      const result: IntegrationSettingsFile = {};
+      for (const [providerId, raw] of Object.entries(parsed as Record<string, unknown>)) {
+        if (!raw || typeof raw !== "object" || Array.isArray(raw)) continue;
+        result[providerId] = Object.fromEntries(
+          Object.entries(raw as Record<string, unknown>).flatMap(([key, value]) => typeof value === "string" ? [[key, value]] : []),
+        );
+      }
+      return result;
+    } catch (error) {
+      if (notFound(error)) return {};
+      return {};
+    }
+  }
+
+  async write(file: IntegrationSettingsFile): Promise<void> {
+    await mkdir(this.dataDir, { recursive: true, mode: 0o700 });
+    const path = this.path();
+    const temporary = `${path}.${randomUUID()}.tmp`;
     await writeFile(temporary, `${JSON.stringify(file, null, 2)}\n`, { encoding: "utf8", mode: 0o600 });
     await rename(temporary, path);
   }

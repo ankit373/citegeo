@@ -19,7 +19,7 @@ import { RecognitionReportFileStore } from "../src/product/reports/report-store.
 import { ProductScheduleFileStore } from "../src/product/scheduling/schedule-store.js";
 import { ProductScheduleService } from "../src/product/scheduling/schedule-service.js";
 import { KEYWORD_DISCOVERY_PROMPT_HASH, KEYWORD_DISCOVERY_SCHEMA_HASH } from "../src/product/measurements/keyword-discovery-protocol.js";
-import { Phase5FixtureCatalog, Phase5FixtureExecutor } from "./fixtures/phase5-fixture-adapter.js";
+import { Phase5FixtureCatalog, Phase5FixtureExecutor } from "./fixtures/measurement-fixture-adapter.js";
 
 type Fixture = {
   root: string;

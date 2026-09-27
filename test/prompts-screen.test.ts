@@ -84,7 +84,9 @@ test("a selection the server will refuse can be cleared from the page", () => {
   // The catalogue checkbox for an unavailable model is disabled, so without
   // this control the save stays rejected with no way to fix it.
   assert.equal(html.includes("function blockedSelection(row: any) { return !row.inCatalog || (row.model && row.model.available === false); }"), true);
-  assert.equal(html.includes('"data-drop-selection": row.modelId'), true);
+  // The button moved into the model picker component, so pin the handler that
+  // stays in the app source rather than the markup that left it.
+  assert.equal(html.includes('dropSelection(removeSelectedModel.getAttribute("data-remove-selected-model") || "")'), true);
   assert.equal(html.includes("function dropSelection(modelId: any) { state.draftSelections.delete(modelId);"), true);
 });
 

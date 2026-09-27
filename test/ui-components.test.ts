@@ -6,6 +6,8 @@ import { cell, emptyState, nameCell, pill, row, section, table, tiles } from "..
 import { skeletonTable, skeletonTiles, loading } from "../src/ui/app/components/skeleton.js";
 import { productAppSource } from "../src/ui/app-source.js";
 import { footer, header, panel, sidebar } from "../src/ui/app/components/layout.js";
+import { selectedModelTable } from "../src/ui/app/components/model-picker.js";
+import { externalMetricHistory } from "../src/ui/app/components/external-metric-history.js";
 
 test("every string a component writes is escaped, because one omission is a hole", () => {
   assert.equal(html('<img src=x onerror="alert(1)">'), "&lt;img src=x onerror=&quot;alert(1)&quot;&gt;");
@@ -105,4 +107,31 @@ test("an archived answer is shown with the question that produced it", () => {
   const source = productAppSource();
   assert.ok(source.includes("evidence-asked"), "the evidence card has no place for the question");
   assert.ok(source.includes("answer.promptText"), "the question on the answer is never read");
+});
+
+test("selected models have a visible, reusable removal control", () => {
+  const markup = selectedModelTable({ rows: [{
+    modelId: "codex",
+    displayName: "Codex",
+    providerLabel: "Local gateway",
+    webSearchMode: "provider_native",
+    nativeWebSearchSupported: true,
+    runnable: "Yes",
+  }] });
+  assert.ok(markup.includes('data-remove-selected-model="codex"'));
+  assert.ok(markup.includes("Native web search"));
+});
+
+test("external data history keeps source labels and collection actions in one component", () => {
+  const markup = externalMetricHistory({
+    projectSelected: true,
+    state: "ready",
+    snapshots: [{ id: "one", source: "ahrefs", observedAt: "2026-09-27T00:00:00.000Z", dataFreshThrough: "2026-09-27" }],
+    connected: ["ahrefs"],
+    pulling: "",
+    notice: { text: "", kind: "" },
+  });
+  assert.ok(markup.includes('data-pull-external-metrics="ahrefs"'));
+  assert.ok(markup.includes("Provider estimates only"));
+  assert.ok(markup.includes("12 aligned weekly observations"));
 });

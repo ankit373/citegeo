@@ -1,4 +1,4 @@
-import { answerIndexDir, browserDebugEndpoint, productDataDir } from "../config/env.js";
+import { answerIndexDir, browserDebugEndpoint, integrationSetting, productDataDir } from "../config/env.js";
 import { AnswerIndexService } from "./index/answer-index-service.js";
 import { PROVIDER_MODEL_CAPABILITIES } from "../providers/catalog.js";
 import { ProductConfigurationFileStore } from "./configuration/configuration-store.js";
@@ -54,6 +54,8 @@ import { ActionLogService, ActionLogStore } from "./topics/action-log.js";
 import { SourcePageService } from "./citations/source-service.js";
 import { SearchConsoleService } from "./search-console/search-console-service.js";
 import { PersonaService } from "./topics/persona.js";
+import { ExternalMetricSnapshotStore } from "./external-metrics/snapshot-store.js";
+import { ExternalMetricProviderPullService } from "./external-metrics/provider-pull-service.js";
 // The composition root. The graph is built once per server, not per request:
 // rebuilding it per call silently discarded anything a service held between
 // calls, so the insights cache cached nothing and cost 60ms every time.
@@ -138,6 +140,7 @@ export interface ProductServices {
   actions: ActionLogService;
   sourcePages: SourcePageService;
   searchConsole: SearchConsoleService;
+  externalMetrics: ExternalMetricProviderPullService;
   personas: PersonaService;
   storageSettings: StorageSettingsStore;
   dataDir: string;
@@ -203,9 +206,14 @@ export function createProductServices(dependencies: ProductServerDependencies = 
   const searchConsole = new SearchConsoleService(
     projectStore,
     async () => process.env.GOOGLE_SERVICE_ACCOUNT_JSON || await credentials.resolve("google"),
-    () => process.env.GOOGLE_SEARCH_CONSOLE_SITE || null,
+    () => process.env.GOOGLE_SEARCH_CONSOLE_SITE || integrationSetting("google", "siteUrl") || null,
     undefined,
-    () => process.env.GOOGLE_ANALYTICS_PROPERTY_ID || null,
+    () => process.env.GOOGLE_ANALYTICS_PROPERTY_ID || integrationSetting("google-analytics", "propertyId") || null,
+  );
+  const externalMetrics = new ExternalMetricProviderPullService(
+    projects,
+    new ExternalMetricSnapshotStore(projectStore),
+    async (providerId) => credentials.resolve(providerId),
   );
   const storageSettings = new StorageSettingsStore(productDataDir());
   // A run left "running" by a process that is gone would otherwise show as
@@ -217,10 +225,9 @@ export function createProductServices(dependencies: ProductServerDependencies = 
   return {
     projects, catalog, selections, baselines, recognition, reports, insights,
     signals, crawlerLog, watchSets, measurements, stats, schedules,
-    topics, promptRuns, promptSchedule, demand, profiles, icons, competitors, segments, ask, engines, actions, sourcePages, searchConsole, personas,
+    topics, promptRuns, promptSchedule, demand, profiles, icons, competitors, segments, ask, engines, actions, sourcePages, searchConsole, externalMetrics, personas,
     storageSettings, dataDir: productDataDir(),
     credentials,
     auth: authConfig(),
   };
 }
-

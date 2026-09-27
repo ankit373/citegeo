@@ -69,6 +69,24 @@ const OUTWARD_INTEGRATIONS: IntegrationDefinition[] = [
     help: `${GOOGLE_HELP} Whichever one Search Console holds serves this too, as a viewer on the Analytics property.`,
     settings: [{ key: "propertyId", label: "GA4 property id", envKey: "GOOGLE_ANALYTICS_PROPERTY_ID" }],
   },
+  {
+    id: "ahrefs",
+    label: "Ahrefs",
+    kind: "integration",
+    purpose: "Read the provider's domain-rating, organic-keyword and estimated-organic-traffic snapshots for the monitored domain. These are third-party estimates, not Analytics traffic.",
+    envKeys: ["AHREFS_API_KEY"],
+    help: "An Ahrefs API v3 key with access to Site Explorer. Pulls consume Ahrefs API units; use the same country scope for every comparison.",
+    settings: [{ key: "country", label: "Country (ISO 3166-1 alpha-2)", envKey: "AHREFS_COUNTRY" }],
+  },
+  {
+    id: "semrush",
+    label: "Semrush",
+    kind: "integration",
+    purpose: "Read the provider's domain rank, organic-keyword and estimated-organic-traffic snapshots for the monitored domain. These are third-party estimates, not Analytics traffic.",
+    envKeys: ["SEMRUSH_API_KEY"],
+    help: "A Semrush API v3 key with Domain Overview access. Pulls consume API units; keep one regional database for a comparable time series.",
+    settings: [{ key: "database", label: "Regional database", envKey: "SEMRUSH_DATABASE" }],
+  },
 ];
 
 export const INTEGRATIONS: IntegrationDefinition[] = [...MODEL_PROVIDERS, ...OUTWARD_INTEGRATIONS];

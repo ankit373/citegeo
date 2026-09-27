@@ -27,6 +27,24 @@ test("a local gateway model is offered as its own provider, never as OpenRouter"
   }
 });
 
+test("a configured gateway can advertise web search for Claude Code and Codex without inferring it from their names", async () => {
+  const original = globalThis.fetch;
+  process.env.OPENAI_COMPATIBLE_BASE_URL = "http://127.0.0.1:9/v1";
+  process.env.OPENAI_COMPATIBLE_WEB_SEARCH = "true";
+  globalThis.fetch = (async () => ({
+    ok: true,
+    json: async () => ({ data: [{ id: "codex", owned_by: "openai" }, { id: "claude-code", owned_by: "anthropic" }] }),
+  })) as unknown as typeof fetch;
+  try {
+    const models = await new OpenAiCompatibleProductModelCatalog().list();
+    assert.deepEqual(models.map((model) => model.nativeWebSearchSupported), [true, true]);
+  } finally {
+    globalThis.fetch = original;
+    delete process.env.OPENAI_COMPATIBLE_BASE_URL;
+    delete process.env.OPENAI_COMPATIBLE_WEB_SEARCH;
+  }
+});
+
 test("an unreachable gateway contributes nothing instead of emptying the catalog", async () => {
   const original = globalThis.fetch;
   process.env.OPENAI_COMPATIBLE_BASE_URL = "http://127.0.0.1:9/v1";

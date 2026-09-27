@@ -1,4 +1,5 @@
 import { SearchConsoleUnavailableError, type SearchConsoleService } from "./search-console-service.js";
+import { ExternalMetricProviderError, type ExternalMetricProviderPullService } from "../external-metrics/provider-pull-service.js";
 import type { TopicInsights } from "../topics/topic-insights.js";
 import type { Prompt } from "../topics/topic-schema.js";
 
@@ -9,15 +10,38 @@ export async function handleSearchConsoleApi(input: {
   route: string[];
   send: SearchJsonSender;
   searchConsole: SearchConsoleService;
+  externalMetrics: ExternalMetricProviderPullService;
   prompts: (projectId: string) => Promise<Prompt[]>;
   insights: (projectId: string) => Promise<TopicInsights>;
   readJson: () => Promise<Record<string, unknown>>;
 }): Promise<boolean> {
-  const { method, route, send, searchConsole } = input;
+  const { method, route, send, searchConsole, externalMetrics } = input;
   if (route[0] !== "api" || route[1] !== "projects") return false;
   const projectId = route[2];
   const tail = route.slice(3);
   if (!projectId || tail.length !== 1) return false;
+
+  if (tail[0] === "external-metrics") {
+    if (method === "GET") {
+      send(200, { snapshots: await searchConsole.metricSnapshots(projectId) });
+      return true;
+    }
+    if (method === "POST") {
+      const body = await input.readJson();
+      const source = body.source;
+      if (source !== "ahrefs" && source !== "semrush") {
+        send(400, { error: "source must be ahrefs or semrush." });
+        return true;
+      }
+      try {
+        send(200, { snapshot: await externalMetrics.pull(projectId, source) });
+      } catch (error) {
+        send(error instanceof ExternalMetricProviderError ? 400 : 500, { error: error instanceof Error ? error.message : String(error) });
+      }
+      return true;
+    }
+    return false;
+  }
 
   if (tail[0] === "assistant-referrals") {
     if (method === "GET") {
