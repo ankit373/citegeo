@@ -1,0 +1,35 @@
+name: Base branch
+
+# main takes work through develop. A release branch or a hotfix needs the
+# owner to add the override label, so nothing reaches main unnoticed.
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, edited, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+jobs:
+  source:
+    name: Pull request comes from develop
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check the source branch
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          SAME_REPO: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+          OVERRIDE: ${{ contains(github.event.pull_request.labels.*.name, 'allow-direct-to-main') }}
+        run: |
+          if [ "$OVERRIDE" = "true" ]; then
+            echo "Override label present, allowing $HEAD_REF into main."
+            exit 0
+          fi
+          if [ "$SAME_REPO" = "true" ] && [ "$HEAD_REF" = "develop" ]; then
+            echo "Source branch is develop."
+            exit 0
+          fi
+          echo "::error::main only takes pull requests from develop. This one comes from '$HEAD_REF'."
+          echo "Retarget it at develop, or add the 'allow-direct-to-main' label to override."
+          exit 1
