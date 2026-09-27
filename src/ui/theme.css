@@ -63,6 +63,9 @@
   --hairline: 1px solid var(--line);
   --hairline-strong: 1px solid var(--line-strong);
   --shadow-sm: 0 1px 2px rgba(26,25,22,.04);
+  /* A drawer sits above everything, so it casts rather than borrows. On paper
+     that is a shadow; on ink a shadow is invisible and a light rim reads. */
+  --color-shadow-panel: -12px 0 40px rgba(20,18,14,.16);
   --shadow: 0 1px 3px rgba(26,25,22,.05),0 1px 1px rgba(26,25,22,.03);
   --motion-fast: 140ms;
   --motion-normal: 260ms;
@@ -99,6 +102,7 @@
   --skeleton: var(--color-skeleton);
   --skeleton-sheen: var(--color-skeleton-sheen);
   --scrim: var(--color-scrim);
+  --shadow-panel: var(--color-shadow-panel);
   --type-micro: var(--text-micro);
   --type-xs: var(--text-xs);
   --type-sm: var(--text-sm);
@@ -176,7 +180,11 @@
       --color-scrim: rgba(0,0,0,.52);
       --scrim: rgba(0,0,0,.52);
 
-      --shadow-sm:0 1px 2px rgba(0,0,0,.28);
+      --color-shadow-panel:-14px 0 46px rgba(0,0,0,.52), inset 1px 0 0 rgba(255,255,255,.06);
+      --shadow-panel:-14px 0 46px rgba(0,0,0,.52), inset 1px 0 0 rgba(255,255,255,.06);
+      --color-shadow-panel:-14px 0 46px rgba(0,0,0,.52), inset 1px 0 0 rgba(255,255,255,.06);
+    --shadow-panel:-14px 0 46px rgba(0,0,0,.52), inset 1px 0 0 rgba(255,255,255,.06);
+    --shadow-sm:0 1px 2px rgba(0,0,0,.28);
       --shadow:0 1px 3px rgba(0,0,0,.32),0 1px 1px rgba(0,0,0,.22);
     }
   }
@@ -916,6 +924,15 @@ select[data-filter].is-set {
 .rloose-list { @apply mt-[12px] grid gap-[6px] border-t border-line pt-[12px]; }
 .rloose { @apply flex flex-wrap items-baseline gap-[8px] text-[13px]; }
 .rcaveat { @apply mt-[10px] text-[12px]; max-width: 62ch; }
+
+/* A finished connection is a tick, not a sentence. */
+.connected-tick {
+  @apply inline-flex items-center justify-center rounded-full;
+  width: 22px; height: 22px;
+  background: var(--confirmed-wash);
+  color: var(--confirmed-text);
+  font-size: 13px; font-weight: 600;
+}
 
 /* Shared onboarding components. A setup page should tell the reader what to
    do next before exposing every integration field. */

@@ -27,7 +27,7 @@ export interface ConnectionCardInput {
   label: string;
   purpose: string;
   help: string;
-  status: "connected" | "not_connected" | "unavailable";
+  status: "connected" | "incomplete" | "not_connected" | "unavailable";
   credentialControl: string;
   settings: ConnectionSettingView[];
   oauthHelp?: string;
@@ -49,12 +49,16 @@ function settingEditor(providerId: string, settings: ConnectionSettingView[]): s
 
 /** All outward integrations share this card. It never renders a secret. */
 export function connectionCard(input: ConnectionCardInput): string {
-  const state = input.status === "connected"
-    ? '<span class="state-ok">Connected</span>'
-    : input.status === "not_connected"
-      ? '<span class="state-flag">Not connected</span>'
-      : '<span class="state-flag">Unavailable on this server</span>';
+  const done = input.status === "connected";
+  const state = done
+    ? '<span class="mcell state-ok connected-tick" title="Connected" aria-label="Connected">\u2713</span>'
+    : input.status === "incomplete"
+      ? '<span class="state-flag">Needs a little more</span>'
+      : input.status === "not_connected"
+        ? '<span class="state-flag">Not connected</span>'
+        : '<span class="state-flag">Unavailable on this server</span>';
   return '<article class="section-card connection-card" data-connection="' + html(input.providerId) + '"><div class="section-head"><div><h3>' + html(input.label) + '</h3><p class="subtle">' + html(input.purpose) + '</p></div>' + state + '</div>'
-    + (input.oauthHelp || "") + settingEditor(input.providerId, input.settings)
-    + '<p class="field-help">' + html(input.help) + '</p><div class="inline-actions">' + input.credentialControl + "</div></article>";
+    + (done ? "" : input.oauthHelp || "") + settingEditor(input.providerId, input.settings)
+    + (done ? "" : '<p class="field-help">' + html(input.help) + '</p>')
+    + '<div class="inline-actions">' + input.credentialControl + "</div></article>";
 }

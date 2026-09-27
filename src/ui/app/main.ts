@@ -1745,6 +1745,40 @@ export function boot(): void {
         matrixOpen: state.matrixOpen,
         matrixHidden: state.matrixHidden,
         regionCaveat: data ? data.regionCaveat : "",
+        // Computed on the server, where both halves live. The view reads it.
+        link: (() => {
+          const held = state.referrals as Unshaped;
+          const link = held ? (held.link as Unshaped) : null;
+          return link && Array.isArray(link.rows) && link.rows.length ? link : undefined;
+        })(),
+        demand: (() => {
+          const held = state.searchDemand as Unshaped;
+          if (!held) return undefined;
+          const report = held.report as Unshaped;
+          const rows: Unshaped[] = report ? (report.prompts as Unshaped[]) || [] : [];
+          return {
+            configured: Boolean(held.configured && held.siteUrl),
+            pulled: Boolean(report),
+            impressions: rows.reduce((total: number, row: Unshaped) => total + (Number(row.impressions) || 0), 0),
+            clicks: rows.reduce((total: number, row: Unshaped) => total + (Number(row.clicks) || 0), 0),
+            gaps: rows.filter((row: Unshaped) => row.earnedInSearchAbsentInAnswers).length,
+            top: [...rows].sort((a: Unshaped, b: Unshaped) => (Number(b.impressions) || 0) - (Number(a.impressions) || 0))
+              .filter((row: Unshaped) => (Number(row.impressions) || 0) > 0)
+              .map((row: Unshaped) => ({ text: String(row.text), impressions: Number(row.impressions) || 0, position: row.position ?? null })),
+          };
+        })(),
+        arrivals: (() => {
+          const held = state.referrals as Unshaped;
+          if (!held) return undefined;
+          const report = held.report as Unshaped;
+          const rows: Unshaped[] = report ? (report.assistants as Unshaped[]) || [] : [];
+          return {
+            configured: Boolean(held.configured && held.propertyId),
+            pulled: Boolean(report),
+            sessions: rows.reduce((total: number, row: Unshaped) => total + (Number(row.sessions) || 0), 0),
+            assistants: rows.map((row: Unshaped) => ({ source: String(row.source), sessions: Number(row.sessions) || 0, engaged: Number(row.engaged) || 0 })),
+          };
+        })(),
         domain: String(home.domain || selected.normalizedDomain),
         score: home.score ?? null,
         change: home.change ?? null,
@@ -1894,6 +1928,8 @@ export function boot(): void {
       if (state.outreachState === "idle") { loadOutreach(); }
       if (state.rankPlanState === "idle") { loadRankingPlan(); }
       if (state.digestState === "idle") { loadDigest(); }
+      if (state.searchDemandState === "idle") { loadSearchDemand(); }
+      if (state.referralsState === "idle") { loadReferrals(); }
 
       const heading = (body: string): string => '<section class="view"><div class="heading"><div class="headmain"><h1>'
         + html(selected.name) + '</h1><p class="subtle">' + html(String((state.home && state.home.domain) || selected.normalizedDomain)) + '</p></div>'

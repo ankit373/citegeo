@@ -59,6 +59,16 @@ function parseOAuthClient(parsed: Record<string, unknown>): OAuthClientCredentia
   return { clientId, clientSecret, refreshToken, tokenUri: tokenUri || DEFAULT_TOKEN_URI };
 }
 
+/** Google downloads an OAuth client wrapped in web or installed. Refusing the
+ * file it hands you, for its wrapper, is a bad first five minutes. */
+export function unwrapClientFile(fields: Record<string, unknown>): Record<string, unknown> {
+  for (const wrapper of ["web", "installed"]) {
+    const inner = fields[wrapper];
+    if (inner && typeof inner === "object" && !Array.isArray(inner)) return inner as Record<string, unknown>;
+  }
+  return fields;
+}
+
 /** Which shape was pasted is read from the fields it carries, never from a
  * choice the user makes, because a wrong choice reads as a broken key. */
 export function parseGoogleCredential(raw: string): GoogleCredential {
@@ -71,7 +81,7 @@ export function parseGoogleCredential(raw: string): GoogleCredential {
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
     throw new GoogleAuthError("That JSON is not an object, so it carries neither a client_email nor a refresh_token.");
   }
-  const fields = parsed as Record<string, unknown>;
+  const fields = unwrapClientFile(parsed as Record<string, unknown>);
   const signs = "client_email" in fields || "private_key" in fields;
   const grants = "refresh_token" in fields || "client_secret" in fields;
   // Both at once is somebody's two files pasted together, and guessing which

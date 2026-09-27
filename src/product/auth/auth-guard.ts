@@ -26,8 +26,9 @@ export function authConfig(secret = ephemeralSecret()): AuthConfig {
   };
 }
 
-/** Open without a session, because a closed one cannot be opened. */
-const ALWAYS_OPEN = new Set(["/health", "/login", "/api/login", "/api/logout"]);
+// The callback is reached from Google, and a SameSite=Strict cookie is not
+// sent on that navigation, so it proves itself with a signed single-use state.
+const ALWAYS_OPEN = new Set(["/health", "/login", "/api/login", "/api/logout", "/api/google/callback"]);
 
 export function isOpenPath(pathname: string): boolean {
   if (ALWAYS_OPEN.has(pathname)) return true;

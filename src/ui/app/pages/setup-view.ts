@@ -70,6 +70,8 @@ export interface CredentialRow {
   source: "environment" | "stored" | "none";
   last4: string | null;
   editable: boolean;
+  /** Set when one key serves two cards, so the second says whose it is. */
+  sharedWith?: string;
 }
 
 /** What a credential could be held for, with no credential state in it, so a
@@ -192,6 +194,21 @@ function connectionsSection(data: SetupData) {
       const value = live && (live.settings || []).find((item) => item.key === setting.key);
       return { ...setting, value: value?.value || null, source: value?.source, editable: value?.editable };
     });
+    const hasKey = Boolean(live && (live.source === "environment" || live.source === "stored"));
+    const done = hasKey && settings.every((setting) => Boolean(setting.value));
+    const callbackHint = typeof location === "undefined" ? "/api/google/callback" : `${location.origin}/api/google/callback`;
+    const hasClient = Boolean(live && live.source === "stored");
+    // Consent is the hard part of a Google credential. Once a client is saved
+    // the round trip is one button rather than a token obtained by hand.
+    const connect = ways
+      ? '<a class="button" href="/api/google/authorize">' + (hasClient ? "Reconnect Google" : "Connect Google") + '</a>'
+        + '<span class="step-note">Register a client of your own and add <span class="mono">' + html(callbackHint) + '</span> as a redirect URI.</span>'
+      : '';
+    const disconnect = live && live.sharedWith
+      ? '<span class="step-note">Uses the key held by Search Console.</span>'
+      : live && live.source === "stored"
+        ? button({ label: "Disconnect", kind: "quiet", on: { "data-credential-clear": row.providerId } })
+        : '<span class="step-note">Set in the environment.</span>';
     const control = !open
       ? '<span class="step-note">Key entry is closed on this server, so set ' + (row.envKeys || []).map((key) => '<span class="mono">' + html(String(key)) + '</span>').join(" or ") + ' in .env.</span>'
       : live && !live.editable
@@ -206,8 +223,8 @@ function connectionsSection(data: SetupData) {
       label: row.label,
       purpose: row.purpose,
       help: row.help,
-      status: !live ? "unavailable" : live.source === "none" ? "not_connected" : "connected",
-      credentialControl: control,
+      status: !live ? "unavailable" : done ? "connected" : hasKey ? "incomplete" : "not_connected",
+      credentialControl: done ? disconnect : control + connect,
       settings,
       oauthHelp: ways,
     });

@@ -8,6 +8,14 @@ import { regionMap, type RegionCell } from "./region-map.js";
 /** Mirrors the server shapes. A type import is erased, but keeping the view's
  * types local keeps every import inside the tree the app route serves. */
 export interface PositionReport { averagePosition: number | null; ranked: number; unranked: number; best: number | null; worst: number | null }
+export interface AssistantLink {
+  assistant: string;
+  score: number | null;
+  answers: number;
+  sessions: number;
+  engaged: number;
+  quadrant: string;
+}
 export interface CitationStanding { rank: number | null; share: number | null; ahead: Array<{ domain: string; answers: number }>; leader: { domain: string; answers: number } | null }
 
 // The dashboard answers four questions in order: where do I stand, what moved,
@@ -47,6 +55,36 @@ export interface Split {
   id?: string | undefined;
 }
 
+/** Search demand joined to the questions tracked here. Not AI prompt volume,
+ * which nobody can observe, but real demand for the same subject. */
+export interface DemandSummary {
+  configured: boolean;
+  pulled: boolean;
+  impressions: number;
+  clicks: number;
+  /** Prompts search already sends traffic to and no answer names you in. */
+  gaps: number;
+  top: Array<{ text: string; impressions: number; position: number | null }>;
+}
+
+/** Being named is one claim. Somebody arriving because of it is another. */
+export interface ArrivalSummary {
+  configured: boolean;
+  pulled: boolean;
+  sessions: number;
+  assistants: Array<{ source: string; sessions: number; engaged: number }>;
+}
+
+/** The surfaces this product cannot ask, measured by somebody else's panel. */
+export interface ReachSummary {
+  configured: boolean;
+  surfaces: string[];
+  rank: number | null;
+  share: number | null;
+  domains: Array<{ domain: string; answers: number; isTarget?: boolean }>;
+  provenance: string;
+}
+
 export interface Move {
   title: string;
   evidence: string;
@@ -63,6 +101,11 @@ export interface DashboardData {
   matrixHidden?: string[] | undefined;
   /** What the UI must say beside any regional figure. */
   regionCaveat?: string | undefined;
+  /** Visibility beside arrivals, per assistant. Two measurements, not one. */
+  link?: { rows: AssistantLink[]; caveat: string } | undefined;
+  demand?: DemandSummary | undefined;
+  arrivals?: ArrivalSummary | undefined;
+  reach?: ReachSummary | undefined;
   asked?: AskedSplit | undefined;
   domain: string;
   score: number | null;
@@ -488,6 +531,125 @@ export function movesList(moves: Move[], limit = 3): string {
   ]);
 }
 
+/** A connection that has never been pulled is not an empty result, and saying
+ * so is the difference between "nothing found" and "nothing asked". */
+function notPulled(what: string, page: string): string {
+  return join([
+    `<p class="subtle">Connected, and nothing has been read yet. ${html(what)}</p>`,
+    `<div class="inline-actions"><button type="button" class="button" data-page="${html(page)}">Read it now</button></div>`,
+  ]);
+}
+
+function notConnected(what: string): string {
+  return join([
+    `<p class="subtle">${html(what)}</p>`,
+    '<div class="inline-actions"><button type="button" class="button" data-page="setup">Connect it in Setup</button></div>',
+  ]);
+}
+
+export function demandPanel(data: DashboardData, limit = 4): string {
+  const demand = data.demand;
+  if (!demand || !demand.configured) {
+    return notConnected("Nobody can observe how often a question is put to an assistant. What people type into search for the same subject is the closest honest stand-in.");
+  }
+  if (!demand.pulled) return notPulled("Search Console holds the last sixteen months.", "answer-engine");
+  const rows = demand.top.slice(0, limit).map((row) => join([
+    '<div class="mrow mcols-rank">',
+    nameCell(html(row.text), row.position === null ? "not ranked" : `position ${Math.round(row.position * 10) / 10}`),
+    cell(String(row.impressions)),
+    cell(row.position === null ? "Not ranked" : `#${Math.round(row.position)}`),
+    "</div>",
+  ])).join("");
+  return join([
+    tiles([
+      { label: "Impressions", value: String(demand.impressions), note: "for the subjects you track" },
+      {
+        label: "Earned in search, absent from answers",
+        value: String(demand.gaps),
+        note: demand.gaps ? "search sends people, no answer names you" : "none of the tracked questions",
+        tone: demand.gaps ? "state-bad" : "",
+      },
+    ]),
+    rows ? `<div class="mtable">${rows}</div>` : '<p class="subtle">No tracked question matched a search query, which is a finding about the questions rather than the site.</p>',
+  ]);
+}
+
+export function arrivalsPanel(data: DashboardData, limit = 5): string {
+  const arrivals = data.arrivals;
+  if (!arrivals || !arrivals.configured) {
+    return notConnected("Being named in an answer is one claim. Somebody arriving because of it is another, and only analytics can say.");
+  }
+  if (!arrivals.pulled) return notPulled("Analytics holds the last ninety days.", "answer-engine");
+  if (!arrivals.sessions) {
+    return '<p class="subtle">No session arrived from an assistant in the window. That is a measured nought rather than a missing figure.</p>';
+  }
+  const rows = arrivals.assistants.slice(0, limit).map((row) => join([
+    '<div class="mrow mcols-rank">',
+    nameCell(html(row.source), `${row.engaged} engaged`),
+    cell(String(row.sessions)),
+    cell(percent(row.sessions ? row.engaged / row.sessions : null)),
+    "</div>",
+  ])).join("");
+  return join([
+    tiles([{ label: "Sessions from an assistant", value: String(arrivals.sessions), note: "people who arrived, not mentions" }]),
+    `<div class="mtable">${rows}</div>`,
+  ]);
+}
+
+export function reachPanel(data: DashboardData, limit = 5): string {
+  const reach = data.reach;
+  if (!reach || !reach.configured) {
+    return notConnected("Some assistants publish no API, so nothing here can put a question to them. A panel that already asks them can be read instead.");
+  }
+  const rows = reach.domains.slice(0, limit).map((row) => join([
+    `<div class="mrow mcols-rank${row.isTarget ? " is-you" : ""}">`,
+    nameCell(html(row.domain) + (row.isTarget ? ` ${pill("You", "good")}` : "")),
+    cell(String(row.answers)),
+    "</div>",
+  ])).join("");
+  return join([
+    tiles([
+      { label: "Citation rank", value: rankText(reach.rank), note: `on ${reach.surfaces.length} surface(s) nothing here can ask`, tone: reach.rank === null ? "state-bad" : "" },
+      { label: "Citation share", value: percent(reach.share), note: "of the answers that carried a source", fraction: reach.share },
+    ]),
+    rows ? `<div class="mtable">${rows}</div>` : "",
+    `<p class="subtle">${html(reach.provenance)}</p>`,
+  ]);
+}
+
+const QUADRANT: Record<string, { label: string; tone: string }> = {
+  working: { label: "Named, and people arrive", tone: "state-ok" },
+  named_no_arrivals: { label: "Named, nobody arrives", tone: "state-flag" },
+  arrivals_not_named: { label: "People arrive, never named here", tone: "state-bad" },
+  absent: { label: "Asked, not named, nobody arrives", tone: "state-bad" },
+  not_measurable: { label: "Not measurable", tone: "" },
+};
+
+export function assistantLinkPanel(data: DashboardData, limit = 6): string {
+  const link = data.link;
+  if (!link || !link.rows.length) {
+    return '<p class="subtle">This needs both halves: answers asked of a provider, and analytics saying who arrived. Connect Analytics and run some prompts.</p>';
+  }
+  const rows = link.rows.slice(0, limit).map((entry) => {
+    const verdict = QUADRANT[entry.quadrant] || { label: "Not measurable", tone: "" };
+    return join([
+      '<div class="mrow mcols-rank">',
+      nameCell(html(entry.assistant), `${entry.answers} answer(s) asked`),
+      cell(entry.score === null ? "Not measurable" : scoreText(entry.score)),
+      cell(String(entry.sessions)),
+      `<span class="mcell ${verdict.tone}">${html(verdict.label)}</span>`,
+      "</div>",
+    ]);
+  }).join("");
+  return join([
+    '<div class="mtable">',
+    '<div class="mhead mcols-rank"><span>Assistant</span><span>Visibility</span><span>Sessions</span><span>Reading</span></div>',
+    rows,
+    "</div>",
+    `<p class="subtle">${html(link.caveat)}</p>`,
+  ]);
+}
+
 export function sourcesPanel(data: DashboardData): string {
   if (data.citationsUnavailable) {
     return join([
@@ -687,6 +849,10 @@ export function dashboardPanels(data: DashboardData): Panel[] {
     { id: "regions", title: "By market", blurb: "Fills in once a run states more than one.", body: regionMap(regionCells(data.byRegion), data.regionCaveat || ""), detail: regionMap(regionCells(data.byRegion), data.regionCaveat || "") + splitRows(data.byRegion, "Every answer was asked without a market stated.", every), table: splitRows(data.byRegion, "Every answer was asked without a market stated."), wide: true },
     { id: "personas", title: "By persona", blurb: "Fills in once a run asks on behalf of more than one.", body: splitRows(data.byPersona, "Every answer was asked on nobody\u2019s behalf."), detail: splitRows(data.byPersona, "Every answer was asked on nobody\u2019s behalf.", every) },
     { id: "sources", title: "Cited sources", blurb: "The pages the answers actually read.", body: sourcesPanel(data), detail: sourcesPanel(data) },
+    { id: "demand", title: "What people actually search", blurb: "Nobody can observe how often a question is put to an assistant. Search demand for the same subject is the closest honest stand-in.", body: demandPanel(data), detail: demandPanel(data, every), wide: true },
+    { id: "arrivals", title: "Who arrived from an assistant", blurb: "Being named is one claim. Somebody arriving because of it is another.", body: arrivalsPanel(data), detail: arrivalsPanel(data, every) },
+    { id: "link", title: "Named there, arriving from there", blurb: "Visibility is measured by asking a provider API. Arrivals are counted from the assistant people use. Side by side, not one explaining the other.", body: assistantLinkPanel(data), detail: assistantLinkPanel(data, every), wide: true },
+    { id: "reach", title: "Where you stand where we cannot ask", blurb: "Some assistants publish no API. This is the same citation standing, read from a panel that already asks them.", body: reachPanel(data), detail: reachPanel(data, every) },
   ];
 }
 

@@ -25,9 +25,11 @@ export interface CredentialStatus {
   /** Enough to recognise the key, never enough to use it. */
   last4: string | null;
   updatedAt: string | null;
-  /** False when the environment owns this provider's key. */
+  /** False when the environment owns this key, or another card holds it. */
   editable: boolean;
   envKeys: string[];
+  /** The card this key actually lives under, when two integrations share one. */
+  sharedWith?: string;
 }
 
 export type CredentialWriteOutcome =
@@ -77,9 +79,12 @@ export class CredentialService {
     const file = await this.store.read();
     const settingsFile = await this.settingsStore.read();
     return providerIds.map((providerId) => {
-      const fromEnv = envValue(providerId);
-      const stored = file[providerId];
       const definition = integration(providerId);
+      // Two integrations can share one credential. Reading the card's own id
+      // when the key lives elsewhere reports a working connection as absent.
+      const slot = definition?.credentialSlot || providerId;
+      const fromEnv = envValue(slot);
+      const stored = file[slot];
       // Settings are not secrets, so their values are shown: a wrong endpoint
       // is a thing you have to see to fix.
       const settings = (definition?.settings || []).map((setting) => {
@@ -99,7 +104,9 @@ export class CredentialService {
         purpose: definition?.purpose || "",
         help: definition?.help || "",
         settings,
-        envKeys: credentialEnvKeys(providerId),
+        envKeys: credentialEnvKeys(slot),
+        /** Set when the key is held by another card, so this one cannot edit it. */
+        ...(slot === providerId ? {} : { sharedWith: slot }),
       };
       if (fromEnv) {
         return { ...shared, source: "environment" as const, last4: fromEnv.slice(-4), updatedAt: null, editable: false };
@@ -109,7 +116,8 @@ export class CredentialService {
         source: stored ? ("stored" as const) : ("none" as const),
         last4: stored?.last4 ?? null,
         updatedAt: stored?.updatedAt ?? null,
-        editable: true,
+        // A shared key is edited where it lives, not in two places at once.
+        editable: slot === providerId,
       };
     });
   }

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  dashboardBody, heroStats, leaderboardBars, matrixColumnPicker, movesList, narrowMatrix, panelBody, panelToggle, sourcesPanel, splitRows, summaryTiles,
+  arrivalsPanel, dashboardBody, demandPanel, heroStats, leaderboardBars, matrixColumnPicker, movesList, narrowMatrix, panelBody, panelToggle, reachPanel, sourcesPanel, splitRows, summaryTiles,
   rivalChart,
   rivalPanel, rivalRanks, rivalStandings, withTarget,
   topicMatrix, rowVerdict,
@@ -402,4 +402,63 @@ test("the picker offers the rivals and never the reader", () => {
 test("a matrix with one rival offers no picker, because there is nothing to choose", () => {
   const thin = { columns: [{ name: "Screener.in", isTarget: true }, { name: "Only", isTarget: false }], rows: [] };
   assert.equal(matrixColumnPicker(thin, []), "");
+});
+
+test("a source nobody connected asks to be connected, and does not draw a nought", () => {
+  for (const drawn of [demandPanel(data({})), arrivalsPanel(data({})), reachPanel(data({}))]) {
+    assert.ok(drawn.includes("Connect it in Setup"));
+    assert.equal(drawn.includes(">0<"), false, "an unconnected source has no figures, not zero ones");
+  }
+});
+
+test("connected and never read is not the same as read and empty", () => {
+  // This was the actual fault: the data existed, nothing had asked for it, and
+  // the page looked broken rather than unasked.
+  const demand = demandPanel(data({ demand: { configured: true, pulled: false, impressions: 0, clicks: 0, gaps: 0, top: [] } }));
+  assert.ok(demand.includes("nothing has been read yet"));
+  assert.ok(demand.includes("Read it now"));
+  const arrivals = arrivalsPanel(data({ arrivals: { configured: true, pulled: false, sessions: 0, assistants: [] } }));
+  assert.ok(arrivals.includes("nothing has been read yet"));
+});
+
+test("a measured nought says it was measured", () => {
+  const drawn = arrivalsPanel(data({ arrivals: { configured: true, pulled: true, sessions: 0, assistants: [] } }));
+  assert.ok(drawn.includes("measured nought"));
+  assert.equal(drawn.includes("nothing has been read yet"), false);
+});
+
+test("the gap search already earns is counted and toned", () => {
+  const drawn = demandPanel(data({ demand: {
+    configured: true, pulled: true, impressions: 4, clicks: 2, gaps: 1,
+    top: [{ text: "best stock screener", impressions: 4, position: 31.5 }],
+  } }));
+  assert.ok(drawn.includes("Earned in search, absent from answers"));
+  assert.ok(drawn.includes("state-bad"), "a real gap is toned as one");
+  assert.ok(drawn.includes("best stock screener"));
+});
+
+test("no tracked question matching search is reported as a fact about the questions", () => {
+  const drawn = demandPanel(data({ demand: { configured: true, pulled: true, impressions: 0, clicks: 0, gaps: 0, top: [] } }));
+  assert.ok(drawn.includes("finding about the questions"));
+});
+
+test("reach carries where its figures came from, every time", () => {
+  const drawn = reachPanel(data({ reach: {
+    configured: true, surfaces: ["google_ai_overviews", "copilot"], rank: 3, share: 0.12,
+    domains: [{ domain: "rival.test", answers: 9 }, { domain: "mine.test", answers: 4, isTarget: true }],
+    provenance: "Measured by a panel elsewhere.",
+  } }));
+  // Escaping is why an apostrophe was not asserted here: the renderer escapes,
+  // and pinning the raw string would have tested the quote rather than the line.
+  assert.ok(drawn.includes("Measured by a panel elsewhere."));
+  assert.ok(drawn.includes("#3"));
+  assert.ok(drawn.includes("is-you"), "the reader's own row is marked");
+});
+
+test("uncited on the blind surfaces reads as not named, not as rank nought", () => {
+  const drawn = reachPanel(data({ reach: {
+    configured: true, surfaces: ["copilot"], rank: null, share: null, domains: [], provenance: "p",
+  } }));
+  assert.ok(drawn.includes("Not named"));
+  assert.equal(drawn.includes("#0"), false);
 });

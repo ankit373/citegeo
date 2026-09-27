@@ -286,3 +286,14 @@ test("Setup names both ways into a Google property", () => {
   assert.equal(html.includes("An OAuth client you own."), true);
   assert.equal(html.includes('data-connection="'), true);
 });
+
+test("a shared credential is reported on both cards, not absent on one", async () => {
+  const { INTEGRATIONS } = await import("../src/product/auth/integrations.js");
+  const analytics = INTEGRATIONS.find((row) => row.id === "google-analytics");
+  // One credential serves both Google properties and it is filed under Search
+  // Console. Reading this card's own id found an empty slot, so a working
+  // connection reported as not connected and no amount of setup changed it.
+  assert.equal(analytics?.credentialSlot, "google");
+  const searchConsole = INTEGRATIONS.find((row) => row.id === "google");
+  assert.equal(searchConsole?.credentialSlot, undefined, "the owner names no other slot");
+});

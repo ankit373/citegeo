@@ -21,6 +21,9 @@ export interface IntegrationDefinition {
   help: string;
   /** Extra non-secret settings this integration needs before it can run. */
   settings?: Array<{ key: string; label: string; envKey: string }>;
+  /** The slot the credential actually lives in, when two share one. Reading a
+   * slot nothing writes to reports a working connection as not connected. */
+  credentialSlot?: string;
 }
 
 // Model providers describe themselves once, in the access table, so a provider
@@ -65,6 +68,9 @@ const OUTWARD_INTEGRATIONS: IntegrationDefinition[] = [
     label: "Google Analytics",
     kind: "integration",
     purpose: "Read how many people arrived from each assistant, which is a different claim from having been named by one.",
+    // One credential serves both properties, and it is filed under Search
+    // Console. This card used to read an empty slot and say not connected.
+    credentialSlot: "google",
     envKeys: ["GOOGLE_SERVICE_ACCOUNT_JSON", "GOOGLE_OAUTH_CREDENTIALS_JSON"],
     help: `${GOOGLE_HELP} Whichever one Search Console holds serves this too, as a viewer on the Analytics property.`,
     settings: [{ key: "propertyId", label: "GA4 property id", envKey: "GOOGLE_ANALYTICS_PROPERTY_ID" }],

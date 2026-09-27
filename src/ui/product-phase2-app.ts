@@ -167,7 +167,7 @@ export function renderProductPhase2AppHtml(): string {
 
     /* Evidence opens beside the number rather than replacing the page. */
     .panel-scrim { position:fixed; inset:0; z-index:8; background:var(--scrim); opacity:0; pointer-events:none; transition:opacity var(--motion-normal) var(--ease-standard); }
-    .panel { position:fixed; z-index:9; inset:0 0 0 auto; width:min(720px,100vw); background:var(--paper); border-left:1px solid var(--line); box-shadow:-12px 0 40px rgba(20,18,14,.16); transform:translateX(100%); transition:transform var(--motion-normal) var(--ease-standard); display:flex; flex-direction:column; }
+    .panel { position:fixed; z-index:9; inset:0 0 0 auto; width:min(720px,100vw); background:var(--paper); border-left:1px solid var(--line); box-shadow:var(--shadow-panel); transform:translateX(100%); transition:transform var(--motion-normal) var(--ease-standard); display:flex; flex-direction:column; }
     body.panel-open .panel-scrim { opacity:1; pointer-events:auto; }
     body.panel-open .panel { transform:translateX(0); }
     .panel-head { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; padding:20px clamp(18px,2.4vw,28px); border-bottom:1px solid var(--line); }
@@ -284,7 +284,7 @@ export function renderProductPhase2AppHtml(): string {
     .form-status.error { color:var(--failed-text); }
     .form-status.success { color:var(--confirmed-text); }
     .form-status.loading { color:var(--muted); }
-    .drawer-backdrop { position:fixed; z-index:4; inset:0; background:rgba(0,0,0,.62); opacity:0; pointer-events:none; transition:opacity var(--motion-normal) var(--ease-standard); }
+    .drawer-backdrop { position:fixed; z-index:4; inset:0; background:var(--scrim); opacity:0; pointer-events:none; transition:opacity var(--motion-normal) var(--ease-standard); }
     .drawer { position:fixed; z-index:5; top:0; right:0; bottom:0; width:min(530px,100vw); background:var(--sunken); border-left:1px solid var(--line-strong); transform:translateX(100%); transition:transform var(--motion-normal) var(--ease-standard); padding:26px; overflow:auto; }
     body.drawer-open .drawer-backdrop { opacity:1; pointer-events:auto; }
     body.drawer-open .drawer { transform:translateX(0); }
@@ -387,7 +387,7 @@ export function renderProductPhase2AppHtml(): string {
     .evidence-group h4 { margin:0; font-size:13px; }
     .evidence-group ul { margin:0; padding-left:18px; display:grid; gap:5px; color:var(--muted); }
     .raw-answer { max-height:360px; overflow:auto; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; padding:12px; border:1px solid var(--line); border-radius:6px; background:var(--paper); color:var(--muted); font-size:12px; line-height:1.55; }
-    .raw-answer mark { background:rgba(201,151,62,0.22); color:var(--unknown-text); border-bottom:1px solid var(--unknown); border-radius:2px; scroll-margin:28px; }
+    .raw-answer mark { background:var(--unknown-wash); color:var(--unknown-text); border-bottom:1px solid var(--unknown); border-radius:2px; scroll-margin:28px; }
     .evidence-jump { margin-left:7px; padding:0; border:0; background:transparent; color:var(--text); text-decoration:underline; cursor:pointer; font:inherit; font-size:12px; }
     .evidence-jump:hover,.evidence-jump:focus-visible { color:var(--muted); text-decoration:underline; outline:none; }
     .attempt-row { border-top:1px solid var(--line); padding-top:10px; color:var(--muted); font-size:12px; display:grid; gap:5px; }
