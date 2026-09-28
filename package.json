@@ -46,7 +46,8 @@
     "check:all": "npm run self-check && npm run check:scripts && npm run check:docs",
     "build:site": "npm run build && node scripts/build-site.mjs",
     "demand:index": "npm run build && node scripts/index-demand-corpus.mjs",
-    "build:css": "tailwindcss -i src/ui/theme.css -o dist/src/ui/app/app.css --minify"
+    "build:css": "tailwindcss -i src/ui/theme.css -o dist/src/ui/app/app.css --minify",
+    "demand:explore": "npm run build && node scripts/explore-conversations.mjs"
   },
   "dependencies": {
     "cheerio": "^1.2.0",

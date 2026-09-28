@@ -24,6 +24,7 @@ import { TopicService } from "./topics/topic-service.js";
 import { createStructuredAsk } from "./topics/structured-ask.js";
 import { PromptScheduleFileStore, PromptScheduleService } from "./topics/prompt-schedule.js";
 import { DemandReportFileStore } from "./demand/demand-store.js";
+import { ExplorationFileStore } from "./demand/exploration-store.js";
 import { BrandProfileFileStore, BrandProfileService } from "./discovery/brand-profile-service.js";
 import { SiteIconService, SiteIconStore } from "./discovery/site-icon-service.js";
 import { StorageSettingsStore } from "./storage/storage-settings.js";
@@ -132,6 +133,7 @@ export interface ProductServices {
   promptRuns: PromptRunService;
   promptSchedule: PromptScheduleService;
   demand: DemandReportFileStore;
+  explorations: ExplorationFileStore;
   profiles: BrandProfileService;
   icons: SiteIconService;
   competitors: CompetitorService;
@@ -196,6 +198,7 @@ export function createProductServices(dependencies: ProductServerDependencies = 
   }, personas);
   const promptSchedule = new PromptScheduleService(new PromptScheduleFileStore(projectStore), promptRuns);
   const demand = new DemandReportFileStore(projectStore);
+  const explorations = new ExplorationFileStore(projectStore);
   const competitors = new CompetitorService(new CompetitorFileStore(projectStore));
   const segments = new SegmentService(new SegmentFileStore(projectStore));
   const actions = new ActionLogService(new ActionLogStore(projectStore));
@@ -225,7 +228,7 @@ export function createProductServices(dependencies: ProductServerDependencies = 
   return {
     projects, catalog, selections, baselines, recognition, reports, insights,
     signals, crawlerLog, watchSets, measurements, stats, schedules,
-    topics, promptRuns, promptSchedule, demand, profiles, icons, competitors, segments, ask, engines, actions, sourcePages, searchConsole, externalMetrics, personas,
+    topics, promptRuns, promptSchedule, demand, explorations, profiles, icons, competitors, segments, ask, engines, actions, sourcePages, searchConsole, externalMetrics, personas,
     storageSettings, dataDir: productDataDir(),
     credentials,
     auth: authConfig(),
