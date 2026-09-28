@@ -25,6 +25,8 @@ import { createStructuredAsk } from "./topics/structured-ask.js";
 import { PromptScheduleFileStore, PromptScheduleService } from "./topics/prompt-schedule.js";
 import { DemandReportFileStore } from "./demand/demand-store.js";
 import { BrandProfileFileStore, BrandProfileService } from "./discovery/brand-profile-service.js";
+import { ProductFactCheckService } from "./factcheck/factcheck-service.js";
+import { FactCheckFileStore } from "./factcheck/factcheck-store.js";
 import { SiteIconService, SiteIconStore } from "./discovery/site-icon-service.js";
 import { StorageSettingsStore } from "./storage/storage-settings.js";
 import { CompetitorFileStore, CompetitorService } from "./topics/competitor-set.js";
@@ -133,6 +135,7 @@ export interface ProductServices {
   promptSchedule: PromptScheduleService;
   demand: DemandReportFileStore;
   profiles: BrandProfileService;
+  factcheck: ProductFactCheckService;
   icons: SiteIconService;
   competitors: CompetitorService;
   segments: SegmentService;
@@ -195,6 +198,7 @@ export function createProductServices(dependencies: ProductServerDependencies = 
     ask: (input) => engines.askOne(input),
   }, personas);
   const promptSchedule = new PromptScheduleService(new PromptScheduleFileStore(projectStore), promptRuns);
+  const factcheck = new ProductFactCheckService(projects, promptRuns, new FactCheckFileStore(projectStore));
   const demand = new DemandReportFileStore(projectStore);
   const competitors = new CompetitorService(new CompetitorFileStore(projectStore));
   const segments = new SegmentService(new SegmentFileStore(projectStore));
@@ -225,7 +229,7 @@ export function createProductServices(dependencies: ProductServerDependencies = 
   return {
     projects, catalog, selections, baselines, recognition, reports, insights,
     signals, crawlerLog, watchSets, measurements, stats, schedules,
-    topics, promptRuns, promptSchedule, demand, profiles, icons, competitors, segments, ask, engines, actions, sourcePages, searchConsole, externalMetrics, personas,
+    topics, promptRuns, promptSchedule, demand, profiles, factcheck, icons, competitors, segments, ask, engines, actions, sourcePages, searchConsole, externalMetrics, personas,
     storageSettings, dataDir: productDataDir(),
     credentials,
     auth: authConfig(),
