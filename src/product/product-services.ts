@@ -61,6 +61,7 @@ import { ActionLogService, ActionLogStore } from "./topics/action-log.js";
 import { SourcePageService } from "./citations/source-service.js";
 import { SearchConsoleService } from "./search-console/search-console-service.js";
 import { PersonaService } from "./topics/persona.js";
+import { LocationService } from "./topics/location.js";
 import { ExternalMetricSnapshotStore } from "./external-metrics/snapshot-store.js";
 import { ExternalMetricProviderPullService } from "./external-metrics/provider-pull-service.js";
 // The composition root. The graph is built once per server, not per request:
@@ -153,6 +154,7 @@ export interface ProductServices {
   searchConsole: SearchConsoleService;
   externalMetrics: ExternalMetricProviderPullService;
   personas: PersonaService;
+  locations: LocationService;
   storageSettings: StorageSettingsStore;
   dataDir: string;
   /** Asks one structured question through the project's own saved models. */
@@ -194,6 +196,7 @@ export function createProductServices(dependencies: ProductServerDependencies = 
   const topics = new TopicService(new TopicFileStore(projectStore), projects, insights, profiles);
   const ask = createStructuredAsk({ baselines, executor });
   const personas = new PersonaService(projectStore);
+  const locations = new LocationService(projectStore);
   // Browser engines read the surfaces a buyer uses, through the user's own
   // signed-in browser, and are the only source here that carries citations.
   const engines = new EngineService(projectStore, ask, { endpoint: browserDebugEndpoint() });
@@ -204,10 +207,10 @@ export function createProductServices(dependencies: ProductServerDependencies = 
     saved: (projectId) => engines.saved(projectId),
     lookup: (engineId) => engines.lookup(engineId),
     ask: (input) => engines.askOne(input),
-  }, personas);
+  }, personas, locations);
   const promptSchedule = new PromptScheduleService(new PromptScheduleFileStore(projectStore), promptRuns);
   const agents = new ProductAgentService(projects,
-    (id) => projectInsights({ projectId: id, topics, runs: promptRuns, competitors, personas }),
+    (id) => projectInsights({ projectId: id, topics, runs: promptRuns, competitors, personas, locations }),
     new AgentDraftFileStore(projectStore));
   const shopping = new ProductShoppingService(projects, promptRuns, new ShoppingFileStore(projectStore));
   const factcheck = new ProductFactCheckService(projects, promptRuns, new FactCheckFileStore(projectStore));
@@ -242,7 +245,7 @@ export function createProductServices(dependencies: ProductServerDependencies = 
   return {
     projects, catalog, selections, baselines, recognition, reports, insights,
     signals, crawlerLog, watchSets, measurements, stats, schedules,
-    topics, promptRuns, promptSchedule, demand, explorations, profiles, agents, shopping, factcheck, icons, competitors, segments, ask, engines, actions, sourcePages, searchConsole, externalMetrics, personas,
+    topics, promptRuns, promptSchedule, demand, explorations, profiles, agents, shopping, factcheck, icons, competitors, segments, ask, engines, actions, sourcePages, searchConsole, externalMetrics, personas, locations,
     storageSettings, dataDir: productDataDir(),
     credentials,
     auth: authConfig(),

@@ -18,6 +18,7 @@ import type { PromptRunFileStore } from "./prompt-run-store.js";
 import { readStructuredValue } from "./structured-value.js";
 import { activePrompts, type PromptIntent } from "./topic-schema.js";
 import { audienceInstruction, GLOBAL_REGION, region, type Region } from "./region.js";
+import { asRegion, locationFrom, type LocationService } from "./location.js";
 import { DEFAULT_LANGUAGE, language, languageInstruction, type AnswerLanguage } from "./language.js";
 import { currentBaseline } from "../configuration/current-baseline.js";
 import type { TopicService } from "./topic-service.js";
@@ -67,6 +68,7 @@ export class PromptRunService {
     private readonly catalog?: ProductModelCatalog | undefined,
     private readonly engines?: EnginePlan | undefined,
     private readonly personas?: PersonaService | undefined,
+    private readonly locations?: LocationService | undefined,
   ) {}
 
   /** Splits the saved models into the ones the catalogue still says can answer
@@ -165,10 +167,15 @@ export class PromptRunService {
 
     // An unknown market id is refused rather than quietly dropped, or a run
     // would silently cover fewer markets than it was asked for.
+    // A location this project defined is a market as far as the run is
+    // concerned, so both are resolved here and nothing downstream has to care.
+    const locationSet = this.locations ? await this.locations.get(input.projectId) : null;
     const regions: Region[] = (input.regionIds && input.regionIds.length ? input.regionIds : [GLOBAL_REGION.id]).map((id) => {
       const found = region(id);
-      if (!found) throw new PromptRunUnavailableError(`Unknown market "${id}".`);
-      return found;
+      if (found) return found;
+      const place = locationFrom(locationSet, id);
+      if (place) return asRegion(place);
+      throw new PromptRunUnavailableError(`Unknown market "${id}".`);
     });
 
     const languages: AnswerLanguage[] = (input.languageIds && input.languageIds.length ? input.languageIds : [DEFAULT_LANGUAGE.id]).map((id) => {

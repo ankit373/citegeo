@@ -4,6 +4,7 @@ import type { PromptAnswer } from "./prompt-run-schema.js";
 import type { PromptRunService } from "./prompt-run-service.js";
 import type { TopicService } from "./topic-service.js";
 import type { PersonaService } from "./persona.js";
+import type { LocationService } from "./location.js";
 
 // One composition of the standing, so a route that needs it does not assemble
 // its own and drift from the one the dashboard shows.
@@ -14,6 +15,7 @@ export async function projectInsights(input: {
   runs: PromptRunService;
   competitors: CompetitorService;
   personas?: PersonaService | undefined;
+  locations?: LocationService | undefined;
   /** Narrows the answers to a slice of the archive. Everything when omitted. */
   slice?: ((answers: PromptAnswer[]) => PromptAnswer[]) | undefined;
 }): Promise<TopicInsights> {
@@ -25,6 +27,7 @@ export async function projectInsights(input: {
   ]);
   const rivals = await input.competitors.get(input.projectId).catch(() => null);
   const personas = input.personas ? await input.personas.get(input.projectId).catch(() => null) : null;
+  const places = input.locations ? await input.locations.get(input.projectId).catch(() => null) : null;
   return buildTopicInsights({
     projectId: input.projectId,
     set,
@@ -33,5 +36,6 @@ export async function projectInsights(input: {
     identityCaveat: identity?.caveat || null,
     competitors: rivals?.competitors,
     personaLabels: new Map((personas?.personas || []).map((row) => [row.id, row.label])),
+    locationLabels: new Map((places?.locations || []).map((row) => [row.id, row.label])),
   });
 }
