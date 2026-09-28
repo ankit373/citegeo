@@ -44,6 +44,7 @@ export async function handleCitationApi(input: {
         answers,
         identity: await input.identity(projectId),
         names: await input.names(projectId),
+        scope: await input.scope(projectId),
       }));
     } catch (error) {
       send(400, { error: message(error) });

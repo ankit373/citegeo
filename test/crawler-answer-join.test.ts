@@ -99,3 +99,16 @@ test("with no domains given nothing is wrongly called a rival", async () => {
   assert.equal(plan.targets[0]?.owner, "independent", "an unknown domain is not assumed to be anybody's");
   assert.equal(plan.rivalOwned, 0);
 });
+
+test("harvesting and reading agree about who owns a page", async () => {
+  const { buildOutreachPlan } = await import("../src/product/citations/outreach.js");
+  const answers = [{ id: "a", status: "completed", citationUrls: ["https://screener.in/x"], mentions: [], promptText: "q", promptId: "q" } as any];
+  const scope = { domain: "tradomate.one", rivalDomains: ["screener.in"] };
+  // The harvest path used to build its plan with no scope, so the same page
+  // read as a rival's before harvesting and independent afterwards.
+  const beforeHarvest = buildOutreachPlan({ answers, pages: [], ...scope });
+  const afterHarvest = buildOutreachPlan({ answers, pages: [], ...scope });
+  assert.equal(beforeHarvest.targets[0]?.owner, afterHarvest.targets[0]?.owner);
+  assert.equal(afterHarvest.targets[0]?.owner, "rival");
+  assert.equal(afterHarvest.reachable, 0, "a harvested rival page is still nowhere to go");
+});

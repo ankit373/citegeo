@@ -46,6 +46,9 @@ export class SourcePageService {
     identity: BrandIdentity;
     names: string[];
     limit?: number | undefined;
+    /** The same scope the read path uses. Without it a harvested plan calls
+     * every page independent, and the two paths disagree about the same page. */
+    scope?: { domain?: string | undefined; rivalDomains?: string[] | undefined } | undefined;
   }): Promise<{ read: number; skipped: number; failed: number; plan: OutreachPlan }> {
     const completed = input.answers.filter((answer) => answer.status === "completed");
     const urls = [...new Set(completed.flatMap((answer) => answer.citationUrls))];
@@ -70,6 +73,6 @@ export class SourcePageService {
       await new Promise((resolve) => setTimeout(resolve, SPACING_MS));
     }
 
-    return { read, skipped, failed, plan: await this.plan(input.projectId, input.answers) };
+    return { read, skipped, failed, plan: await this.plan(input.projectId, input.answers, input.scope || {}) };
   }
 }
