@@ -79,10 +79,14 @@ export function parseAccessLogLine(line: string): AccessLogEntry | null {
 }
 
 /** Reads whichever of the three shapes a line is in. The shape is taken from
- * the line, so a file of any of them needs no configuration to be read. */
-export function parseAccessLog(text: string): AccessLogEntry[] {
+ * the line, so a file of any of them needs no configuration to be read.
+ *
+ * carriedFields holds a #Fields header seen in an earlier read. The header sits
+ * once at the top of the file and an incremental read resumes past it, so
+ * without carrying it every later CloudFront row is dropped in silence. */
+export function readAccessLog(text: string, carriedFields?: string[] | undefined): { entries: AccessLogEntry[]; fields: string[] } {
   const out: AccessLogEntry[] = [];
-  const cloudFront = new CloudFrontReader();
+  const cloudFront = new CloudFrontReader(carriedFields);
   for (const line of text.split("\n").join("\r").split("\r")) {
     const trimmed = line.trim();
     if (!trimmed) continue;
@@ -94,5 +98,9 @@ export function parseAccessLog(text: string): AccessLogEntry[] {
     const tabbed = cloudFront.line(trimmed);
     if (tabbed) out.push(tabbed);
   }
-  return out;
+  return { entries: out, fields: cloudFront.fieldNames };
+}
+
+export function parseAccessLog(text: string): AccessLogEntry[] {
+  return readAccessLog(text).entries;
 }

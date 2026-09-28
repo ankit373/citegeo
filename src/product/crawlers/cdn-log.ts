@@ -121,7 +121,17 @@ function decoded(value: string): string {
 /** CloudFront names its columns in a #Fields header, and the order is not
  * fixed, so the header is what says which column is which. */
 export class CloudFrontReader {
-  private fields: string[] = [];
+  private fields: string[];
+
+  constructor(carried?: string[] | undefined) {
+    this.fields = carried && carried.length ? [...carried] : [];
+  }
+
+  /** The header seen so far, so a caller reading a file in pieces can carry it
+   * into the next piece. */
+  get fieldNames(): string[] {
+    return [...this.fields];
+  }
 
   header(line: string): boolean {
     const trimmed = line.trim();

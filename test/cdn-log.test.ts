@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseAccessLog } from "../src/product/crawlers/access-log.js";
+import { parseAccessLog, readAccessLog } from "../src/product/crawlers/access-log.js";
 import { CloudFrontReader, cdnTimestamp, parseJsonLogLine, pathOnly } from "../src/product/crawlers/cdn-log.js";
 
 const GPTBOT = "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; GPTBot/1.2; +https://openai.com/gptbot";
@@ -110,4 +110,26 @@ test("one file can carry all three shapes and every fetch is read", () => {
 
 test("a header line is never counted as a fetch", () => {
   assert.deepEqual(parseAccessLog([CLOUDFRONT_HEADER, CLOUDFRONT_FIELDS].join("\n")), []);
+});
+
+test("a CloudFront header carries into the next incremental read", () => {
+  // The header sits once at the top of the file and the ingest resumes past
+  // it, so without carrying it every later row is dropped in silence.
+  const fields = "#Fields: date time cs-method cs-uri-stem sc-status cs(User-Agent)";
+  const row = (path: string) => ["2026-09-19", "12:00:00", "GET", path, "200", "GPTBot/1.2"].join("\t");
+  const first = readAccessLog([fields, row("/a")].join("\n"));
+  assert.deepEqual(first.entries.map((entry) => entry.path), ["/a"]);
+  assert.ok(first.fields.includes("cs-uri-stem"), "the header has to come back out to be carried");
+
+  const second = readAccessLog([row("/b"), row("/c")].join("\n"), first.fields);
+  assert.deepEqual(second.entries.map((entry) => entry.path), ["/b", "/c"]);
+
+  const withoutCarrying = readAccessLog([row("/b"), row("/c")].join("\n"));
+  assert.deepEqual(withoutCarrying.entries, [], "this is what the bug looked like");
+});
+
+test("a later header replaces the carried one rather than being ignored", () => {
+  const carried = ["date", "time", "cs-method", "cs-uri-stem", "sc-status", "cs(User-Agent)"];
+  const text = ["#Fields: cs(User-Agent) cs-uri-stem", ["GPTBot/1.2", "/new"].join("\t")].join("\n");
+  assert.deepEqual(readAccessLog(text, carried).entries.map((entry) => entry.path), ["/new"]);
 });
