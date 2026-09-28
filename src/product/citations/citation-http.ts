@@ -17,6 +17,9 @@ export async function handleCitationApi(input: {
   identity: (projectId: string) => Promise<BrandIdentity>;
   /** Everyone the answers named, so a page can be checked for each of them. */
   names: (projectId: string) => Promise<string[]>;
+  /** The project's domain and the domains the answers named, so a page nobody
+   * can be added to is not offered as somewhere to get listed. */
+  scope: (projectId: string) => Promise<{ domain?: string | undefined; rivalDomains?: string[] | undefined }>;
 }): Promise<boolean> {
   const { method, route, send, pages } = input;
   if (route[0] !== "api" || route[1] !== "projects") return false;
@@ -26,7 +29,7 @@ export async function handleCitationApi(input: {
 
   if (method === "GET") {
     try {
-      send(200, await pages.plan(projectId, await input.answers(projectId)));
+      send(200, await pages.plan(projectId, await input.answers(projectId), await input.scope(projectId)));
     } catch (error) {
       send(404, { error: message(error) });
     }
@@ -41,6 +44,7 @@ export async function handleCitationApi(input: {
         answers,
         identity: await input.identity(projectId),
         names: await input.names(projectId),
+        scope: await input.scope(projectId),
       }));
     } catch (error) {
       send(400, { error: message(error) });

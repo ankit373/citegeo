@@ -1,5 +1,6 @@
 import { CONFIG } from "./config.js";
 import { dashboardBody, dashboardPanels, heroStats, type DashboardData } from "./pages/dashboard-view.js";
+import { buyingView, claimsView, conversationsView, draftsView, entityView, marketerView } from "./pages/marketer-view.js";
 import { exportName, filterSummary, matchesQuery, panelCsv } from "./components/panel-tools.js";
 import { emptyState, notice, section } from "./components/primitives.js";
 import { button } from "./components/button.js";
@@ -37,6 +38,8 @@ export function boot(): void {
     insights: Unshaped; insightsState: LoadState;
     crawlers: Unshaped; crawlersState: LoadState;
     plan: Unshaped; planState: LoadState;
+    marketer: Unshaped; drafts: Unshaped; claims: Unshaped; buying: Unshaped; conversations: Unshaped; entity: Unshaped;
+    marketerState: LoadState;
     signals: Unshaped; signalsState: LoadState;
     credentials: CredentialFile | null; credentialsState: LoadState; credentialNotice: Notice;
     integrations: IntegrationRow[]; integrationsState: LoadState;
@@ -90,7 +93,7 @@ export function boot(): void {
     matrixHidden: string[];
   }
 
-    const state: State = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, integrations:[], integrationsState:"idle", externalMetrics:null, externalMetricsState:"idle", externalMetricsPulling:"", externalMetricsNotice:{text:"",kind:""}, digest:null, digestState:"idle", demand:null, demandState:"idle", dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", promptFilters:{ query:"", topicId:"", intent:"", status:"" }, promptSelection:[], answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", rivals:null, rivalsState:"idle", segments:null, segmentsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, lastRun:null, runPollTimer:0, runFeed:[], runFeedState:"idle", runFeedTimer:0, rankPlan:null, rankPlanState:"idle", brief:null, briefState:"idle", outreach:null, outreachState:"idle", harvesting:false, searchDemand:null, searchDemandState:"idle", pulling:false, personas:null, personasState:"idle", priority:null, priorityState:"idle", promptSort:"topic", referrals:null, referralsState:"idle", pullingReferrals:false, engines:null, enginesState:"idle", actions:[], actionsState:"idle", matrixOpen:[], editingBoard:false, brandIcons:{}, panelViews:savedJson("panelViews"), matrixHidden:savedList("matrixHidden") };
+    const state: State = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", marketer:null, drafts:null, claims:null, buying:null, conversations:null, entity:null, marketerState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, integrations:[], integrationsState:"idle", externalMetrics:null, externalMetricsState:"idle", externalMetricsPulling:"", externalMetricsNotice:{text:"",kind:""}, digest:null, digestState:"idle", demand:null, demandState:"idle", dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", promptFilters:{ query:"", topicId:"", intent:"", status:"" }, promptSelection:[], answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", rivals:null, rivalsState:"idle", segments:null, segmentsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, lastRun:null, runPollTimer:0, runFeed:[], runFeedState:"idle", runFeedTimer:0, rankPlan:null, rankPlanState:"idle", brief:null, briefState:"idle", outreach:null, outreachState:"idle", harvesting:false, searchDemand:null, searchDemandState:"idle", pulling:false, personas:null, personasState:"idle", priority:null, priorityState:"idle", promptSort:"topic", referrals:null, referralsState:"idle", pullingReferrals:false, engines:null, enginesState:"idle", actions:[], actionsState:"idle", matrixOpen:[], editingBoard:false, brandIcons:{}, panelViews:savedJson("panelViews"), matrixHidden:savedList("matrixHidden") };
     const app = document.getElementById("app") as HTMLElement;
     let renderOverride: (() => void) | null = null;
     // render() was a hoisted declaration that a later line reassigned. A
@@ -542,6 +545,147 @@ export function boot(): void {
         + insightTable("mcols-crawler", ["Crawler", "Fetches", "Pages", "Errors", "Last seen"], rows ? [rows] : [], "No AI crawler appears in this log.")
         + orphan + '</section>';
     }
+    /** Every marketer surface is read-only and cheap, so one loader fills them
+     * all and a page never waits on a request it does not use. */
+    /** The shared probe reloads the plan page, so on this page the probe ran
+     * and nothing moved. This one reports progress and reloads what is shown. */
+    async function probeForEntity(control: Element) {
+      const selected = project();
+      if (!selected) return;
+      const label = control.textContent || "Probe the site now";
+      (control as HTMLButtonElement).disabled = true;
+      control.textContent = "Probing the site…";
+      try {
+        await request("/api/projects/" + selected.id + "/signals", { method: "POST" });
+        state.marketerState = "idle";
+        loadMarketer();
+      } catch (error) {
+        shortReason(control, error);
+        (control as HTMLButtonElement).disabled = false;
+        return;
+      }
+      control.textContent = label;
+    }
+
+    function draftBody(draftId: string): string {
+      const rows = (state.drafts?.drafts || []) as any[];
+      const found = rows.find((row) => row.id === draftId);
+      return found ? `# ${found.title}\n\n${found.body}` : "";
+    }
+
+    /** A draft with nowhere to go is not finished work, so it leaves as text.
+     * Clipboard access can be refused, and saying so beats a silent no-op. */
+    async function copyText(control: Element, text: string) {
+      if (!text) { control.textContent = "Nothing to copy"; return; }
+      const label = control.textContent || "Copy";
+      try {
+        await navigator.clipboard.writeText(text);
+        control.textContent = "Copied";
+      } catch (error) {
+        control.textContent = "Copying was refused";
+      }
+      window.setTimeout(() => { control.textContent = label; }, 1800);
+    }
+
+    /** Reading claims or buying answers spends a model call per answer, so the
+     * control says it is working and reports the provider's reason if it is not. */
+    async function runMarketerCheck(control: Element, where: "factcheck" | "shopping") {
+      const selected = project();
+      if (!selected) return;
+      const label = control.textContent || "Run";
+      (control as HTMLButtonElement).disabled = true;
+      control.textContent = "Reading the answers…";
+      try {
+        await request("/api/projects/" + selected.id + "/" + where, { method: "POST", body: JSON.stringify({}) });
+        state.marketerState = "idle";
+        loadMarketer();
+      } catch (error) {
+        shortReason(control, error);
+        (control as HTMLButtonElement).disabled = false;
+        return;
+      }
+      control.textContent = label;
+    }
+
+    /** A provider lists every model it tried, which is hundreds of characters
+     * and unreadable on a button. The first sentence goes on the control and
+     * the whole of it stays reachable on hover. */
+    function shortReason(control: Element, error: unknown) {
+      const full = error instanceof Error ? error.message : String(error);
+      const stop = full.indexOf(". ");
+      const first = stop === -1 ? full : full.slice(0, stop + 1);
+      control.textContent = first.length > 90 ? `${first.slice(0, 87)}…` : first || "It did not work";
+      control.setAttribute("title", full);
+    }
+
+    /** Drafting spends a model call per gap, so the button says what it is
+     * doing and the reason is shown when a provider refuses. */
+    async function runDraft(control: Element, templateId: string, batch: boolean) {
+      const selected = project();
+      if (!selected || !templateId) return;
+      const label = control.textContent || "Draft";
+      (control as HTMLButtonElement).disabled = true;
+      control.textContent = batch ? "Drafting every gap…" : "Drafting…";
+      try {
+        await request("/api/projects/" + selected.id + "/agents", {
+          method: "POST",
+          body: JSON.stringify(batch ? { templateId, batch: true } : { templateId }),
+        });
+        state.marketerState = "idle";
+        state.page = "drafts";
+        loadMarketer();
+      } catch (error) {
+        shortReason(control, error);
+        (control as HTMLButtonElement).disabled = false;
+        return;
+      }
+      control.textContent = label;
+    }
+
+    async function reviewDraft(control: Element, value: string) {
+      const selected = project();
+      const at = value.indexOf(":");
+      if (!selected || at === -1) return;
+      (control as HTMLButtonElement).disabled = true;
+      try {
+        await request("/api/projects/" + selected.id + "/agents/" + value.slice(0, at) + "/review", {
+          method: "POST",
+          body: JSON.stringify({ status: value.slice(at + 1) }),
+        });
+        state.marketerState = "idle";
+        loadMarketer();
+      } catch (error) {
+        shortReason(control, error);
+        (control as HTMLButtonElement).disabled = false;
+      }
+    }
+
+    async function loadMarketer() {
+      if (state.marketerState === "loading") return;
+      const selected = project();
+      if (!selected) return;
+      state.marketerState = "loading";
+      const at = "/api/projects/" + selected.id;
+      const quietly = async (path: string) => request(at + path).catch(() => null);
+      try {
+        const [memo, agents, claims, buying, conversations, entity, llms] = await Promise.all([
+          quietly("/aim"), quietly("/agents"), quietly("/factcheck"), quietly("/shopping"),
+          quietly("/conversations"), quietly("/entity"), quietly("/llms-txt"),
+        ]);
+        state.marketer = memo?.memo || null;
+        state.drafts = agents || null;
+        // The report is absent until a check has run, which is not an empty one.
+        state.claims = claims?.report ? { ...claims.report, ...claims } : null;
+        state.buying = buying?.report || null;
+        state.conversations = conversations?.explorations || [];
+        state.entity = { alignment: entity?.alignment || null, llms: llms?.draft || null };
+        state.marketerState = "ready";
+      } catch (error) {
+        state.marketerState = "error";
+      }
+      render();
+    }
+
     async function loadPlan() {
       if (state.planState === "loading") return;
       const selected = project();
@@ -727,6 +871,35 @@ export function boot(): void {
         + '<div class="dash-split"><div>' + (points.length ? trendChart(points, series.label) : '<p class="subtle">' + html(series.empty) + '</p>') + '</div>'
         + '<div><div class="mtable"><div class="mhead mcols-rank"><span>Model</span><span>Recognised</span><span>Visibility</span></div>' + (modelRows || '<div class="mrow mcols-rank"><span class="mcell">No answers yet.</span></div>') + '</div></div></div></section></section>';
     }
+    /** One shell for every marketer page, so each one loads the same way and
+     * an empty one says what is absent rather than showing nothing. */
+    function marketerPage(title: string, blurb: string, body: () => string) {
+      if (state.marketerState === "idle") { loadMarketer(); }
+      const inner = state.marketerState === "error"
+        ? '<p class="subtle">Could not read this project.</p>'
+        : state.marketerState !== "ready" ? '<p class="subtle">Reading what has been measured…</p>' : body();
+      return '<section class="view"><div class="heading"><div><h1>' + html(title) + '</h1><p class="subtle">' + html(blurb) + '</p></div></div>' + inner + '</section>';
+    }
+
+    function renderMarketer() {
+      return marketerPage("Marketer", "What moved, what moved it, and what would act on it. Nothing here calls a model.", () => marketerView(state.marketer));
+    }
+    function renderDrafts() {
+      return marketerPage("Drafts", "Pages drafted from a measured gap. Every one waits for your decision.", () => draftsView(state.drafts));
+    }
+    function renderClaims() {
+      return marketerPage("Claims", "What the answers assert about you, settled against your own pages.", () => claimsView(state.claims));
+    }
+    function renderBuying() {
+      return marketerPage("Buying", "Which products and retailers a buying answer actually named.", () => buyingView(state.buying));
+    }
+    function renderConversations() {
+      return marketerPage("Conversations", "Real demand, and which of it nothing here measures.", () => conversationsView(state.conversations || []));
+    }
+    function renderEntity() {
+      return marketerPage("Entity", "What corroborates this brand from outside its own control.", () => entityView(state.entity?.alignment || null, state.entity?.llms || null));
+    }
+
     function renderActionPlan() {
       if (state.planState === "idle") { loadPlan(); }
       const head = '<section class="section-card"><div class="section-head"><div><h2>What to do next</h2><p class="subtle">Ordered by what decides whether a model can cite you at all. Every line names the observation behind it.</p></div><div class="inline-actions">' + button({ label: "Probe the site", on: { "data-probe-signals": true } }) + '</div></div>';
@@ -2517,7 +2690,19 @@ export function boot(): void {
         + '<span>Every figure here opens the answer it came from.</span></footer>';
     }
 
-    function phase2RenderImpl() { if (window.__citegeoPhase5Active) return; const selected = project(); const options = state.currentProjects.length ? state.currentProjects.map((item) => '<option value="' + html(item.id) + '">' + html(item.name) + ' · ' + html(item.normalizedDomain) + '</option>').join("") : '<option value="">No projects yet</option>'; let view = state.page === "models" ? renderModels() : state.page === "configuration" ? renderConfiguration() : state.page === "setup" ? renderSetup() : state.page === "visibility" ? renderVisibility() : state.page === "brand-visibility" ? renderBrandVisibility() : state.page === "prompts" ? renderPrompts() : state.page === "answer-engine" ? renderAnswerEngine() : state.page === "dashboard" ? renderHome() : renderOverview(); app.innerHTML = renderEvidence() + '<div class="shell">' + navScrim() + '<aside class="sidebar"><button type="button" class="brand" data-page="dashboard" aria-label="Back to the dashboard">' + brandLockup + '</button><div class="project-label">Project</div><select id="project-select" class="project-select" aria-label="Switch project" data-testid="project-select">' + options + '</select><nav class="nav" aria-label="Project navigation"><button type="button" class="nav-item ' + (state.page === "dashboard" ? "active" : "") + '" data-page="dashboard"><span>Dashboard</span></button><div class="nav-label">Run a test</div><button type="button" class="nav-item ' + (state.page === "models" ? "active" : "") + '" data-page="models"><span class="nav-step">1</span><span>Choose models</span></button><button type="button" class="nav-item ' + (state.page === "recognition" || state.page === "reports" ? "active" : "") + '" data-page="recognition"><span class="nav-step">2</span><span>Results</span></button><button type="button" class="nav-item ' + (state.page === "visibility" ? "active" : "") + '" data-page="visibility"><span class="nav-step">3</span><span>Visibility</span></button><div class="nav-label">Answer engine</div><button type="button" class="nav-item ' + (state.page === "answer-engine" ? "active" : "") + '" data-page="answer-engine"><span>Scores</span></button><button type="button" class="nav-item ' + (state.page === "brand-visibility" ? "active" : "") + '" data-page="brand-visibility"><span>Brand visibility</span></button><button type="button" class="nav-item ' + (state.page === "prompts" ? "active" : "") + '" data-page="prompts"><span>Prompts</span></button><div class="nav-label">Over time</div><a class="nav-item" href="?view=measurements"><span>Continuous measurement</span></a><div class="nav-label">Machine</div><button type="button" class="nav-item ' + (state.page === "overview" ? "active" : "") + '" data-page="overview"><span>Projects</span></button><button type="button" class="nav-item ' + (state.page === "configuration" ? "active" : "") + '" data-page="configuration"><span>Configuration history</span></button><button type="button" class="nav-item ' + (state.page === "setup" ? "active" : "") + '" data-page="setup"><span>Setup</span></button></nav><div class="sidebar-bottom">Domain recognition</div></aside><main class="workspace"><header class="topbar"><div class="topbar-lead">' + navToggle() + '<div class="crumb"><button type="button" class="crumb-home" data-page="dashboard">' + html(CONFIG.productName) + '</button> / ' + html(selected ? selected.name : "Project") + '</div></div><div class="topbar-actions"><button type="button" class="theme-toggle" data-theme-toggle aria-label="Switch between light and dark">&#9681;</button>' + button({ label: "New project", kind: "primary", id: "new-project", testId: "new-project" }) + '</div></header><section class="content">' + view + '</section>' + renderFooter() + '</main></div>'; const select = element("project-select"); select.value = state.selectedId; document.title = selected ? selected.name + " | " + CONFIG.productTitle + "" : "" + CONFIG.productTitle + ""; }
+    function phase2RenderImpl() { if (window.__citegeoPhase5Active) return; const selected = project(); const options = state.currentProjects.length ? state.currentProjects.map((item) => '<option value="' + html(item.id) + '">' + html(item.name) + ' · ' + html(item.normalizedDomain) + '</option>').join("") : '<option value="">No projects yet</option>'; let view = state.page === "marketer" ? renderMarketer() : state.page === "drafts" ? renderDrafts() : state.page === "claims" ? renderClaims() : state.page === "buying" ? renderBuying() : state.page === "conversations" ? renderConversations() : state.page === "entity" ? renderEntity() : state.page === "models" ? renderModels() : state.page === "configuration" ? renderConfiguration() : state.page === "setup" ? renderSetup() : state.page === "visibility" ? renderVisibility() : state.page === "brand-visibility" ? renderBrandVisibility() : state.page === "prompts" ? renderPrompts() : state.page === "answer-engine" ? renderAnswerEngine() : state.page === "dashboard" ? renderHome() : renderOverview(); app.innerHTML = renderEvidence() + '<div class="shell">' + navScrim() + '<aside class="sidebar"><button type="button" class="brand" data-page="dashboard" aria-label="Back to the dashboard">' + brandLockup + '</button><div class="project-label">Project</div><select id="project-select" class="project-select" aria-label="Switch project" data-testid="project-select">' + options + '</select><nav class="nav" aria-label="Project navigation"><button type="button" class="nav-item ' + (state.page === "dashboard" ? "active" : "") + '" data-page="dashboard"><span>Dashboard</span></button><div class="nav-label">Run a test</div><button type="button" class="nav-item ' + (state.page === "models" ? "active" : "") + '" data-page="models"><span class="nav-step">1</span><span>Choose models</span></button><button type="button" class="nav-item ' + (state.page === "recognition" || state.page === "reports" ? "active" : "") + '" data-page="recognition"><span class="nav-step">2</span><span>Results</span></button><button type="button" class="nav-item ' + (state.page === "visibility" ? "active" : "") + '" data-page="visibility"><span class="nav-step">3</span><span>Visibility</span></button><div class="nav-label">Answer engine</div><button type="button" class="nav-item ' + (state.page === "answer-engine" ? "active" : "") + '" data-page="answer-engine"><span>Scores</span></button><button type="button" class="nav-item ' + (state.page === "brand-visibility" ? "active" : "") + '" data-page="brand-visibility"><span>Brand visibility</span></button><button type="button" class="nav-item ' + (state.page === "prompts" ? "active" : "") + '" data-page="prompts"><span>Prompts</span></button><div class="nav-label">Marketer</div><button type="button" class="nav-item '
+       + (state.page === "marketer" ? "active" : "")
+       + '" data-page="marketer"><span>What to do</span></button><button type="button" class="nav-item '
+       + (state.page === "drafts" ? "active" : "")
+       + '" data-page="drafts"><span>Drafts</span></button><button type="button" class="nav-item '
+       + (state.page === "claims" ? "active" : "")
+       + '" data-page="claims"><span>Claims</span></button><button type="button" class="nav-item '
+       + (state.page === "buying" ? "active" : "")
+       + '" data-page="buying"><span>Buying</span></button><button type="button" class="nav-item '
+       + (state.page === "conversations" ? "active" : "")
+       + '" data-page="conversations"><span>Conversations</span></button><button type="button" class="nav-item '
+       + (state.page === "entity" ? "active" : "")
+       + '" data-page="entity"><span>Entity</span></button><div class="nav-label">Over time</div><a class="nav-item" href="?view=measurements"><span>Continuous measurement</span></a><div class="nav-label">Machine</div><button type="button" class="nav-item ' + (state.page === "overview" ? "active" : "") + '" data-page="overview"><span>Projects</span></button><button type="button" class="nav-item ' + (state.page === "configuration" ? "active" : "") + '" data-page="configuration"><span>Configuration history</span></button><button type="button" class="nav-item ' + (state.page === "setup" ? "active" : "") + '" data-page="setup"><span>Setup</span></button></nav><div class="sidebar-bottom">Domain recognition</div></aside><main class="workspace"><header class="topbar"><div class="topbar-lead">' + navToggle() + '<div class="crumb"><button type="button" class="crumb-home" data-page="dashboard">' + html(CONFIG.productName) + '</button> / ' + html(selected ? selected.name : "Project") + '</div></div><div class="topbar-actions"><button type="button" class="theme-toggle" data-theme-toggle aria-label="Switch between light and dark">&#9681;</button>' + button({ label: "New project", kind: "primary", id: "new-project", testId: "new-project" }) + '</div></header><section class="content">' + view + '</section>' + renderFooter() + '</main></div>'; const select = element("project-select"); select.value = state.selectedId; document.title = selected ? selected.name + " | " + CONFIG.productTitle + "" : "" + CONFIG.productTitle + ""; }
     async function setPage(page: any) { state.page = page; savePreference("page", page); if (page === "configuration") { await refreshConfiguration(); return; } if (page === "reports" && window.__citegeoPhase4 && typeof window.__citegeoPhase4.open === "function") { await window.__citegeoPhase4.open(); return; } render(); if (page === "models") { await refreshConfiguration(); await loadCatalog(); } }
     async function createDraft(event: any) { event.preventDefault(); const control = element("save-draft"); const session = state.drawerSession; setFormStatus("Creating project draft", "loading"); try { const response = await runAction(control, { loading:"Saving…", success:"Saved", error:"Save failed" }, () => request("/api/projects", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ domain:element("project-domain").value, name:element("project-name").value }) })); state.mode = "current"; state.page = "overview"; setSelectedProject(response.project.id); await refreshProjects(); state.selections = []; state.baselines = []; resetDraftSelections(); setFormStatus("Draft saved", "success"); render(); window.setTimeout(() => { if (state.drawerSession === session) closeDrawer(); }, 850); } catch (error) { setFormStatus(error instanceof Error ? error.message : String(error), "error"); } }
     async function saveProject(event: any) { event.preventDefault(); const selected = project(); if (!selected) return; const control = event.currentTarget.querySelector('control[type="submit"]'); try { await runAction(control, { loading:"Saving…", success:"Saved", error:"Save failed" }, () => request("/api/projects/" + encodeURIComponent(selected.id), { method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ domain:element("edit-domain").value, name:element("edit-name").value }) })); await refreshProjects(); render(); } catch (error) { window.alert(error instanceof Error ? error.message : String(error)); } }
@@ -2762,6 +2947,28 @@ export function boot(): void {
       if (saveSettings) { await saveIntegrationSettings(saveSettings.getAttribute("data-integration-settings-save"), saveSettings); return; }
       const removeSelectedModel = target && target.closest ? target.closest("[data-remove-selected-model]") : null;
       if (removeSelectedModel) { dropSelection(removeSelectedModel.getAttribute("data-remove-selected-model") || ""); return; }
+      const probeHere = target && target.closest ? target.closest("[data-probe-signals]") : null;
+      if (probeHere && state.page === "entity") { await probeForEntity(probeHere); return; }
+      const runCheck = target && target.closest ? target.closest("[data-run-factcheck], [data-run-shopping]") : null;
+      if (runCheck) {
+        const where = runCheck.hasAttribute("data-run-factcheck") ? "factcheck" : "shopping";
+        await runMarketerCheck(runCheck, where);
+        return;
+      }
+      const copyDraft = target && target.closest ? target.closest("[data-copy-draft]") : null;
+      if (copyDraft) { await copyText(copyDraft, draftBody(copyDraft.getAttribute("data-copy-draft") || "")); return; }
+      const copyLlms = target && target.closest ? target.closest("[data-copy-llms]") : null;
+      if (copyLlms) { await copyText(copyLlms, state.entity?.llms?.text || ""); return; }
+      const draftOne = target && target.closest ? target.closest("[data-draft], [data-aim-run]") : null;
+      if (draftOne) {
+        const template = draftOne.getAttribute("data-draft") || draftOne.getAttribute("data-aim-run") || "";
+        await runDraft(draftOne, template, false);
+        return;
+      }
+      const draftEvery = target && target.closest ? target.closest("[data-draft-batch]") : null;
+      if (draftEvery) { await runDraft(draftEvery, draftEvery.getAttribute("data-draft-batch") || "", true); return; }
+      const reviewButton = target && target.closest ? target.closest("[data-review]") : null;
+      if (reviewButton) { await reviewDraft(reviewButton, reviewButton.getAttribute("data-review") || ""); return; }
       const probeButton = target && target.closest ? target.closest("[data-probe-signals]") : null;
       if (probeButton) { await captureSignals(probeButton); state.signalsState = "idle"; loadSignals(); return; } if (!(target instanceof Element)) return; const pageButton = target.closest("[data-page]"); if (pageButton) { await setPage(pageButton.getAttribute("data-page") || "overview"); return; } const listModeButton = target.closest("[data-list-mode]"); if (listModeButton) { state.mode = listModeButton.getAttribute("data-list-mode") || "current"; await refreshProjects(); render(); return; } if (target.id === "new-project" || target.id === "empty-new-project") { openDrawer(); return; } if (target.id === "close-drawer" || target.id === "cancel-draft" || target.id === "drawer-backdrop") { closeDrawer(); return; } if (target.id === "retry-catalog") { state.catalogState = "idle"; await loadCatalog(); return; } const opened = target.closest("[data-matrix-open]"); if (opened) { const key = opened.getAttribute("data-matrix-open") || ""; const at = state.matrixOpen.indexOf(key); if (at >= 0) state.matrixOpen.splice(at, 1); else state.matrixOpen.push(key); render(); return; } const expand = target.closest("[data-expand-panel]"); if (expand && !target.closest("button:not(.panel-open),a,select,input,textarea,label")) { openPanel(expand.getAttribute("data-expand-panel") || ""); return; } if (target.closest("[data-edit-board]")) { state.editingBoard = !state.editingBoard; render(); return; } const span = target.closest("[data-panel-span]"); if (span) { const parts = (span.getAttribute("data-panel-span") || "").split(":"); setPanelSpan(parts[0] || "", Number(parts[1])); render(); return; } const hide = target.closest("[data-panel-hide]"); if (hide) { togglePanelHidden(hide.getAttribute("data-panel-hide") || ""); render(); return; } if (target.closest("[data-reset-panels]")) { resetPanelOrder(); state.editingBoard = false; render(); return; } const brand = target.closest("[data-brand-evidence]"); if (brand) { await openBrandEvidence(brand.getAttribute("data-brand-evidence") || "", brand.getAttribute("data-brand-tone") || ""); return; } const dropped = target.closest("[data-drop-selection]"); if (dropped) { dropSelection(dropped.getAttribute("data-drop-selection") || ""); return; } if (target.id === "save-models") { await saveModels((target as any)); return; } if (target.id === "save-monitoring-configuration") { await saveMonitoringConfiguration(); return; } if (target.id === "archive-project") { const selected = project(); if (selected) await projectAction("archive", selected.id, (target as any)); return; } if (target.id === "delete-project") { const selected = project(); if (selected) await projectAction("delete", selected.id, (target as any)); return; } const action = target.closest("[data-project-action]"); if (action) { const projectId = action.getAttribute("data-project-id"); const name = action.getAttribute("data-project-action"); if (projectId && name) await projectAction(name, projectId, (action as any)); } });
     document.addEventListener("change", async (event) => { const target = el(event.target) as any; if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) return; if (target.id === "project-select") { setSelectedProject(target.value); state.selectionsDirty = false; await refreshConfiguration(); loadLiveRun(); render(); return; } if (target instanceof HTMLInputElement && target.hasAttribute("data-model-checkbox")) { changeModel(target.getAttribute("data-model-checkbox") || "", target.checked); return; } if (target instanceof HTMLSelectElement && target.hasAttribute("data-model-mode")) { changeModelMode(target.getAttribute("data-model-mode") || "", target.value); return; } if (target instanceof HTMLSelectElement && target.hasAttribute("data-selected-model-mode")) { changeModelMode(target.getAttribute("data-selected-model-mode") || "", target.value); return; } });

@@ -232,3 +232,12 @@ test("pages that cannot be read stop a batch before any model is asked", async (
   await assert.rejects(() => service.draftBatch("p", "missing_answer", async () => { asked = true; return {}; }, 3));
   assert.equal(asked, false, "a model was asked to write from pages nobody could read");
 });
+
+test("a brief the pages only partly cover is still written, with the gaps named", () => {
+  const prompt = agentPrompt({ brandName: "B", domain: "d.com", instruction: "I", digest: "D" });
+  // Writing a Gaps section and declaring insufficiency at once is the
+  // contradiction that made every draft refuse.
+  assert.ok(prompt.includes("Return completed whenever the pages support anything at all"));
+  assert.ok(prompt.includes("Return insufficient only when the pages support nothing"));
+  assert.ok(prompt.includes("is a contradiction"));
+});

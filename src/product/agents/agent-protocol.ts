@@ -28,7 +28,8 @@ const PROMPT_TEMPLATE = [
   "Do not invent a statistic, a quotation or a named customer.",
   "Write in plain prose. No marketing superlatives, no invented urgency.",
   "Return Markdown in body, starting at a level two heading.",
-  "Return analysisStatus insufficient when the pages do not carry enough to write anything honest.",
+  "Return completed whenever the pages support anything at all, even when most of the brief goes unanswered. A short draft with a long Gaps section is the right answer to a brief the pages only partly cover.",
+  "Return insufficient only when the pages support nothing in the brief whatsoever. Writing a Gaps section and returning insufficient at the same time is a contradiction: if you had enough to name the gaps, you had enough to write.",
   "Return only the requested JSON schema.",
 ].join("\n");
 
