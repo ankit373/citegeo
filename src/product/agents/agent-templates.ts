@@ -159,6 +159,34 @@ function refresh(insights: TopicInsights): TemplateBrief {
   };
 }
 
+/** Every brief a template can build right now, not only the first. Each one is
+ * built by narrowing the insights to one gap and reusing the single-gap
+ * builder, so a batch and a single draft cannot disagree about a brief. */
+export function briefsFor(templateId: TemplateId, insights: TopicInsights, limit: number): TemplateBrief[] {
+  const take = Math.max(1, Math.min(limit, 50));
+  if (templateId === "missing_answer") {
+    return insights.absentFrom
+      .filter((row) => row.measuresVisibility && row.score.answers > 0)
+      .slice(0, take)
+      .map((row) => missingAnswer({ ...insights, absentFrom: [row] }));
+  }
+  if (templateId === "faq") {
+    return insights.topics
+      .filter((row) => row.prompts.length >= 2)
+      .slice(0, take)
+      .map((row) => faq({ ...insights, topics: [row] }));
+  }
+  if (templateId === "competitor_brief") {
+    const target = insights.leaderboard.find((row) => row.isTarget);
+    return insights.leaderboard
+      .filter((row) => !row.isTarget && row.appearances > (target?.appearances || 0))
+      .slice(0, take)
+      .map((row) => competitorBrief({ ...insights, leaderboard: target ? [target, row] : [row] }));
+  }
+  const only = refresh(insights);
+  return only.instruction ? [only] : [];
+}
+
 export function briefFor(templateId: TemplateId, insights: TopicInsights): TemplateBrief {
   if (templateId === "missing_answer") return missingAnswer(insights);
   if (templateId === "faq") return faq(insights);
