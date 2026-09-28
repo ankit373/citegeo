@@ -34,6 +34,9 @@ export interface CrawlerLogState {
   to: string | null;
   crawlers: Record<string, CrawlerStateEntry>;
   pages: Record<string, PageStateEntry>;
+  /** A CloudFront #Fields header seen in an earlier read. Absent for every
+   * other log shape, which names nothing outside the line. */
+  logFields?: string[];
 }
 
 export function emptyCrawlerState(source: string): CrawlerLogState {
