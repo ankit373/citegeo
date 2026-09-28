@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { countDrafts, parseDraft, type AgentDraft } from "../src/product/agents/agent-schema.js";
-import { AGENT_TEMPLATES, briefFor, templateById } from "../src/product/agents/agent-templates.js";
+import { AGENT_TEMPLATES, briefFor, briefsFor, templateById } from "../src/product/agents/agent-templates.js";
 import { agentPrompt, agentResponseSchema } from "../src/product/agents/agent-protocol.js";
 import type { TopicInsights } from "../src/product/topics/topic-insights.js";
 
@@ -142,4 +142,93 @@ test("an unknown workflow is refused before any model is asked", async () => {
     (error: unknown) => error instanceof AgentUnavailableError,
   );
   assert.equal(asked, false, "an unknown workflow reached a model");
+});
+
+test("a batch builds one brief per gap, not just the first", () => {
+  const rows = insights({
+    absentFrom: [
+      absent("question one", 4, [entity("Rival", 3)]),
+      absent("question two", 6, [entity("Rival", 5)]),
+      absent("not asked", 0, []),
+    ],
+  });
+  const briefs = briefsFor("missing_answer", rows, 10);
+  assert.equal(briefs.length, 2, "the question with no completed answer is not a gap");
+  assert.ok(briefs[0]?.instruction?.includes("question one"));
+  assert.ok(briefs[1]?.instruction?.includes("question two"));
+});
+
+test("a batch brief and a single brief agree about the same gap", () => {
+  const rows = insights({ absentFrom: [absent("only question", 4, [entity("Rival", 3)])] });
+  assert.equal(briefsFor("missing_answer", rows, 5)[0]?.instruction, briefFor("missing_answer", rows).instruction);
+});
+
+test("a batch honours its limit and never runs away", () => {
+  const many = Array.from({ length: 80 }, (_, n) => absent(`question ${n}`, 3, []));
+  assert.equal(briefsFor("missing_answer", insights({ absentFrom: many }), 3).length, 3);
+  assert.equal(briefsFor("missing_answer", insights({ absentFrom: many }), 999).length, 50, "capped, whatever is asked for");
+});
+
+test("a batch names every rival ahead of the brand, one brief each", () => {
+  const rows = insights({ leaderboard: [entity("Us", 1, true), entity("A", 9), entity("B", 5), entity("Behind", 0)] });
+  const briefs = briefsFor("competitor_brief", rows, 10);
+  assert.equal(briefs.length, 2);
+  assert.ok(briefs[0]?.instruction?.includes("A"));
+  assert.ok(briefs[1]?.instruction?.includes("B"));
+});
+
+test("a batch of a blocked template yields nothing to draft", () => {
+  assert.deepEqual(briefsFor("refresh", insights(), 5), []);
+  assert.deepEqual(briefsFor("missing_answer", insights(), 5), []);
+});
+
+test("one gap failing does not discard the drafts already written", async () => {
+  const { ProductAgentService } = await import("../src/product/agents/agent-service.js");
+  const saved: any[] = [];
+  const service = new ProductAgentService(
+    { get: async () => ({ brandName: "B", normalizedDomain: "example.com" }) } as any,
+    async () => insights({ absentFrom: [absent("one", 3, []), absent("two", 3, []), absent("three", 3, [])] }),
+    { save: async (d: any) => { saved.push(d); }, read: async () => null, list: async () => [] } as any,
+    async () => ({ digest: "the brand's pages", detail: null }),
+  );
+  let call = 0;
+  const outcome = await service.draftBatch("p", "missing_answer", async () => {
+    call += 1;
+    if (call === 2) throw new Error("provider refused this one");
+    return { analysisStatus: "completed", title: `T${call}`, body: "B", rationale: "R" };
+  }, 3);
+
+  assert.equal(outcome.considered, 3);
+  assert.equal(outcome.drafts.length, 2, "two succeeded and are kept");
+  assert.equal(outcome.skipped.length, 1, "the one that failed is named, not hidden");
+  assert.ok(outcome.skipped[0]?.reason.includes("provider refused"));
+  assert.ok(outcome.drafts.every((draft: any) => draft.status === "awaiting_review"));
+  assert.equal(saved.length, 2, "only what was written is stored");
+});
+
+test("a batch where every gap fails saves nothing and says why", async () => {
+  const { ProductAgentService, AgentUnavailableError } = await import("../src/product/agents/agent-service.js");
+  const service = new ProductAgentService(
+    { get: async () => ({ brandName: "B", normalizedDomain: "example.com" }) } as any,
+    async () => insights({ absentFrom: [absent("one", 3, [])] }),
+    { save: async () => {}, read: async () => null, list: async () => [] } as any,
+    async () => ({ digest: "pages", detail: null }),
+  );
+  await assert.rejects(
+    () => service.draftBatch("p", "missing_answer", async () => { throw new Error("no credits"); }, 3),
+    (error: unknown) => error instanceof AgentUnavailableError && String((error as Error).message).includes("no credits"),
+  );
+});
+
+test("pages that cannot be read stop a batch before any model is asked", async () => {
+  const { ProductAgentService } = await import("../src/product/agents/agent-service.js");
+  let asked = false;
+  const service = new ProductAgentService(
+    { get: async () => ({ brandName: "B", normalizedDomain: "example.com" }) } as any,
+    async () => insights({ absentFrom: [absent("one", 3, [])] }),
+    { save: async () => {}, read: async () => null, list: async () => [] } as any,
+    async () => ({ digest: "", detail: "The site is behind a login." }),
+  );
+  await assert.rejects(() => service.draftBatch("p", "missing_answer", async () => { asked = true; return {}; }, 3));
+  assert.equal(asked, false, "a model was asked to write from pages nobody could read");
 });
