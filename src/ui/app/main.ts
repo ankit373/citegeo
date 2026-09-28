@@ -547,6 +547,59 @@ export function boot(): void {
     }
     /** Every marketer surface is read-only and cheap, so one loader fills them
      * all and a page never waits on a request it does not use. */
+    /** A provider lists every model it tried, which is hundreds of characters
+     * and unreadable on a button. The first sentence goes on the control and
+     * the whole of it stays reachable on hover. */
+    function shortReason(control: Element, error: unknown) {
+      const full = error instanceof Error ? error.message : String(error);
+      const stop = full.indexOf(". ");
+      const first = stop === -1 ? full : full.slice(0, stop + 1);
+      control.textContent = first.length > 90 ? `${first.slice(0, 87)}…` : first || "It did not work";
+      control.setAttribute("title", full);
+    }
+
+    /** Drafting spends a model call per gap, so the button says what it is
+     * doing and the reason is shown when a provider refuses. */
+    async function runDraft(control: Element, templateId: string, batch: boolean) {
+      const selected = project();
+      if (!selected || !templateId) return;
+      const label = control.textContent || "Draft";
+      (control as HTMLButtonElement).disabled = true;
+      control.textContent = batch ? "Drafting every gap…" : "Drafting…";
+      try {
+        await request("/api/projects/" + selected.id + "/agents", {
+          method: "POST",
+          body: JSON.stringify(batch ? { templateId, batch: true } : { templateId }),
+        });
+        state.marketerState = "idle";
+        state.page = "drafts";
+        loadMarketer();
+      } catch (error) {
+        shortReason(control, error);
+        (control as HTMLButtonElement).disabled = false;
+        return;
+      }
+      control.textContent = label;
+    }
+
+    async function reviewDraft(control: Element, value: string) {
+      const selected = project();
+      const at = value.indexOf(":");
+      if (!selected || at === -1) return;
+      (control as HTMLButtonElement).disabled = true;
+      try {
+        await request("/api/projects/" + selected.id + "/agents/" + value.slice(0, at) + "/review", {
+          method: "POST",
+          body: JSON.stringify({ status: value.slice(at + 1) }),
+        });
+        state.marketerState = "idle";
+        loadMarketer();
+      } catch (error) {
+        shortReason(control, error);
+        (control as HTMLButtonElement).disabled = false;
+      }
+    }
+
     async function loadMarketer() {
       if (state.marketerState === "loading") return;
       const selected = project();
@@ -2834,6 +2887,16 @@ export function boot(): void {
       if (saveSettings) { await saveIntegrationSettings(saveSettings.getAttribute("data-integration-settings-save"), saveSettings); return; }
       const removeSelectedModel = target && target.closest ? target.closest("[data-remove-selected-model]") : null;
       if (removeSelectedModel) { dropSelection(removeSelectedModel.getAttribute("data-remove-selected-model") || ""); return; }
+      const draftOne = target && target.closest ? target.closest("[data-draft], [data-aim-run]") : null;
+      if (draftOne) {
+        const template = draftOne.getAttribute("data-draft") || draftOne.getAttribute("data-aim-run") || "";
+        await runDraft(draftOne, template, false);
+        return;
+      }
+      const draftEvery = target && target.closest ? target.closest("[data-draft-batch]") : null;
+      if (draftEvery) { await runDraft(draftEvery, draftEvery.getAttribute("data-draft-batch") || "", true); return; }
+      const reviewButton = target && target.closest ? target.closest("[data-review]") : null;
+      if (reviewButton) { await reviewDraft(reviewButton, reviewButton.getAttribute("data-review") || ""); return; }
       const probeButton = target && target.closest ? target.closest("[data-probe-signals]") : null;
       if (probeButton) { await captureSignals(probeButton); state.signalsState = "idle"; loadSignals(); return; } if (!(target instanceof Element)) return; const pageButton = target.closest("[data-page]"); if (pageButton) { await setPage(pageButton.getAttribute("data-page") || "overview"); return; } const listModeButton = target.closest("[data-list-mode]"); if (listModeButton) { state.mode = listModeButton.getAttribute("data-list-mode") || "current"; await refreshProjects(); render(); return; } if (target.id === "new-project" || target.id === "empty-new-project") { openDrawer(); return; } if (target.id === "close-drawer" || target.id === "cancel-draft" || target.id === "drawer-backdrop") { closeDrawer(); return; } if (target.id === "retry-catalog") { state.catalogState = "idle"; await loadCatalog(); return; } const opened = target.closest("[data-matrix-open]"); if (opened) { const key = opened.getAttribute("data-matrix-open") || ""; const at = state.matrixOpen.indexOf(key); if (at >= 0) state.matrixOpen.splice(at, 1); else state.matrixOpen.push(key); render(); return; } const expand = target.closest("[data-expand-panel]"); if (expand && !target.closest("button:not(.panel-open),a,select,input,textarea,label")) { openPanel(expand.getAttribute("data-expand-panel") || ""); return; } if (target.closest("[data-edit-board]")) { state.editingBoard = !state.editingBoard; render(); return; } const span = target.closest("[data-panel-span]"); if (span) { const parts = (span.getAttribute("data-panel-span") || "").split(":"); setPanelSpan(parts[0] || "", Number(parts[1])); render(); return; } const hide = target.closest("[data-panel-hide]"); if (hide) { togglePanelHidden(hide.getAttribute("data-panel-hide") || ""); render(); return; } if (target.closest("[data-reset-panels]")) { resetPanelOrder(); state.editingBoard = false; render(); return; } const brand = target.closest("[data-brand-evidence]"); if (brand) { await openBrandEvidence(brand.getAttribute("data-brand-evidence") || "", brand.getAttribute("data-brand-tone") || ""); return; } const dropped = target.closest("[data-drop-selection]"); if (dropped) { dropSelection(dropped.getAttribute("data-drop-selection") || ""); return; } if (target.id === "save-models") { await saveModels((target as any)); return; } if (target.id === "save-monitoring-configuration") { await saveMonitoringConfiguration(); return; } if (target.id === "archive-project") { const selected = project(); if (selected) await projectAction("archive", selected.id, (target as any)); return; } if (target.id === "delete-project") { const selected = project(); if (selected) await projectAction("delete", selected.id, (target as any)); return; } const action = target.closest("[data-project-action]"); if (action) { const projectId = action.getAttribute("data-project-id"); const name = action.getAttribute("data-project-action"); if (projectId && name) await projectAction(name, projectId, (action as any)); } });
     document.addEventListener("change", async (event) => { const target = el(event.target) as any; if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) return; if (target.id === "project-select") { setSelectedProject(target.value); state.selectionsDirty = false; await refreshConfiguration(); loadLiveRun(); render(); return; } if (target instanceof HTMLInputElement && target.hasAttribute("data-model-checkbox")) { changeModel(target.getAttribute("data-model-checkbox") || "", target.checked); return; } if (target instanceof HTMLSelectElement && target.hasAttribute("data-model-mode")) { changeModelMode(target.getAttribute("data-model-mode") || "", target.value); return; } if (target instanceof HTMLSelectElement && target.hasAttribute("data-selected-model-mode")) { changeModelMode(target.getAttribute("data-selected-model-mode") || "", target.value); return; } });
