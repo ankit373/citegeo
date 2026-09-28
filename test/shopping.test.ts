@@ -110,3 +110,28 @@ test("the schema allows a null intent, so a non-buying question can say so", () 
   assert.ok(intent.type.includes("null"));
   assert.ok(intent.enum.includes(null));
 });
+
+test("a report says how much of the run it could actually read", async () => {
+  const { ProductShoppingService } = await import("../src/product/shopping/shopping-service.js");
+  const rows = [1, 2, 3].map((n) => ({
+    id: `a${n}`, promptId: "q", promptText: "what should I buy", modelId: "m", modelDisplayName: "M",
+    status: "completed", text: "an answer", createdAt: `2026-01-0${n}T00:00:00.000Z`,
+  }));
+  let saved: any = null;
+  const service = new ProductShoppingService(
+    { get: async () => ({ brandName: "Acme" }) } as any,
+    { listAnswers: async () => rows } as any,
+    { save: async (r: any) => { saved = r; }, load: async () => null } as any,
+  );
+  let call = 0;
+  await service.run("p", async () => {
+    call += 1;
+    if (call === 1) throw new Error("provider refused");
+    if (call === 2) return { analysisStatus: "completed", intent: null, products: [] };
+    return { analysisStatus: "completed", intent: "purchase", products: [{ name: "Thing", brand: "Acme", merchants: [], attributes: [] }] };
+  });
+  assert.equal(saved.considered, 3, "three answers were put to a model");
+  assert.equal(saved.unreadable, 1, "one failed and that has to be visible");
+  assert.equal(saved.answers.length, 1, "one was not a buying question, so it is not a shopping answer");
+  assert.equal(saved.namedRate, 1);
+});

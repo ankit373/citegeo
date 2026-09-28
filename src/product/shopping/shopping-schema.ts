@@ -54,6 +54,11 @@ export interface ShoppingReport {
   answers: ShoppingAnswer[];
   /** Answers to a buying question that named no product at all. */
   genericAnswers: number;
+  /** Answers that were asked about and could not be read. A report built from
+   * three of thirty answers must not read like one built from thirty. */
+  unreadable: number;
+  /** Answers considered before any were discarded. */
+  considered: number;
   products: ProductStanding[];
   merchants: MerchantStanding[];
   /** Null when no buying question has a completed answer yet. */

@@ -70,6 +70,7 @@ export class ProductShoppingService {
     }
 
     const read: ShoppingAnswer[] = [];
+    let unreadable = 0;
     let lastFailure = "";
     for (const answer of usable) {
       let parsed;
@@ -86,11 +87,15 @@ export class ProductShoppingService {
         // Kept so a run that read nothing can say why rather than implying the
         // answers simply had nothing in them.
         lastFailure = error instanceof Error ? error.message : String(error);
+        unreadable += 1;
         continue;
       }
-      // A question that was not a buying question is not a shopping answer, and
-      // counting it would dilute every rate below.
-      if (parsed.status !== "completed" || !parsed.intent) continue;
+
+
+      if (parsed.status !== "completed") { unreadable += 1; continue; }
+      // A question that was not a buying question is skipped rather than
+      // counted unreadable, because reading it was what established that.
+      if (!parsed.intent) continue;
       read.push({
         answerId: answer.id,
         promptId: answer.promptId,
@@ -113,6 +118,8 @@ export class ProductShoppingService {
       brandName: project.brandName,
       answers: read,
       genericAnswers: read.filter((row) => !row.namedAnyProduct).length,
+      unreadable,
+      considered: usable.length,
       products: standings(read, project.brandName),
       merchants: merchantStandings(read),
       namedRate: namedRate(read, project.brandName),
