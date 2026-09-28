@@ -11,6 +11,10 @@
   <a href="docs/deployment/docker.md"><img src="assets/readme/self-hosted.svg" alt="Self-hosted" width="132" height="28"></a>
 </p>
 
+<p align="center">
+  <strong><a href="https://citegeo.uvansa.com">citegeo.uvansa.com</a></strong>
+</p>
+
 # Open-source GEO and AI visibility tracking
 
 **CiteGEO is a self-hosted generative engine optimization (GEO) and answer
@@ -302,6 +306,7 @@ MIT, see [LICENSE](LICENSE).
 
 Issues and pull requests are welcome at
 [github.com/ankit373/citegeo](https://github.com/ankit373/citegeo).
+There is more about what it measures at [citegeo.uvansa.com](https://citegeo.uvansa.com).
 
 ---
 
