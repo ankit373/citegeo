@@ -167,8 +167,15 @@ export const chatgptWeb: BrowserEngine = {
       90000,
     );
     if (!settled) {
-      // Reading a streaming answer captures half of it, which is worse than none.
-      return { state: "no_answer", detail: "The answer did not finish streaming within the time allowed." };
+      // Never starting and stopping halfway are different problems, and only
+      // one of them is fixed by waiting longer.
+      const reached = await session.evaluate<number>(`(() => { const found = ${expression}; return found ? found.text.length : 0; })()`).catch(() => 0);
+      return reached > 200
+        ? { state: "no_answer", detail: "The answer was still being written when the time allowed ran out." }
+        : {
+          state: "no_answer",
+          detail: "This session never produced an answer to read. A signed-out session is rate limited and often returns nothing, so sign in to the browser this reads from.",
+        };
     }
     return readAnswer({ session, engineId: "chatgpt", expression, minimumLength: 200, specificSelectors: specific });
   },
