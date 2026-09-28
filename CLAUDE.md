@@ -273,13 +273,26 @@ invisible to the test suite and obvious in a screenshot: a duplicated nav
 heading, a severity label overflowing its column, a breadcrumb showing one
 project above another project's numbers.
 
+This is not optional. The whole application stopped booting for three merges
+because two imports climbed out of the tree `/app` serves, and every check
+passed: the compiler saw a valid path on disk, and the emitted-script check
+resolves names without ever asking whether an import is reachable over HTTP.
+`ui-module-graph` now holds that specific case, and a browser holds the rest.
+
 If a generated artifact changed (`site/`, `deploy/kubernetes/`), regenerate it.
 CI fails on drift.
 
 ## Branching
 
-`main` is protected: pull request, five required checks, no bypass. Work on a
-branch, open a PR, and let the owner merge.
+`develop` is where work lands. Branch from it, open a pull request against it,
+and let the owner merge.
+
+`main` is the released state and is only ever moved from `develop`, after the
+application has been opened in a browser and seen to work. It has been broken
+once by three pull requests that were green on every check, because nothing in
+CI loads the page the way a browser does.
+
+`main` is protected: pull request, five required checks, no bypass.
 
 ## Writing
 
