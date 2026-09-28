@@ -547,6 +547,46 @@ export function boot(): void {
     }
     /** Every marketer surface is read-only and cheap, so one loader fills them
      * all and a page never waits on a request it does not use. */
+    function draftBody(draftId: string): string {
+      const rows = (state.drafts?.drafts || []) as any[];
+      const found = rows.find((row) => row.id === draftId);
+      return found ? `# ${found.title}\n\n${found.body}` : "";
+    }
+
+    /** A draft with nowhere to go is not finished work, so it leaves as text.
+     * Clipboard access can be refused, and saying so beats a silent no-op. */
+    async function copyText(control: Element, text: string) {
+      if (!text) { control.textContent = "Nothing to copy"; return; }
+      const label = control.textContent || "Copy";
+      try {
+        await navigator.clipboard.writeText(text);
+        control.textContent = "Copied";
+      } catch (error) {
+        control.textContent = "Copying was refused";
+      }
+      window.setTimeout(() => { control.textContent = label; }, 1800);
+    }
+
+    /** Reading claims or buying answers spends a model call per answer, so the
+     * control says it is working and reports the provider's reason if it is not. */
+    async function runMarketerCheck(control: Element, where: "factcheck" | "shopping") {
+      const selected = project();
+      if (!selected) return;
+      const label = control.textContent || "Run";
+      (control as HTMLButtonElement).disabled = true;
+      control.textContent = "Reading the answers…";
+      try {
+        await request("/api/projects/" + selected.id + "/" + where, { method: "POST", body: JSON.stringify({}) });
+        state.marketerState = "idle";
+        loadMarketer();
+      } catch (error) {
+        shortReason(control, error);
+        (control as HTMLButtonElement).disabled = false;
+        return;
+      }
+      control.textContent = label;
+    }
+
     /** A provider lists every model it tried, which is hundreds of characters
      * and unreadable on a button. The first sentence goes on the control and
      * the whole of it stays reachable on hover. */
@@ -2887,6 +2927,16 @@ export function boot(): void {
       if (saveSettings) { await saveIntegrationSettings(saveSettings.getAttribute("data-integration-settings-save"), saveSettings); return; }
       const removeSelectedModel = target && target.closest ? target.closest("[data-remove-selected-model]") : null;
       if (removeSelectedModel) { dropSelection(removeSelectedModel.getAttribute("data-remove-selected-model") || ""); return; }
+      const runCheck = target && target.closest ? target.closest("[data-run-factcheck], [data-run-shopping]") : null;
+      if (runCheck) {
+        const where = runCheck.hasAttribute("data-run-factcheck") ? "factcheck" : "shopping";
+        await runMarketerCheck(runCheck, where);
+        return;
+      }
+      const copyDraft = target && target.closest ? target.closest("[data-copy-draft]") : null;
+      if (copyDraft) { await copyText(copyDraft, draftBody(copyDraft.getAttribute("data-copy-draft") || "")); return; }
+      const copyLlms = target && target.closest ? target.closest("[data-copy-llms]") : null;
+      if (copyLlms) { await copyText(copyLlms, state.entity?.llms?.text || ""); return; }
       const draftOne = target && target.closest ? target.closest("[data-draft], [data-aim-run]") : null;
       if (draftOne) {
         const template = draftOne.getAttribute("data-draft") || draftOne.getAttribute("data-aim-run") || "";

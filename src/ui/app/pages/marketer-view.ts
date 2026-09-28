@@ -143,12 +143,15 @@ export function draftsView(input: { offers: TemplateOffer[]; drafts: DraftRow[] 
     rows: input.drafts.map((draft) => row("mcols-draft", [
       nameCell(html(draft.title), html(draft.rationale)),
       cell(`<span class="subtle">${html(String(draft.sources.length))} source(s)</span>`),
-      cell(draft.status === "awaiting_review"
-        ? join([
-          button({ label: "Approve", on: { "data-review": `${draft.id}:approved` } }),
-          button({ label: "Reject", kind: "quiet", tone: "danger", on: { "data-review": `${draft.id}:rejected` } }),
-        ])
-        : `<span class="${draft.status === "approved" ? "state-ok" : "state-flag"}">${html(draft.status)}</span>`),
+      cell(join([
+        draft.status === "awaiting_review"
+          ? join([
+            button({ label: "Approve", on: { "data-review": `${draft.id}:approved` } }),
+            button({ label: "Reject", kind: "quiet", tone: "danger", on: { "data-review": `${draft.id}:rejected` } }),
+          ])
+          : `<span class="${draft.status === "approved" ? "state-ok" : "state-flag"}">${html(draft.status)}</span>`,
+        button({ label: "Copy", kind: "quiet", on: { "data-copy-draft": draft.id } }),
+      ])),
     ], { clickable: true, attrs: `data-open-draft="${html(draft.id)}"` })),
   });
 
@@ -159,9 +162,15 @@ export function draftsView(input: { offers: TemplateOffer[]; drafts: DraftRow[] 
 }
 
 /** Claims the answers made about the brand, settled against the brand's pages. */
+const CHECK_CLAIMS = button({ label: "Check claims now", on: { "data-run-factcheck": true } });
+
 export function claimsView(report: FactCheckView | null): string {
   if (!report) {
-    return section({ title: "Claims", body: empty("No claim check has been run for this project yet.") });
+    return section({
+      title: "Claims",
+      blurb: "Reads what the archived answers assert about you and settles each against your own pages.",
+      body: join([empty("No claim check has been run for this project yet."), `<div class="inline-actions">${CHECK_CLAIMS}</div>`]),
+    });
   }
   const group = (rows: ClaimGroup[], what: string) => table({
     layout: "mcols-claim",
@@ -180,6 +189,7 @@ export function claimsView(report: FactCheckView | null): string {
     section({
       title: "Claims",
       blurb: `Settled against the pages at ${report.domain}. Nothing here calls a claim false; it reports disagreement with those pages.`,
+      aside: CHECK_CLAIMS,
       body: tiles([
         { label: "Supported", value: String(report.tally.supported), note: "the pages say it", fraction: null },
         { label: "Contradicted", value: String(report.tally.contradicted), note: "the pages say otherwise", fraction: null },
@@ -193,8 +203,16 @@ export function claimsView(report: FactCheckView | null): string {
 }
 
 /** What a buying answer named, with the limit of the reading stated. */
+const READ_BUYING = button({ label: "Read buying answers", on: { "data-run-shopping": true } });
+
 export function buyingView(report: ShoppingView | null): string {
-  if (!report) return section({ title: "Buying", body: empty("No buying answer has been read for this project yet.") });
+  if (!report) {
+    return section({
+      title: "Buying",
+      blurb: "Reads which products, brands and retailers your archived buying answers actually named.",
+      body: join([empty("No buying answer has been read for this project yet."), `<div class="inline-actions">${READ_BUYING}</div>`]),
+    });
+  }
 
   const products = table({
     layout: "mcols-product",
@@ -222,6 +240,7 @@ export function buyingView(report: ShoppingView | null): string {
     section({
       title: "Buying",
       blurb: report.caveat,
+      aside: READ_BUYING,
       body: tiles([
         { label: "Answers naming you", value: report.namedRate === null ? "not asked" : `${Math.round(report.namedRate * 100)}%`, note: "of buying answers", fraction: report.namedRate },
         { label: "Named nothing", value: String(report.genericAnswers), note: "stayed generic", fraction: null },
@@ -269,8 +288,13 @@ export function conversationsView(rows: ExplorationRow[]): string {
 
 /** What corroborates this brand from outside its own control. */
 export function entityView(alignment: EntityView | null, llms: { text: string; listed: number } | null): string {
+  const probe = button({ label: "Probe the site now", on: { "data-probe-signals": true } });
   if (!alignment) {
-    return section({ title: "Entity", body: empty("This project's site has not been probed yet, so nothing is known about what resolves it.") });
+    return section({
+      title: "Entity",
+      blurb: "Reads what the live site publishes about who owns it.",
+      body: join([empty("This project's site has not been probed yet, so nothing is known about what resolves it."), `<div class="inline-actions">${probe}</div>`]),
+    });
   }
   const anchors = table({
     layout: "mcols-anchor",
@@ -288,6 +312,7 @@ export function entityView(alignment: EntityView | null, llms: { text: string; l
     section({
       title: "Entity",
       blurb: `Whether a model can resolve ${alignment.domain} to a stable entity.`,
+      aside: probe,
       body: tiles([
         { label: "Corroborated by", value: String(alignment.corroborated), note: "anchors outside your control", fraction: null },
         { label: "Anchors in total", value: String(alignment.anchors.length), note: "most of them your own", fraction: null },
@@ -310,7 +335,8 @@ export function entityView(alignment: EntityView | null, llms: { text: string; l
     section({
       title: "llms.txt",
       blurb: llms ? `A map of the ${llms.listed} page(s) this site already serves. It is not a second version of the site.` : "",
-      body: llms ? `<pre class="llms-draft">${html(llms.text)}</pre>` : empty("Not drafted yet."),
+      aside: llms ? button({ label: "Copy llms.txt", kind: "quiet", on: { "data-copy-llms": true } }) : "",
+      body: llms ? `<pre class="llms-draft" data-llms-text>${html(llms.text)}</pre>` : empty("Not drafted yet."),
       wide: true,
     }),
   ]);
