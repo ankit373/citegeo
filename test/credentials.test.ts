@@ -7,7 +7,7 @@ import { CredentialFileStore, credentialKey, decryptSecret, encryptSecret } from
 import { CredentialService } from "../src/product/auth/credential-service.js";
 import { handleCredentialApi } from "../src/product/auth/credential-http.js";
 import { productAppSource } from "../src/ui/app-source.js";
-import { integration } from "../src/product/auth/integrations.js";
+import { INTEGRATIONS, integration } from "../src/product/auth/integrations.js";
 import { integrationSetting, openAICompatibleBaseUrl, resolveProviderKey } from "../src/config/env.js";
 
 const KEY_B64 = Buffer.alloc(32, 7).toString("base64");
@@ -45,7 +45,10 @@ test("a round trip returns the original secret", () => {
 
 test("Ahrefs and Semrush are first-class encrypted integrations with fixed comparison scopes", () => {
   assert.deepEqual(integration("ahrefs")?.envKeys, ["AHREFS_API_KEY"]);
-  assert.deepEqual(integration("ahrefs")?.settings?.map((row) => row.envKey), ["AHREFS_COUNTRY"]);
+  // One key, two readings: the metric snapshots take a country and Brand
+  // Radar takes a report id. Two rows sharing the id overwrote each other.
+  assert.deepEqual(integration("ahrefs")?.settings?.map((row) => row.envKey), ["AHREFS_COUNTRY", "AHREFS_BRAND_RADAR_REPORT"]);
+  assert.equal(INTEGRATIONS.filter((row) => row.id === "ahrefs").length, 1, "two rows with one id is one connection silently replacing another");
   assert.deepEqual(integration("semrush")?.envKeys, ["SEMRUSH_API_KEY"]);
   assert.deepEqual(integration("semrush")?.settings?.map((row) => row.envKey), ["SEMRUSH_DATABASE"]);
 });

@@ -65,12 +65,17 @@ const OUTWARD_INTEGRATIONS: IntegrationDefinition[] = [
   },
   {
     id: "ahrefs",
-    label: "Ahrefs Brand Radar",
+    label: "Ahrefs",
     kind: "integration",
-    purpose: "Read AI citations from the surfaces this product cannot ask directly, such as AI Overviews, AI Mode, Copilot and Grok.",
+    // One key serves two readings, so it is one connection with both scopes
+    // rather than two rows sharing an id and overwriting each other.
+    purpose: "Read AI citations from the surfaces this product cannot ask directly, and the provider's domain-rating, organic-keyword and estimated-organic-traffic snapshots. These are third-party estimates, not Analytics.",
     envKeys: ["AHREFS_API_KEY"],
-    help: "An API key with Brand Radar access. A report id is optional and carries the brand, rivals and market as one, otherwise the brand is passed per read. Figures read here are measured by their panel and are reported beside this archive rather than inside it.",
-    settings: [{ key: "reportId", label: "Brand Radar report id", envKey: "AHREFS_BRAND_RADAR_REPORT" }],
+    help: "An Ahrefs API v3 key with Site Explorer and Brand Radar access. A report id carries the brand, rivals and market as one, otherwise the brand is passed per read. Pulls consume Ahrefs API units; use the same country scope for every comparison.",
+    settings: [
+      { key: "country", label: "Country (ISO 3166-1 alpha-2)", envKey: "AHREFS_COUNTRY" },
+      { key: "reportId", label: "Brand Radar report id", envKey: "AHREFS_BRAND_RADAR_REPORT" },
+    ],
   },
   {
     id: "google-analytics",
@@ -83,15 +88,6 @@ const OUTWARD_INTEGRATIONS: IntegrationDefinition[] = [
     envKeys: ["GOOGLE_SERVICE_ACCOUNT_JSON", "GOOGLE_OAUTH_CREDENTIALS_JSON"],
     help: `${GOOGLE_HELP} Whichever one Search Console holds serves this too, as a viewer on the Analytics property.`,
     settings: [{ key: "propertyId", label: "GA4 property id", envKey: "GOOGLE_ANALYTICS_PROPERTY_ID" }],
-  },
-  {
-    id: "ahrefs",
-    label: "Ahrefs",
-    kind: "integration",
-    purpose: "Read the provider's domain-rating, organic-keyword and estimated-organic-traffic snapshots for the monitored domain. These are third-party estimates, not Analytics traffic.",
-    envKeys: ["AHREFS_API_KEY"],
-    help: "An Ahrefs API v3 key with access to Site Explorer. Pulls consume Ahrefs API units; use the same country scope for every comparison.",
-    settings: [{ key: "country", label: "Country (ISO 3166-1 alpha-2)", envKey: "AHREFS_COUNTRY" }],
   },
   {
     id: "semrush",
