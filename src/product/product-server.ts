@@ -23,6 +23,8 @@ import { handleCrawlerApi } from "./crawlers/crawler-http.js";
 import { handleCredentialApi } from "./auth/credential-http.js";
 import { handleGoogleOAuth } from "./search-console/google-oauth-http.js";
 import { handleSiteIconApi } from "./discovery/site-icon-http.js";
+import { handleAgentApi } from "./agents/agent-http.js";
+import { handleShoppingApi } from "./shopping/shopping-http.js";
 import { handleFactCheckApi } from "./factcheck/factcheck-http.js";
 import { handleProviderStatusApi } from "./configuration/provider-http.js";
 import { authorise, passwordMatches } from "./auth/auth-guard.js";
@@ -147,6 +149,8 @@ async function handle(req: IncomingMessage, res: ServerResponse, services: Produ
     redirect: (status, location, headers) => { res.writeHead(status, { Location: location, ...SAFETY_HEADERS, ...(headers || {}) }); res.end(); },
   })) return;
   if (await handleSiteIconApi({ method, route, send: json, service: services.icons, readJson: body })) return;
+  if (await handleAgentApi({ method, route, send: json, service: services.agents, ask: services.ask, readJson: body })) return;
+  if (await handleShoppingApi({ method, route, send: json, service: services.shopping, ask: services.ask, readJson: body })) return;
   if (await handleFactCheckApi({ method, route, send: json, service: services.factcheck, ask: services.ask, readJson: body })) return;
   if (await handleInsightsApi({ method, route, send: json, service: insights })) return;
   if (await handleCrawlerApi({ method, route, send: json, crawlerLog, insights,
