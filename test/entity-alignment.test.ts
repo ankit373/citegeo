@@ -120,3 +120,15 @@ test("every url in the draft came from a page that was read", () => {
     assert.ok(site.pages.some((row) => line.includes(row.url)), `${line} points somewhere no page was read from`);
   }
 });
+
+test("a bracket in a title cannot close the link early", () => {
+  const draft = buildLlmsTxt({
+    brandName: "Example",
+    summary: null,
+    site: { domain: "example.com", reachable: true, detail: null, pages: [page({ title: "Pricing [2026]" })] },
+  });
+  const line = draft.text.split("\n").find((row) => row.startsWith("- ")) || "";
+  // Exactly one link: the title's brackets must not read as a second one.
+  assert.equal(line.split("](").length, 2, `the link is malformed: ${line}`);
+  assert.ok(line.includes("https://example.com/a"));
+});

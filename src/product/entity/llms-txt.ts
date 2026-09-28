@@ -21,6 +21,12 @@ export interface LlmsTxtDraft {
   skipped: Array<{ url: string; reason: string }>;
 }
 
+/** A bracket in a title closes the link early, so a reader following this file
+ * would be sent to a fragment of the url or to nothing. */
+function linkText(value: string): string {
+  return value.split("[").join("(").split("]").join(")");
+}
+
 function oneLine(value: string): string {
   return value.split("\n").join(" ").split("\r").join(" ").split("\t").join(" ").trim();
 }
@@ -56,7 +62,7 @@ export function buildLlmsTxt(input: LlmsTxtInput): LlmsTxtDraft {
     }
     seen.add(url);
     const note = describe(page);
-    entries.push(note ? `- [${title}](${url}): ${note}` : `- [${title}](${url})`);
+    entries.push(note ? `- [${linkText(title)}](${url}): ${note}` : `- [${linkText(title)}](${url})`);
   }
 
   if (entries.length) {
