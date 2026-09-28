@@ -405,33 +405,6 @@
 @utility mcols-rank {
   @apply grid-cols-[minmax(0,1fr)_92px_84px];
 }
-@utility mcols-cause {
-  @apply grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] items-start;
-}
-@utility mcols-task {
-  @apply grid-cols-[minmax(0,1fr)_200px] items-start;
-}
-@utility mcols-offer {
-  @apply grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)_190px] items-start;
-}
-@utility mcols-draft {
-  @apply grid-cols-[minmax(0,1fr)_110px_180px] items-start;
-}
-@utility mcols-claim {
-  @apply grid-cols-[minmax(0,1.2fr)_140px_minmax(0,1.2fr)] items-start;
-}
-@utility mcols-product {
-  @apply grid-cols-[minmax(0,1fr)_140px_minmax(0,1fr)] items-start;
-}
-@utility mcols-merchant {
-  @apply grid-cols-[minmax(0,1fr)_110px_minmax(0,1fr)] items-start;
-}
-@utility mcols-question {
-  @apply grid-cols-[minmax(0,1fr)_130px_90px] items-start;
-}
-@utility mcols-anchor {
-  @apply grid-cols-[minmax(0,1fr)_170px_170px] items-start;
-}
 
 /* The frame. One shell, one rail, one header, one footer. */
 
@@ -980,13 +953,3 @@ select[data-filter].is-set {
 .connection-setting small { @apply text-[11px] font-normal text-weak; }
 .connection-settings .inline-actions { @apply mt-[10px]; }
 @media (max-width: 720px) { .setup-steps { grid-template-columns: 1fr; } }
-
-@layer components {
-  .llms-draft {
-    @apply m-0 overflow-auto rounded-[8px] border border-line bg-sunken p-[14px] text-[12px] leading-[1.6] text-text;
-    font-family: var(--font-mono);
-    max-height: 420px;
-    white-space: pre-wrap;
-    word-break: break-word;
-  }
-}
