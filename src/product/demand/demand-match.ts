@@ -4,7 +4,7 @@ import type { Prompt } from "../topics/topic-schema.js";
 
 /** Rows containing every term, and rows containing most of them. Two numbers
  * because one of them is always the wrong one to quote. */
-export function matchRows(corpus: IndexedCorpus, terms: string[]): { exact: number[]; related: number[] } {
+function matchRows(corpus: IndexedCorpus, terms: string[]): { exact: number[]; related: number[] } {
   if (!terms.length) return { exact: [], related: [] };
   const counts = new Map<number, number>();
   for (const term of terms) {
