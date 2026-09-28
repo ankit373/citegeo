@@ -24,6 +24,7 @@ import { TopicService } from "./topics/topic-service.js";
 import { createStructuredAsk } from "./topics/structured-ask.js";
 import { PromptScheduleFileStore, PromptScheduleService } from "./topics/prompt-schedule.js";
 import { DemandReportFileStore } from "./demand/demand-store.js";
+import { ExplorationFileStore } from "./demand/exploration-store.js";
 import { BrandProfileFileStore, BrandProfileService } from "./discovery/brand-profile-service.js";
 import { projectInsights } from "./topics/project-insights.js";
 import { ProductAgentService } from "./agents/agent-service.js";
@@ -138,6 +139,7 @@ export interface ProductServices {
   promptRuns: PromptRunService;
   promptSchedule: PromptScheduleService;
   demand: DemandReportFileStore;
+  explorations: ExplorationFileStore;
   profiles: BrandProfileService;
   agents: ProductAgentService;
   shopping: ProductShoppingService;
@@ -210,6 +212,7 @@ export function createProductServices(dependencies: ProductServerDependencies = 
   const shopping = new ProductShoppingService(projects, promptRuns, new ShoppingFileStore(projectStore));
   const factcheck = new ProductFactCheckService(projects, promptRuns, new FactCheckFileStore(projectStore));
   const demand = new DemandReportFileStore(projectStore);
+  const explorations = new ExplorationFileStore(projectStore);
   const competitors = new CompetitorService(new CompetitorFileStore(projectStore));
   const segments = new SegmentService(new SegmentFileStore(projectStore));
   const actions = new ActionLogService(new ActionLogStore(projectStore));
@@ -239,7 +242,7 @@ export function createProductServices(dependencies: ProductServerDependencies = 
   return {
     projects, catalog, selections, baselines, recognition, reports, insights,
     signals, crawlerLog, watchSets, measurements, stats, schedules,
-    topics, promptRuns, promptSchedule, demand, profiles, agents, shopping, factcheck, icons, competitors, segments, ask, engines, actions, sourcePages, searchConsole, externalMetrics, personas,
+    topics, promptRuns, promptSchedule, demand, explorations, profiles, agents, shopping, factcheck, icons, competitors, segments, ask, engines, actions, sourcePages, searchConsole, externalMetrics, personas,
     storageSettings, dataDir: productDataDir(),
     credentials,
     auth: authConfig(),
