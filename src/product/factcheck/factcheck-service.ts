@@ -59,6 +59,7 @@ export class ProductFactCheckService {
 
     const checked: AnswerFactCheck[] = [];
     let unreadable = 0;
+    let lastFailure = "";
     for (const answer of usable) {
       let parsed;
       try {
@@ -75,9 +76,10 @@ export class ProductFactCheckService {
           schema: factcheckResponseSchema,
         });
         parsed = parseFactCheck(readStructuredValue(raw));
-      } catch (_) {
+      } catch (error) {
         // One answer failing never discards the rest, and a failure is counted
         // rather than folded into the results as nothing found.
+        lastFailure = error instanceof Error ? error.message : String(error);
         unreadable += 1;
         continue;
       }
@@ -96,9 +98,10 @@ export class ProductFactCheckService {
     }
 
     if (!checked.length) {
-      throw new FactCheckUnavailableError(
-        `None of the ${usable.length} answers checked could be read. Nothing was saved.`,
-      );
+      // A provider that refused says why. "None could be read" hid "this
+      // account has no credits" behind a sentence about the answers.
+      throw new FactCheckUnavailableError(lastFailure
+        || `None of the ${usable.length} answers checked could be read. Nothing was saved.`);
     }
 
     const report: FactCheckReport = {
