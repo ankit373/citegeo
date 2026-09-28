@@ -26,6 +26,12 @@ import { PromptScheduleFileStore, PromptScheduleService } from "./topics/prompt-
 import { DemandReportFileStore } from "./demand/demand-store.js";
 import { ExplorationFileStore } from "./demand/exploration-store.js";
 import { BrandProfileFileStore, BrandProfileService } from "./discovery/brand-profile-service.js";
+import { projectInsights } from "./topics/project-insights.js";
+import { ProductAgentService } from "./agents/agent-service.js";
+import { ProductShoppingService, ShoppingFileStore } from "./shopping/shopping-service.js";
+import { AgentDraftFileStore } from "./agents/agent-store.js";
+import { ProductFactCheckService } from "./factcheck/factcheck-service.js";
+import { FactCheckFileStore } from "./factcheck/factcheck-store.js";
 import { SiteIconService, SiteIconStore } from "./discovery/site-icon-service.js";
 import { StorageSettingsStore } from "./storage/storage-settings.js";
 import { CompetitorFileStore, CompetitorService } from "./topics/competitor-set.js";
@@ -135,6 +141,9 @@ export interface ProductServices {
   demand: DemandReportFileStore;
   explorations: ExplorationFileStore;
   profiles: BrandProfileService;
+  agents: ProductAgentService;
+  shopping: ProductShoppingService;
+  factcheck: ProductFactCheckService;
   icons: SiteIconService;
   competitors: CompetitorService;
   segments: SegmentService;
@@ -197,6 +206,11 @@ export function createProductServices(dependencies: ProductServerDependencies = 
     ask: (input) => engines.askOne(input),
   }, personas);
   const promptSchedule = new PromptScheduleService(new PromptScheduleFileStore(projectStore), promptRuns);
+  const agents = new ProductAgentService(projects,
+    (id) => projectInsights({ projectId: id, topics, runs: promptRuns, competitors, personas }),
+    new AgentDraftFileStore(projectStore));
+  const shopping = new ProductShoppingService(projects, promptRuns, new ShoppingFileStore(projectStore));
+  const factcheck = new ProductFactCheckService(projects, promptRuns, new FactCheckFileStore(projectStore));
   const demand = new DemandReportFileStore(projectStore);
   const explorations = new ExplorationFileStore(projectStore);
   const competitors = new CompetitorService(new CompetitorFileStore(projectStore));
@@ -228,7 +242,7 @@ export function createProductServices(dependencies: ProductServerDependencies = 
   return {
     projects, catalog, selections, baselines, recognition, reports, insights,
     signals, crawlerLog, watchSets, measurements, stats, schedules,
-    topics, promptRuns, promptSchedule, demand, explorations, profiles, icons, competitors, segments, ask, engines, actions, sourcePages, searchConsole, externalMetrics, personas,
+    topics, promptRuns, promptSchedule, demand, explorations, profiles, agents, shopping, factcheck, icons, competitors, segments, ask, engines, actions, sourcePages, searchConsole, externalMetrics, personas,
     storageSettings, dataDir: productDataDir(),
     credentials,
     auth: authConfig(),

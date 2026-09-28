@@ -521,11 +521,23 @@ export function splitRows(rows: Split[], empty: string, limit = 6): string {
   });
 }
 
+const MOVE_EFFECTS: Record<string, string> = {
+  raises_visibility: "Raises the score",
+  unblocks_measurement: "Unblocks measurement",
+  widens_measurement: "Widens what is measured",
+};
+
+/** An effect this view has no wording for is shown as it came, rather than
+ * given a label that might be the wrong one. */
+export function moveEffectLabel(effect: string): string {
+  return MOVE_EFFECTS[effect] || effect;
+}
+
 export function movesList(moves: Move[], limit = 3): string {
   if (!moves.length) return '<p class="subtle">Nothing in the archived answers points at a move that would raise the score.</p>';
   return join([
     '<ol class="dmoves">',
-    moves.slice(0, limit).map((move) => `<li><strong>${html(move.title)}</strong><span class="subtle">${html(move.evidence)}</span></li>`).join(""),
+    moves.slice(0, limit).map((move) => `<li><strong>${html(move.title)}</strong>${move.effect ? `<span class="move-effect">${html(moveEffectLabel(move.effect))}</span>` : ""}<span class="subtle">${html(move.evidence)}</span></li>`).join(""),
     "</ol>",
     '<div class="inline-actions"><button type="button" class="button" data-page="answer-engine">The whole plan</button></div>',
   ]);
