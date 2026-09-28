@@ -35,6 +35,13 @@ export async function handleAgentApi(input: {
     }
     if (route.length === 4 && method === "POST") {
       const templateId = typeof body.templateId === "string" ? body.templateId : "";
+      // batch: one draft per gap the template can act on, rather than the first.
+      if (body.batch === true) {
+        const asked = typeof body.limit === "number" ? body.limit : Number(body.limit);
+        const limit = Number.isFinite(asked) && asked > 0 ? Math.min(Math.floor(asked), 50) : 5;
+        send(201, await service.draftBatch(projectId, templateId, input.ask, limit));
+        return true;
+      }
       send(201, { draft: await service.draft(projectId, templateId, input.ask) });
       return true;
     }

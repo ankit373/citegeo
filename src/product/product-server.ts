@@ -24,6 +24,7 @@ import { handleCredentialApi } from "./auth/credential-http.js";
 import { handleGoogleOAuth } from "./search-console/google-oauth-http.js";
 import { handleSiteIconApi } from "./discovery/site-icon-http.js";
 import { handleExplorationApi } from "./demand/exploration-http.js";
+import { handleLocationApi } from "./topics/location-http.js";
 import { handleEntityApi } from "./entity/entity-http.js";
 import { handleAgentApi } from "./agents/agent-http.js";
 import { handleShoppingApi } from "./shopping/shopping-http.js";
@@ -152,6 +153,7 @@ async function handle(req: IncomingMessage, res: ServerResponse, services: Produ
   })) return;
   if (await handleSiteIconApi({ method, route, send: json, service: services.icons, readJson: body })) return;
   if (await handleExplorationApi({ method, route, send: json, store: services.explorations })) return;
+  if (await handleLocationApi({ method, route, send: json, service: services.locations, readJson: body })) return;
   if (await handleEntityApi({
     method, route, send: json, projects, signals: { latest: async (id) => (await signals.history(id))[0]?.signals || null },
     summary: async (id) => (await services.profiles.get(id))?.businessDescription || null,
@@ -166,13 +168,13 @@ async function handle(req: IncomingMessage, res: ServerResponse, services: Produ
   if (await handleActionApi({ method, route, send: json, signals, insights })) return;
   if (await handleSearchConsoleApi({ method, route, send: json, searchConsole: services.searchConsole, externalMetrics: services.externalMetrics, readJson: body,
     prompts: async (id) => (await topics.get(id)).prompts.filter((prompt) => prompt.status === "active"),
-    insights: (id) => projectInsights({ projectId: id, topics, runs: promptRuns, competitors: services.competitors, personas: services.personas }) })) return;
+    insights: (id) => projectInsights({ projectId: id, topics, runs: promptRuns, competitors: services.competitors, personas: services.personas, locations: services.locations }) })) return;
   if (await handleCitationApi({ method, route, send: json, pages: services.sourcePages,
     answers: (id) => promptRuns.listAnswers(id),
     identity: (id) => topics.targetIdentity(id),
     names: async (id) => [...new Set((await promptRuns.listAnswers(id)).flatMap((answer) => answer.mentions.map((row) => row.name)))] })) return;
   if (await handleRankingActionApi({ method, route, send: json, actions: services.actions, readJson: body,
-    insights: (id) => projectInsights({ projectId: id, topics, runs: promptRuns, competitors: services.competitors, personas: services.personas }) })) return;
+    insights: (id) => projectInsights({ projectId: id, topics, runs: promptRuns, competitors: services.competitors, personas: services.personas, locations: services.locations }) })) return;
   if (await handleEngineApi({ method, route, send: json, engines: services.engines, readJson: body })) return;
   if (await handleTopicApi({ method, route, url, send: json, topics, runs: promptRuns, schedule: promptSchedule, demand, profiles, models: async (id) => (await selections.list(id)).length, competitors: services.competitors, segments: services.segments, personas: services.personas, ask: services.ask, readJson: body })) return;
 
