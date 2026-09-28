@@ -26,6 +26,7 @@ import { handleSiteIconApi } from "./discovery/site-icon-http.js";
 import { handleExplorationApi } from "./demand/exploration-http.js";
 import { handleLocationApi } from "./topics/location-http.js";
 import { handleEntityApi } from "./entity/entity-http.js";
+import { handleAimApi } from "./aim/aim-http.js";
 import { handleAgentApi } from "./agents/agent-http.js";
 import { handleShoppingApi } from "./shopping/shopping-http.js";
 import { handleFactCheckApi } from "./factcheck/factcheck-http.js";
@@ -157,6 +158,10 @@ async function handle(req: IncomingMessage, res: ServerResponse, services: Produ
   if (await handleEntityApi({
     method, route, send: json, projects, signals: { latest: async (id) => (await signals.history(id))[0]?.signals || null },
     summary: async (id) => (await services.profiles.get(id))?.businessDescription || null,
+  })) return;
+  if (await handleAimApi({
+    method, route, send: json, history: (id) => signals.history(id),
+    insights: (id) => projectInsights({ projectId: id, topics, runs: promptRuns, competitors: services.competitors, personas: services.personas, locations: services.locations }),
   })) return;
   if (await handleAgentApi({ method, route, send: json, service: services.agents, ask: services.ask, readJson: body })) return;
   if (await handleShoppingApi({ method, route, send: json, service: services.shopping, ask: services.ask, readJson: body })) return;
