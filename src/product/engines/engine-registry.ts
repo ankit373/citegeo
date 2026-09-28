@@ -148,12 +148,22 @@ export const chatgptWeb: BrowserEngine = {
   caveat: "Read from chatgpt.com in your own signed-in browser. The product and the API answer differently, because the product runs retrieval and model routing an API key does not expose.",
   async ask(session, question) {
     await session.send("Page.navigate", { url: `https://chatgpt.com/?q=${encodeURIComponent(question)}` });
-    const specific = ["[data-message-author-role='assistant']", "div.markdown.prose"];
+    // The signed-out answer renders in a single article and carries none of
+    // the attributes the signed-in transcript does, so both shapes are read.
+    const specific = ["[data-message-author-role='assistant']", "div.markdown.prose", "article"];
     if (await signedOut(session, specific)) return SIGN_IN_OUTCOME;
     const expression = readerExpression([...specific, "main"], "a[href^='http']");
+    // The stop button's test id no longer exists, so a settled answer is one
+    // whose length stopped changing rather than one with no button on screen.
     const settled = await waitFor(
       session,
-      `(() => { const found = ${expression}; return Boolean(found && found.text.length > 200 && !document.querySelector("button[data-testid='stop-button']")); })()`,
+      `(() => {
+        const found = ${expression};
+        if (!found || found.text.length <= 200) return false;
+        const seen = window.__citegeoLastLength;
+        window.__citegeoLastLength = found.text.length;
+        return seen === found.text.length;
+      })()`,
       90000,
     );
     if (!settled) {
