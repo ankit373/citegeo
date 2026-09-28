@@ -80,3 +80,23 @@ test("locations belong to one project", async () => {
   await rows.add("a", { label: "Leeds" });
   assert.deepEqual((await rows.get("b")).locations, [], "another project sees none of them");
 });
+
+test("a retired location keeps its label but cannot start a new run", async () => {
+  const { trackedLocationFrom } = await import("../src/product/topics/location.js");
+  const rows = await service();
+  const added = await rows.add("p", { label: "Leeds" });
+  const id = added.locations[0]?.id || "";
+  const set = await rows.retire("p", [id]);
+  // Past answers still resolve to "Leeds".
+  assert.equal(locationFrom(set, id)?.label, "Leeds");
+  // A new run must not quietly resume a place that was stopped.
+  assert.equal(trackedLocationFrom(set, id), undefined);
+  assert.equal(trackedLocationFrom(set, "never-existed"), undefined);
+});
+
+test("a tracked location can start a run", async () => {
+  const { trackedLocationFrom } = await import("../src/product/topics/location.js");
+  const rows = await service();
+  const added = await rows.add("p", { label: "Bristol" });
+  assert.equal(trackedLocationFrom(added, added.locations[0]?.id || "")?.label, "Bristol");
+});

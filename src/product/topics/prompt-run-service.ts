@@ -18,7 +18,7 @@ import type { PromptRunFileStore } from "./prompt-run-store.js";
 import { readStructuredValue } from "./structured-value.js";
 import { activePrompts, type PromptIntent } from "./topic-schema.js";
 import { audienceInstruction, GLOBAL_REGION, region, type Region } from "./region.js";
-import { asRegion, locationFrom, type LocationService } from "./location.js";
+import { asRegion, trackedLocationFrom, type LocationService } from "./location.js";
 import { DEFAULT_LANGUAGE, language, languageInstruction, type AnswerLanguage } from "./language.js";
 import { currentBaseline } from "../configuration/current-baseline.js";
 import type { TopicService } from "./topic-service.js";
@@ -173,7 +173,7 @@ export class PromptRunService {
     const regions: Region[] = (input.regionIds && input.regionIds.length ? input.regionIds : [GLOBAL_REGION.id]).map((id) => {
       const found = region(id);
       if (found) return found;
-      const place = locationFrom(locationSet, id);
+      const place = trackedLocationFrom(locationSet, id);
       if (place) return asRegion(place);
       throw new PromptRunUnavailableError(`Unknown market "${id}".`);
     });

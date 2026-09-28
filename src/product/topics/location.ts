@@ -34,8 +34,17 @@ export function asRegion(row: Location): Region {
   return { id: row.id, label: row.label, locale: row.locale, audience: row.audience };
 }
 
+/** Any location, retired included, because a past answer still has to resolve
+ * to a name. Never use this to decide what a new run may ask. */
 export function locationFrom(set: LocationSet | null, id: string): Location | undefined {
   return set?.locations.find((row) => row.id === id);
+}
+
+/** Only a place still being tracked. A retired one is kept for its label, and
+ * starting a new run in it would quietly resume something that was stopped. */
+export function trackedLocationFrom(set: LocationSet | null, id: string): Location | undefined {
+  const found = locationFrom(set, id);
+  return found?.tracked ? found : undefined;
 }
 
 export function trackedLocations(set: LocationSet): Location[] {
