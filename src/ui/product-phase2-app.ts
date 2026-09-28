@@ -109,6 +109,7 @@ export function renderProductPhase2AppHtml(): string {
     .dbar-value { font-size:var(--type-xs); color:var(--weak); }
     .dmoves { margin:14px 0 0; padding-left:18px; display:grid; gap:10px; font-size:var(--type-sm); }
     .dmoves strong { display:block; color:var(--text); }
+    .dmoves .move-effect { display:block; font-size:var(--type-xs); color:var(--confirmed-text); margin-top:2px; }
     .dmoves .subtle { display:block; font-size:var(--type-xs); color:var(--weak); margin-top:2px; }
     /* A loader is the shadow of what is arriving, so the layout does not jump. */
     .sk { display:grid; gap:9px; margin-top:14px; }
@@ -368,6 +369,7 @@ export function renderProductPhase2AppHtml(): string {
     .step-index { color:var(--weak); font-variant-numeric:tabular-nums; }
     .step-label { font-weight:600; }
     .step-note { color:var(--muted); font-size:12px; }
+    .step-why { color:var(--text); font-size:12px; font-weight:400; }
     .step-mark { font-size:12px; color:var(--weak); white-space:nowrap; }
     .step[data-state="done"] .step-index,.step[data-state="done"] .step-mark { color:var(--confirmed-text); }
     .step[data-state="done"] .step-label { color:var(--muted); font-weight:400; }

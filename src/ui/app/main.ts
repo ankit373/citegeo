@@ -744,7 +744,9 @@ export function boot(): void {
       const done = plan.actions.filter((action: any) => action.severity === "done");
       const row = (action: any) => '<li class="step plan-step" data-state="' + (action.severity === "critical" ? "warn" : action.severity === "done" ? "done" : "next") + '">'
         + '<span class="step-index ' + (action.severity === "critical" ? "state-bad" : action.severity === "high" ? "state-flag" : "") + '">' + html(action.severity === "done" ? "ok" : action.severity) + '</span>'
-        + '<span class="step-label"><strong>' + html(action.title) + '</strong><br><span class="step-note">' + html(action.evidence) + '</span>'
+        + '<span class="step-label"><strong>' + html(action.title) + '</strong>'
+        + (action.severity === "done" || !action.why ? '' : '<br><span class="step-why">' + html(action.why) + '</span>')
+        + '<br><span class="step-note">Observed: ' + html(action.evidence) + '</span>'
         + (action.severity === "done" ? '' : '<br><span class="step-note state-ok">Fix: ' + html(action.fix) + '</span>')
         + '</span></li>';
       return head + changes
