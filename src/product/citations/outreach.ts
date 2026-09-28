@@ -5,9 +5,14 @@ import type { PromptAnswer } from "../topics/prompt-run-schema.js";
 // specific thing this product can hand anybody. It names the page, the people
 // already on it, and the position they hold.
 
+/** Whose page this is. A rival's own page is cited work you can never appear
+ * on, so offering it as somewhere to get listed wastes the reader's time. */
+export type PageOwner = "yours" | "rival" | "independent";
+
 export interface OutreachTarget {
   url: string;
   host: string;
+  owner: PageOwner;
   title: string | null;
   /** Answers that cited this page. */
   citedBy: number;
@@ -18,6 +23,9 @@ export interface OutreachTarget {
   namesYou: boolean;
   /** Who is on the page, in page order. A listicle's order is the finding. */
   rivals: NamedOnPage[];
+  /** False for a page nobody can be added to, which is a rival's own site and
+   * your own. Only an independent page is somewhere to ask to be listed. */
+  reachable: boolean;
   /** Null when the page could not be read; its reason travels instead. */
   words: number | null;
   unread: string | null;
@@ -32,11 +40,34 @@ export interface OutreachPlan {
   read: number;
   cited: number;
   targets: OutreachTarget[];
+  /** Cited pages somebody could ask to be listed on. The number that matters:
+   * a plan of ten rival-owned pages offers nowhere to go. */
+  reachable: number;
+  /** Cited pages belonging to a brand the answers named against you. */
+  rivalOwned: number;
   /** True when nothing cited anything, which is a property of what ran. */
   unavailable: boolean;
 }
 
-export function buildOutreachPlan(input: { answers: PromptAnswer[]; pages: SourcePage[] }): OutreachPlan {
+function owns(host: string, domain: string): boolean {
+  const clean = domain.trim().toLocaleLowerCase();
+  if (!clean) return false;
+  return host === clean || host.endsWith(`.${clean}`);
+}
+
+function ownerOf(host: string, yours: string, rivals: string[]): PageOwner {
+  if (owns(host, yours)) return "yours";
+  return rivals.some((domain) => owns(host, domain)) ? "rival" : "independent";
+}
+
+export function buildOutreachPlan(input: {
+  answers: PromptAnswer[];
+  pages: SourcePage[];
+  /** The project's own domain, so its own pages are not offered as outreach. */
+  domain?: string | undefined;
+  /** Domains of the brands the answers named, so their own pages are not either. */
+  rivalDomains?: string[] | undefined;
+}): OutreachPlan {
   const completed = input.answers.filter((answer) => answer.status === "completed");
   const byUrl = new Map<string, { citedBy: number; withoutYou: number; prompts: Set<string> }>();
   let answersWithCitations = 0;
@@ -57,7 +88,15 @@ export function buildOutreachPlan(input: { answers: PromptAnswer[]; pages: Sourc
   const targets: OutreachTarget[] = [...byUrl.entries()].map(([url, row]) => {
     const page = read.get(url);
     const rivals = page ? page.named.filter((named) => named.name) : [];
-    const why = !page
+    const host = hostOf(url);
+    const owner = ownerOf(host, input.domain || "", (input.rivalDomains || []).filter(Boolean));
+    // A rival's own site is cited work nobody else can join, so it is reported
+    // as a finding about who owns the answer rather than as somewhere to go.
+    const why = owner === "rival"
+      ? `This is ${host}, their own page. It was cited in ${row.citedBy} answer(s) and nobody can be added to it, so the way past it is an independent page that outranks it or a page of your own the models cite instead.`
+      : owner === "yours"
+        ? `This is your own page, cited in ${row.citedBy} answer(s). It is working.`
+        : !page
       ? "Cited, and not read yet."
       : page.detail
         ? `Cited, and could not be read: ${page.detail}`
@@ -68,7 +107,9 @@ export function buildOutreachPlan(input: { answers: PromptAnswer[]; pages: Sourc
             : `You are not on this page, and neither is anyone else the answers named.`;
     return {
       url,
-      host: hostOf(url),
+      host,
+      owner,
+      reachable: owner === "independent",
       title: page?.title || null,
       citedBy: row.citedBy,
       prompts: [...row.prompts],
@@ -82,13 +123,18 @@ export function buildOutreachPlan(input: { answers: PromptAnswer[]; pages: Sourc
   });
 
   // Where you are missing and the page is doing the most work, first.
+  // Somewhere you can actually get listed comes first, then where you are
+  // missing, then where the page is doing the most work.
   targets.sort((left, right) =>
-    Number(left.namesYou) - Number(right.namesYou)
+    Number(right.reachable) - Number(left.reachable)
+    || Number(left.namesYou) - Number(right.namesYou)
     || right.citedWithoutYou - left.citedWithoutYou
     || right.citedBy - left.citedBy);
 
   return {
     answersWithCitations,
+    reachable: targets.filter((row) => row.reachable).length,
+    rivalOwned: targets.filter((row) => row.owner === "rival").length,
     answersConsidered: completed.length,
     read: input.pages.filter((page) => !page.detail).length,
     cited: byUrl.size,

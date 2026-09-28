@@ -29,8 +29,13 @@ export class SourcePageService {
     return listJson<SourcePage>(this.projects.objects, this.prefix(projectId));
   }
 
-  async plan(projectId: string, answers: PromptAnswer[]): Promise<OutreachPlan> {
-    return buildOutreachPlan({ answers, pages: await this.list(projectId) });
+  async plan(projectId: string, answers: PromptAnswer[], scope: { domain?: string | undefined; rivalDomains?: string[] | undefined } = {}): Promise<OutreachPlan> {
+    return buildOutreachPlan({
+      answers,
+      pages: await this.list(projectId),
+      domain: scope.domain,
+      rivalDomains: scope.rivalDomains,
+    });
   }
 
   /** Reads the cited pages this project has not read yet. A page already read

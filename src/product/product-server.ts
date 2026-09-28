@@ -177,7 +177,15 @@ async function handle(req: IncomingMessage, res: ServerResponse, services: Produ
   if (await handleCitationApi({ method, route, send: json, pages: services.sourcePages,
     answers: (id) => promptRuns.listAnswers(id),
     identity: (id) => topics.targetIdentity(id),
-    names: async (id) => [...new Set((await promptRuns.listAnswers(id)).flatMap((answer) => answer.mentions.map((row) => row.name)))] })) return;
+    names: async (id) => [...new Set((await promptRuns.listAnswers(id)).flatMap((answer) => answer.mentions.map((row) => row.name)))],
+    scope: async (id) => {
+      const project = await projects.get(id).catch(() => null);
+      const answers = await promptRuns.listAnswers(id);
+      const rivalDomains = [...new Set(answers.flatMap((answer) => answer.mentions
+        .filter((row) => !row.isTarget && row.domain)
+        .map((row) => String(row.domain))))];
+      return { domain: project?.normalizedDomain, rivalDomains };
+    } })) return;
   if (await handleRankingActionApi({ method, route, send: json, actions: services.actions, readJson: body,
     insights: (id) => projectInsights({ projectId: id, topics, runs: promptRuns, competitors: services.competitors, personas: services.personas, locations: services.locations }) })) return;
   if (await handleEngineApi({ method, route, send: json, engines: services.engines, readJson: body })) return;

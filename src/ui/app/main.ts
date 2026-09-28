@@ -547,6 +547,26 @@ export function boot(): void {
     }
     /** Every marketer surface is read-only and cheap, so one loader fills them
      * all and a page never waits on a request it does not use. */
+    /** The shared probe reloads the plan page, so on this page the probe ran
+     * and nothing moved. This one reports progress and reloads what is shown. */
+    async function probeForEntity(control: Element) {
+      const selected = project();
+      if (!selected) return;
+      const label = control.textContent || "Probe the site now";
+      (control as HTMLButtonElement).disabled = true;
+      control.textContent = "Probing the site…";
+      try {
+        await request("/api/projects/" + selected.id + "/signals", { method: "POST" });
+        state.marketerState = "idle";
+        loadMarketer();
+      } catch (error) {
+        shortReason(control, error);
+        (control as HTMLButtonElement).disabled = false;
+        return;
+      }
+      control.textContent = label;
+    }
+
     function draftBody(draftId: string): string {
       const rows = (state.drafts?.drafts || []) as any[];
       const found = rows.find((row) => row.id === draftId);
@@ -2927,6 +2947,8 @@ export function boot(): void {
       if (saveSettings) { await saveIntegrationSettings(saveSettings.getAttribute("data-integration-settings-save"), saveSettings); return; }
       const removeSelectedModel = target && target.closest ? target.closest("[data-remove-selected-model]") : null;
       if (removeSelectedModel) { dropSelection(removeSelectedModel.getAttribute("data-remove-selected-model") || ""); return; }
+      const probeHere = target && target.closest ? target.closest("[data-probe-signals]") : null;
+      if (probeHere && state.page === "entity") { await probeForEntity(probeHere); return; }
       const runCheck = target && target.closest ? target.closest("[data-run-factcheck], [data-run-shopping]") : null;
       if (runCheck) {
         const where = runCheck.hasAttribute("data-run-factcheck") ? "factcheck" : "shopping";
