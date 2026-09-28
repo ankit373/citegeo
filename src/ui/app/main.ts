@@ -1,5 +1,6 @@
 import { CONFIG } from "./config.js";
 import { dashboardBody, dashboardPanels, heroStats, type DashboardData } from "./pages/dashboard-view.js";
+import { buyingView, claimsView, conversationsView, draftsView, entityView, marketerView } from "./pages/marketer-view.js";
 import { exportName, filterSummary, matchesQuery, panelCsv } from "./components/panel-tools.js";
 import { emptyState, notice, section } from "./components/primitives.js";
 import { button } from "./components/button.js";
@@ -37,6 +38,8 @@ export function boot(): void {
     insights: Unshaped; insightsState: LoadState;
     crawlers: Unshaped; crawlersState: LoadState;
     plan: Unshaped; planState: LoadState;
+    marketer: Unshaped; drafts: Unshaped; claims: Unshaped; buying: Unshaped; conversations: Unshaped; entity: Unshaped;
+    marketerState: LoadState;
     signals: Unshaped; signalsState: LoadState;
     credentials: CredentialFile | null; credentialsState: LoadState; credentialNotice: Notice;
     integrations: IntegrationRow[]; integrationsState: LoadState;
@@ -90,7 +93,7 @@ export function boot(): void {
     matrixHidden: string[];
   }
 
-    const state: State = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, integrations:[], integrationsState:"idle", externalMetrics:null, externalMetricsState:"idle", externalMetricsPulling:"", externalMetricsNotice:{text:"",kind:""}, digest:null, digestState:"idle", demand:null, demandState:"idle", dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", promptFilters:{ query:"", topicId:"", intent:"", status:"" }, promptSelection:[], answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", rivals:null, rivalsState:"idle", segments:null, segmentsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, lastRun:null, runPollTimer:0, runFeed:[], runFeedState:"idle", runFeedTimer:0, rankPlan:null, rankPlanState:"idle", brief:null, briefState:"idle", outreach:null, outreachState:"idle", harvesting:false, searchDemand:null, searchDemandState:"idle", pulling:false, personas:null, personasState:"idle", priority:null, priorityState:"idle", promptSort:"topic", referrals:null, referralsState:"idle", pullingReferrals:false, engines:null, enginesState:"idle", actions:[], actionsState:"idle", matrixOpen:[], editingBoard:false, brandIcons:{}, panelViews:savedJson("panelViews"), matrixHidden:savedList("matrixHidden") };
+    const state: State = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", marketer:null, drafts:null, claims:null, buying:null, conversations:null, entity:null, marketerState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, integrations:[], integrationsState:"idle", externalMetrics:null, externalMetricsState:"idle", externalMetricsPulling:"", externalMetricsNotice:{text:"",kind:""}, digest:null, digestState:"idle", demand:null, demandState:"idle", dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", promptFilters:{ query:"", topicId:"", intent:"", status:"" }, promptSelection:[], answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", rivals:null, rivalsState:"idle", segments:null, segmentsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, lastRun:null, runPollTimer:0, runFeed:[], runFeedState:"idle", runFeedTimer:0, rankPlan:null, rankPlanState:"idle", brief:null, briefState:"idle", outreach:null, outreachState:"idle", harvesting:false, searchDemand:null, searchDemandState:"idle", pulling:false, personas:null, personasState:"idle", priority:null, priorityState:"idle", promptSort:"topic", referrals:null, referralsState:"idle", pullingReferrals:false, engines:null, enginesState:"idle", actions:[], actionsState:"idle", matrixOpen:[], editingBoard:false, brandIcons:{}, panelViews:savedJson("panelViews"), matrixHidden:savedList("matrixHidden") };
     const app = document.getElementById("app") as HTMLElement;
     let renderOverride: (() => void) | null = null;
     // render() was a hoisted declaration that a later line reassigned. A
@@ -542,6 +545,34 @@ export function boot(): void {
         + insightTable("mcols-crawler", ["Crawler", "Fetches", "Pages", "Errors", "Last seen"], rows ? [rows] : [], "No AI crawler appears in this log.")
         + orphan + '</section>';
     }
+    /** Every marketer surface is read-only and cheap, so one loader fills them
+     * all and a page never waits on a request it does not use. */
+    async function loadMarketer() {
+      if (state.marketerState === "loading") return;
+      const selected = project();
+      if (!selected) return;
+      state.marketerState = "loading";
+      const at = "/api/projects/" + selected.id;
+      const quietly = async (path: string) => request(at + path).catch(() => null);
+      try {
+        const [memo, agents, claims, buying, conversations, entity, llms] = await Promise.all([
+          quietly("/aim"), quietly("/agents"), quietly("/factcheck"), quietly("/shopping"),
+          quietly("/conversations"), quietly("/entity"), quietly("/llms-txt"),
+        ]);
+        state.marketer = memo?.memo || null;
+        state.drafts = agents || null;
+        // The report is absent until a check has run, which is not an empty one.
+        state.claims = claims?.report ? { ...claims.report, ...claims } : null;
+        state.buying = buying?.report || null;
+        state.conversations = conversations?.explorations || [];
+        state.entity = { alignment: entity?.alignment || null, llms: llms?.draft || null };
+        state.marketerState = "ready";
+      } catch (error) {
+        state.marketerState = "error";
+      }
+      render();
+    }
+
     async function loadPlan() {
       if (state.planState === "loading") return;
       const selected = project();
@@ -727,6 +758,35 @@ export function boot(): void {
         + '<div class="dash-split"><div>' + (points.length ? trendChart(points, series.label) : '<p class="subtle">' + html(series.empty) + '</p>') + '</div>'
         + '<div><div class="mtable"><div class="mhead mcols-rank"><span>Model</span><span>Recognised</span><span>Visibility</span></div>' + (modelRows || '<div class="mrow mcols-rank"><span class="mcell">No answers yet.</span></div>') + '</div></div></div></section></section>';
     }
+    /** One shell for every marketer page, so each one loads the same way and
+     * an empty one says what is absent rather than showing nothing. */
+    function marketerPage(title: string, blurb: string, body: () => string) {
+      if (state.marketerState === "idle") { loadMarketer(); }
+      const inner = state.marketerState === "error"
+        ? '<p class="subtle">Could not read this project.</p>'
+        : state.marketerState !== "ready" ? '<p class="subtle">Reading what has been measured…</p>' : body();
+      return '<section class="view"><div class="heading"><div><h1>' + html(title) + '</h1><p class="subtle">' + html(blurb) + '</p></div></div>' + inner + '</section>';
+    }
+
+    function renderMarketer() {
+      return marketerPage("Marketer", "What moved, what moved it, and what would act on it. Nothing here calls a model.", () => marketerView(state.marketer));
+    }
+    function renderDrafts() {
+      return marketerPage("Drafts", "Pages drafted from a measured gap. Every one waits for your decision.", () => draftsView(state.drafts));
+    }
+    function renderClaims() {
+      return marketerPage("Claims", "What the answers assert about you, settled against your own pages.", () => claimsView(state.claims));
+    }
+    function renderBuying() {
+      return marketerPage("Buying", "Which products and retailers a buying answer actually named.", () => buyingView(state.buying));
+    }
+    function renderConversations() {
+      return marketerPage("Conversations", "Real demand, and which of it nothing here measures.", () => conversationsView(state.conversations || []));
+    }
+    function renderEntity() {
+      return marketerPage("Entity", "What corroborates this brand from outside its own control.", () => entityView(state.entity?.alignment || null, state.entity?.llms || null));
+    }
+
     function renderActionPlan() {
       if (state.planState === "idle") { loadPlan(); }
       const head = '<section class="section-card"><div class="section-head"><div><h2>What to do next</h2><p class="subtle">Ordered by what decides whether a model can cite you at all. Every line names the observation behind it.</p></div><div class="inline-actions">' + button({ label: "Probe the site", on: { "data-probe-signals": true } }) + '</div></div>';
@@ -2517,7 +2577,19 @@ export function boot(): void {
         + '<span>Every figure here opens the answer it came from.</span></footer>';
     }
 
-    function phase2RenderImpl() { if (window.__citegeoPhase5Active) return; const selected = project(); const options = state.currentProjects.length ? state.currentProjects.map((item) => '<option value="' + html(item.id) + '">' + html(item.name) + ' · ' + html(item.normalizedDomain) + '</option>').join("") : '<option value="">No projects yet</option>'; let view = state.page === "models" ? renderModels() : state.page === "configuration" ? renderConfiguration() : state.page === "setup" ? renderSetup() : state.page === "visibility" ? renderVisibility() : state.page === "brand-visibility" ? renderBrandVisibility() : state.page === "prompts" ? renderPrompts() : state.page === "answer-engine" ? renderAnswerEngine() : state.page === "dashboard" ? renderHome() : renderOverview(); app.innerHTML = renderEvidence() + '<div class="shell">' + navScrim() + '<aside class="sidebar"><button type="button" class="brand" data-page="dashboard" aria-label="Back to the dashboard">' + brandLockup + '</button><div class="project-label">Project</div><select id="project-select" class="project-select" aria-label="Switch project" data-testid="project-select">' + options + '</select><nav class="nav" aria-label="Project navigation"><button type="button" class="nav-item ' + (state.page === "dashboard" ? "active" : "") + '" data-page="dashboard"><span>Dashboard</span></button><div class="nav-label">Run a test</div><button type="button" class="nav-item ' + (state.page === "models" ? "active" : "") + '" data-page="models"><span class="nav-step">1</span><span>Choose models</span></button><button type="button" class="nav-item ' + (state.page === "recognition" || state.page === "reports" ? "active" : "") + '" data-page="recognition"><span class="nav-step">2</span><span>Results</span></button><button type="button" class="nav-item ' + (state.page === "visibility" ? "active" : "") + '" data-page="visibility"><span class="nav-step">3</span><span>Visibility</span></button><div class="nav-label">Answer engine</div><button type="button" class="nav-item ' + (state.page === "answer-engine" ? "active" : "") + '" data-page="answer-engine"><span>Scores</span></button><button type="button" class="nav-item ' + (state.page === "brand-visibility" ? "active" : "") + '" data-page="brand-visibility"><span>Brand visibility</span></button><button type="button" class="nav-item ' + (state.page === "prompts" ? "active" : "") + '" data-page="prompts"><span>Prompts</span></button><div class="nav-label">Over time</div><a class="nav-item" href="?view=measurements"><span>Continuous measurement</span></a><div class="nav-label">Machine</div><button type="button" class="nav-item ' + (state.page === "overview" ? "active" : "") + '" data-page="overview"><span>Projects</span></button><button type="button" class="nav-item ' + (state.page === "configuration" ? "active" : "") + '" data-page="configuration"><span>Configuration history</span></button><button type="button" class="nav-item ' + (state.page === "setup" ? "active" : "") + '" data-page="setup"><span>Setup</span></button></nav><div class="sidebar-bottom">Domain recognition</div></aside><main class="workspace"><header class="topbar"><div class="topbar-lead">' + navToggle() + '<div class="crumb"><button type="button" class="crumb-home" data-page="dashboard">' + html(CONFIG.productName) + '</button> / ' + html(selected ? selected.name : "Project") + '</div></div><div class="topbar-actions"><button type="button" class="theme-toggle" data-theme-toggle aria-label="Switch between light and dark">&#9681;</button>' + button({ label: "New project", kind: "primary", id: "new-project", testId: "new-project" }) + '</div></header><section class="content">' + view + '</section>' + renderFooter() + '</main></div>'; const select = element("project-select"); select.value = state.selectedId; document.title = selected ? selected.name + " | " + CONFIG.productTitle + "" : "" + CONFIG.productTitle + ""; }
+    function phase2RenderImpl() { if (window.__citegeoPhase5Active) return; const selected = project(); const options = state.currentProjects.length ? state.currentProjects.map((item) => '<option value="' + html(item.id) + '">' + html(item.name) + ' · ' + html(item.normalizedDomain) + '</option>').join("") : '<option value="">No projects yet</option>'; let view = state.page === "marketer" ? renderMarketer() : state.page === "drafts" ? renderDrafts() : state.page === "claims" ? renderClaims() : state.page === "buying" ? renderBuying() : state.page === "conversations" ? renderConversations() : state.page === "entity" ? renderEntity() : state.page === "models" ? renderModels() : state.page === "configuration" ? renderConfiguration() : state.page === "setup" ? renderSetup() : state.page === "visibility" ? renderVisibility() : state.page === "brand-visibility" ? renderBrandVisibility() : state.page === "prompts" ? renderPrompts() : state.page === "answer-engine" ? renderAnswerEngine() : state.page === "dashboard" ? renderHome() : renderOverview(); app.innerHTML = renderEvidence() + '<div class="shell">' + navScrim() + '<aside class="sidebar"><button type="button" class="brand" data-page="dashboard" aria-label="Back to the dashboard">' + brandLockup + '</button><div class="project-label">Project</div><select id="project-select" class="project-select" aria-label="Switch project" data-testid="project-select">' + options + '</select><nav class="nav" aria-label="Project navigation"><button type="button" class="nav-item ' + (state.page === "dashboard" ? "active" : "") + '" data-page="dashboard"><span>Dashboard</span></button><div class="nav-label">Run a test</div><button type="button" class="nav-item ' + (state.page === "models" ? "active" : "") + '" data-page="models"><span class="nav-step">1</span><span>Choose models</span></button><button type="button" class="nav-item ' + (state.page === "recognition" || state.page === "reports" ? "active" : "") + '" data-page="recognition"><span class="nav-step">2</span><span>Results</span></button><button type="button" class="nav-item ' + (state.page === "visibility" ? "active" : "") + '" data-page="visibility"><span class="nav-step">3</span><span>Visibility</span></button><div class="nav-label">Answer engine</div><button type="button" class="nav-item ' + (state.page === "answer-engine" ? "active" : "") + '" data-page="answer-engine"><span>Scores</span></button><button type="button" class="nav-item ' + (state.page === "brand-visibility" ? "active" : "") + '" data-page="brand-visibility"><span>Brand visibility</span></button><button type="button" class="nav-item ' + (state.page === "prompts" ? "active" : "") + '" data-page="prompts"><span>Prompts</span></button><div class="nav-label">Marketer</div><button type="button" class="nav-item '
+       + (state.page === "marketer" ? "active" : "")
+       + '" data-page="marketer"><span>What to do</span></button><button type="button" class="nav-item '
+       + (state.page === "drafts" ? "active" : "")
+       + '" data-page="drafts"><span>Drafts</span></button><button type="button" class="nav-item '
+       + (state.page === "claims" ? "active" : "")
+       + '" data-page="claims"><span>Claims</span></button><button type="button" class="nav-item '
+       + (state.page === "buying" ? "active" : "")
+       + '" data-page="buying"><span>Buying</span></button><button type="button" class="nav-item '
+       + (state.page === "conversations" ? "active" : "")
+       + '" data-page="conversations"><span>Conversations</span></button><button type="button" class="nav-item '
+       + (state.page === "entity" ? "active" : "")
+       + '" data-page="entity"><span>Entity</span></button><div class="nav-label">Over time</div><a class="nav-item" href="?view=measurements"><span>Continuous measurement</span></a><div class="nav-label">Machine</div><button type="button" class="nav-item ' + (state.page === "overview" ? "active" : "") + '" data-page="overview"><span>Projects</span></button><button type="button" class="nav-item ' + (state.page === "configuration" ? "active" : "") + '" data-page="configuration"><span>Configuration history</span></button><button type="button" class="nav-item ' + (state.page === "setup" ? "active" : "") + '" data-page="setup"><span>Setup</span></button></nav><div class="sidebar-bottom">Domain recognition</div></aside><main class="workspace"><header class="topbar"><div class="topbar-lead">' + navToggle() + '<div class="crumb"><button type="button" class="crumb-home" data-page="dashboard">' + html(CONFIG.productName) + '</button> / ' + html(selected ? selected.name : "Project") + '</div></div><div class="topbar-actions"><button type="button" class="theme-toggle" data-theme-toggle aria-label="Switch between light and dark">&#9681;</button>' + button({ label: "New project", kind: "primary", id: "new-project", testId: "new-project" }) + '</div></header><section class="content">' + view + '</section>' + renderFooter() + '</main></div>'; const select = element("project-select"); select.value = state.selectedId; document.title = selected ? selected.name + " | " + CONFIG.productTitle + "" : "" + CONFIG.productTitle + ""; }
     async function setPage(page: any) { state.page = page; savePreference("page", page); if (page === "configuration") { await refreshConfiguration(); return; } if (page === "reports" && window.__citegeoPhase4 && typeof window.__citegeoPhase4.open === "function") { await window.__citegeoPhase4.open(); return; } render(); if (page === "models") { await refreshConfiguration(); await loadCatalog(); } }
     async function createDraft(event: any) { event.preventDefault(); const control = element("save-draft"); const session = state.drawerSession; setFormStatus("Creating project draft", "loading"); try { const response = await runAction(control, { loading:"Saving…", success:"Saved", error:"Save failed" }, () => request("/api/projects", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ domain:element("project-domain").value, name:element("project-name").value }) })); state.mode = "current"; state.page = "overview"; setSelectedProject(response.project.id); await refreshProjects(); state.selections = []; state.baselines = []; resetDraftSelections(); setFormStatus("Draft saved", "success"); render(); window.setTimeout(() => { if (state.drawerSession === session) closeDrawer(); }, 850); } catch (error) { setFormStatus(error instanceof Error ? error.message : String(error), "error"); } }
     async function saveProject(event: any) { event.preventDefault(); const selected = project(); if (!selected) return; const control = event.currentTarget.querySelector('control[type="submit"]'); try { await runAction(control, { loading:"Saving…", success:"Saved", error:"Save failed" }, () => request("/api/projects/" + encodeURIComponent(selected.id), { method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ domain:element("edit-domain").value, name:element("edit-name").value }) })); await refreshProjects(); render(); } catch (error) { window.alert(error instanceof Error ? error.message : String(error)); } }
