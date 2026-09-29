@@ -1,3 +1,4 @@
+import { tooWideToRead, wilsonInterval, type ProportionInterval } from "./proportion-interval.js";
 import type { AnswerMention, PromptAnswer } from "./prompt-run-schema.js";
 
 // Named late and grudgingly still beats not named, so prominence and sentiment
@@ -22,6 +23,11 @@ export interface VisibilityScore {
   appearances: number;
   /** appearances / answers. Null with nothing answered. */
   presenceRate: number | null;
+  /** What this many answers is consistent with. A rate off a handful of them
+   * is one draw, and reading it as the rate invents precision nobody has. */
+  presenceInterval: ProportionInterval;
+  /** True where the range is too wide for the figure to decide anything. */
+  tooFewAnswers: boolean;
   /** 1 when always named first, approaching 0 when always named last. */
   prominence: number | null;
   /** 1 when always recommended, 0 when always rejected. */
@@ -43,6 +49,8 @@ export function emptyScore(): VisibilityScore {
     answers: 0,
     appearances: 0,
     presenceRate: null,
+    presenceInterval: wilsonInterval(0, 0),
+    tooFewAnswers: false,
     prominence: null,
     sentiment: null,
     score: null,
@@ -90,9 +98,14 @@ export function scoreAnswers(answers: PromptAnswer[]): VisibilityScore {
     }),
   );
 
-  // Never named is a real zero: it was measured, and the answer is none.
+  const interval = wilsonInterval(naming.length, completed.length);
+  // Never named is a real zero, and the range still says how far from zero this
+  // many answers can rule out, which on a handful of them is not far.
   if (!naming.length) {
-    return { answers: completed.length, appearances: 0, presenceRate: 0, prominence: null, sentiment: null, score: 0, weights: SCORE_WEIGHTS };
+    return {
+      answers: completed.length, appearances: 0, presenceRate: 0, presenceInterval: interval,
+      tooFewAnswers: tooWideToRead(interval), prominence: null, sentiment: null, score: 0, weights: SCORE_WEIGHTS,
+    };
   }
 
   const prominenceFactor = prominence === null ? 1 : PROMINENCE_FLOOR + (1 - PROMINENCE_FLOOR) * prominence;
@@ -102,6 +115,8 @@ export function scoreAnswers(answers: PromptAnswer[]): VisibilityScore {
     answers: completed.length,
     appearances: naming.length,
     presenceRate,
+    presenceInterval: interval,
+    tooFewAnswers: tooWideToRead(interval),
     prominence,
     sentiment,
     score: Math.round(presenceRate * prominenceFactor * sentimentFactor * 1000) / 10,

@@ -1,4 +1,5 @@
 import { summariseCorroboration } from "../src/product/topics/mention-corroboration.js";
+import { wilsonInterval } from "../src/product/topics/proportion-interval.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { effectOf, isActionState, snapshotOf, type TakenAction } from "../src/product/topics/action-log.js";
@@ -8,7 +9,7 @@ import type { VisibilityScore } from "../src/product/topics/visibility-score.js"
 const WEIGHTS = { prominenceFloor: 0.6, sentimentFloor: 0.5 };
 
 function score(overrides: Partial<VisibilityScore> = {}): VisibilityScore {
-  return { answers: 10, appearances: 2, presenceRate: 0.2, prominence: 0.5, sentiment: 0.5, score: 20, weights: WEIGHTS, ...overrides };
+  return { answers: 10, appearances: 2, presenceInterval: wilsonInterval(0, 0), tooFewAnswers: false, presenceRate: 0.2, prominence: 0.5, sentiment: 0.5, score: 20, weights: WEIGHTS, ...overrides };
 }
 
 function insights(overrides: Partial<TopicInsights> = {}): TopicInsights {

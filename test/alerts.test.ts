@@ -1,3 +1,4 @@
+import { wilsonInterval } from "../src/product/topics/proportion-interval.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { DEFAULT_THRESHOLDS, evaluateAlerts } from "../src/product/alerts/alert-rules.js";
@@ -8,7 +9,7 @@ import type { TopicSet } from "../src/product/topics/topic-schema.js";
 
 function score(overrides: Partial<VisibilityScore> = {}): VisibilityScore {
   return {
-    answers: 10, appearances: 5, presenceRate: 0.5, prominence: 0.5, sentiment: 0.5, score: 50,
+    answers: 10, appearances: 5, presenceInterval: wilsonInterval(0, 0), tooFewAnswers: false, presenceRate: 0.5, prominence: 0.5, sentiment: 0.5, score: 50,
     weights: { prominenceFloor: 0.6, sentimentFloor: 0.5 }, ...overrides,
   };
 }

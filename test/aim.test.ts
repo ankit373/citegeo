@@ -1,10 +1,11 @@
+import { wilsonInterval } from "../src/product/topics/proportion-interval.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { MATERIAL_CHANGE, causesFor, tasksFor, writeMemo } from "../src/product/aim/aim-watch.js";
 import type { TopicInsights } from "../src/product/topics/topic-insights.js";
 import type { SignalChange } from "../src/product/actions/signal-diff.js";
 
-const SCORE = { answers: 0, appearances: 0, presenceRate: null, prominence: null, sentiment: null, score: null, weights: { prominenceFloor: 0.6, sentimentFloor: 0.5 } };
+const SCORE = { answers: 0, appearances: 0, presenceInterval: wilsonInterval(0, 0), tooFewAnswers: false, presenceRate: null, prominence: null, sentiment: null, score: null, weights: { prominenceFloor: 0.6, sentimentFloor: 0.5 } };
 
 function entity(name: string, appearances: number, isTarget = false): any {
   return { name, domain: null, isTarget, appearances, shareOfAnswers: null, prominence: null, positive: 0, negative: 0 };

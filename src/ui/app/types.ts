@@ -20,6 +20,9 @@ export interface ScoreShape {
   answers: number;
   appearances: number;
   presenceRate: number | null;
+  /** Absent on an archive scored before the range existed. */
+  presenceInterval?: { rate: number | null; low: number | null; high: number | null; trials: number; caveat: string } | undefined;
+  tooFewAnswers?: boolean | undefined;
   prominence: number | null;
   sentiment: number | null;
   score: number | null;
