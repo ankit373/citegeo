@@ -103,3 +103,14 @@ test("a referral tag is dropped but a content parameter is not", () => {
   assert.equal(key("https://a.test/p?ref=newsletter"), key("https://a.test/p"));
   assert.notEqual(key("https://a.test/p?id=7"), key("https://a.test/p"));
 });
+
+test("the key stays a URL somebody can open, so it survives being a link", () => {
+  const row = canonicalUrl("https://a.test/s?q=a%20b%26c&utm_source=x");
+  const reparsed = new URL(row?.key || "");
+  assert.equal([...reparsed.searchParams].length, 1, "joining decoded pairs by hand split this into two parameters");
+  assert.equal(reparsed.searchParams.get("q"), "a b&c");
+});
+
+test("the same page is one key whether its parameter arrives encoded or not", () => {
+  assert.equal(key("https://a.test/s?q=a%20b"), key("https://a.test/s?q=a b"));
+});

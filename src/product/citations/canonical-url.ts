@@ -50,18 +50,21 @@ export function canonicalUrl(raw: string): CanonicalUrl | null {
   let path = url.pathname || "/";
   while (path.length > 1 && path.endsWith("/")) path = path.slice(0, -1);
 
-  const kept: string[] = [];
+  // Rebuilt through URLSearchParams so the key stays a URL somebody can open.
+  // Joining the decoded pairs by hand turns one parameter holding an ampersand
+  // into two, and the key is rendered as a link.
+  const kept = new URLSearchParams();
   for (const [name, value] of url.searchParams) {
-    if (!isTracking(name)) kept.push(`${name}=${value}`);
+    if (!isTracking(name)) kept.append(name, value);
   }
   // Sorted, or the same page cited with its parameters in another order reads
   // as a second page.
   kept.sort();
-  const query = kept.length ? `?${kept.join("&")}` : "";
+  const query = kept.toString();
 
   // The scheme is normalised because http and https to one page are one page,
   // and the fragment is dropped because it never reaches the server.
-  return { raw: trimmed, key: `https://${host}${path}${query}`, host, path };
+  return { raw: trimmed, key: `https://${host}${path}${query ? `?${query}` : ""}`, host, path };
 }
 
 /** The key alone, for the many places that only need to know whether two
