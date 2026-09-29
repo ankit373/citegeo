@@ -107,7 +107,7 @@ export function buildFixPlan(input: {
     patches.push({
       path: "robots.txt",
       contents: unblockCrawlers(input.robotsTxt || `User-agent: *\nAllow: /\n`, blocked),
-      summary: `Stop disallowing ${blocked.join(", ")}, which cannot cite the site while blocked.`,
+      summary: `Stop disallowing ${blocked.join(", ")}, so an answer naming this site can send a reader to it. Blocking costs those visits rather than the citation.`,
     });
   }
 
