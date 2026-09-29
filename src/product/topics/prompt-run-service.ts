@@ -4,6 +4,7 @@ import type { ProductBaselineService } from "../configuration/baseline-service.j
 import type { ProductModelCatalog } from "../configuration/model-selection-schema.js";
 import type { ProductProjectService } from "../projects/project-service.js";
 import type { RecognitionAnswerExecutor } from "../recognition/recognition-service.js";
+import { corroborateMentions } from "./mention-corroboration.js";
 import { answerNamesBrand, type BrandIdentity } from "./brand-identity.js";
 import {
   parsePromptAnswerOutput,
@@ -370,13 +371,16 @@ export class PromptRunService {
 
       // Decided here from the project's own identity, never from the model's
       // opinion of who it was talking about.
-      const mentions: AnswerMention[] = parsed.mentions.map((row) => ({
+      const reported: AnswerMention[] = parsed.mentions.map((row) => ({
         ...row,
         isTarget: answerNamesBrand(
           { text: "", citationUrls: row.domain ? [row.domain] : [], names: [row.name] },
           input.identity,
         ),
       }));
+      // One call wrote the answer and reported what it named, so the positions
+      // are recounted from the text instead of taken on the model's word.
+      const mentions = corroborateMentions({ answer: parsed.answer, mentions: reported });
 
       const providerCitations = result.citations.map((citation) => citation.url).filter(Boolean);
       const citationUrls = [...new Set([...providerCitations, ...parsed.citationUrls])];

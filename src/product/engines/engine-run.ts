@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { answerNamesBrand, type BrandIdentity } from "../topics/brand-identity.js";
 import { askEngine, type BrowserEngine, type EngineOutcome, type EngineRunOptions } from "./browser-engine.js";
+import { corroborateMentions } from "../topics/mention-corroboration.js";
 import { engineAnalysisPrompt, parseEngineAnalysisOutput, ENGINE_ANALYSIS_SCHEMA_NAME, ENGINE_ANALYSIS_TOOL_DESCRIPTION, engineAnalysisResponseSchema } from "./engine-answer-protocol.js";
 import { BROWSER_SOURCE_ID } from "../configuration/provider-id.js";
 import type { AnswerMention, PromptAnswer } from "../topics/prompt-run-schema.js";
@@ -116,7 +117,12 @@ export async function askBrowserEngine(input: EngineAskInput): Promise<PromptAns
     ...shell,
     status: "completed",
     text: answer.text,
-    mentions: marked(analysis.mentions.map((row) => ({ ...row, isTarget: false })), input.identity),
+    // Checked against the answer for the same reason the provider path is: the
+    // reader reports a position it is not reading off anything.
+    mentions: corroborateMentions({
+      answer: answer.text,
+      mentions: marked(analysis.mentions.map((row) => ({ ...row, isTarget: false })), input.identity),
+    }),
     citationUrls: answer.citationUrls,
     errorCode: null,
     errorMessage: null,

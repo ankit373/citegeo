@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { buildHomeSummary } from "../src/product/alerts/home-summary.js";
 import { renderProductPhase2AppHtml } from "../src/ui/product-phase2-app.js";
 import { productAppSource } from "../src/ui/app-source.js";
+import { summariseCorroboration } from "../src/product/topics/mention-corroboration.js";
 import type { TopicInsights } from "../src/product/topics/topic-insights.js";
 import type { TopicSet } from "../src/product/topics/topic-schema.js";
 import type { VisibilityScore } from "../src/product/topics/visibility-score.js";
@@ -20,7 +21,7 @@ function insights(): TopicInsights {
   return {
     projectId: "p", answers: 0, answersFailed: 0, overall: SCORE, rank: null,
     weights: SCORE.weights, leaderboard: [], topics: [], byModel: [], absentFrom: [],
-    citationsUnavailable: false, trend: { points: [], change: null, since: null }, byRegion: [], byLanguage: [], byPersona: [],
+    citationsUnavailable: false, corroboration: summariseCorroboration([]), trend: { points: [], change: null, since: null }, byRegion: [], byLanguage: [], byPersona: [],
     regionCaveat: "", identityCaveat: null, trackedRivals: [],
   };
 }

@@ -23,6 +23,10 @@ export function isLive(status: PromptRunStatus): boolean {
  * and it is not an answer that considered you and left you out. */
 export type PromptAnswerStatus = "completed" | "no_answer" | "provider_failed" | "analysis_failed";
 
+/** Whether the answer really names this, checked against the text rather than
+ * taken from the model that wrote both the answer and the report. */
+export type MentionCorroboration = "measured" | "named_only" | "absent_from_answer";
+
 /** One organisation named in one answer, with the evidence for it. */
 export interface AnswerMention {
   name: string;
@@ -33,6 +37,9 @@ export interface AnswerMention {
   firstMentionState: FirstPositionState;
   /** True when this mention is the project's own brand. */
   isTarget: boolean;
+  /** Absent on a record written before the answer text was checked. */
+  corroboration?: MentionCorroboration;
+  quoteInAnswer?: boolean;
 }
 
 export interface PromptAnswer {

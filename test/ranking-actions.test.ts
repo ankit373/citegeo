@@ -1,3 +1,4 @@
+import { summariseCorroboration } from "../src/product/topics/mention-corroboration.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { effectOf, isActionState, snapshotOf, type TakenAction } from "../src/product/topics/action-log.js";
@@ -13,7 +14,7 @@ function score(overrides: Partial<VisibilityScore> = {}): VisibilityScore {
 function insights(overrides: Partial<TopicInsights> = {}): TopicInsights {
   return {
     projectId: "p", answers: 10, answersFailed: 0, overall: score(), rank: 4, weights: WEIGHTS,
-    leaderboard: [], topics: [], byModel: [], absentFrom: [], citationsUnavailable: false,
+    leaderboard: [], topics: [], byModel: [], absentFrom: [], citationsUnavailable: false, corroboration: summariseCorroboration([]),
     trend: { points: [], change: null, since: null }, byRegion: [], byLanguage: [], byPersona: [],
     regionCaveat: "", identityCaveat: null, trackedRivals: [], ...overrides,
   };
