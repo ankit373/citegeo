@@ -114,3 +114,14 @@ test("the key stays a URL somebody can open, so it survives being a link", () =>
 test("the same page is one key whether its parameter arrives encoded or not", () => {
   assert.equal(key("https://a.test/s?q=a%20b"), key("https://a.test/s?q=a b"));
 });
+
+test("a port is part of the page, because two servers on one machine are two sites", () => {
+  assert.notEqual(key("http://127.0.0.1:8080/a"), key("http://127.0.0.1:9090/a"));
+  assert.equal(canonicalUrl("http://127.0.0.1:8080/a")?.key, "http://127.0.0.1:8080/a");
+  assert.equal(canonicalUrl("http://127.0.0.1:8080/a")?.host, "127.0.0.1", "the host groups by domain and has no use for the port");
+});
+
+test("a scheme is only normalised where no port says which one answers", () => {
+  assert.equal(key("http://a.test/x"), "https://a.test/x");
+  assert.equal(key("http://a.test:8080/x"), "http://a.test:8080/x", "forcing https here would name a server that is not listening");
+});

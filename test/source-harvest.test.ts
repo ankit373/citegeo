@@ -8,6 +8,7 @@ import { SourcePageService } from "../src/product/citations/source-service.js";
 import { ProductProjectFileStore } from "../src/product/projects/project-store.js";
 import { putJson } from "../src/product/storage/object-store.js";
 import { sha256 } from "../src/utils/hash.js";
+import { canonicalUrl } from "../src/product/citations/canonical-url.js";
 import type { BrandIdentity } from "../src/product/topics/brand-identity.js";
 import type { PromptAnswer } from "../src/product/topics/prompt-run-schema.js";
 
@@ -85,7 +86,8 @@ test("a record stored before dates were read is read once more, not left undated
   const kit = await harness();
   try {
     // What a record written by an earlier version looks like: no date field.
-    await putJson(kit.projects.objects, kit.projects.keyFor("p", "source-pages", `${sha256(kit.url)}.json`), {
+    const key = canonicalUrl(kit.url)?.key || kit.url;
+    await putJson(kit.projects.objects, kit.projects.keyFor("p", "source-pages", `${sha256(key)}.json`), {
       url: kit.url, host: "127.0.0.1", fetchedAt: "", title: "Dated", description: "",
       headings: [], words: 3, namesYou: false, named: [], detail: null,
     });

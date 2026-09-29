@@ -44,6 +44,9 @@ export function canonicalUrl(raw: string): CanonicalUrl | null {
 
   const host = hostOf(trimmed);
   if (!host) return null;
+  // The port belongs in the key: two servers on one machine are two sites. It
+  // stays out of host, which groups by domain and has no use for it.
+  const authority = url.port ? `${host}:${url.port}` : host;
 
   // A trailing slash is the same page as none, except at the root where it is
   // the only path there is.
@@ -62,9 +65,11 @@ export function canonicalUrl(raw: string): CanonicalUrl | null {
   kept.sort();
   const query = kept.toString();
 
-  // The scheme is normalised because http and https to one page are one page,
-  // and the fragment is dropped because it never reaches the server.
-  return { raw: trimmed, key: `https://${host}${path}${query ? `?${query}` : ""}`, host, path };
+  // http and https to one page are one page, so the scheme is normalised, except
+  // where a port says this is a server that answers on one of them only.
+  const scheme = url.port ? url.protocol.slice(0, -1) : "https";
+  // The fragment is dropped because it never reaches the server.
+  return { raw: trimmed, key: `${scheme}://${authority}${path}${query ? `?${query}` : ""}`, host, path };
 }
 
 /** The key alone, for the many places that only need to know whether two
