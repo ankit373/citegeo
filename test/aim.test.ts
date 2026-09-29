@@ -1,11 +1,12 @@
 import { wilsonInterval } from "../src/product/topics/proportion-interval.js";
+import { SCORE_WEIGHTS } from "../src/product/topics/visibility-score.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { MATERIAL_CHANGE, causesFor, tasksFor, writeMemo } from "../src/product/aim/aim-watch.js";
 import type { TopicInsights } from "../src/product/topics/topic-insights.js";
 import type { SignalChange } from "../src/product/actions/signal-diff.js";
 
-const SCORE = { answers: 0, appearances: 0, presenceInterval: wilsonInterval(0, 0), tooFewAnswers: false, presenceRate: null, prominence: null, sentiment: null, score: null, weights: { prominenceFloor: 0.6, sentimentFloor: 0.5 } };
+const SCORE = { answers: 0, appearances: 0, presenceInterval: wilsonInterval(0, 0), tooFewAnswers: false, presenceRate: null, prominence: null, sentiment: null, score: null, weights: SCORE_WEIGHTS };
 
 function entity(name: string, appearances: number, isTarget = false): any {
   return { name, domain: null, isTarget, appearances, shareOfAnswers: null, prominence: null, positive: 0, negative: 0 };
@@ -19,7 +20,7 @@ function absent(text: string, answers: number): any {
 function insights(over: Partial<TopicInsights> = {}): TopicInsights {
   return {
     projectId: "p", answers: 0, answersFailed: 0, overall: { ...SCORE, score: 0.4 } as any, rank: null,
-    weights: { prominenceFloor: 0.6, sentimentFloor: 0.5 }, leaderboard: [], topics: [], byModel: [],
+    weights: SCORE_WEIGHTS, leaderboard: [], topics: [], byModel: [],
     absentFrom: [], citationsUnavailable: false, trend: { points: [], change: null, since: null } as any,
     byRegion: [], byLanguage: [], byPersona: [], regionCaveat: "", identityCaveat: null, trackedRivals: [],
     ...over,

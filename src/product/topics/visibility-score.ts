@@ -6,14 +6,26 @@ import type { AnswerMention, PromptAnswer } from "./prompt-run-schema.js";
 export const PROMINENCE_FLOOR = 0.6;
 export const SENTIMENT_FLOOR = 0.5;
 
+/** What the composite is built to maximise. Weights only defend themselves
+ * against a stated objective, and this one was never written down. */
+export const SCORE_OBJECTIVE = "How often a buyer asking the tracked questions is shown this brand, discounted for being named late in an answer and for being named without a recommendation.";
+
+export const SCORE_LIMITS = "It ranks one project against its own past, and nothing else. It is not a probability, and two projects cannot be compared on it: the figure is taken over whichever questions, models and markets that project happens to track, so adding an easy question raises it without anything changing outside.";
+
 export interface ScoreWeights {
   prominenceFloor: number;
   sentimentFloor: number;
+  /** The objective these floors are weights against, and what the number
+   * cannot be used for. Both travel with every score. */
+  objective: string;
+  limits: string;
 }
 
 export const SCORE_WEIGHTS: ScoreWeights = {
   prominenceFloor: PROMINENCE_FLOOR,
   sentimentFloor: SENTIMENT_FLOOR,
+  objective: SCORE_OBJECTIVE,
+  limits: SCORE_LIMITS,
 };
 
 export interface VisibilityScore {
