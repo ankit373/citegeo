@@ -1,5 +1,6 @@
 import { summariseCorroboration } from "../src/product/topics/mention-corroboration.js";
 import { wilsonInterval } from "../src/product/topics/proportion-interval.js";
+import { SCORE_WEIGHTS } from "../src/product/topics/visibility-score.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { buildRankingPlan } from "../src/product/topics/ranking-plan.js";
@@ -7,7 +8,7 @@ import type { EntityStanding, ModelStanding, PromptStanding, TopicInsights } fro
 import type { Prompt, PromptIntent, TopicSet } from "../src/product/topics/topic-schema.js";
 import type { VisibilityScore } from "../src/product/topics/visibility-score.js";
 
-const WEIGHTS = { prominenceFloor: 0.6, sentimentFloor: 0.5 };
+const WEIGHTS = SCORE_WEIGHTS;
 
 function score(overrides: Partial<VisibilityScore> = {}): VisibilityScore {
   return { answers: 10, appearances: 0, presenceInterval: wilsonInterval(0, 0), tooFewAnswers: false, presenceRate: 0, prominence: null, sentiment: null, score: 0, weights: WEIGHTS, ...overrides };

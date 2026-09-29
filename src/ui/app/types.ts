@@ -101,7 +101,9 @@ export interface InsightsShape {
   answersFailed: number;
   overall: ScoreShape;
   rank: number | null;
-  weights: { prominenceFloor: number; sentimentFloor: number };
+  /** The objective and limits are absent on an archive scored before they were
+   * written down, so the page states only what it has. */
+  weights: { prominenceFloor: number; sentimentFloor: number; objective?: string | undefined; limits?: string | undefined };
   leaderboard: EntityRow[];
   topics: TopicStandingRow[];
   byModel: ModelStandingRow[];
