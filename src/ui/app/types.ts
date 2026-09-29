@@ -81,6 +81,16 @@ export interface PositionShape {
   worst: number | null;
 }
 
+export interface CorroborationShape {
+  reported: number;
+  measured: number;
+  namedOnly: number;
+  absentFromAnswer: number;
+  quotesChecked: number;
+  quotesFound: number;
+  caveat: string;
+}
+
 export interface InsightsShape {
   /** Computed on the server, so the view never imports the module that holds it. */
   position?: PositionShape | undefined;
@@ -94,6 +104,9 @@ export interface InsightsShape {
   byModel: ModelStandingRow[];
   absentFrom: PromptStandingRow[];
   citationsUnavailable: boolean;
+  /** Absent on an archive answered before mentions were checked against the
+   * answer text, so nothing is claimed about those. */
+  corroboration?: CorroborationShape | undefined;
   trend: TrendShape;
   byRegion: SplitRow[];
   byLanguage: SplitRow[];

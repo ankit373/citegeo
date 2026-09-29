@@ -1,3 +1,4 @@
+import { summariseCorroboration, type CorroboratedMention, type CorroborationSummary } from "./mention-corroboration.js";
 import { domainLabel, tokenize } from "./prompt-identity.js";
 import { buildPromptTrend, type PromptTrend } from "./prompt-trend.js";
 import { region, REGION_CAVEAT } from "./region.js";
@@ -111,6 +112,9 @@ export interface TopicInsights {
   absentFrom: PromptStanding[];
   /** True when no answer carried a citation, so source analysis is unavailable. */
   citationsUnavailable: boolean;
+  /** How much of the model's report of what it named survived a check against
+   * the answer it wrote in the same call. */
+  corroboration: CorroborationSummary;
   /** One point per run, oldest first. */
   trend: PromptTrend;
   /** Per market, worst first. Empty until a run states one. */
@@ -310,6 +314,12 @@ function subtopicStandings(rows: PromptStanding[], answers: PromptAnswer[], set:
   return out;
 }
 
+/** A mention stored before the answer text was checked carries no verdict, so
+ * it is left out rather than counted as one that failed. */
+function hasCorroboration(mention: AnswerMention): mention is CorroboratedMention {
+  return mention.corroboration !== undefined;
+}
+
 export function buildTopicInsights(input: {
   projectId: string;
   set: TopicSet;
@@ -385,6 +395,7 @@ export function buildTopicInsights(input: {
     // False with nothing answered: [].every() is true, which would report a
     // project that never ran as one whose citations are unavailable.
     citationsUnavailable: completed.length > 0 && completed.every((answer) => answer.citationUrls.length === 0),
+    corroboration: summariseCorroboration(completed.flatMap((answer) => answer.mentions).filter(hasCorroboration)),
     trend: buildPromptTrend({
       runs: input.runs || [],
       answers,

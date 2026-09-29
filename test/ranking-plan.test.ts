@@ -1,3 +1,4 @@
+import { summariseCorroboration } from "../src/product/topics/mention-corroboration.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { buildRankingPlan } from "../src/product/topics/ranking-plan.js";
@@ -40,7 +41,7 @@ function set(prompts: Prompt[]): TopicSet {
 function insights(overrides: Partial<TopicInsights> = {}): TopicInsights {
   return {
     projectId: "p", answers: 10, answersFailed: 0, overall: score(), rank: null, weights: WEIGHTS,
-    leaderboard: [], topics: [], byModel: [], absentFrom: [], citationsUnavailable: false,
+    leaderboard: [], topics: [], byModel: [], absentFrom: [], citationsUnavailable: false, corroboration: summariseCorroboration([]),
     trend: { points: [], change: null, since: null }, byRegion: [], byLanguage: [], byPersona: [],
     regionCaveat: "", identityCaveat: null, trackedRivals: [], ...overrides,
   };
