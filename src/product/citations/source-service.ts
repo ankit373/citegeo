@@ -1,6 +1,7 @@
 import { getJson, listJson, putJson } from "../storage/object-store.js";
 import { sha256 } from "../../utils/hash.js";
 import { readSourcePage, type SourcePage } from "./source-page.js";
+import { canonicalUrl } from "./canonical-url.js";
 import { buildOutreachPlan, type OutreachPlan } from "./outreach.js";
 import type { ProductProjectFileStore } from "../projects/project-store.js";
 import type { BrandIdentity } from "../topics/brand-identity.js";
@@ -51,7 +52,14 @@ export class SourcePageService {
     scope?: { domain?: string | undefined; rivalDomains?: string[] | undefined } | undefined;
   }): Promise<{ read: number; skipped: number; failed: number; plan: OutreachPlan }> {
     const completed = input.answers.filter((answer) => answer.status === "completed");
-    const urls = [...new Set(completed.flatMap((answer) => answer.citationUrls))];
+    // Keyed by the page, not the string. One page cited with an assistant's
+    // tracking parameter and without it was fetched twice and stored twice.
+    const byPage = new Map<string, string>();
+    for (const raw of completed.flatMap((answer) => answer.citationUrls)) {
+      const page = canonicalUrl(raw);
+      if (page && !byPage.has(page.key)) byPage.set(page.key, page.key);
+    }
+    const urls = [...byPage.values()];
     const limit = Math.min(input.limit || HARVEST_LIMIT, HARVEST_LIMIT);
 
     let read = 0;
