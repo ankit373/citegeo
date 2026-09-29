@@ -1,6 +1,7 @@
 import { getJson, listJson, putJson } from "../storage/object-store.js";
 import { sha256 } from "../../utils/hash.js";
 import { readSourcePage, type SourcePage } from "./source-page.js";
+import { canonicalUrl } from "./canonical-url.js";
 import { buildOutreachPlan, type OutreachPlan } from "./outreach.js";
 import type { ProductProjectFileStore } from "../projects/project-store.js";
 import type { BrandIdentity } from "../topics/brand-identity.js";
@@ -51,15 +52,24 @@ export class SourcePageService {
     scope?: { domain?: string | undefined; rivalDomains?: string[] | undefined } | undefined;
   }): Promise<{ read: number; skipped: number; failed: number; plan: OutreachPlan }> {
     const completed = input.answers.filter((answer) => answer.status === "completed");
-    const urls = [...new Set(completed.flatMap((answer) => answer.citationUrls))];
+    // Keyed by the page, not the string. One page cited with an assistant's
+    // tracking parameter and without it was fetched twice and stored twice.
+    // The value stays a URL that was really cited, because the key is a
+    // comparison and not an address anybody can fetch.
+    const byPage = new Map<string, string>();
+    for (const raw of completed.flatMap((answer) => answer.citationUrls)) {
+      const page = canonicalUrl(raw);
+      if (page && !byPage.has(page.key)) byPage.set(page.key, page.raw);
+    }
+    const urls = [...byPage.entries()];
     const limit = Math.min(input.limit || HARVEST_LIMIT, HARVEST_LIMIT);
 
     let read = 0;
     let skipped = 0;
     let failed = 0;
-    for (const url of urls) {
+    for (const [key, url] of urls) {
       if (read + failed >= limit) { skipped += 1; continue; }
-      const already = await getJson<SourcePage>(this.projects.objects, this.key(input.projectId, url));
+      const already = await getJson<SourcePage>(this.projects.objects, this.key(input.projectId, key));
       // A record written before dates were read has no date field at all, which
       // is not the same as a page that stated none, so it is read again once.
       if (already && !already.detail && "statedAt" in already) { skipped += 1; continue; }
@@ -69,7 +79,7 @@ export class SourcePageService {
         brandNames: input.identity.distinctive,
         brandHost: input.identity.host,
       });
-      await putJson(this.projects.objects, this.key(input.projectId, url), page);
+      await putJson(this.projects.objects, this.key(input.projectId, key), page);
       if (page.detail) failed += 1;
       else read += 1;
       await new Promise((resolve) => setTimeout(resolve, SPACING_MS));

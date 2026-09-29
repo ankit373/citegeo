@@ -1,5 +1,6 @@
 import { hostOf, type NamedOnPage, type SourcePage } from "./source-page.js";
 import { ageFrom, freshnessReport, type Freshness, type FreshnessReport, type PageAge } from "./freshness.js";
+import { canonicalUrl } from "./canonical-url.js";
 import type { PromptAnswer } from "../topics/prompt-run-schema.js";
 
 // A cited page you are missing from, on a question you lose, is the most
@@ -85,7 +86,12 @@ export function buildOutreachPlan(input: {
   for (const answer of completed) {
     if (answer.citationUrls.length) answersWithCitations += 1;
     const namedYou = answer.mentions.some((mention) => mention.isTarget);
-    for (const url of new Set(answer.citationUrls)) {
+    const cited = new Set<string>();
+    for (const raw of answer.citationUrls) {
+      const page = canonicalUrl(raw);
+      if (page) cited.add(page.key);
+    }
+    for (const url of cited) {
       const row = byUrl.get(url) || { citedBy: 0, withoutYou: 0, prompts: new Set<string>() };
       row.citedBy += 1;
       if (!namedYou) row.withoutYou += 1;
@@ -94,7 +100,12 @@ export function buildOutreachPlan(input: {
     }
   }
 
-  const read = new Map(input.pages.map((page) => [page.url, page]));
+  // Pages stored under a raw URL before this still have to be found, so the
+  // lookup is keyed by the same canonical page the citations are grouped by.
+  const read = new Map(input.pages.flatMap((page) => {
+    const key = canonicalUrl(page.url)?.key;
+    return key ? [[key, page] as const] : [];
+  }));
   const ages = new Map<string, PageAge>();
   const targets: OutreachTarget[] = [...byUrl.entries()].map(([url, row]) => {
     const page = read.get(url);

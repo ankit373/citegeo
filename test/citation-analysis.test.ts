@@ -32,7 +32,8 @@ test("your own pages are counted per page, not per domain", () => {
   });
   const paths = result.ownPages.map((page) => page.path);
   assert.deepEqual(paths, ["/screener", "/pricing"], "most cited first");
-  // www and a query string are the same page.
+  // www and a referral tag are the same page. A parameter that selects content
+  // is not, because dropping every query merges pages that really do differ.
   assert.equal(result.ownPages[0]?.answers, 2);
 });
 

@@ -1,5 +1,6 @@
 import { domainLabel } from "./prompt-identity.js";
 import { decomposeCitations, type CitationDecomposition } from "./citation-decomposition.js";
+import { canonicalUrl } from "../citations/canonical-url.js";
 import type { BrandIdentity } from "./brand-identity.js";
 import type { PromptAnswer } from "./prompt-run-schema.js";
 
@@ -40,19 +41,6 @@ export interface CitationAnalysis {
   decomposition: CitationDecomposition;
 }
 
-function parsed(url: string): URL | null {
-  try {
-    return new URL(url);
-  } catch {
-    return null;
-  }
-}
-
-function host(url: URL): string {
-  const lower = url.hostname.toLocaleLowerCase();
-  return lower.startsWith("www.") ? lower.slice(4) : lower;
-}
-
 export function buildCitationAnalysis(input: { answers: PromptAnswer[]; identity: BrandIdentity }): CitationAnalysis {
   const completed = input.answers.filter((answer) => answer.status === "completed");
   const targetLabel = domainLabel(input.identity.host);
@@ -71,9 +59,9 @@ export function buildCitationAnalysis(input: { answers: PromptAnswer[]; identity
     const seenPages = new Set<string>();
 
     for (const raw of answer.citationUrls) {
-      const url = parsed(raw);
+      const url = canonicalUrl(raw);
       if (!url) continue;
-      const domain = host(url);
+      const domain = url.host;
       const isTarget = domain === input.identity.host || domainLabel(domain) === targetLabel;
 
       if (!seenDomains.has(domain)) {
@@ -86,11 +74,10 @@ export function buildCitationAnalysis(input: { answers: PromptAnswer[]; identity
       }
 
       if (isTarget) {
-        // Built from the normalised host, or www and non-www are two pages.
-        const key = `https://${domain}${url.pathname}`;
+        const key = url.key;
         if (seenPages.has(key)) continue;
         seenPages.add(key);
-        const page = pages.get(key) || { url: key, path: url.pathname || "/", answers: 0, prompts: [] };
+        const page = pages.get(key) || { url: key, path: url.path, answers: 0, prompts: [] };
         page.answers += 1;
         if (!page.prompts.includes(answer.promptText)) page.prompts.push(answer.promptText);
         pages.set(key, page);
