@@ -148,17 +148,34 @@ export const chatgptWeb: BrowserEngine = {
   caveat: "Read from chatgpt.com in your own signed-in browser. The product and the API answer differently, because the product runs retrieval and model routing an API key does not expose.",
   async ask(session, question) {
     await session.send("Page.navigate", { url: `https://chatgpt.com/?q=${encodeURIComponent(question)}` });
-    const specific = ["[data-message-author-role='assistant']", "div.markdown.prose"];
+    // The signed-out answer renders in a single article and carries none of
+    // the attributes the signed-in transcript does, so both shapes are read.
+    const specific = ["[data-message-author-role='assistant']", "div.markdown.prose", "article"];
     if (await signedOut(session, specific)) return SIGN_IN_OUTCOME;
     const expression = readerExpression([...specific, "main"], "a[href^='http']");
+    // The stop button's test id no longer exists, so a settled answer is one
+    // whose length stopped changing rather than one with no button on screen.
     const settled = await waitFor(
       session,
-      `(() => { const found = ${expression}; return Boolean(found && found.text.length > 200 && !document.querySelector("button[data-testid='stop-button']")); })()`,
+      `(() => {
+        const found = ${expression};
+        if (!found || found.text.length <= 200) return false;
+        const seen = window.__citegeoLastLength;
+        window.__citegeoLastLength = found.text.length;
+        return seen === found.text.length;
+      })()`,
       90000,
     );
     if (!settled) {
-      // Reading a streaming answer captures half of it, which is worse than none.
-      return { state: "no_answer", detail: "The answer did not finish streaming within the time allowed." };
+      // Never starting and stopping halfway are different problems, and only
+      // one of them is fixed by waiting longer.
+      const reached = await session.evaluate<number>(`(() => { const found = ${expression}; return found ? found.text.length : 0; })()`).catch(() => 0);
+      return reached > 200
+        ? { state: "no_answer", detail: "The answer was still being written when the time allowed ran out." }
+        : {
+          state: "no_answer",
+          detail: "This session never produced an answer to read. A signed-out session is rate limited and often returns nothing, so sign in to the browser this reads from.",
+        };
     }
     return readAnswer({ session, engineId: "chatgpt", expression, minimumLength: 200, specificSelectors: specific });
   },

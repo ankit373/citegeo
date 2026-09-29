@@ -1,8 +1,11 @@
+import { wilsonInterval } from "../src/product/topics/proportion-interval.js";
+import { SCORE_WEIGHTS } from "../src/product/topics/visibility-score.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { buildHomeSummary } from "../src/product/alerts/home-summary.js";
 import { renderProductPhase2AppHtml } from "../src/ui/product-phase2-app.js";
 import { productAppSource } from "../src/ui/app-source.js";
+import { summariseCorroboration } from "../src/product/topics/mention-corroboration.js";
 import type { TopicInsights } from "../src/product/topics/topic-insights.js";
 import type { TopicSet } from "../src/product/topics/topic-schema.js";
 import type { VisibilityScore } from "../src/product/topics/visibility-score.js";
@@ -12,15 +15,15 @@ const EMPTY_SET: TopicSet = {
 };
 
 const SCORE: VisibilityScore = {
-  answers: 0, appearances: 0, presenceRate: null, prominence: null, sentiment: null, score: null,
-  weights: { prominenceFloor: 0.6, sentimentFloor: 0.5 },
+  answers: 0, appearances: 0, presenceInterval: wilsonInterval(0, 0), tooFewAnswers: false, presenceRate: null, prominence: null, sentiment: null, score: null,
+  weights: SCORE_WEIGHTS,
 };
 
 function insights(): TopicInsights {
   return {
     projectId: "p", answers: 0, answersFailed: 0, overall: SCORE, rank: null,
     weights: SCORE.weights, leaderboard: [], topics: [], byModel: [], absentFrom: [],
-    citationsUnavailable: false, trend: { points: [], change: null, since: null }, byRegion: [], byLanguage: [], byPersona: [],
+    citationsUnavailable: false, corroboration: summariseCorroboration([]), trend: { points: [], change: null, since: null }, byRegion: [], byLanguage: [], byPersona: [],
     regionCaveat: "", identityCaveat: null, trackedRivals: [],
   };
 }
@@ -35,9 +38,12 @@ test("the saved model count travels with the summary, so a run can be forecast b
 test("the prompts screen can be read, filtered and acted on in bulk", () => {
   const html = productAppSource();
 
-  for (const control of ['id="prompt-search"', 'data-prompt-filter="topicId"', 'data-prompt-filter="intent"', 'data-prompt-filter="status"', "data-prompt-select-all", "data-prompt-intent="]) {
+  for (const control of ['id="prompt-search"', 'data-prompt-filter="topicId"', 'data-prompt-filter="intent"', 'data-prompt-filter="status"', "data-prompt-intent="]) {
     assert.equal(html.includes(control), true, control);
   }
+  // Prompts feed paid runs. One click selecting every prompt on screen, then
+  // Run, is an expensive mistake with nothing between it and the spend.
+  assert.equal(html.includes("data-prompt-select-all"), false, "select all is deliberately gone");
   for (const action of ["data-prompt-checkbox=", "data-bulk-activate", "data-bulk-retire", "data-bulk-run", "data-bulk-clear", "data-prompt-review"]) {
     assert.equal(html.includes(action), true, action);
   }
@@ -84,7 +90,9 @@ test("a selection the server will refuse can be cleared from the page", () => {
   // The catalogue checkbox for an unavailable model is disabled, so without
   // this control the save stays rejected with no way to fix it.
   assert.equal(html.includes("function blockedSelection(row: any) { return !row.inCatalog || (row.model && row.model.available === false); }"), true);
-  assert.equal(html.includes('"data-drop-selection": row.modelId'), true);
+  // The button moved into the model picker component, so pin the handler that
+  // stays in the app source rather than the markup that left it.
+  assert.equal(html.includes('dropSelection(removeSelectedModel.getAttribute("data-remove-selected-model") || "")'), true);
   assert.equal(html.includes("function dropSelection(modelId: any) { state.draftSelections.delete(modelId);"), true);
 });
 

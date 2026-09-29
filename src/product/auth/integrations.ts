@@ -21,6 +21,9 @@ export interface IntegrationDefinition {
   help: string;
   /** Extra non-secret settings this integration needs before it can run. */
   settings?: Array<{ key: string; label: string; envKey: string }>;
+  /** The slot the credential actually lives in, when two share one. Reading a
+   * slot nothing writes to reports a working connection as not connected. */
+  credentialSlot?: string;
 }
 
 // Model providers describe themselves once, in the access table, so a provider
@@ -61,13 +64,39 @@ const OUTWARD_INTEGRATIONS: IntegrationDefinition[] = [
     settings: [{ key: "siteUrl", label: "Property URL", envKey: "GOOGLE_SEARCH_CONSOLE_SITE" }],
   },
   {
+    id: "ahrefs",
+    label: "Ahrefs",
+    kind: "integration",
+    // One key serves two readings, so it is one connection with both scopes
+    // rather than two rows sharing an id and overwriting each other.
+    purpose: "Read AI citations from the surfaces this product cannot ask directly, and the provider's domain-rating, organic-keyword and estimated-organic-traffic snapshots. These are third-party estimates, not Analytics.",
+    envKeys: ["AHREFS_API_KEY"],
+    help: "An Ahrefs API v3 key with Site Explorer and Brand Radar access. A report id carries the brand, rivals and market as one, otherwise the brand is passed per read. Pulls consume Ahrefs API units; use the same country scope for every comparison.",
+    settings: [
+      { key: "country", label: "Country (ISO 3166-1 alpha-2)", envKey: "AHREFS_COUNTRY" },
+      { key: "reportId", label: "Brand Radar report id", envKey: "AHREFS_BRAND_RADAR_REPORT" },
+    ],
+  },
+  {
     id: "google-analytics",
     label: "Google Analytics",
     kind: "integration",
     purpose: "Read how many people arrived from each assistant, which is a different claim from having been named by one.",
+    // One credential serves both properties, and it is filed under Search
+    // Console. This card used to read an empty slot and say not connected.
+    credentialSlot: "google",
     envKeys: ["GOOGLE_SERVICE_ACCOUNT_JSON", "GOOGLE_OAUTH_CREDENTIALS_JSON"],
     help: `${GOOGLE_HELP} Whichever one Search Console holds serves this too, as a viewer on the Analytics property.`,
     settings: [{ key: "propertyId", label: "GA4 property id", envKey: "GOOGLE_ANALYTICS_PROPERTY_ID" }],
+  },
+  {
+    id: "semrush",
+    label: "Semrush",
+    kind: "integration",
+    purpose: "Read the provider's domain rank, organic-keyword and estimated-organic-traffic snapshots for the monitored domain. These are third-party estimates, not Analytics traffic.",
+    envKeys: ["SEMRUSH_API_KEY"],
+    help: "A Semrush API v3 key with Domain Overview access. Pulls consume API units; keep one regional database for a comparable time series.",
+    settings: [{ key: "database", label: "Regional database", envKey: "SEMRUSH_DATABASE" }],
   },
 ];
 

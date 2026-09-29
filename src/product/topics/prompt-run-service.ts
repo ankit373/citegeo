@@ -4,6 +4,7 @@ import type { ProductBaselineService } from "../configuration/baseline-service.j
 import type { ProductModelCatalog } from "../configuration/model-selection-schema.js";
 import type { ProductProjectService } from "../projects/project-service.js";
 import type { RecognitionAnswerExecutor } from "../recognition/recognition-service.js";
+import { corroborateMentions } from "./mention-corroboration.js";
 import { answerNamesBrand, type BrandIdentity } from "./brand-identity.js";
 import {
   parsePromptAnswerOutput,
@@ -18,6 +19,7 @@ import type { PromptRunFileStore } from "./prompt-run-store.js";
 import { readStructuredValue } from "./structured-value.js";
 import { activePrompts, type PromptIntent } from "./topic-schema.js";
 import { audienceInstruction, GLOBAL_REGION, region, type Region } from "./region.js";
+import { asRegion, trackedLocationFrom, type LocationService } from "./location.js";
 import { DEFAULT_LANGUAGE, language, languageInstruction, type AnswerLanguage } from "./language.js";
 import { currentBaseline } from "../configuration/current-baseline.js";
 import type { TopicService } from "./topic-service.js";
@@ -67,6 +69,7 @@ export class PromptRunService {
     private readonly catalog?: ProductModelCatalog | undefined,
     private readonly engines?: EnginePlan | undefined,
     private readonly personas?: PersonaService | undefined,
+    private readonly locations?: LocationService | undefined,
   ) {}
 
   /** Splits the saved models into the ones the catalogue still says can answer
@@ -165,10 +168,15 @@ export class PromptRunService {
 
     // An unknown market id is refused rather than quietly dropped, or a run
     // would silently cover fewer markets than it was asked for.
+    // A location this project defined is a market as far as the run is
+    // concerned, so both are resolved here and nothing downstream has to care.
+    const locationSet = this.locations ? await this.locations.get(input.projectId) : null;
     const regions: Region[] = (input.regionIds && input.regionIds.length ? input.regionIds : [GLOBAL_REGION.id]).map((id) => {
       const found = region(id);
-      if (!found) throw new PromptRunUnavailableError(`Unknown market "${id}".`);
-      return found;
+      if (found) return found;
+      const place = trackedLocationFrom(locationSet, id);
+      if (place) return asRegion(place);
+      throw new PromptRunUnavailableError(`Unknown market "${id}".`);
     });
 
     const languages: AnswerLanguage[] = (input.languageIds && input.languageIds.length ? input.languageIds : [DEFAULT_LANGUAGE.id]).map((id) => {
@@ -363,13 +371,16 @@ export class PromptRunService {
 
       // Decided here from the project's own identity, never from the model's
       // opinion of who it was talking about.
-      const mentions: AnswerMention[] = parsed.mentions.map((row) => ({
+      const reported: AnswerMention[] = parsed.mentions.map((row) => ({
         ...row,
         isTarget: answerNamesBrand(
           { text: "", citationUrls: row.domain ? [row.domain] : [], names: [row.name] },
           input.identity,
         ),
       }));
+      // One call wrote the answer and reported what it named, so the positions
+      // are recounted from the text instead of taken on the model's word.
+      const mentions = corroborateMentions({ answer: parsed.answer, mentions: reported });
 
       const providerCitations = result.citations.map((citation) => citation.url).filter(Boolean);
       const citationUrls = [...new Set([...providerCitations, ...parsed.citationUrls])];

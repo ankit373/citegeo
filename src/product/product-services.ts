@@ -1,4 +1,4 @@
-import { answerIndexDir, browserDebugEndpoint, productDataDir } from "../config/env.js";
+import { answerIndexDir, browserDebugEndpoint, integrationSetting, productDataDir } from "../config/env.js";
 import { AnswerIndexService } from "./index/answer-index-service.js";
 import { PROVIDER_MODEL_CAPABILITIES } from "../providers/catalog.js";
 import { ProductConfigurationFileStore } from "./configuration/configuration-store.js";
@@ -24,7 +24,14 @@ import { TopicService } from "./topics/topic-service.js";
 import { createStructuredAsk } from "./topics/structured-ask.js";
 import { PromptScheduleFileStore, PromptScheduleService } from "./topics/prompt-schedule.js";
 import { DemandReportFileStore } from "./demand/demand-store.js";
+import { ExplorationFileStore } from "./demand/exploration-store.js";
 import { BrandProfileFileStore, BrandProfileService } from "./discovery/brand-profile-service.js";
+import { projectInsights } from "./topics/project-insights.js";
+import { ProductAgentService } from "./agents/agent-service.js";
+import { ProductShoppingService, ShoppingFileStore } from "./shopping/shopping-service.js";
+import { AgentDraftFileStore } from "./agents/agent-store.js";
+import { ProductFactCheckService } from "./factcheck/factcheck-service.js";
+import { FactCheckFileStore } from "./factcheck/factcheck-store.js";
 import { SiteIconService, SiteIconStore } from "./discovery/site-icon-service.js";
 import { StorageSettingsStore } from "./storage/storage-settings.js";
 import { CompetitorFileStore, CompetitorService } from "./topics/competitor-set.js";
@@ -54,6 +61,9 @@ import { ActionLogService, ActionLogStore } from "./topics/action-log.js";
 import { SourcePageService } from "./citations/source-service.js";
 import { SearchConsoleService } from "./search-console/search-console-service.js";
 import { PersonaService } from "./topics/persona.js";
+import { LocationService } from "./topics/location.js";
+import { ExternalMetricSnapshotStore } from "./external-metrics/snapshot-store.js";
+import { ExternalMetricProviderPullService } from "./external-metrics/provider-pull-service.js";
 // The composition root. The graph is built once per server, not per request:
 // rebuilding it per call silently discarded anything a service held between
 // calls, so the insights cache cached nothing and cost 60ms every time.
@@ -130,7 +140,11 @@ export interface ProductServices {
   promptRuns: PromptRunService;
   promptSchedule: PromptScheduleService;
   demand: DemandReportFileStore;
+  explorations: ExplorationFileStore;
   profiles: BrandProfileService;
+  agents: ProductAgentService;
+  shopping: ProductShoppingService;
+  factcheck: ProductFactCheckService;
   icons: SiteIconService;
   competitors: CompetitorService;
   segments: SegmentService;
@@ -138,7 +152,9 @@ export interface ProductServices {
   actions: ActionLogService;
   sourcePages: SourcePageService;
   searchConsole: SearchConsoleService;
+  externalMetrics: ExternalMetricProviderPullService;
   personas: PersonaService;
+  locations: LocationService;
   storageSettings: StorageSettingsStore;
   dataDir: string;
   /** Asks one structured question through the project's own saved models. */
@@ -180,6 +196,7 @@ export function createProductServices(dependencies: ProductServerDependencies = 
   const topics = new TopicService(new TopicFileStore(projectStore), projects, insights, profiles);
   const ask = createStructuredAsk({ baselines, executor });
   const personas = new PersonaService(projectStore);
+  const locations = new LocationService(projectStore);
   // Browser engines read the surfaces a buyer uses, through the user's own
   // signed-in browser, and are the only source here that carries citations.
   const engines = new EngineService(projectStore, ask, { endpoint: browserDebugEndpoint() });
@@ -190,9 +207,15 @@ export function createProductServices(dependencies: ProductServerDependencies = 
     saved: (projectId) => engines.saved(projectId),
     lookup: (engineId) => engines.lookup(engineId),
     ask: (input) => engines.askOne(input),
-  }, personas);
+  }, personas, locations);
   const promptSchedule = new PromptScheduleService(new PromptScheduleFileStore(projectStore), promptRuns);
+  const agents = new ProductAgentService(projects,
+    (id) => projectInsights({ projectId: id, topics, runs: promptRuns, competitors, personas, locations }),
+    new AgentDraftFileStore(projectStore));
+  const shopping = new ProductShoppingService(projects, promptRuns, new ShoppingFileStore(projectStore));
+  const factcheck = new ProductFactCheckService(projects, promptRuns, new FactCheckFileStore(projectStore));
   const demand = new DemandReportFileStore(projectStore);
+  const explorations = new ExplorationFileStore(projectStore);
   const competitors = new CompetitorService(new CompetitorFileStore(projectStore));
   const segments = new SegmentService(new SegmentFileStore(projectStore));
   const actions = new ActionLogService(new ActionLogStore(projectStore));
@@ -203,9 +226,14 @@ export function createProductServices(dependencies: ProductServerDependencies = 
   const searchConsole = new SearchConsoleService(
     projectStore,
     async () => process.env.GOOGLE_SERVICE_ACCOUNT_JSON || await credentials.resolve("google"),
-    () => process.env.GOOGLE_SEARCH_CONSOLE_SITE || null,
+    () => process.env.GOOGLE_SEARCH_CONSOLE_SITE || integrationSetting("google", "siteUrl") || null,
     undefined,
-    () => process.env.GOOGLE_ANALYTICS_PROPERTY_ID || null,
+    () => process.env.GOOGLE_ANALYTICS_PROPERTY_ID || integrationSetting("google-analytics", "propertyId") || null,
+  );
+  const externalMetrics = new ExternalMetricProviderPullService(
+    projects,
+    new ExternalMetricSnapshotStore(projectStore),
+    async (providerId) => credentials.resolve(providerId),
   );
   const storageSettings = new StorageSettingsStore(productDataDir());
   // A run left "running" by a process that is gone would otherwise show as
@@ -217,10 +245,9 @@ export function createProductServices(dependencies: ProductServerDependencies = 
   return {
     projects, catalog, selections, baselines, recognition, reports, insights,
     signals, crawlerLog, watchSets, measurements, stats, schedules,
-    topics, promptRuns, promptSchedule, demand, profiles, icons, competitors, segments, ask, engines, actions, sourcePages, searchConsole, personas,
+    topics, promptRuns, promptSchedule, demand, explorations, profiles, agents, shopping, factcheck, icons, competitors, segments, ask, engines, actions, sourcePages, searchConsole, externalMetrics, personas, locations,
     storageSettings, dataDir: productDataDir(),
     credentials,
     auth: authConfig(),
   };
 }
-

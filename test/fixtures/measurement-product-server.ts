@@ -1,5 +1,5 @@
 import { createProductServer } from "../../src/product/product-server.js";
-import { Phase5FixtureCatalog, Phase5FixtureExecutor } from "./phase5-fixture-adapter.js";
+import { Phase5FixtureCatalog, Phase5FixtureExecutor } from "./measurement-fixture-adapter.js";
 
 const port = Number(process.env.PORT || 8787);
 const executor = new Phase5FixtureExecutor();

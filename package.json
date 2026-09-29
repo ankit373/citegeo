@@ -25,10 +25,10 @@
     "test:phase2-browser": "playwright test --config playwright.phase2.config.ts",
     "test:phase3-browser": "playwright test --config playwright.phase3.config.ts",
     "test:phase4-browser": "playwright test --config playwright.phase4.config.ts",
-    "test:phase5-browser": "playwright test --config playwright.phase5.config.ts",
-    "freeze:phase5": "tsx scripts/validate-phase5.ts freeze",
-    "verify:phase5": "tsx scripts/validate-phase5.ts verify",
-    "test:phase5-unit": "tsx scripts/run-phase5-unit.ts",
+    "test:measurements-browser": "playwright test --config playwright.measurements.config.ts",
+    "freeze:measurements": "tsx scripts/validate-measurements.ts freeze",
+    "verify:measurements": "tsx scripts/validate-measurements.ts verify",
+    "test:measurements-unit": "tsx scripts/run-measurement-unit.ts",
     "freeze:phase4": "tsx scripts/validate-phase4.ts freeze",
     "verify:phase4-freeze": "tsx scripts/validate-phase4.ts verify",
     "prepare:phase4-real-report": "tsx scripts/prepare-phase4-real-report.ts",
@@ -46,22 +46,23 @@
     "check:all": "npm run self-check && npm run check:scripts && npm run check:docs",
     "build:site": "npm run build && node scripts/build-site.mjs",
     "demand:index": "npm run build && node scripts/index-demand-corpus.mjs",
-    "build:css": "tailwindcss -i src/ui/theme.css -o dist/src/ui/app/app.css --minify"
+    "build:css": "tailwindcss -i src/ui/theme.css -o dist/src/ui/app/app.css --minify",
+    "demand:explore": "npm run build && node scripts/explore-conversations.mjs"
   },
   "dependencies": {
     "cheerio": "^1.2.0",
     "cron-parser": "^5.10.1",
     "linkify-it": "^6.1.0",
-    "marked": "^18.0.13",
+    "marked": "^18.0.14",
     "nodemailer": "^10.0.10"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
     "@tailwindcss/cli": "^4.3.3",
-    "@types/node": "^24.13.5",
+    "@types/node": "^24.13.6",
     "@types/nodemailer": "^8.0.2",
     "tailwindcss": "^4.3.3",
-    "tsx": "^4.20.5",
+    "tsx": "^4.23.15",
     "typescript": "^6.0.3"
   },
   "engines": {

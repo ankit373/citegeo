@@ -45,6 +45,30 @@ questions that produced it rather than taken on trust.
 **Uncovered terms** are words the corpus uses often that none of your prompts
 contain. That is where a topic set is blind, as opposed to where it is wrong.
 
+## Exploring what is asked at all
+
+The demand report answers "how often is this prompt I track asked". Exploring
+answers the question before it: what is being asked about something, and which
+of it nothing here measures.
+
+```bash
+npm run demand:explore -- --project <id> --source wildchat --path corpus.jsonl --query "stock screener"
+```
+
+It prints, and stores for `GET /api/projects/<id>/conversations`:
+
+- **matched**, corpus questions carrying every meaningful word of the query,
+  and **related**, those carrying most of them.
+- **by intent**, read from the shape of the question rather than from a model,
+  so it costs nothing and is the same every time. A question fitting none of
+  the shapes is `unknown`, never the nearest guess.
+- **uncovered**, the matching questions no tracked prompt measures. These are
+  listed first, because finding them is the reason to run this.
+
+Exploring means indexing the corpus again, which takes minutes on a large file,
+so it is a command rather than a request. The route only reads what a command
+already wrote.
+
 ## What this is not
 
 Each corpus states its own limits, and they travel with every figure derived

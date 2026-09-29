@@ -1,19 +1,22 @@
+import { summariseCorroboration } from "../src/product/topics/mention-corroboration.js";
+import { wilsonInterval } from "../src/product/topics/proportion-interval.js";
+import { SCORE_WEIGHTS } from "../src/product/topics/visibility-score.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { effectOf, isActionState, snapshotOf, type TakenAction } from "../src/product/topics/action-log.js";
 import type { TopicInsights } from "../src/product/topics/topic-insights.js";
 import type { VisibilityScore } from "../src/product/topics/visibility-score.js";
 
-const WEIGHTS = { prominenceFloor: 0.6, sentimentFloor: 0.5 };
+const WEIGHTS = SCORE_WEIGHTS;
 
 function score(overrides: Partial<VisibilityScore> = {}): VisibilityScore {
-  return { answers: 10, appearances: 2, presenceRate: 0.2, prominence: 0.5, sentiment: 0.5, score: 20, weights: WEIGHTS, ...overrides };
+  return { answers: 10, appearances: 2, presenceInterval: wilsonInterval(0, 0), tooFewAnswers: false, presenceRate: 0.2, prominence: 0.5, sentiment: 0.5, score: 20, weights: WEIGHTS, ...overrides };
 }
 
 function insights(overrides: Partial<TopicInsights> = {}): TopicInsights {
   return {
     projectId: "p", answers: 10, answersFailed: 0, overall: score(), rank: 4, weights: WEIGHTS,
-    leaderboard: [], topics: [], byModel: [], absentFrom: [], citationsUnavailable: false,
+    leaderboard: [], topics: [], byModel: [], absentFrom: [], citationsUnavailable: false, corroboration: summariseCorroboration([]),
     trend: { points: [], change: null, since: null }, byRegion: [], byLanguage: [], byPersona: [],
     regionCaveat: "", identityCaveat: null, trackedRivals: [], ...overrides,
   };

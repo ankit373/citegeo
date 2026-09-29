@@ -52,10 +52,15 @@ test("comparison of different lengths is still safe and false", () => {
   assert.equal(safeEqual("same", "sane"), false);
 });
 
-test("the session cookie is HttpOnly and SameSite strict", () => {
+test("the session cookie is HttpOnly and SameSite lax", () => {
   const cookie = sessionCookie("abc", HOUR, false);
   assert.ok(cookie.includes("HttpOnly"));
-  assert.ok(cookie.includes("SameSite=Strict"));
+  // Strict withholds the cookie on a navigation another site started, which is
+  // how a consent screen returns, so the reader landed on the login form while
+  // holding a valid session. Lax sends it on a top level GET and still
+  // withholds it from every cross site POST, and no GET here writes anything.
+  assert.ok(cookie.includes("SameSite=Lax"));
+  assert.equal(cookie.includes("SameSite=None"), false, "None would send it to any site that asks");
   assert.ok(cookie.includes("Max-Age=3600"));
   assert.equal(cookie.includes("Secure"), false, "not marked secure over plain http");
 });

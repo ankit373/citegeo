@@ -1,5 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { formOrJsonBody, httpsRequest, readJson, send, sendAsset } from "./http-io.js";
+import { SAFETY_HEADERS, formOrJsonBody, httpsRequest, readJson, send, sendAsset } from "./http-io.js";
+import { checkAttempt, recordFailure, recordSuccess } from "./auth/login-throttle.js";
 import { createServer } from "node:http";
 import { Lifecycle } from "../runtime/lifecycle.js";
 import { log } from "../runtime/logger.js";
@@ -20,7 +21,15 @@ import { handleActionApi } from "./actions/action-http.js";
 import { handleInsightsApi } from "./insights/insights-http.js";
 import { handleCrawlerApi } from "./crawlers/crawler-http.js";
 import { handleCredentialApi } from "./auth/credential-http.js";
+import { handleGoogleOAuth } from "./search-console/google-oauth-http.js";
 import { handleSiteIconApi } from "./discovery/site-icon-http.js";
+import { handleExplorationApi } from "./demand/exploration-http.js";
+import { handleLocationApi } from "./topics/location-http.js";
+import { handleEntityApi } from "./entity/entity-http.js";
+import { handleAimApi } from "./aim/aim-http.js";
+import { handleAgentApi } from "./agents/agent-http.js";
+import { handleShoppingApi } from "./shopping/shopping-http.js";
+import { handleFactCheckApi } from "./factcheck/factcheck-http.js";
 import { handleProviderStatusApi } from "./configuration/provider-http.js";
 import { authorise, passwordMatches } from "./auth/auth-guard.js";
 import { clearedCookie, issueSession, sessionCookie } from "./auth/session.js";
@@ -35,7 +44,7 @@ import { handleCitationApi } from "./citations/citation-http.js";
 import { handleSearchConsoleApi } from "./search-console/search-console-http.js";
 import { projectInsights } from "./topics/project-insights.js";
 import { handleStorageApi } from "./storage/storage-http.js";
-import { renderProductPhase5AppHtml } from "../ui/product-phase5-app.js";
+import { renderMeasurementWorkbenchHtml } from "../ui/measurement-workbench-app.js";
 import { createProductServices } from "./product-services.js";
 import type { ProductServerDependencies, ProductServices } from "./product-services.js";
 
@@ -51,20 +60,35 @@ async function handle(req: IncomingMessage, res: ServerResponse, services: Produ
   if (services.auth.enabled) {
     const secure = httpsRequest(req);
     if (method === "POST" && url.pathname === "/api/login") {
+      // One counter for the process, because the deployment is single writer
+      // and the password is all that stands in front of every credential.
+      const verdict = checkAttempt("login");
+      if (!verdict.allowed) {
+        res.writeHead(429, {
+          "Content-Type": "text/html; charset=utf-8",
+          "Retry-After": String(verdict.retryAfterSeconds),
+          ...SAFETY_HEADERS,
+        });
+        res.end(renderLoginPageHtml(true));
+        return;
+      }
       const body = await formOrJsonBody(req);
       if (!passwordMatches(services.auth, body.password)) {
+        recordFailure("login");
         // Same shape and timing for a wrong password as for a missing one.
         return send(res, 401, renderLoginPageHtml(true), "text/html; charset=utf-8");
       }
+      recordSuccess("login");
       res.writeHead(303, {
         Location: "/",
         "Set-Cookie": sessionCookie(issueSession(services.auth.secret, services.auth.lifetimeMs), services.auth.lifetimeMs, secure),
+        ...SAFETY_HEADERS,
       });
       res.end();
       return;
     }
     if (method === "POST" && url.pathname === "/api/logout") {
-      res.writeHead(303, { Location: "/login", "Set-Cookie": clearedCookie(secure) });
+      res.writeHead(303, { Location: "/login", "Set-Cookie": clearedCookie(secure), ...SAFETY_HEADERS });
       res.end();
       return;
     }
@@ -80,7 +104,7 @@ async function handle(req: IncomingMessage, res: ServerResponse, services: Produ
   }
   if (method === "GET" && url.pathname === "/") {
     const measurementView = url.searchParams.get("view") === "measurements";
-    return send(res, 200, measurementView ? renderProductPhase5AppHtml() : renderProductPhase4AppHtml(), "text/html; charset=utf-8");
+    return send(res, 200, measurementView ? renderMeasurementWorkbenchHtml() : renderProductPhase4AppHtml(), "text/html; charset=utf-8");
   }
   if (method === "GET" && url.pathname === "/health") return send(res, 200, { ok: true });
   // The application, compiled. Served from the build output so the browser
@@ -98,6 +122,7 @@ async function handle(req: IncomingMessage, res: ServerResponse, services: Produ
     res.writeHead(200, {
       "Content-Type": isCss ? "text/css; charset=utf-8" : "text/javascript; charset=utf-8",
       "Cache-Control": "no-cache",
+      ...SAFETY_HEADERS,
     });
     res.end(await readFile(path, "utf8"));
     return;
@@ -116,21 +141,53 @@ async function handle(req: IncomingMessage, res: ServerResponse, services: Produ
   if (await handleStorageApi({ method, route, send: json, settings: services.storageSettings, dataDir: services.dataDir, readJson: body })) return;
   if (await handleProviderStatusApi({ method, route, send: json, catalog })) return;
   if (await handleCredentialApi({ method, route, send: json, service: services.credentials, authEnabled: services.auth.enabled, readJson: body })) return;
+  if (await handleGoogleOAuth({
+    method, route, url,
+    origin: `${httpsRequest(req) ? "https" : "http"}://${req.headers.host || `${serverHost()}:8787`}`,
+    authSecret: services.auth.secret,
+    credentials: services.credentials,
+    // The callback is reached from Google, so it carries no session cookie and
+    // proves itself with the signed state instead.
+    signedIn: !services.auth.enabled || authorise({ config: services.auth, pathname: "/api/google/authorize", cookieHeader: req.headers.cookie }).allowed,
+    send: json,
+    redirect: (status, location, headers) => { res.writeHead(status, { Location: location, ...SAFETY_HEADERS, ...(headers || {}) }); res.end(); },
+  })) return;
   if (await handleSiteIconApi({ method, route, send: json, service: services.icons, readJson: body })) return;
+  if (await handleExplorationApi({ method, route, send: json, store: services.explorations })) return;
+  if (await handleLocationApi({ method, route, send: json, service: services.locations, readJson: body })) return;
+  if (await handleEntityApi({
+    method, route, send: json, projects, signals: { latest: async (id) => (await signals.history(id))[0]?.signals || null },
+    summary: async (id) => (await services.profiles.get(id))?.businessDescription || null,
+  })) return;
+  if (await handleAimApi({
+    method, route, send: json, history: (id) => signals.history(id),
+    insights: (id) => projectInsights({ projectId: id, topics, runs: promptRuns, competitors: services.competitors, personas: services.personas, locations: services.locations }),
+  })) return;
+  if (await handleAgentApi({ method, route, send: json, service: services.agents, ask: services.ask, readJson: body })) return;
+  if (await handleShoppingApi({ method, route, send: json, service: services.shopping, ask: services.ask, readJson: body })) return;
+  if (await handleFactCheckApi({ method, route, send: json, service: services.factcheck, ask: services.ask, readJson: body })) return;
   if (await handleInsightsApi({ method, route, send: json, service: insights })) return;
   if (await handleCrawlerApi({ method, route, send: json, crawlerLog, insights,
     answers: (id) => promptRuns.listAnswers(id),
     domain: async (id) => (await services.projects.get(id))?.normalizedDomain || "" })) return;
   if (await handleActionApi({ method, route, send: json, signals, insights })) return;
-  if (await handleSearchConsoleApi({ method, route, send: json, searchConsole: services.searchConsole, readJson: body,
+  if (await handleSearchConsoleApi({ method, route, send: json, searchConsole: services.searchConsole, externalMetrics: services.externalMetrics, readJson: body,
     prompts: async (id) => (await topics.get(id)).prompts.filter((prompt) => prompt.status === "active"),
-    insights: (id) => projectInsights({ projectId: id, topics, runs: promptRuns, competitors: services.competitors, personas: services.personas }) })) return;
+    insights: (id) => projectInsights({ projectId: id, topics, runs: promptRuns, competitors: services.competitors, personas: services.personas, locations: services.locations }) })) return;
   if (await handleCitationApi({ method, route, send: json, pages: services.sourcePages,
     answers: (id) => promptRuns.listAnswers(id),
     identity: (id) => topics.targetIdentity(id),
-    names: async (id) => [...new Set((await promptRuns.listAnswers(id)).flatMap((answer) => answer.mentions.map((row) => row.name)))] })) return;
+    names: async (id) => [...new Set((await promptRuns.listAnswers(id)).flatMap((answer) => answer.mentions.map((row) => row.name)))],
+    scope: async (id) => {
+      const project = await projects.get(id).catch(() => null);
+      const answers = await promptRuns.listAnswers(id);
+      const rivalDomains = [...new Set(answers.flatMap((answer) => answer.mentions
+        .filter((row) => !row.isTarget && row.domain)
+        .map((row) => String(row.domain))))];
+      return { domain: project?.normalizedDomain, rivalDomains };
+    } })) return;
   if (await handleRankingActionApi({ method, route, send: json, actions: services.actions, readJson: body,
-    insights: (id) => projectInsights({ projectId: id, topics, runs: promptRuns, competitors: services.competitors, personas: services.personas }) })) return;
+    insights: (id) => projectInsights({ projectId: id, topics, runs: promptRuns, competitors: services.competitors, personas: services.personas, locations: services.locations }) })) return;
   if (await handleEngineApi({ method, route, send: json, engines: services.engines, readJson: body })) return;
   if (await handleTopicApi({ method, route, url, send: json, topics, runs: promptRuns, schedule: promptSchedule, demand, profiles, models: async (id) => (await selections.list(id)).length, competitors: services.competitors, segments: services.segments, personas: services.personas, ask: services.ask, readJson: body })) return;
 

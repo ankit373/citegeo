@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { splitLines, stripMatchingQuotes } from "../utils/text.js";
+import { credentialKey, decryptSecret, type CredentialFile } from "../product/auth/credential-store.js";
 
 const PROVIDER_ENV_KEYS: Record<string, string[]> = {
   openrouter: ["OPENROUTER_API_KEY", "OPENROUTER_KEY"],
@@ -38,20 +39,55 @@ export function providerEnvKeys(providerId: string): string[] {
 }
 
 export function openAICompatibleBaseUrl(): string | undefined {
-  const value = process.env.OPENAI_COMPATIBLE_BASE_URL || process.env.OPENAI_COMPATIBLE_BASEURL;
+  const value = process.env.OPENAI_COMPATIBLE_BASE_URL || process.env.OPENAI_COMPATIBLE_BASEURL
+    || integrationSetting("openai-compatible", "baseUrl");
   return value?.trim() || undefined;
+}
+
+/** Values entered in Setup are local, owner-only configuration—not browser
+ * state. Environment values still take precedence, so deployment remains
+ * predictable and an operator can always take control outside the UI. */
+export function integrationSetting(providerId: string, key: string): string | undefined {
+  try {
+    const raw = JSON.parse(readFileSync(join(productDataDir(), "integration-settings.json"), "utf8")) as unknown;
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+    const provider = (raw as Record<string, unknown>)[providerId];
+    if (!provider || typeof provider !== "object" || Array.isArray(provider)) return undefined;
+    const value = (provider as Record<string, unknown>)[key];
+    return typeof value === "string" && value.trim() ? value.trim() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function storedCredentialId(envKey: string): string | undefined {
+  if (envKey === "GOOGLE_SERVICE_ACCOUNT_JSON" || envKey === "GOOGLE_OAUTH_CREDENTIALS_JSON") return "google";
+  return Object.entries(PROVIDER_ENV_KEYS).find(([, keys]) => keys.includes(envKey))?.[0];
+}
+
+function storedSecretValue(envKey: string): string | undefined {
+  const providerId = storedCredentialId(envKey);
+  const key = credentialKey();
+  if (!providerId || !key) return undefined;
+  try {
+    const file = JSON.parse(readFileSync(join(productDataDir(), "credentials.json"), "utf8")) as CredentialFile;
+    const record = file[providerId];
+    return record ? decryptSecret(key, record, providerId) || undefined : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function envSecretValue(key: string): string | undefined {
   const direct = process.env[key];
   if (direct?.trim()) return direct.trim();
   const filePath = process.env[`${key}_FILE`];
-  if (!filePath?.trim()) return undefined;
+  if (!filePath?.trim()) return storedSecretValue(key);
   try {
     const fromFile = readFileSync(filePath.trim(), "utf8").trim();
     return fromFile || undefined;
   } catch {
-    return undefined;
+    return storedSecretValue(key);
   }
 }
 
@@ -140,7 +176,7 @@ export function browserDebugEndpoint(): string {
 }
 
 export function azureOpenAIEndpoint(): string | undefined {
-  return envSecretValue("AZURE_OPENAI_ENDPOINT") || undefined;
+  return envSecretValue("AZURE_OPENAI_ENDPOINT") || integrationSetting("azure-openai", "endpoint") || undefined;
 }
 
 export function azureOpenAIApiVersion(): string {
@@ -150,7 +186,7 @@ export function azureOpenAIApiVersion(): string {
 // Azure exposes no data-plane deployment listing, so the deployments in use are
 // declared rather than discovered.
 export function azureOpenAIDeployments(): string[] {
-  const raw = envSecretValue("AZURE_OPENAI_DEPLOYMENTS") || "";
+  const raw = envSecretValue("AZURE_OPENAI_DEPLOYMENTS") || integrationSetting("azure-openai", "deployments") || "";
   return raw.split(",").map((value) => value.trim()).filter(Boolean);
 }
 
@@ -242,4 +278,14 @@ export function watsonxIamHost(): string {
 // without one, so it is configurable but never absent.
 export function watsonxApiVersion(): string {
   return process.env.WATSONX_API_VERSION?.trim() || "2024-10-10";
+}
+
+// Brand Radar is read over the public v3 API. The host is configurable so a
+// test never reaches the real one, and never pasted anywhere else.
+export function ahrefsEndpoint(): string {
+  return process.env.AHREFS_API_ENDPOINT?.trim() || "https://api.ahrefs.com/v3";
+}
+
+export function ahrefsReportId(): string | undefined {
+  return envSecretValue("AHREFS_BRAND_RADAR_REPORT") || undefined;
 }

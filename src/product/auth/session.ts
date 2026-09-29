@@ -60,8 +60,11 @@ export function sessionCookie(token: string, lifetimeMs: number, secure: boolean
     `${SESSION_COOKIE}=${encodeURIComponent(token)}`,
     "Path=/",
     "HttpOnly",
-    // Strict, because nothing here is meant to be reached from another site.
-    "SameSite=Strict",
+    // Lax, not Strict. Strict withholds the cookie on a navigation another site
+    // started, which is exactly how a consent screen returns, so the reader
+    // lands on the login form holding a valid session. No GET here writes
+    // anything, and Lax still withholds it from every cross site POST.
+    "SameSite=Lax",
     `Max-Age=${Math.floor(lifetimeMs / 1000)}`,
   ];
   if (secure) parts.push("Secure");

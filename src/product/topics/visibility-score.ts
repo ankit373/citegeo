@@ -1,3 +1,4 @@
+import { tooWideToRead, wilsonInterval, type ProportionInterval } from "./proportion-interval.js";
 import type { AnswerMention, PromptAnswer } from "./prompt-run-schema.js";
 
 // Named late and grudgingly still beats not named, so prominence and sentiment
@@ -5,14 +6,26 @@ import type { AnswerMention, PromptAnswer } from "./prompt-run-schema.js";
 export const PROMINENCE_FLOOR = 0.6;
 export const SENTIMENT_FLOOR = 0.5;
 
+/** What the composite is built to maximise. Weights only defend themselves
+ * against a stated objective, and this one was never written down. */
+export const SCORE_OBJECTIVE = "How often a buyer asking the tracked questions is shown this brand, discounted for being named late in an answer and for being named without a recommendation.";
+
+export const SCORE_LIMITS = "It ranks one project against its own past, and nothing else. It is not a probability, and two projects cannot be compared on it: the figure is taken over whichever questions, models and markets that project happens to track, so adding an easy question raises it without anything changing outside.";
+
 export interface ScoreWeights {
   prominenceFloor: number;
   sentimentFloor: number;
+  /** The objective these floors are weights against, and what the number
+   * cannot be used for. Both travel with every score. */
+  objective: string;
+  limits: string;
 }
 
 export const SCORE_WEIGHTS: ScoreWeights = {
   prominenceFloor: PROMINENCE_FLOOR,
   sentimentFloor: SENTIMENT_FLOOR,
+  objective: SCORE_OBJECTIVE,
+  limits: SCORE_LIMITS,
 };
 
 export interface VisibilityScore {
@@ -22,6 +35,11 @@ export interface VisibilityScore {
   appearances: number;
   /** appearances / answers. Null with nothing answered. */
   presenceRate: number | null;
+  /** What this many answers is consistent with. A rate off a handful of them
+   * is one draw, and reading it as the rate invents precision nobody has. */
+  presenceInterval: ProportionInterval;
+  /** True where the range is too wide for the figure to decide anything. */
+  tooFewAnswers: boolean;
   /** 1 when always named first, approaching 0 when always named last. */
   prominence: number | null;
   /** 1 when always recommended, 0 when always rejected. */
@@ -43,6 +61,8 @@ export function emptyScore(): VisibilityScore {
     answers: 0,
     appearances: 0,
     presenceRate: null,
+    presenceInterval: wilsonInterval(0, 0),
+    tooFewAnswers: false,
     prominence: null,
     sentiment: null,
     score: null,
@@ -90,9 +110,14 @@ export function scoreAnswers(answers: PromptAnswer[]): VisibilityScore {
     }),
   );
 
-  // Never named is a real zero: it was measured, and the answer is none.
+  const interval = wilsonInterval(naming.length, completed.length);
+  // Never named is a real zero, and the range still says how far from zero this
+  // many answers can rule out, which on a handful of them is not far.
   if (!naming.length) {
-    return { answers: completed.length, appearances: 0, presenceRate: 0, prominence: null, sentiment: null, score: 0, weights: SCORE_WEIGHTS };
+    return {
+      answers: completed.length, appearances: 0, presenceRate: 0, presenceInterval: interval,
+      tooFewAnswers: tooWideToRead(interval), prominence: null, sentiment: null, score: 0, weights: SCORE_WEIGHTS,
+    };
   }
 
   const prominenceFactor = prominence === null ? 1 : PROMINENCE_FLOOR + (1 - PROMINENCE_FLOOR) * prominence;
@@ -102,6 +127,8 @@ export function scoreAnswers(answers: PromptAnswer[]): VisibilityScore {
     answers: completed.length,
     appearances: naming.length,
     presenceRate,
+    presenceInterval: interval,
+    tooFewAnswers: tooWideToRead(interval),
     prominence,
     sentiment,
     score: Math.round(presenceRate * prominenceFactor * sentimentFactor * 1000) / 10,

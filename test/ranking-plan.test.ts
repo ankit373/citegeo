@@ -1,3 +1,6 @@
+import { summariseCorroboration } from "../src/product/topics/mention-corroboration.js";
+import { wilsonInterval } from "../src/product/topics/proportion-interval.js";
+import { SCORE_WEIGHTS } from "../src/product/topics/visibility-score.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { buildRankingPlan } from "../src/product/topics/ranking-plan.js";
@@ -5,10 +8,10 @@ import type { EntityStanding, ModelStanding, PromptStanding, TopicInsights } fro
 import type { Prompt, PromptIntent, TopicSet } from "../src/product/topics/topic-schema.js";
 import type { VisibilityScore } from "../src/product/topics/visibility-score.js";
 
-const WEIGHTS = { prominenceFloor: 0.6, sentimentFloor: 0.5 };
+const WEIGHTS = SCORE_WEIGHTS;
 
 function score(overrides: Partial<VisibilityScore> = {}): VisibilityScore {
-  return { answers: 10, appearances: 0, presenceRate: 0, prominence: null, sentiment: null, score: 0, weights: WEIGHTS, ...overrides };
+  return { answers: 10, appearances: 0, presenceInterval: wilsonInterval(0, 0), tooFewAnswers: false, presenceRate: 0, prominence: null, sentiment: null, score: 0, weights: WEIGHTS, ...overrides };
 }
 
 function entity(name: string, overrides: Partial<EntityStanding> = {}): EntityStanding {
@@ -40,7 +43,7 @@ function set(prompts: Prompt[]): TopicSet {
 function insights(overrides: Partial<TopicInsights> = {}): TopicInsights {
   return {
     projectId: "p", answers: 10, answersFailed: 0, overall: score(), rank: null, weights: WEIGHTS,
-    leaderboard: [], topics: [], byModel: [], absentFrom: [], citationsUnavailable: false,
+    leaderboard: [], topics: [], byModel: [], absentFrom: [], citationsUnavailable: false, corroboration: summariseCorroboration([]),
     trend: { points: [], change: null, since: null }, byRegion: [], byLanguage: [], byPersona: [],
     regionCaveat: "", identityCaveat: null, trackedRivals: [], ...overrides,
   };
@@ -99,7 +102,7 @@ test("a model that never names you is only a finding when another one does", () 
   assert.equal(ids(blindOnly).includes("blind-models"), false, "every model blind is the overall score, not a per-model gap");
 
   const mixed = buildRankingPlan({
-    insights: insights({ byModel: [model("a"), model("b", { appearances: 4, presenceRate: 0.4 })] }),
+    insights: insights({ byModel: [model("a"), model("b", { appearances: 4, presenceInterval: wilsonInterval(0, 0), tooFewAnswers: false, presenceRate: 0.4 })] }),
     set: set([prompt("a")]),
   });
   assert.ok(ids(mixed).includes("blind-models"));

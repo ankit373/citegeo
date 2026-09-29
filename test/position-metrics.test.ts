@@ -1,14 +1,16 @@
+import { wilsonInterval } from "../src/product/topics/proportion-interval.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import type { CitationAnalysis } from "../src/product/topics/citation-analysis.js";
 import { citationStanding, positionReport } from "../src/product/topics/position-metrics.js";
+import { decomposeCitations } from "../src/product/topics/citation-decomposition.js";
 import type { PromptStanding } from "../src/product/topics/topic-insights.js";
 
 function prompt(rank: number | null, measures = true): PromptStanding {
   return {
     promptId: "p", topicId: "t", subtopic: null, text: "q", intent: "commercial",
     measuresVisibility: measures,
-    score: { answers: 1, appearances: rank === null ? 0 : 1, presenceRate: null, prominence: null, sentiment: null, score: null },
+    score: { answers: 1, appearances: rank === null ? 0 : 1, presenceInterval: wilsonInterval(0, 0), tooFewAnswers: false, presenceRate: null, prominence: null, sentiment: null, score: null },
     rank, entitiesNamed: 4, byModel: [], ahead: [], standing: [],
   } as unknown as PromptStanding;
 }
@@ -48,6 +50,7 @@ test("never being named anywhere reports no position rather than nought", () => 
 function analysis(domains: Array<{ domain: string; answers: number; isTarget?: boolean }>): CitationAnalysis {
   return {
     answersWithCitations: 10, answersConsidered: 10, ownPages: [], openings: [], unavailable: false,
+    decomposition: decomposeCitations({ answers: [], identity: { distinctive: [], ambiguous: [], host: "mine.com", nameMatchingUnreliable: false, caveat: null } }),
     domains: domains.map((row) => ({
       domain: row.domain, answers: row.answers, pages: 1,
       isTarget: row.isTarget === true, answersWithoutYou: 0,

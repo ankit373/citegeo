@@ -20,6 +20,9 @@ export interface ScoreShape {
   answers: number;
   appearances: number;
   presenceRate: number | null;
+  /** Absent on an archive scored before the range existed. */
+  presenceInterval?: { rate: number | null; low: number | null; high: number | null; trials: number; caveat: string } | undefined;
+  tooFewAnswers?: boolean | undefined;
   prominence: number | null;
   sentiment: number | null;
   score: number | null;
@@ -81,6 +84,16 @@ export interface PositionShape {
   worst: number | null;
 }
 
+export interface CorroborationShape {
+  reported: number;
+  measured: number;
+  namedOnly: number;
+  absentFromAnswer: number;
+  quotesChecked: number;
+  quotesFound: number;
+  caveat: string;
+}
+
 export interface InsightsShape {
   /** Computed on the server, so the view never imports the module that holds it. */
   position?: PositionShape | undefined;
@@ -88,12 +101,17 @@ export interface InsightsShape {
   answersFailed: number;
   overall: ScoreShape;
   rank: number | null;
-  weights: { prominenceFloor: number; sentimentFloor: number };
+  /** The objective and limits are absent on an archive scored before they were
+   * written down, so the page states only what it has. */
+  weights: { prominenceFloor: number; sentimentFloor: number; objective?: string | undefined; limits?: string | undefined };
   leaderboard: EntityRow[];
   topics: TopicStandingRow[];
   byModel: ModelStandingRow[];
   absentFrom: PromptStandingRow[];
   citationsUnavailable: boolean;
+  /** Absent on an archive answered before mentions were checked against the
+   * answer text, so nothing is claimed about those. */
+  corroboration?: CorroborationShape | undefined;
   trend: TrendShape;
   byRegion: SplitRow[];
   byLanguage: SplitRow[];

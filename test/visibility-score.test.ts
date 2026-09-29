@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { positionWeight, scoreAnswers, SCORE_WEIGHTS } from "../src/product/topics/visibility-score.js";
+import { positionWeight, scoreAnswers, SCORE_LIMITS, SCORE_OBJECTIVE, SCORE_WEIGHTS } from "../src/product/topics/visibility-score.js";
 import { buildTopicInsights } from "../src/product/topics/topic-insights.js";
 import type { AnswerMention, PromptAnswer } from "../src/product/topics/prompt-run-schema.js";
 import type { TopicSet } from "../src/product/topics/topic-schema.js";
@@ -197,4 +197,28 @@ test("one product named with two different domains is one rival, not two", () =>
   });
   assert.equal(insights.leaderboard.length, 1);
   assert.equal(insights.leaderboard[0]?.appearances, 2);
+});
+
+test("the score says what it is built to maximise, not only how it is computed", () => {
+  const weights = scoreAnswers([]).weights;
+  assert.equal(weights.objective, SCORE_OBJECTIVE);
+  assert.ok(weights.objective.includes("discounted for being named late"), "the floors are weights against this, so it has to be stated");
+});
+
+test("the score says it cannot be compared between projects", () => {
+  const weights = scoreAnswers([]).weights;
+  assert.ok(weights.limits.includes("two projects cannot be compared on it"));
+  assert.ok(weights.limits.includes("not a probability"));
+  assert.ok(weights.limits.includes("adding an easy question raises it"), "the prompt set is chosen, so the denominator is chosen too");
+});
+
+test("the objective travels with every score, not just an empty one", () => {
+  const scored = scoreAnswers([{
+    id: "a", projectId: "p", runId: "r", promptId: "q", topicId: "t",
+    promptText: "x", intent: "discovery", providerId: "openrouter", modelId: "m",
+    modelDisplayName: "M", regionId: "global", languageId: "en", status: "completed", text: "",
+    mentions: [], citationUrls: [], errorCode: null, errorMessage: null, latencyMs: 1, createdAt: "",
+  }]);
+  assert.equal(scored.weights.objective, SCORE_OBJECTIVE);
+  assert.equal(scored.weights.limits, SCORE_LIMITS);
 });

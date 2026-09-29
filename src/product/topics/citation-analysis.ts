@@ -1,4 +1,6 @@
 import { domainLabel } from "./prompt-identity.js";
+import { decomposeCitations, type CitationDecomposition } from "./citation-decomposition.js";
+import { canonicalUrl } from "../citations/canonical-url.js";
 import type { BrandIdentity } from "./brand-identity.js";
 import type { PromptAnswer } from "./prompt-run-schema.js";
 
@@ -34,19 +36,9 @@ export interface CitationAnalysis {
   openings: Array<{ url: string; domain: string; prompt: string }>;
   /** True when nothing cited anything, which is a property of the models run. */
   unavailable: boolean;
-}
-
-function parsed(url: string): URL | null {
-  try {
-    return new URL(url);
-  } catch {
-    return null;
-  }
-}
-
-function host(url: URL): string {
-  const lower = url.hostname.toLocaleLowerCase();
-  return lower.startsWith("www.") ? lower.slice(4) : lower;
+  /** Searching and being cited, reported apart. Every count above is taken
+   * over all answers, which is not the population any of them holds over. */
+  decomposition: CitationDecomposition;
 }
 
 export function buildCitationAnalysis(input: { answers: PromptAnswer[]; identity: BrandIdentity }): CitationAnalysis {
@@ -67,9 +59,9 @@ export function buildCitationAnalysis(input: { answers: PromptAnswer[]; identity
     const seenPages = new Set<string>();
 
     for (const raw of answer.citationUrls) {
-      const url = parsed(raw);
+      const url = canonicalUrl(raw);
       if (!url) continue;
-      const domain = host(url);
+      const domain = url.host;
       const isTarget = domain === input.identity.host || domainLabel(domain) === targetLabel;
 
       if (!seenDomains.has(domain)) {
@@ -82,11 +74,10 @@ export function buildCitationAnalysis(input: { answers: PromptAnswer[]; identity
       }
 
       if (isTarget) {
-        // Built from the normalised host, or www and non-www are two pages.
-        const key = `https://${domain}${url.pathname}`;
+        const key = url.key;
         if (seenPages.has(key)) continue;
         seenPages.add(key);
-        const page = pages.get(key) || { url: key, path: url.pathname || "/", answers: 0, prompts: [] };
+        const page = pages.get(key) || { url: key, path: url.path, answers: 0, prompts: [] };
         page.answers += 1;
         if (!page.prompts.includes(answer.promptText)) page.prompts.push(answer.promptText);
         pages.set(key, page);
@@ -106,5 +97,6 @@ export function buildCitationAnalysis(input: { answers: PromptAnswer[]; identity
     // The clearest opening first: the page a rival won most often.
     openings: openings.slice(0, 20),
     unavailable: completed.length > 0 && withCitations === 0,
+    decomposition: decomposeCitations({ answers: completed, identity: input.identity }),
   };
 }

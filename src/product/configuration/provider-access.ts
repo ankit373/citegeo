@@ -116,11 +116,11 @@ export const PROVIDER_ACCESS: ProviderAccess[] = [
     id: "azure-openai",
     label: "Azure OpenAI",
     cost: "metered",
-    search: "never",
+    search: "optional",
     endpoint: null,
     resolveEndpoint: () => azureOpenAIEndpoint() || null,
-    cost_note: "Billed to your Azure subscription.",
-    setup_note: "Azure portal, under Keys and Endpoint. Deployments are declared, not discovered, so list them yourself.",
+    cost_note: "Billed to your Azure subscription. Web-grounded runs use Azure's Responses API and Bing grounding.",
+    setup_note: "Azure portal, under Keys and Endpoint. Deployments are declared, not discovered, so list them yourself. Web search is offered for compatible GPT-4+ deployments and is verified by Azure when a run starts.",
     settings: [
       { key: "endpoint", label: "Endpoint", envKey: "AZURE_OPENAI_ENDPOINT" },
       { key: "deployments", label: "Deployments", envKey: "AZURE_OPENAI_DEPLOYMENTS" },
@@ -135,7 +135,10 @@ export const PROVIDER_ACCESS: ProviderAccess[] = [
     resolveEndpoint: () => openAICompatibleBaseUrl() || null,
     cost_note: "Runs cost nothing and never leave this machine.",
     setup_note: "Any OpenAI-compatible endpoint. The key may be a placeholder.",
-    settings: [{ key: "baseUrl", label: "Base URL", envKey: "OPENAI_COMPATIBLE_BASE_URL" }],
+    settings: [
+      { key: "baseUrl", label: "Base URL", envKey: "OPENAI_COMPATIBLE_BASE_URL" },
+      { key: "webSearch", label: "Gateway web search (true or false)", envKey: "OPENAI_COMPATIBLE_WEB_SEARCH" },
+    ],
   },
   {
     id: "bedrock",

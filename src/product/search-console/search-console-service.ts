@@ -7,6 +7,7 @@ import { ServiceAccountError } from "./service-account.js";
 import type { ProductProjectFileStore } from "../projects/project-store.js";
 import type { TopicInsights } from "../topics/topic-insights.js";
 import type { Prompt } from "../topics/topic-schema.js";
+import { ExternalMetricSnapshotStore } from "../external-metrics/snapshot-store.js";
 
 export class SearchConsoleUnavailableError extends Error {}
 
@@ -20,6 +21,8 @@ export interface SearchConsoleStatus {
 }
 
 export class SearchConsoleService {
+  private readonly snapshots: ExternalMetricSnapshotStore;
+
   constructor(
     private readonly projects: ProductProjectFileStore,
     private readonly secret: () => Promise<string | null>,
@@ -27,7 +30,9 @@ export class SearchConsoleService {
     private readonly client = new SearchConsoleClient(),
     private readonly propertyId: () => string | null = () => null,
     private readonly analytics = new AnalyticsClient(),
-  ) {}
+  ) {
+    this.snapshots = new ExternalMetricSnapshotStore(projects);
+  }
 
   private key(projectId: string): string {
     return this.projects.keyFor(projectId, "search-console", "report.json");
@@ -35,6 +40,10 @@ export class SearchConsoleService {
 
   private referralKey(projectId: string): string {
     return this.projects.keyFor(projectId, "search-console", "referrals.json");
+  }
+
+  async metricSnapshots(projectId: string) {
+    return this.snapshots.list(projectId);
   }
 
   async referrals(projectId: string): Promise<{ configured: boolean; propertyId: string | null; report: ReferralReport | null; detail: string }> {
@@ -71,6 +80,21 @@ export class SearchConsoleService {
         to: window.to,
       });
       await putJson(this.projects.objects, this.referralKey(projectId), report);
+      await this.snapshots.append({
+        projectId,
+        source: "google_analytics",
+        sourceScope: { propertyId: property, windowDays: String(days) },
+        observedAt: report.fetchedAt,
+        periodStart: report.from,
+        periodEnd: report.to,
+        dataFreshThrough: report.to,
+        values: {
+          total_sessions: report.totalSessions,
+          assistant_sessions: report.assistants.reduce((total, row) => total + row.sessions, 0),
+          assistant_engaged_sessions: report.assistants.reduce((total, row) => total + (row.engaged || 0), 0),
+        },
+        completeness: report.empty ? "unknown" : "complete",
+      });
       return report;
     } catch (error) {
       throw error instanceof ServiceAccountError ? new SearchConsoleUnavailableError(error.message) : error;
@@ -117,6 +141,21 @@ export class SearchConsoleService {
 
     const report = buildSearchDemand({ siteUrl: site, window, rows, prompts: input.prompts, insights: input.insights });
     await putJson(this.projects.objects, this.key(input.projectId), report);
+    await this.snapshots.append({
+      projectId: input.projectId,
+      source: "google_search_console",
+      sourceScope: { siteUrl: site, windowDays: String(input.days || 90) },
+      observedAt: report.fetchedAt,
+      periodStart: report.window.from,
+      periodEnd: report.window.to,
+      dataFreshThrough: report.window.to,
+      values: {
+        query_rows: report.queries,
+        impressions: report.totalImpressions,
+        clicks: report.prompts.reduce((total, prompt) => total + prompt.clicks, 0),
+      },
+      completeness: "complete",
+    });
     return report;
   }
 }

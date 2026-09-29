@@ -43,7 +43,7 @@ The solid lines are the current product's actual dependencies. The dashed lines 
 | Continuous measurement | [measurement-service.ts](../src/product/measurements/measurement-service.ts): D/K probe planning, execution, and per-probe retries |
 | Statistics | [measurement-stats.ts](../src/product/measurements/measurement-stats.ts): generates metric points and sample indices per model/object/keyword/run, without calling a model |
 | Scheduling | [schedule-service.ts](../src/product/scheduling/schedule-service.ts), [schedule-worker.ts](../src/product/scheduling/schedule-worker.ts): cron computation, due-record detection, task locking, measurement dispatch, and final-state reconciliation |
-| Interface | [product-phase4-app.ts](../src/ui/product-phase4-app.ts) for recognition/reports; [product-phase5-app.ts](../src/ui/product-phase5-app.ts) for measurement/charts/tasks |
+| Interface | [product-phase4-app.ts](../src/ui/product-phase4-app.ts) for recognition/reports; [measurement-workbench-app.ts](../src/ui/measurement-workbench-app.ts) for measurement/charts/tasks |
 
 The default page is `/`, and continuous measurement is `/?view=measurements`. There is currently no arbitrary-path SPA fallback; do not treat a guessed address like `/projects/...` as a working deep link. How other query parameters are read is governed by the matching interface code.
 

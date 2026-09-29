@@ -19,12 +19,24 @@ function signals(overrides: Partial<SiteSignals> = {}): SiteSignals {
 
 const ids = (actions: ReturnType<typeof buildActionPlan>) => actions.map((action) => action.id);
 
-test("a blocked crawler outranks every other finding", () => {
+test("a blocked crawler is a traffic finding, not the thing that decides citation", () => {
   const plan = buildActionPlan({
     signals: signals({ robots: { present: true, blocked: ["GPTBot"], allowed: ["ClaudeBot"] }, wikidata: { present: false, id: null, searched: "Example" } }),
   });
-  assert.equal(plan[0]?.id, "crawlers-blocked");
-  assert.equal(plan[0]?.severity, "critical");
+  const action = plan.find((item) => item.id === "crawlers-blocked");
+  assert.ok(action, "expected the blocked-crawler finding");
+  assert.equal(action.severity, "high", "critical said it decided citation, and it does not");
+  assert.ok(action.why.includes("referred traffic"));
+  assert.ok(!action.fix.includes("never cite"), "engines cite blocked domains routinely");
+});
+
+test("the blocked-crawler finding carries why the obvious reading is wrong", () => {
+  const plan = buildActionPlan({
+    signals: signals({ robots: { present: true, blocked: ["GPTBot"], allowed: [] } }),
+  });
+  const action = plan.find((item) => item.id === "crawlers-blocked");
+  assert.ok(action?.evidence.includes("cited anyway"));
+  assert.ok(action?.evidence.includes("may not fare the same"), "the sample was large publishers, so the caveat travels");
 });
 
 test("sameAs pointing only at owned profiles is called out as corroborating nothing", () => {

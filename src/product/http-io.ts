@@ -32,8 +32,20 @@ export async function formOrJsonBody(req: IncomingMessage): Promise<Record<strin
   return out;
 }
 
+/**
+ * On every response, because the one that matters most is the redirect the
+ * authorisation code arrives on and that one is easy to forget.
+ */
+export const SAFETY_HEADERS: Record<string, string> = {
+  // An authorisation code arrives in a query string. Without this it travels
+  // on to whatever the page loads next, in the Referer.
+  "Referrer-Policy": "no-referrer",
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+};
+
 export function send(res: ServerResponse, status: number, body: unknown, contentType = "application/json"): void {
-  res.writeHead(status, { "Content-Type": contentType });
+  res.writeHead(status, { "Content-Type": contentType, ...SAFETY_HEADERS });
   res.end(contentType === "application/json" ? JSON.stringify(body, null, 2) : String(body));
 }
 
@@ -57,6 +69,7 @@ export async function sendAsset(res: ServerResponse, path: string): Promise<void
   res.writeHead(200, {
     "Content-Type": assetContentType(path),
     "Cache-Control": "public, max-age=3600",
+    ...SAFETY_HEADERS,
   });
   res.end(await readFile(path));
 }

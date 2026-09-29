@@ -63,6 +63,9 @@
   --hairline: 1px solid var(--line);
   --hairline-strong: 1px solid var(--line-strong);
   --shadow-sm: 0 1px 2px rgba(26,25,22,.04);
+  /* A drawer sits above everything, so it casts rather than borrows. On paper
+     that is a shadow; on ink a shadow is invisible and a light rim reads. */
+  --color-shadow-panel: -12px 0 40px rgba(20,18,14,.16);
   --shadow: 0 1px 3px rgba(26,25,22,.05),0 1px 1px rgba(26,25,22,.03);
   --motion-fast: 140ms;
   --motion-normal: 260ms;
@@ -99,6 +102,7 @@
   --skeleton: var(--color-skeleton);
   --skeleton-sheen: var(--color-skeleton-sheen);
   --scrim: var(--color-scrim);
+  --shadow-panel: var(--color-shadow-panel);
   --type-micro: var(--text-micro);
   --type-xs: var(--text-xs);
   --type-sm: var(--text-sm);
@@ -176,7 +180,11 @@
       --color-scrim: rgba(0,0,0,.52);
       --scrim: rgba(0,0,0,.52);
 
-      --shadow-sm:0 1px 2px rgba(0,0,0,.28);
+      --color-shadow-panel:-14px 0 46px rgba(0,0,0,.52), inset 1px 0 0 rgba(255,255,255,.06);
+      --shadow-panel:-14px 0 46px rgba(0,0,0,.52), inset 1px 0 0 rgba(255,255,255,.06);
+      --color-shadow-panel:-14px 0 46px rgba(0,0,0,.52), inset 1px 0 0 rgba(255,255,255,.06);
+    --shadow-panel:-14px 0 46px rgba(0,0,0,.52), inset 1px 0 0 rgba(255,255,255,.06);
+    --shadow-sm:0 1px 2px rgba(0,0,0,.28);
       --shadow:0 1px 3px rgba(0,0,0,.32),0 1px 1px rgba(0,0,0,.22);
     }
   }
@@ -311,6 +319,20 @@
   @apply cursor-pointer border-0 bg-transparent p-0 font-[inherit] text-text underline;
 }
 
+/* The product app used these three before they existed here, so every badge
+   that meant good, watch or bad rendered as ordinary text. */
+@utility state-ok {
+  @apply font-medium text-confirmed-text;
+}
+
+@utility state-flag {
+  @apply font-medium text-unknown-text;
+}
+
+@utility state-bad {
+  @apply font-medium text-failed-text;
+}
+
 @utility bar {
   @apply mt-2 h-1 overflow-hidden rounded-[2px] bg-sunken;
 }
@@ -341,7 +363,7 @@
   @apply grid-cols-[20px_minmax(0,1fr)_150px] items-start;
 }
 @utility mcols-source {
-  @apply grid-cols-[minmax(0,1fr)_110px_100px] items-start;
+  @apply grid-cols-[minmax(0,1fr)_110px_100px_116px] items-start;
 }
 @utility mcols-search {
   @apply grid-cols-[minmax(0,1fr)_104px_74px_92px] items-start;
@@ -350,7 +372,10 @@
   @apply grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)_110px] items-start;
 }
 @utility mcols-selected {
-  @apply grid-cols-[minmax(0,1fr)_104px_92px_178px];
+  @apply grid-cols-[minmax(0,1fr)_104px_92px_178px_84px];
+}
+@utility mcols-external-metrics {
+  @apply grid-cols-[minmax(0,1.7fr)_90px_120px_120px] items-start;
 }
 @utility mcols-readonly {
   @apply grid-cols-[minmax(0,1fr)_104px_178px];
@@ -393,6 +418,33 @@
 }
 @utility mcols-rank {
   @apply grid-cols-[minmax(0,1fr)_92px_84px];
+}
+@utility mcols-cause {
+  @apply grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] items-start;
+}
+@utility mcols-task {
+  @apply grid-cols-[minmax(0,1fr)_200px] items-start;
+}
+@utility mcols-offer {
+  @apply grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)_190px] items-start;
+}
+@utility mcols-draft {
+  @apply grid-cols-[minmax(0,1fr)_110px_180px] items-start;
+}
+@utility mcols-claim {
+  @apply grid-cols-[minmax(0,1.2fr)_140px_minmax(0,1.2fr)] items-start;
+}
+@utility mcols-product {
+  @apply grid-cols-[minmax(0,1fr)_140px_minmax(0,1fr)] items-start;
+}
+@utility mcols-merchant {
+  @apply grid-cols-[minmax(0,1fr)_110px_minmax(0,1fr)] items-start;
+}
+@utility mcols-question {
+  @apply grid-cols-[minmax(0,1fr)_130px_90px] items-start;
+}
+@utility mcols-anchor {
+  @apply grid-cols-[minmax(0,1fr)_170px_170px] items-start;
 }
 
 /* The frame. One shell, one rail, one header, one footer. */
@@ -913,3 +965,42 @@ select[data-filter].is-set {
 .rloose-list { @apply mt-[12px] grid gap-[6px] border-t border-line pt-[12px]; }
 .rloose { @apply flex flex-wrap items-baseline gap-[8px] text-[13px]; }
 .rcaveat { @apply mt-[10px] text-[12px]; max-width: 62ch; }
+
+/* A finished connection is a tick, not a sentence. */
+.connected-tick {
+  @apply inline-flex items-center justify-center rounded-full;
+  width: 22px; height: 22px;
+  background: var(--confirmed-wash);
+  color: var(--confirmed-text);
+  font-size: 13px; font-weight: 600;
+}
+
+/* Shared onboarding components. A setup page should tell the reader what to
+   do next before exposing every integration field. */
+.setup-steps { @apply m-0 grid list-none gap-[10px] p-0; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.setup-steps li { @apply flex min-w-0 items-start gap-[10px] rounded-[8px] border border-line bg-sunken p-[12px]; }
+.setup-steps li.is-complete { border-color: var(--confirmed-text); }
+.setup-step-number { @apply grid size-[22px] shrink-0 place-items-center rounded-full border border-line text-[11px] font-semibold text-muted; }
+.setup-steps li.is-complete .setup-step-number { background: var(--confirmed-text); border-color: var(--confirmed-text); color: var(--paper); }
+.setup-steps strong,.setup-steps small { @apply block; }
+.setup-steps strong { @apply text-[13px] font-semibold; }
+.setup-steps small { @apply mt-[3px] text-[12px] leading-[1.4] text-muted; }
+.connection-settings { @apply mt-[14px] border-t border-line pt-[13px]; }
+.connection-settings h4 { @apply m-0 text-[13px] font-semibold; }
+.connection-settings-grid { @apply mt-[10px] grid gap-[10px]; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+.connection-setting { @apply grid gap-[5px] text-[12px] font-medium; }
+.connection-setting input { @apply min-h-[36px] rounded-[7px] border border-line bg-sunken px-[9px] text-[13px] text-text; }
+.connection-setting input[readonly] { @apply cursor-not-allowed bg-raised text-muted; }
+.connection-setting small { @apply text-[11px] font-normal text-weak; }
+.connection-settings .inline-actions { @apply mt-[10px]; }
+@media (max-width: 720px) { .setup-steps { grid-template-columns: 1fr; } }
+
+@layer components {
+  .llms-draft {
+    @apply m-0 overflow-auto rounded-[8px] border border-line bg-sunken p-[14px] text-[12px] leading-[1.6] text-text;
+    font-family: var(--font-mono);
+    max-height: 420px;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+}

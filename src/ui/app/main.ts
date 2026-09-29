@@ -1,5 +1,6 @@
 import { CONFIG } from "./config.js";
 import { dashboardBody, dashboardPanels, heroStats, type DashboardData } from "./pages/dashboard-view.js";
+import { buyingView, claimsView, conversationsView, draftsView, entityView, marketerView } from "./pages/marketer-view.js";
 import { exportName, filterSummary, matchesQuery, panelCsv } from "./components/panel-tools.js";
 import { emptyState, notice, section } from "./components/primitives.js";
 import { button } from "./components/button.js";
@@ -7,6 +8,7 @@ import { navScrim, navToggle, wireNav } from "./components/nav.js";
 import { hasPanelOrder, resetPanelOrder, setPanelSpan, togglePanelHidden, wirePanelDrag } from "./components/reorder.js";
 import { wireChartHover } from "./components/chart-hover.js";
 import { setupView, type CredentialRow, type IntegrationRow, type ProviderRow, type SetupData, type StorageCheck, type StorageSettings } from "./pages/setup-view.js";
+import { selectedModelTable, webSearchModeControl } from "./components/model-picker.js";
 
 /** What moved since the previous run, in sentences. Only built when
  * something did: a digest that usually says nothing stops being read. */
@@ -36,9 +38,13 @@ export function boot(): void {
     insights: Unshaped; insightsState: LoadState;
     crawlers: Unshaped; crawlersState: LoadState;
     plan: Unshaped; planState: LoadState;
+    marketer: Unshaped; drafts: Unshaped; claims: Unshaped; buying: Unshaped; conversations: Unshaped; entity: Unshaped;
+    marketerState: LoadState;
     signals: Unshaped; signalsState: LoadState;
     credentials: CredentialFile | null; credentialsState: LoadState; credentialNotice: Notice;
     integrations: IntegrationRow[]; integrationsState: LoadState;
+    externalMetrics: { snapshots: any[] } | null; externalMetricsState: LoadState;
+    externalMetricsPulling: "" | "ahrefs" | "semrush"; externalMetricsNotice: Notice;
     digest: AnswerDigest | null; digestState: LoadState;
     demand: Unshaped; demandState: LoadState;
     dashMetric: string; dashRange: string;
@@ -87,7 +93,7 @@ export function boot(): void {
     matrixHidden: string[];
   }
 
-    const state: State = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, integrations:[], integrationsState:"idle", digest:null, digestState:"idle", demand:null, demandState:"idle", dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", promptFilters:{ query:"", topicId:"", intent:"", status:"" }, promptSelection:[], answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", rivals:null, rivalsState:"idle", segments:null, segmentsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, lastRun:null, runPollTimer:0, runFeed:[], runFeedState:"idle", runFeedTimer:0, rankPlan:null, rankPlanState:"idle", brief:null, briefState:"idle", outreach:null, outreachState:"idle", harvesting:false, searchDemand:null, searchDemandState:"idle", pulling:false, personas:null, personasState:"idle", priority:null, priorityState:"idle", promptSort:"topic", referrals:null, referralsState:"idle", pullingReferrals:false, engines:null, enginesState:"idle", actions:[], actionsState:"idle", matrixOpen:[], editingBoard:false, brandIcons:{}, panelViews:savedJson("panelViews"), matrixHidden:savedList("matrixHidden") };
+    const state: State = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", marketer:null, drafts:null, claims:null, buying:null, conversations:null, entity:null, marketerState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, integrations:[], integrationsState:"idle", externalMetrics:null, externalMetricsState:"idle", externalMetricsPulling:"", externalMetricsNotice:{text:"",kind:""}, digest:null, digestState:"idle", demand:null, demandState:"idle", dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", promptFilters:{ query:"", topicId:"", intent:"", status:"" }, promptSelection:[], answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", rivals:null, rivalsState:"idle", segments:null, segmentsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, lastRun:null, runPollTimer:0, runFeed:[], runFeedState:"idle", runFeedTimer:0, rankPlan:null, rankPlanState:"idle", brief:null, briefState:"idle", outreach:null, outreachState:"idle", harvesting:false, searchDemand:null, searchDemandState:"idle", pulling:false, personas:null, personasState:"idle", priority:null, priorityState:"idle", promptSort:"topic", referrals:null, referralsState:"idle", pullingReferrals:false, engines:null, enginesState:"idle", actions:[], actionsState:"idle", matrixOpen:[], editingBoard:false, brandIcons:{}, panelViews:savedJson("panelViews"), matrixHidden:savedList("matrixHidden") };
     const app = document.getElementById("app") as HTMLElement;
     let renderOverride: (() => void) | null = null;
     // render() was a hoisted declaration that a later line reassigned. A
@@ -99,7 +105,7 @@ export function boot(): void {
     const formatTime = (value: string) => new Date(value).toLocaleString();
     const modeText = (mode: string) => mode === "provider_native" ? "Provider Native web search" : "Offline";
     const statusText = (status: string) => status === "draft" ? "Draft" : status === "active" ? "Running" : status === "archived" ? "Archived" : "Deleted";
-    function setSelectedProject(projectId: string) { if (projectId !== state.selectedId) { state.liveRun = null; state.lastRun = null; state.insights = null; state.insightsState = "idle"; state.plan = null; state.planState = "idle"; state.rankPlan = null; state.rankPlanState = "idle"; state.engines = null; state.enginesState = "idle"; state.actions = []; state.actionsState = "idle"; state.outreach = null; state.outreachState = "idle"; state.searchDemand = null; state.searchDemandState = "idle"; state.personas = null; state.personasState = "idle"; state.priority = null; state.priorityState = "idle"; state.referrals = null; state.referralsState = "idle"; state.crawlers = null; state.crawlersState = "idle"; state.signals = null; state.signalsState = "idle"; } state.selectedId = projectId || ""; if (state.selectedId) localStorage.setItem("citegeo.product.projectId", state.selectedId); else localStorage.removeItem("citegeo.product.projectId"); const next = new URL(window.location.href); if (state.selectedId) next.searchParams.set("projectId", state.selectedId); else next.searchParams.delete("projectId"); window.history.replaceState({ projectId:state.selectedId }, "", next); }
+    function setSelectedProject(projectId: string) { if (projectId !== state.selectedId) { state.liveRun = null; state.lastRun = null; state.insights = null; state.insightsState = "idle"; state.plan = null; state.planState = "idle"; state.rankPlan = null; state.rankPlanState = "idle"; state.engines = null; state.enginesState = "idle"; state.actions = []; state.actionsState = "idle"; state.outreach = null; state.outreachState = "idle"; state.searchDemand = null; state.searchDemandState = "idle"; state.personas = null; state.personasState = "idle"; state.priority = null; state.priorityState = "idle"; state.referrals = null; state.referralsState = "idle"; state.crawlers = null; state.crawlersState = "idle"; state.signals = null; state.signalsState = "idle"; state.externalMetrics = null; state.externalMetricsState = "idle"; state.externalMetricsPulling = ""; state.externalMetricsNotice = { text:"", kind:"" }; } state.selectedId = projectId || ""; if (state.selectedId) localStorage.setItem("citegeo.product.projectId", state.selectedId); else localStorage.removeItem("citegeo.product.projectId"); const next = new URL(window.location.href); if (state.selectedId) next.searchParams.set("projectId", state.selectedId); else next.searchParams.delete("projectId"); window.history.replaceState({ projectId:state.selectedId }, "", next); }
     function setDrawer(open: boolean) { document.body.classList.toggle("drawer-open", open); element("project-drawer").setAttribute("aria-hidden", String(!open)); }
     function openDrawer() { state.drawerSession += 1; setFormStatus("", ""); setDrawer(true); window.setTimeout(() => element("project-domain").focus(), 0); }
     function closeDrawer() { state.drawerSession += 1; setDrawer(false); }
@@ -365,14 +371,6 @@ export function boot(): void {
       }
     }
 
-    function selectAllShown() {
-      const set = state.topicSet || { topics: [], prompts: [] };
-      const rows = filteredPrompts(set, promptStandings());
-      const all = rows.length > 0 && rows.every((prompt) => state.promptSelection.indexOf(prompt.id) >= 0);
-      state.promptSelection = all ? [] : rows.map((prompt) => prompt.id);
-      refreshPromptResults();
-    }
-
     // Only the prompts the action can apply to: activating something already
     // tracked is a no-op the count should not claim.
     async function bulkPrompts(action: string) {
@@ -539,6 +537,147 @@ export function boot(): void {
         + insightTable("mcols-crawler", ["Crawler", "Fetches", "Pages", "Errors", "Last seen"], rows ? [rows] : [], "No AI crawler appears in this log.")
         + orphan + '</section>';
     }
+    /** Every marketer surface is read-only and cheap, so one loader fills them
+     * all and a page never waits on a request it does not use. */
+    /** The shared probe reloads the plan page, so on this page the probe ran
+     * and nothing moved. This one reports progress and reloads what is shown. */
+    async function probeForEntity(control: Element) {
+      const selected = project();
+      if (!selected) return;
+      const label = control.textContent || "Probe the site now";
+      (control as HTMLButtonElement).disabled = true;
+      control.textContent = "Probing the site…";
+      try {
+        await request("/api/projects/" + selected.id + "/signals", { method: "POST" });
+        state.marketerState = "idle";
+        loadMarketer();
+      } catch (error) {
+        shortReason(control, error);
+        (control as HTMLButtonElement).disabled = false;
+        return;
+      }
+      control.textContent = label;
+    }
+
+    function draftBody(draftId: string): string {
+      const rows = (state.drafts?.drafts || []) as any[];
+      const found = rows.find((row) => row.id === draftId);
+      return found ? `# ${found.title}\n\n${found.body}` : "";
+    }
+
+    /** A draft with nowhere to go is not finished work, so it leaves as text.
+     * Clipboard access can be refused, and saying so beats a silent no-op. */
+    async function copyText(control: Element, text: string) {
+      if (!text) { control.textContent = "Nothing to copy"; return; }
+      const label = control.textContent || "Copy";
+      try {
+        await navigator.clipboard.writeText(text);
+        control.textContent = "Copied";
+      } catch (error) {
+        control.textContent = "Copying was refused";
+      }
+      window.setTimeout(() => { control.textContent = label; }, 1800);
+    }
+
+    /** Reading claims or buying answers spends a model call per answer, so the
+     * control says it is working and reports the provider's reason if it is not. */
+    async function runMarketerCheck(control: Element, where: "factcheck" | "shopping") {
+      const selected = project();
+      if (!selected) return;
+      const label = control.textContent || "Run";
+      (control as HTMLButtonElement).disabled = true;
+      control.textContent = "Reading the answers…";
+      try {
+        await request("/api/projects/" + selected.id + "/" + where, { method: "POST", body: JSON.stringify({}) });
+        state.marketerState = "idle";
+        loadMarketer();
+      } catch (error) {
+        shortReason(control, error);
+        (control as HTMLButtonElement).disabled = false;
+        return;
+      }
+      control.textContent = label;
+    }
+
+    /** A provider lists every model it tried, which is hundreds of characters
+     * and unreadable on a button. The first sentence goes on the control and
+     * the whole of it stays reachable on hover. */
+    function shortReason(control: Element, error: unknown) {
+      const full = error instanceof Error ? error.message : String(error);
+      const stop = full.indexOf(". ");
+      const first = stop === -1 ? full : full.slice(0, stop + 1);
+      control.textContent = first.length > 90 ? `${first.slice(0, 87)}…` : first || "It did not work";
+      control.setAttribute("title", full);
+    }
+
+    /** Drafting spends a model call per gap, so the button says what it is
+     * doing and the reason is shown when a provider refuses. */
+    async function runDraft(control: Element, templateId: string, batch: boolean) {
+      const selected = project();
+      if (!selected || !templateId) return;
+      const label = control.textContent || "Draft";
+      (control as HTMLButtonElement).disabled = true;
+      control.textContent = batch ? "Drafting every gap…" : "Drafting…";
+      try {
+        await request("/api/projects/" + selected.id + "/agents", {
+          method: "POST",
+          body: JSON.stringify(batch ? { templateId, batch: true } : { templateId }),
+        });
+        state.marketerState = "idle";
+        state.page = "drafts";
+        loadMarketer();
+      } catch (error) {
+        shortReason(control, error);
+        (control as HTMLButtonElement).disabled = false;
+        return;
+      }
+      control.textContent = label;
+    }
+
+    async function reviewDraft(control: Element, value: string) {
+      const selected = project();
+      const at = value.indexOf(":");
+      if (!selected || at === -1) return;
+      (control as HTMLButtonElement).disabled = true;
+      try {
+        await request("/api/projects/" + selected.id + "/agents/" + value.slice(0, at) + "/review", {
+          method: "POST",
+          body: JSON.stringify({ status: value.slice(at + 1) }),
+        });
+        state.marketerState = "idle";
+        loadMarketer();
+      } catch (error) {
+        shortReason(control, error);
+        (control as HTMLButtonElement).disabled = false;
+      }
+    }
+
+    async function loadMarketer() {
+      if (state.marketerState === "loading") return;
+      const selected = project();
+      if (!selected) return;
+      state.marketerState = "loading";
+      const at = "/api/projects/" + selected.id;
+      const quietly = async (path: string) => request(at + path).catch(() => null);
+      try {
+        const [memo, agents, claims, buying, conversations, entity, llms] = await Promise.all([
+          quietly("/aim"), quietly("/agents"), quietly("/factcheck"), quietly("/shopping"),
+          quietly("/conversations"), quietly("/entity"), quietly("/llms-txt"),
+        ]);
+        state.marketer = memo?.memo || null;
+        state.drafts = agents || null;
+        // The report is absent until a check has run, which is not an empty one.
+        state.claims = claims?.report ? { ...claims.report, ...claims } : null;
+        state.buying = buying?.report || null;
+        state.conversations = conversations?.explorations || [];
+        state.entity = { alignment: entity?.alignment || null, llms: llms?.draft || null };
+        state.marketerState = "ready";
+      } catch (error) {
+        state.marketerState = "error";
+      }
+      render();
+    }
+
     async function loadPlan() {
       if (state.planState === "loading") return;
       const selected = project();
@@ -724,6 +863,35 @@ export function boot(): void {
         + '<div class="dash-split"><div>' + (points.length ? trendChart(points, series.label) : '<p class="subtle">' + html(series.empty) + '</p>') + '</div>'
         + '<div><div class="mtable"><div class="mhead mcols-rank"><span>Model</span><span>Recognised</span><span>Visibility</span></div>' + (modelRows || '<div class="mrow mcols-rank"><span class="mcell">No answers yet.</span></div>') + '</div></div></div></section></section>';
     }
+    /** One shell for every marketer page, so each one loads the same way and
+     * an empty one says what is absent rather than showing nothing. */
+    function marketerPage(title: string, blurb: string, body: () => string) {
+      if (state.marketerState === "idle") { loadMarketer(); }
+      const inner = state.marketerState === "error"
+        ? '<p class="subtle">Could not read this project.</p>'
+        : state.marketerState !== "ready" ? '<p class="subtle">Reading what has been measured…</p>' : body();
+      return '<section class="view"><div class="heading"><div><h1>' + html(title) + '</h1><p class="subtle">' + html(blurb) + '</p></div></div>' + inner + '</section>';
+    }
+
+    function renderMarketer() {
+      return marketerPage("Marketer", "What moved, what moved it, and what would act on it. Nothing here calls a model.", () => marketerView(state.marketer));
+    }
+    function renderDrafts() {
+      return marketerPage("Drafts", "Pages drafted from a measured gap. Every one waits for your decision.", () => draftsView(state.drafts));
+    }
+    function renderClaims() {
+      return marketerPage("Claims", "What the answers assert about you, settled against your own pages.", () => claimsView(state.claims));
+    }
+    function renderBuying() {
+      return marketerPage("Buying", "Which products and retailers a buying answer actually named.", () => buyingView(state.buying));
+    }
+    function renderConversations() {
+      return marketerPage("Conversations", "Real demand, and which of it nothing here measures.", () => conversationsView(state.conversations || []));
+    }
+    function renderEntity() {
+      return marketerPage("Entity", "What corroborates this brand from outside its own control.", () => entityView(state.entity?.alignment || null, state.entity?.llms || null));
+    }
+
     function renderActionPlan() {
       if (state.planState === "idle") { loadPlan(); }
       const head = '<section class="section-card"><div class="section-head"><div><h2>What to do next</h2><p class="subtle">Ordered by what decides whether a model can cite you at all. Every line names the observation behind it.</p></div><div class="inline-actions">' + button({ label: "Probe the site", on: { "data-probe-signals": true } }) + '</div></div>';
@@ -741,7 +909,9 @@ export function boot(): void {
       const done = plan.actions.filter((action: any) => action.severity === "done");
       const row = (action: any) => '<li class="step plan-step" data-state="' + (action.severity === "critical" ? "warn" : action.severity === "done" ? "done" : "next") + '">'
         + '<span class="step-index ' + (action.severity === "critical" ? "state-bad" : action.severity === "high" ? "state-flag" : "") + '">' + html(action.severity === "done" ? "ok" : action.severity) + '</span>'
-        + '<span class="step-label"><strong>' + html(action.title) + '</strong><br><span class="step-note">' + html(action.evidence) + '</span>'
+        + '<span class="step-label"><strong>' + html(action.title) + '</strong>'
+        + (action.severity === "done" || !action.why ? '' : '<br><span class="step-why">' + html(action.why) + '</span>')
+        + '<br><span class="step-note">Observed: ' + html(action.evidence) + '</span>'
         + (action.severity === "done" ? '' : '<br><span class="step-note state-ok">Fix: ' + html(action.fix) + '</span>')
         + '</span></li>';
       return head + changes
@@ -817,6 +987,34 @@ export function boot(): void {
       render();
     }
 
+    async function loadExternalMetrics() {
+      if (!state.selectedId || state.externalMetricsState === "loading") return;
+      state.externalMetricsState = "loading";
+      try {
+        state.externalMetrics = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/external-metrics");
+        state.externalMetricsState = "ready";
+      } catch (error) {
+        state.externalMetricsState = "error";
+      }
+      render();
+    }
+
+    async function pullExternalMetrics(source: "ahrefs" | "semrush", control: HTMLElement | null) {
+      if (!state.selectedId || state.externalMetricsPulling) return;
+      state.externalMetricsPulling = source;
+      state.externalMetricsNotice = { text:"", kind:"" };
+      render();
+      try {
+        const result = await runAction(control, { loading:"Pulling…", success:"Saved", error:"Pull failed" }, () => request<{ snapshot: { source: string } }>("/api/projects/" + encodeURIComponent(state.selectedId) + "/external-metrics", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ source }) }));
+        state.externalMetricsNotice = { text: (result.snapshot.source === "ahrefs" ? "Ahrefs" : "Semrush") + " estimate saved as a dated snapshot.", kind:"success" };
+        state.externalMetricsState = "idle";
+      } catch (error) {
+        state.externalMetricsNotice = { text: error instanceof Error ? error.message : String(error), kind:"error" };
+      }
+      state.externalMetricsPulling = "";
+      await loadExternalMetrics();
+    }
+
     async function loadCredentials() {
       if (state.credentialsState === "loading") return;
       state.credentialsState = "loading";
@@ -858,6 +1056,23 @@ export function boot(): void {
       loadCredentials();
       loadProviders();
     }
+    async function saveIntegrationSettings(providerId: any, button: HTMLElement | null) {
+      const settings: Record<string, string> = {};
+      const prefix = String(providerId) + ":";
+      document.querySelectorAll<HTMLInputElement>("[data-integration-setting]").forEach((field) => {
+        const identity = field.getAttribute("data-integration-setting") || "";
+        if (!identity.startsWith(prefix)) return;
+        settings[identity.slice(prefix.length)] = field.value;
+      });
+      try {
+        const result = await runAction(button, { loading:"Saving scope…", success:"Scope saved", error:"Refused" }, () => request("/api/credentials/" + encodeURIComponent(providerId) + "/settings", { method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ settings }) }));
+        state.credentialNotice = { text:result.detail || "Connection settings saved.", kind:"success" };
+      } catch (error) {
+        state.credentialNotice = { text:error instanceof Error ? error.message : String(error), kind:"error" };
+      }
+      state.credentialsState = "idle";
+      loadCredentials();
+    }
     function pct(value: any) { return value === null || value === undefined ? "Not measurable" : Math.round(value * 100) + "%"; }
     function scoreText(value: any) { return value === null || value === undefined ? "Not measurable" : String(value); }
     function intentLabel(intent: string) {
@@ -871,11 +1086,22 @@ export function boot(): void {
 
     function renderScoreBreakdown(score: any) {
       if (!score || score.answers === 0) return '<p class="subtle">Nothing has been answered yet, so there is nothing to score. This is not a zero.</p>';
+      const band = score.presenceInterval;
+      // Absent on an archive scored before the range existed, so nothing is
+      // claimed about how precise those figures were.
+      const presenceNote = band && band.low !== null
+        ? score.appearances + ' of ' + score.answers + ', consistent with ' + pct(band.low) + ' to ' + pct(band.high)
+        : score.appearances + ' of ' + score.answers + ' answers named you';
+      const width = score.tooFewAnswers
+        ? '<div class="warning-box"><strong>Too few answers to read this as a rate.</strong> '
+          + score.answers + ' answer(s) leave the presence rate anywhere from ' + pct(band.low) + ' to ' + pct(band.high)
+          + ', which decides nothing. Track more questions, or more models, before acting on the number. ' + html(band.caveat) + '</div>'
+        : '';
       return '<div class="statgrid" style="--tile-columns:3">'
-        + stat("Presence", pct(score.presenceRate), score.appearances + ' of ' + score.answers + ' answers named you', score.presenceRate)
+        + stat("Presence", pct(score.presenceRate), presenceNote, score.presenceRate)
         + stat("Prominence", pct(score.prominence), score.prominence === null ? 'No answer gave a readable order' : 'Full marks means always named first', score.prominence)
         + stat("Sentiment", pct(score.sentiment), score.sentiment === null ? 'Nothing named, so nothing judged' : 'Full marks means always recommended', score.sentiment)
-        + '</div>';
+        + '</div>' + width;
     }
 
     function renderAbsent(rows: any[]) {
@@ -1384,6 +1610,13 @@ export function boot(): void {
       render();
     }
 
+    function ageCell(target: any) {
+      if (target.freshness === "unread") return '<span class="mcell subtle">Not read</span>';
+      if (target.freshness === "undated") return '<span class="mcell subtle">No date given</span>';
+      const tone = target.freshness === "fresh" ? "state-ok" : target.freshness === "ageing" ? "state-flag" : "state-bad";
+      return '<span class="mcell ' + tone + '">' + target.ageDays + ' days</span>';
+    }
+
     function outreachRow(target: any) {
       const rivals = target.rivals.length
         ? '<span class="namechips">' + target.rivals.slice(0, 8).map((named: any, index: any) => '<span class="namechip"><b>' + (index + 1) + '</b>' + html(named.name) + '</span>').join("") + '</span>'
@@ -1394,7 +1627,8 @@ export function boot(): void {
         + '<span class="subtle">' + html(target.why) + '</span>'
         + '<span class="subtle">Cited answering: ' + html(target.prompts.slice(0, 2).join(" · ")) + '</span>' + rivals + '</div>'
         + '<span class="mcell ' + (target.namesYou ? "state-ok" : "state-bad") + '">' + (target.namesYou ? "You are on it" : "You are not") + '</span>'
-        + '<span class="mcell">' + target.citedBy + ' answer(s)</span></div>';
+        + '<span class="mcell">' + target.citedBy + ' answer(s)</span>'
+        + ageCell(target) + '</div>';
     }
 
     function renderOutreach() {
@@ -1407,9 +1641,18 @@ export function boot(): void {
       if (plan.unavailable) {
         return '<p class="subtle">No archived answer carried a source, so there is no page to read. That is a property of the models and surfaces that ran, not evidence that nobody cites you. Turn on a grounded provider or an answer surface and run again.</p>';
       }
+      const age = plan.freshness;
+      const aged = age.fresh + age.ageing + age.stale;
+      const freshLine = aged || age.undated
+        ? '<p class="subtle">Of the pages read back, ' + age.fresh + ' fresh, ' + age.ageing + ' ageing and ' + age.stale + ' stale'
+          + (age.undated ? ', and ' + age.undated + ' state no date at all' : '')
+          + (age.medianAgeDays === null ? '. None of them gave a date to take a median of.' : '. Median age ' + age.medianAgeDays + ' days.')
+          + ' ' + html(age.caveat) + '</p>'
+        : '';
       return '<p class="subtle">' + plan.cited + ' page(s) cited across ' + plan.answersWithCitations + ' of ' + plan.answersConsidered + ' answer(s). ' + plan.read + ' read back.</p>'
+        + freshLine
         + '<div class="inline-actions">' + harvestAction + '</div>'
-        + '<div class="mtable"><div class="mhead mcols-source"><span>Page</span><span>You</span><span>Cited</span></div>'
+        + '<div class="mtable"><div class="mhead mcols-source"><span>Page</span><span>You</span><span>Cited</span><span>Page age</span></div>'
         + plan.targets.slice(0, 20).map(outreachRow).join("") + '</div>';
     }
 
@@ -1697,6 +1940,40 @@ export function boot(): void {
         matrixOpen: state.matrixOpen,
         matrixHidden: state.matrixHidden,
         regionCaveat: data ? data.regionCaveat : "",
+        // Computed on the server, where both halves live. The view reads it.
+        link: (() => {
+          const held = state.referrals as Unshaped;
+          const link = held ? (held.link as Unshaped) : null;
+          return link && Array.isArray(link.rows) && link.rows.length ? link : undefined;
+        })(),
+        demand: (() => {
+          const held = state.searchDemand as Unshaped;
+          if (!held) return undefined;
+          const report = held.report as Unshaped;
+          const rows: Unshaped[] = report ? (report.prompts as Unshaped[]) || [] : [];
+          return {
+            configured: Boolean(held.configured && held.siteUrl),
+            pulled: Boolean(report),
+            impressions: rows.reduce((total: number, row: Unshaped) => total + (Number(row.impressions) || 0), 0),
+            clicks: rows.reduce((total: number, row: Unshaped) => total + (Number(row.clicks) || 0), 0),
+            gaps: rows.filter((row: Unshaped) => row.earnedInSearchAbsentInAnswers).length,
+            top: [...rows].sort((a: Unshaped, b: Unshaped) => (Number(b.impressions) || 0) - (Number(a.impressions) || 0))
+              .filter((row: Unshaped) => (Number(row.impressions) || 0) > 0)
+              .map((row: Unshaped) => ({ text: String(row.text), impressions: Number(row.impressions) || 0, position: row.position ?? null })),
+          };
+        })(),
+        arrivals: (() => {
+          const held = state.referrals as Unshaped;
+          if (!held) return undefined;
+          const report = held.report as Unshaped;
+          const rows: Unshaped[] = report ? (report.assistants as Unshaped[]) || [] : [];
+          return {
+            configured: Boolean(held.configured && held.propertyId),
+            pulled: Boolean(report),
+            sessions: rows.reduce((total: number, row: Unshaped) => total + (Number(row.sessions) || 0), 0),
+            assistants: rows.map((row: Unshaped) => ({ source: String(row.source), sessions: Number(row.sessions) || 0, engaged: Number(row.engaged) || 0 })),
+          };
+        })(),
         domain: String(home.domain || selected.normalizedDomain),
         score: home.score ?? null,
         change: home.change ?? null,
@@ -1846,6 +2123,8 @@ export function boot(): void {
       if (state.outreachState === "idle") { loadOutreach(); }
       if (state.rankPlanState === "idle") { loadRankingPlan(); }
       if (state.digestState === "idle") { loadDigest(); }
+      if (state.searchDemandState === "idle") { loadSearchDemand(); }
+      if (state.referralsState === "idle") { loadReferrals(); }
 
       const heading = (body: string): string => '<section class="view"><div class="heading"><div class="headmain"><h1>'
         + html(selected.name) + '</h1><p class="subtle">' + html(String((state.home && state.home.domain) || selected.normalizedDomain)) + '</p></div>'
@@ -1948,9 +2227,38 @@ export function boot(): void {
         : '<p class="subtle">No page won a question you were absent from.</p>';
 
       return '<p class="subtle">' + data.answersWithCitations + ' of ' + data.answersConsidered + ' answers carried a source.</p>'
+        + renderDecomposition(data.decomposition)
         + '<h3 style="margin-top:16px">Pages of yours the models reached for</h3>' + own
         + '<h3 style="margin-top:20px">Every domain cited</h3>' + rivals
         + '<h3 style="margin-top:20px">Pages that won a question you are absent from</h3>' + openings;
+    }
+
+    function sharePct(value: any) { return value === null || value === undefined ? null : (Math.round(value * 1000) / 10) + "%"; }
+
+    function renderDecomposition(report: any) {
+      if (!report || !report.activation || !report.activation.considered) return '';
+      const act = report.activation;
+      const searched = act.rate === null
+        ? 'Between ' + sharePct(act.low) + ' and ' + sharePct(act.high) + ' of answers searched the web'
+        : sharePct(act.rate) + ' of answers searched the web';
+      // Both ends equal reads as a band of nothing, so it is stated as one figure.
+      const settled = report.citedGivenActivated !== null || report.citedGivenActivatedLow === report.citedGivenActivatedHigh;
+      const cited = report.citedGivenActivatedHigh === null
+        ? 'Nothing is known to have searched, so there is no share among those to give.'
+        : settled
+          ? sharePct(report.citedGivenActivatedHigh) + ' of the answers that searched cited you.'
+          : 'Between ' + sharePct(report.citedGivenActivatedLow) + ' and ' + sharePct(report.citedGivenActivatedHigh) + ' of the answers that searched cited you, depending on how many of the unknown ones did.';
+      const overall = report.overall === null
+        ? ''
+        : 'Across all answers it is ' + sharePct(report.overall) + ', which is exact: an answer carrying no source cited nobody.';
+      const band = act.unknown
+        ? '<p class="subtle">' + act.activated + ' searched, ' + act.unavailable + ' could not search at all, and ' + act.unknown + ' could have searched and carried no source, which is unknown rather than a no.</p>'
+        : '';
+      return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>Searching, then being cited</h3>'
+        + '<p class="subtle">' + html(report.caveat) + '</p></div></div>'
+        + '<p>' + searched + '. ' + cited + ' ' + overall + '</p>'
+        + band
+        + '<p class="subtle">' + html(act.caveat) + '</p></div>';
     }
 
     function renderAnswerEngine() {
@@ -1966,18 +2274,32 @@ export function boot(): void {
           + '<div class="empty"><div class="empty-copy"><h2>No answers yet</h2><p class="subtle">Generate a prompt set, activate the questions worth tracking, then run them. Every number on this page traces back to an archived answer.</p></div></div></section>';
       }
       const weights = data.weights || { prominenceFloor: 0, sentimentFloor: 0 };
+      const objective = weights.objective
+        ? '<p class="subtle"><strong>What it is built to maximise.</strong> ' + html(weights.objective) + '</p>'
+          + '<p class="subtle"><strong>What it cannot be used for.</strong> ' + html(weights.limits || "") + '</p>'
+        : '';
       const failedNote = data.answersFailed ? '<div class="warning-box">' + data.answersFailed + ' answer(s) failed and are excluded. They are not counted as answers that did not name you.</div>' : '';
       const identityNote = data.identityCaveat ? '<div class="warning-box"><strong>Your name is a word in your own category.</strong> ' + html(data.identityCaveat) + '</div>' : '';
+      const corr = data.corroboration;
+      // Absent on an archive answered before the check existed, so nothing is
+      // claimed about those rather than counting them as unverified.
+      const corroborationNote = corr && corr.reported
+        ? '<div class="warning-box"><strong>What the model said it named, checked against what it wrote.</strong> '
+          + corr.measured + ' of ' + corr.reported + ' mentions were found in the answer and their position measured from it'
+          + (corr.absentFromAnswer ? ', and ' + corr.absentFromAnswer + ' named nothing the answer actually contains' : '')
+          + '. ' + (corr.quotesChecked ? corr.quotesFound + ' of ' + corr.quotesChecked + ' quoted lines are really in the answer. ' : '')
+          + html(corr.caveat) + '</div>'
+        : '';
       const citationNote = data.citationsUnavailable ? '<div class="warning-box">No answer carried a citation, so there are no sources to analyse. That is a property of the models you ran, not evidence that nobody cites you. A provider with web search will produce them.</div>' : '';
       return '<section class="view"><div class="heading"><div><h1>Answer engine</h1><p class="subtle">' + data.answers + ' answer(s) across ' + data.topics.length + ' topic(s) for ' + html(selected.normalizedDomain) + '. Click any question to read the answers behind it.</p></div><div class="inline-actions">' + button({ label: "Prompts", on: { "data-page": "prompts" } }) + '' + runActionButton("Run prompts") + '</div></div>'
         + renderLiveRun()
         + renderHero(data)
         + renderSavedViews()
         + renderSegment(data)
-        + identityNote + failedNote + citationNote
+        + identityNote + failedNote + citationNote + corroborationNote
         + '<section class="section-card"><div class="section-head"><div><h2>How the score is built</h2><p class="subtle">Presence scaled by where you appear and how you are described.</p></div></div>'
         + renderScoreBreakdown(data.overall)
-        + '<details class="technical-details"><summary>The formula, and the judgement in it</summary><p class="subtle">score = presence × (' + weights.prominenceFloor + ' + ' + (1 - weights.prominenceFloor).toFixed(1) + ' × prominence) × (' + weights.sentimentFloor + ' + ' + (1 - weights.sentimentFloor).toFixed(1) + ' × sentiment) × 100.</p><p class="subtle">The two floors are a judgement, not a measurement: being named late and grudgingly is still better than not being named, so prominence and sentiment scale presence rather than replacing it. Every component above is reported separately so you can ignore the composite entirely.</p></details></section>'
+        + '<details class="technical-details"><summary>The formula, and the judgement in it</summary>' + objective + '<p class="subtle">score = presence × (' + weights.prominenceFloor + ' + ' + (1 - weights.prominenceFloor).toFixed(1) + ' × prominence) × (' + weights.sentimentFloor + ' + ' + (1 - weights.sentimentFloor).toFixed(1) + ' × sentiment) × 100.</p><p class="subtle">The two floors are a judgement, not a measurement: being named late and grudgingly is still better than not being named, so prominence and sentiment scale presence rather than replacing it. Every component above is reported separately so you can ignore the composite entirely.</p></details></section>'
         + '<section class="section-card"><div class="section-head"><div><h2>What would move this</h2><p class="subtle">Read off the archived answers, strongest lever first. None of it is an opinion about your marketing.</p></div></div>' + renderRankingPlan() + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>Competitors named in the answers</h2><p class="subtle">Organisations the assistants named while answering your questions. Not the assistants themselves. Ranked by how many answers named them, then by how early.</p></div></div>' + renderLeaderboard(data.leaderboard) + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>Rivals you name</h2><p class="subtle">Name a competitor here and it is tracked whether or not an answer mentions it. A tracked rival nobody named reads as zero, which is a finding; leaving it out would hide it.</p></div></div>' + renderRivals(data) + '</section>'
@@ -2157,7 +2479,6 @@ export function boot(): void {
         + '<select data-prompt-filter="intent" aria-label="Filter by intent"' + (filters.intent ? ' class="is-set"' : '') + '><option value="">Any intent</option>' + intents + '</select>'
         + '<select data-prompt-filter="status" aria-label="Filter by state"' + (filters.status ? ' class="is-set"' : '') + '>' + states + '</select>'
         + '<select data-prompt-sort aria-label="Order" class="is-set"><option value="topic"' + (state.promptSort === "topic" ? " selected" : "") + '>Group by topic</option><option value="open"' + (state.promptSort === "open" ? " selected" : "") + '>Open fields first</option><option value="worst"' + (state.promptSort === "worst" ? " selected" : "") + '>Worst score first</option></select>'
-        + (shown ? '<button type="button" class="filter" data-prompt-select-all>Select all shown</button>' : '')
         + '<span class="prompt-result-summary subtle">' + promptResultSummary(shown, livePrompts(set).length) + '</span></div>';
     }
 
@@ -2227,8 +2548,6 @@ export function boot(): void {
       if (summary) summary.textContent = promptResultSummary(rows.length, livePrompts(set).length);
       // The toolbar is not re-rendered on a filter, so the button that acts on
       // the rows has to be told when there are none to act on.
-      const selectAll = document.querySelector("[data-prompt-select-all]");
-      if (selectAll) (selectAll as any).hidden = rows.length === 0;
       const bulk = document.querySelector(".prompt-bulk");
       if (bulk) bulk.innerHTML = promptBulkInner();
     }
@@ -2314,18 +2633,17 @@ export function boot(): void {
     function openRouterOutOfCredit() { return state.providers.some((provider) => provider.providerId === "openrouter" && provider.balance && !provider.balance.paidModelsRunnable); }
     function modelIsBlocked(model: any, modelId: any) { return Boolean(model) && model.providerId === "openrouter" && !modelId.endsWith(":free") && openRouterOutOfCredit(); }
     function runsNowCell(model: any, modelId: any) { if (model && model.available === false) return '<span class="mcell state-bad" title="' + html(model.unavailableReason || "") + '">Never</span>'; return modelIsBlocked(model, modelId) ? '<span class="mcell state-flag">No credit</span>' : '<span class="mcell state-ok">Yes</span>'; }
-    function webSearchSelect(modelId: any, mode: any, nativeSupported: any, attribute: any) { return '<select data-' + attribute + '="' + html(modelId) + '" ' + (nativeSupported ? "" : "disabled") + '><option value="off" ' + (mode === "off" ? "selected" : "") + '>Offline</option><option value="provider_native" ' + (mode === "provider_native" ? "selected" : "") + '>Native web search</option></select>'; }
     /** A selection the server will refuse. Its catalogue checkbox is disabled
      * for the same reason, so the row has to offer the only way to clear it. */
     function blockedSelection(row: any) { return !row.inCatalog || (row.model && row.model.available === false); }
-    function renderSelectedModels(readOnly?: any) { const rows = selectedRows(); if (rows.length === 0) return '<p class="subtle">No models selected yet.</p>'; const columns = readOnly ? "mcols-readonly" : "mcols-selected"; const head = '<div class="mhead ' + columns + '"><span>Model</span><span>Provider</span>' + (readOnly ? '' : '<span>Runs now</span>') + '<span>Web search</span></div>'; const body = rows.map((row) => { const nativeSupported = ((row.model as any).nativeWebSearchSupported as any) === true; const mode = readOnly ? '<span class="mcell">' + html(modeText(row.webSearchMode)) + '</span>' : webSearchSelect(row.modelId, row.webSearchMode, nativeSupported, "selected-model-mode"); return '<div class="mrow selection-row ' + columns + '"><div class="mname"><strong>' + html(((row.model as any).displayName as any)) + '</strong><span class="mono">' + html(row.modelId) + '</span></div><span class="mcell">' + html(providerShortLabel(((row.model as any).providerId as any))) + '</span>' + (readOnly ? '' : row.inCatalog ? runsNowCell(row.model, row.modelId) : '<span class="mcell state-bad" title="The provider no longer lists this model.">No longer offered</span>') + (readOnly || !blockedSelection(row) ? mode : button({ label: "Remove", kind: "quiet", tone: "danger", on: { "data-drop-selection": row.modelId } })) + '</div>'; }).join(""); return '<div class="mtable">' + head + body + '</div>' + (readOnly ? '' : '<p class="mlegend">Web search stays Offline for models with no provider-native search.</p>'); }
+    function renderSelectedModels(readOnly?: any) { return selectedModelTable({ readOnly, rows: selectedRows().map((row) => ({ modelId: row.modelId, displayName: String((row.model as any).displayName), providerLabel: providerShortLabel((row.model as any).providerId), webSearchMode: row.webSearchMode === "provider_native" ? "provider_native" as const : "off" as const, nativeWebSearchSupported: (row.model as any).nativeWebSearchSupported === true, runnable: row.inCatalog ? runsNowCell(row.model, row.modelId) : "", unavailable: blockedSelection(row) })) }); }
     function catalogVendor(item: any) { const supplied = typeof item.vendor === "string" ? item.vendor.trim() : ""; if (supplied) return supplied; const name = String(item.displayName || ""); const separator = name.indexOf(":"); if (separator > 0) return name.slice(0, separator).trim(); const modelId = String(item.modelId || ""); const namespaceEnd = modelId.indexOf("/"); return namespaceEnd > 0 ? modelId.slice(0, namespaceEnd) : modelId; }
     function catalogReleasedAt(item: any) { if (typeof item.releasedAt !== "string" || !item.releasedAt) return null; const timestamp = new Date(item.releasedAt).getTime(); return Number.isFinite(timestamp) ? timestamp : null; }
     function catalogVendors() { return Array.from(new Set(state.catalog.map((item) => catalogVendor(item)).filter((vendor) => vendor.length > 0))).sort((left, right) => left.localeCompare(right)); }
     function filteredCatalogModels() { const query = state.query.toLocaleLowerCase(); const results = state.catalog.filter((item) => { const vendor = catalogVendor(item); const matchesQuery = item.displayName.toLocaleLowerCase().includes(query) || item.modelId.toLocaleLowerCase().includes(query) || vendor.toLocaleLowerCase().includes(query); const matchesVendor = !state.catalogProvider || vendor === state.catalogProvider; const matchesSearch = state.catalogNativeSearch === "all" || (state.catalogNativeSearch === "supported" ? item.nativeWebSearchSupported : !item.nativeWebSearchSupported); return matchesQuery && matchesVendor && matchesSearch; }); results.sort((left, right) => { const leftVendor = catalogVendor(left); const rightVendor = catalogVendor(right); if (state.catalogSort === "vendor") { const vendorOrder = leftVendor.localeCompare(rightVendor); return vendorOrder || left.displayName.localeCompare(right.displayName); } if (state.catalogSort === "newest" || state.catalogSort === "oldest") { const leftReleasedAt = catalogReleasedAt(left); const rightReleasedAt = catalogReleasedAt(right); if (leftReleasedAt === null && rightReleasedAt === null) return left.displayName.localeCompare(right.displayName); if (leftReleasedAt === null) return 1; if (rightReleasedAt === null) return -1; return state.catalogSort === "newest" ? rightReleasedAt - leftReleasedAt : leftReleasedAt - rightReleasedAt; } return left.displayName.localeCompare(right.displayName); }); return results.slice(0, 80); }
     function catalogResultSummary(count: number) { return 'Show ' + count + '  models. When sorting by release date, models with no date in the catalog are listed last.'; }
     function catalogHead() { return '<div class="mhead mcols-catalog"><span></span><span>Model</span><span>Vendor</span><span>Runs now</span><span>Web search</span></div>'; }
-    function renderCatalogModelRows(results: any) { return results.map((item: any) => { const chosen = state.draftSelections.get(item.modelId); const isChosen = chosen !== undefined; const vendor = catalogVendor(item); const releasedAt = catalogReleasedAt(item); const released = releasedAt === null ? ' \u00b7 no release date' : ' \u00b7 ' + new Date(releasedAt).toLocaleDateString(); const releasedTitle = releasedAt === null ? ' title="Catalog does not provide a release date"' : ''; return '<div class="mrow mcols-catalog" data-testid="catalog-model" data-model-id="' + html(item.modelId) + '" data-model-vendor="' + html(vendor) + '" data-model-released-at="' + html(releasedAt === null ? "" : String(releasedAt)) + '" data-native-search="' + String(item.nativeWebSearchSupported) + '"><input type="checkbox" data-model-checkbox="' + html(item.modelId) + '" ' + (isChosen ? "checked" : "") + (item.available ? "" : " disabled") + ' aria-label="Select ' + html(item.displayName) + '"><div class="mname"><strong>' + html(item.displayName) + '</strong><span class="mono"' + releasedTitle + '>' + html(item.modelId) + html(released) + '</span>' + (item.available ? '' : '<span class="state-bad">' + html(item.unavailableReason || "Unavailable") + '</span>') + '</div><span class="mcell">' + html(vendor) + '</span>' + runsNowCell(item, item.modelId) + webSearchSelect(item.modelId, chosen || "off", isChosen && item.nativeWebSearchSupported, "model-mode") + '</div>'; }).join(""); }
+    function renderCatalogModelRows(results: any) { return results.map((item: any) => { const chosen = state.draftSelections.get(item.modelId); const isChosen = chosen !== undefined; const vendor = catalogVendor(item); const releasedAt = catalogReleasedAt(item); const released = releasedAt === null ? ' \u00b7 no release date' : ' \u00b7 ' + new Date(releasedAt).toLocaleDateString(); const releasedTitle = releasedAt === null ? ' title="Catalog does not provide a release date"' : ''; return '<div class="mrow mcols-catalog" data-testid="catalog-model" data-model-id="' + html(item.modelId) + '" data-model-vendor="' + html(vendor) + '" data-model-released-at="' + html(releasedAt === null ? "" : String(releasedAt)) + '" data-native-search="' + String(item.nativeWebSearchSupported) + '"><input type="checkbox" data-model-checkbox="' + html(item.modelId) + '" ' + (isChosen ? "checked" : "") + (item.available ? "" : " disabled") + ' aria-label="Select ' + html(item.displayName) + '"><div class="mname"><strong>' + html(item.displayName) + '</strong><span class="mono"' + releasedTitle + '>' + html(item.modelId) + html(released) + '</span>' + (item.available ? '' : '<span class="state-bad">' + html(item.unavailableReason || "Unavailable") + '</span>') + '</div><span class="mcell">' + html(vendor) + '</span>' + runsNowCell(item, item.modelId) + webSearchModeControl({ modelId:item.modelId, mode:chosen === "provider_native" ? "provider_native" : "off", supported:isChosen && item.nativeWebSearchSupported, attribute:"model-mode" }) + '</div>'; }).join(""); }
     // Repaints the rows alone. The whole page is 70KB of markup, so re-rendering
     // it per keystroke is felt; this needs .model-list to wrap only the rows.
     function refreshCatalogSearchResults() { const list = document.querySelector(".model-list"); const summary = document.querySelector(".catalog-result-summary"); if (!list || !summary || state.catalogState !== "ready") { render(); return; } const results = filteredCatalogModels(); summary.textContent = catalogResultSummary(results.length); list.innerHTML = results.length === 0 ? '<p class="subtle">No matching models.</p>' : renderCatalogModelRows(results); }
@@ -2396,6 +2714,7 @@ export function boot(): void {
       if (state.storageState === "idle") { loadStorage(); }
       if (state.credentialsState === "idle") { loadCredentials(); }
       if (state.integrationsState === "idle") { loadIntegrations(); }
+      if (state.externalMetricsState === "idle" && state.selectedId) { loadExternalMetrics(); }
       return setupView({
         providers: state.providers,
         providersState: state.providersState,
@@ -2408,6 +2727,11 @@ export function boot(): void {
         credentialNotice: state.credentialNotice,
         integrations: state.integrations,
         integrationsState: state.integrationsState,
+        externalMetrics: state.externalMetrics?.snapshots || [],
+        externalMetricsState: state.externalMetricsState,
+        externalMetricsPulling: state.externalMetricsPulling,
+        externalMetricsNotice: state.externalMetricsNotice,
+        selectedProject: Boolean(project()),
       });
     }
 
@@ -2426,7 +2750,19 @@ export function boot(): void {
         + '<span>Every figure here opens the answer it came from.</span></footer>';
     }
 
-    function phase2RenderImpl() { if (window.__citegeoPhase5Active) return; const selected = project(); const options = state.currentProjects.length ? state.currentProjects.map((item) => '<option value="' + html(item.id) + '">' + html(item.name) + ' · ' + html(item.normalizedDomain) + '</option>').join("") : '<option value="">No projects yet</option>'; let view = state.page === "models" ? renderModels() : state.page === "configuration" ? renderConfiguration() : state.page === "setup" ? renderSetup() : state.page === "visibility" ? renderVisibility() : state.page === "brand-visibility" ? renderBrandVisibility() : state.page === "prompts" ? renderPrompts() : state.page === "answer-engine" ? renderAnswerEngine() : state.page === "dashboard" ? renderHome() : renderOverview(); app.innerHTML = renderEvidence() + '<div class="shell">' + navScrim() + '<aside class="sidebar"><button type="button" class="brand" data-page="dashboard" aria-label="Back to the dashboard">' + brandLockup + '</button><div class="project-label">Project</div><select id="project-select" class="project-select" aria-label="Switch project" data-testid="project-select">' + options + '</select><nav class="nav" aria-label="Project navigation"><button type="button" class="nav-item ' + (state.page === "dashboard" ? "active" : "") + '" data-page="dashboard"><span>Dashboard</span></button><div class="nav-label">Run a test</div><button type="button" class="nav-item ' + (state.page === "models" ? "active" : "") + '" data-page="models"><span class="nav-step">1</span><span>Choose models</span></button><button type="button" class="nav-item ' + (state.page === "recognition" || state.page === "reports" ? "active" : "") + '" data-page="recognition"><span class="nav-step">2</span><span>Results</span></button><button type="button" class="nav-item ' + (state.page === "visibility" ? "active" : "") + '" data-page="visibility"><span class="nav-step">3</span><span>Visibility</span></button><div class="nav-label">Answer engine</div><button type="button" class="nav-item ' + (state.page === "answer-engine" ? "active" : "") + '" data-page="answer-engine"><span>Scores</span></button><button type="button" class="nav-item ' + (state.page === "brand-visibility" ? "active" : "") + '" data-page="brand-visibility"><span>Brand visibility</span></button><button type="button" class="nav-item ' + (state.page === "prompts" ? "active" : "") + '" data-page="prompts"><span>Prompts</span></button><div class="nav-label">Over time</div><a class="nav-item" href="?view=measurements"><span>Continuous measurement</span></a><div class="nav-label">Machine</div><button type="button" class="nav-item ' + (state.page === "overview" ? "active" : "") + '" data-page="overview"><span>Projects</span></button><button type="button" class="nav-item ' + (state.page === "configuration" ? "active" : "") + '" data-page="configuration"><span>Configuration history</span></button><button type="button" class="nav-item ' + (state.page === "setup" ? "active" : "") + '" data-page="setup"><span>Setup</span></button></nav><div class="sidebar-bottom">Domain recognition</div></aside><main class="workspace"><header class="topbar"><div class="topbar-lead">' + navToggle() + '<div class="crumb"><button type="button" class="crumb-home" data-page="dashboard">' + html(CONFIG.productName) + '</button> / ' + html(selected ? selected.name : "Project") + '</div></div><div class="topbar-actions"><button type="button" class="theme-toggle" data-theme-toggle aria-label="Switch between light and dark">&#9681;</button>' + button({ label: "New project", kind: "primary", id: "new-project", testId: "new-project" }) + '</div></header><section class="content">' + view + '</section>' + renderFooter() + '</main></div>'; const select = element("project-select"); select.value = state.selectedId; document.title = selected ? selected.name + " | " + CONFIG.productTitle + "" : "" + CONFIG.productTitle + ""; }
+    function phase2RenderImpl() { if (window.__citegeoPhase5Active) return; const selected = project(); const options = state.currentProjects.length ? state.currentProjects.map((item) => '<option value="' + html(item.id) + '">' + html(item.name) + ' · ' + html(item.normalizedDomain) + '</option>').join("") : '<option value="">No projects yet</option>'; let view = state.page === "marketer" ? renderMarketer() : state.page === "drafts" ? renderDrafts() : state.page === "claims" ? renderClaims() : state.page === "buying" ? renderBuying() : state.page === "conversations" ? renderConversations() : state.page === "entity" ? renderEntity() : state.page === "models" ? renderModels() : state.page === "configuration" ? renderConfiguration() : state.page === "setup" ? renderSetup() : state.page === "visibility" ? renderVisibility() : state.page === "brand-visibility" ? renderBrandVisibility() : state.page === "prompts" ? renderPrompts() : state.page === "answer-engine" ? renderAnswerEngine() : state.page === "dashboard" ? renderHome() : renderOverview(); app.innerHTML = renderEvidence() + '<div class="shell">' + navScrim() + '<aside class="sidebar"><button type="button" class="brand" data-page="dashboard" aria-label="Back to the dashboard">' + brandLockup + '</button><div class="project-label">Project</div><select id="project-select" class="project-select" aria-label="Switch project" data-testid="project-select">' + options + '</select><nav class="nav" aria-label="Project navigation"><button type="button" class="nav-item ' + (state.page === "dashboard" ? "active" : "") + '" data-page="dashboard"><span>Dashboard</span></button><div class="nav-label">Run a test</div><button type="button" class="nav-item ' + (state.page === "models" ? "active" : "") + '" data-page="models"><span class="nav-step">1</span><span>Choose models</span></button><button type="button" class="nav-item ' + (state.page === "recognition" || state.page === "reports" ? "active" : "") + '" data-page="recognition"><span class="nav-step">2</span><span>Results</span></button><button type="button" class="nav-item ' + (state.page === "visibility" ? "active" : "") + '" data-page="visibility"><span class="nav-step">3</span><span>Visibility</span></button><div class="nav-label">Answer engine</div><button type="button" class="nav-item ' + (state.page === "answer-engine" ? "active" : "") + '" data-page="answer-engine"><span>Scores</span></button><button type="button" class="nav-item ' + (state.page === "brand-visibility" ? "active" : "") + '" data-page="brand-visibility"><span>Brand visibility</span></button><button type="button" class="nav-item ' + (state.page === "prompts" ? "active" : "") + '" data-page="prompts"><span>Prompts</span></button><div class="nav-label">Marketer</div><button type="button" class="nav-item '
+       + (state.page === "marketer" ? "active" : "")
+       + '" data-page="marketer"><span>What to do</span></button><button type="button" class="nav-item '
+       + (state.page === "drafts" ? "active" : "")
+       + '" data-page="drafts"><span>Drafts</span></button><button type="button" class="nav-item '
+       + (state.page === "claims" ? "active" : "")
+       + '" data-page="claims"><span>Claims</span></button><button type="button" class="nav-item '
+       + (state.page === "buying" ? "active" : "")
+       + '" data-page="buying"><span>Buying</span></button><button type="button" class="nav-item '
+       + (state.page === "conversations" ? "active" : "")
+       + '" data-page="conversations"><span>Conversations</span></button><button type="button" class="nav-item '
+       + (state.page === "entity" ? "active" : "")
+       + '" data-page="entity"><span>Entity</span></button><div class="nav-label">Over time</div><a class="nav-item" href="?view=measurements"><span>Continuous measurement</span></a><div class="nav-label">Machine</div><button type="button" class="nav-item ' + (state.page === "overview" ? "active" : "") + '" data-page="overview"><span>Projects</span></button><button type="button" class="nav-item ' + (state.page === "configuration" ? "active" : "") + '" data-page="configuration"><span>Configuration history</span></button><button type="button" class="nav-item ' + (state.page === "setup" ? "active" : "") + '" data-page="setup"><span>Setup</span></button></nav><div class="sidebar-bottom">Domain recognition</div></aside><main class="workspace"><header class="topbar"><div class="topbar-lead">' + navToggle() + '<div class="crumb"><button type="button" class="crumb-home" data-page="dashboard">' + html(CONFIG.productName) + '</button> / ' + html(selected ? selected.name : "Project") + '</div></div><div class="topbar-actions"><button type="button" class="theme-toggle" data-theme-toggle aria-label="Switch between light and dark">&#9681;</button>' + button({ label: "New project", kind: "primary", id: "new-project", testId: "new-project" }) + '</div></header><section class="content">' + view + '</section>' + renderFooter() + '</main></div>'; const select = element("project-select"); select.value = state.selectedId; document.title = selected ? selected.name + " | " + CONFIG.productTitle + "" : "" + CONFIG.productTitle + ""; }
     async function setPage(page: any) { state.page = page; savePreference("page", page); if (page === "configuration") { await refreshConfiguration(); return; } if (page === "reports" && window.__citegeoPhase4 && typeof window.__citegeoPhase4.open === "function") { await window.__citegeoPhase4.open(); return; } render(); if (page === "models") { await refreshConfiguration(); await loadCatalog(); } }
     async function createDraft(event: any) { event.preventDefault(); const control = element("save-draft"); const session = state.drawerSession; setFormStatus("Creating project draft", "loading"); try { const response = await runAction(control, { loading:"Saving…", success:"Saved", error:"Save failed" }, () => request("/api/projects", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ domain:element("project-domain").value, name:element("project-name").value }) })); state.mode = "current"; state.page = "overview"; setSelectedProject(response.project.id); await refreshProjects(); state.selections = []; state.baselines = []; resetDraftSelections(); setFormStatus("Draft saved", "success"); render(); window.setTimeout(() => { if (state.drawerSession === session) closeDrawer(); }, 850); } catch (error) { setFormStatus(error instanceof Error ? error.message : String(error), "error"); } }
     async function saveProject(event: any) { event.preventDefault(); const selected = project(); if (!selected) return; const control = event.currentTarget.querySelector('control[type="submit"]'); try { await runAction(control, { loading:"Saving…", success:"Saved", error:"Save failed" }, () => request("/api/projects/" + encodeURIComponent(selected.id), { method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ domain:element("edit-domain").value, name:element("edit-name").value }) })); await refreshProjects(); render(); } catch (error) { window.alert(error instanceof Error ? error.message : String(error)); } }
@@ -2455,7 +2791,6 @@ export function boot(): void {
         render();
         return;
       }
-      if (clicked.closest("[data-prompt-select-all]")) { selectAllShown(); return; }
       if (clicked.closest("[data-bulk-clear]")) { state.promptSelection = []; refreshPromptResults(); return; }
       if (clicked.closest("[data-bulk-activate]")) { await bulkPrompts("activate"); return; }
       if (clicked.closest("[data-bulk-retire]")) { await bulkPrompts("retire"); return; }
@@ -2661,6 +2996,38 @@ export function boot(): void {
       if (saveCred) { await saveCredential(saveCred.getAttribute("data-credential-save"), saveCred); return; }
       const clearCred = target && target.closest ? target.closest("[data-credential-clear]") : null;
       if (clearCred) { await clearCredential(clearCred.getAttribute("data-credential-clear"), clearCred); return; }
+      const pullExternal = target && target.closest ? target.closest("[data-pull-external-metrics]") : null;
+      if (pullExternal) {
+        const source = pullExternal.getAttribute("data-pull-external-metrics");
+        if (source === "ahrefs" || source === "semrush") await pullExternalMetrics(source, pullExternal);
+        return;
+      }
+      const saveSettings = target && target.closest ? target.closest("[data-integration-settings-save]") : null;
+      if (saveSettings) { await saveIntegrationSettings(saveSettings.getAttribute("data-integration-settings-save"), saveSettings); return; }
+      const removeSelectedModel = target && target.closest ? target.closest("[data-remove-selected-model]") : null;
+      if (removeSelectedModel) { dropSelection(removeSelectedModel.getAttribute("data-remove-selected-model") || ""); return; }
+      const probeHere = target && target.closest ? target.closest("[data-probe-signals]") : null;
+      if (probeHere && state.page === "entity") { await probeForEntity(probeHere); return; }
+      const runCheck = target && target.closest ? target.closest("[data-run-factcheck], [data-run-shopping]") : null;
+      if (runCheck) {
+        const where = runCheck.hasAttribute("data-run-factcheck") ? "factcheck" : "shopping";
+        await runMarketerCheck(runCheck, where);
+        return;
+      }
+      const copyDraft = target && target.closest ? target.closest("[data-copy-draft]") : null;
+      if (copyDraft) { await copyText(copyDraft, draftBody(copyDraft.getAttribute("data-copy-draft") || "")); return; }
+      const copyLlms = target && target.closest ? target.closest("[data-copy-llms]") : null;
+      if (copyLlms) { await copyText(copyLlms, state.entity?.llms?.text || ""); return; }
+      const draftOne = target && target.closest ? target.closest("[data-draft], [data-aim-run]") : null;
+      if (draftOne) {
+        const template = draftOne.getAttribute("data-draft") || draftOne.getAttribute("data-aim-run") || "";
+        await runDraft(draftOne, template, false);
+        return;
+      }
+      const draftEvery = target && target.closest ? target.closest("[data-draft-batch]") : null;
+      if (draftEvery) { await runDraft(draftEvery, draftEvery.getAttribute("data-draft-batch") || "", true); return; }
+      const reviewButton = target && target.closest ? target.closest("[data-review]") : null;
+      if (reviewButton) { await reviewDraft(reviewButton, reviewButton.getAttribute("data-review") || ""); return; }
       const probeButton = target && target.closest ? target.closest("[data-probe-signals]") : null;
       if (probeButton) { await captureSignals(probeButton); state.signalsState = "idle"; loadSignals(); return; } if (!(target instanceof Element)) return; const pageButton = target.closest("[data-page]"); if (pageButton) { await setPage(pageButton.getAttribute("data-page") || "overview"); return; } const listModeButton = target.closest("[data-list-mode]"); if (listModeButton) { state.mode = listModeButton.getAttribute("data-list-mode") || "current"; await refreshProjects(); render(); return; } if (target.id === "new-project" || target.id === "empty-new-project") { openDrawer(); return; } if (target.id === "close-drawer" || target.id === "cancel-draft" || target.id === "drawer-backdrop") { closeDrawer(); return; } if (target.id === "retry-catalog") { state.catalogState = "idle"; await loadCatalog(); return; } const opened = target.closest("[data-matrix-open]"); if (opened) { const key = opened.getAttribute("data-matrix-open") || ""; const at = state.matrixOpen.indexOf(key); if (at >= 0) state.matrixOpen.splice(at, 1); else state.matrixOpen.push(key); render(); return; } const expand = target.closest("[data-expand-panel]"); if (expand && !target.closest("button:not(.panel-open),a,select,input,textarea,label")) { openPanel(expand.getAttribute("data-expand-panel") || ""); return; } if (target.closest("[data-edit-board]")) { state.editingBoard = !state.editingBoard; render(); return; } const span = target.closest("[data-panel-span]"); if (span) { const parts = (span.getAttribute("data-panel-span") || "").split(":"); setPanelSpan(parts[0] || "", Number(parts[1])); render(); return; } const hide = target.closest("[data-panel-hide]"); if (hide) { togglePanelHidden(hide.getAttribute("data-panel-hide") || ""); render(); return; } if (target.closest("[data-reset-panels]")) { resetPanelOrder(); state.editingBoard = false; render(); return; } const brand = target.closest("[data-brand-evidence]"); if (brand) { await openBrandEvidence(brand.getAttribute("data-brand-evidence") || "", brand.getAttribute("data-brand-tone") || ""); return; } const dropped = target.closest("[data-drop-selection]"); if (dropped) { dropSelection(dropped.getAttribute("data-drop-selection") || ""); return; } if (target.id === "save-models") { await saveModels((target as any)); return; } if (target.id === "save-monitoring-configuration") { await saveMonitoringConfiguration(); return; } if (target.id === "archive-project") { const selected = project(); if (selected) await projectAction("archive", selected.id, (target as any)); return; } if (target.id === "delete-project") { const selected = project(); if (selected) await projectAction("delete", selected.id, (target as any)); return; } const action = target.closest("[data-project-action]"); if (action) { const projectId = action.getAttribute("data-project-id"); const name = action.getAttribute("data-project-action"); if (projectId && name) await projectAction(name, projectId, (action as any)); } });
     document.addEventListener("change", async (event) => { const target = el(event.target) as any; if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) return; if (target.id === "project-select") { setSelectedProject(target.value); state.selectionsDirty = false; await refreshConfiguration(); loadLiveRun(); render(); return; } if (target instanceof HTMLInputElement && target.hasAttribute("data-model-checkbox")) { changeModel(target.getAttribute("data-model-checkbox") || "", target.checked); return; } if (target instanceof HTMLSelectElement && target.hasAttribute("data-model-mode")) { changeModelMode(target.getAttribute("data-model-mode") || "", target.value); return; } if (target instanceof HTMLSelectElement && target.hasAttribute("data-selected-model-mode")) { changeModelMode(target.getAttribute("data-selected-model-mode") || "", target.value); return; } });

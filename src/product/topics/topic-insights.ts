@@ -1,3 +1,4 @@
+import { summariseCorroboration, type CorroboratedMention, type CorroborationSummary } from "./mention-corroboration.js";
 import { domainLabel, tokenize } from "./prompt-identity.js";
 import { buildPromptTrend, type PromptTrend } from "./prompt-trend.js";
 import { region, REGION_CAVEAT } from "./region.js";
@@ -111,6 +112,9 @@ export interface TopicInsights {
   absentFrom: PromptStanding[];
   /** True when no answer carried a citation, so source analysis is unavailable. */
   citationsUnavailable: boolean;
+  /** How much of the model's report of what it named survived a check against
+   * the answer it wrote in the same call. */
+  corroboration: CorroborationSummary;
   /** One point per run, oldest first. */
   trend: PromptTrend;
   /** Per market, worst first. Empty until a run states one. */
@@ -208,7 +212,7 @@ function modelStandings(answers: PromptAnswer[]): ModelStanding[] {
     .sort((left, right) => (right.score.score || 0) - (left.score.score || 0));
 }
 
-function regionStandings(answers: PromptAnswer[]): RegionStanding[] {
+function regionStandings(answers: PromptAnswer[], labels?: Map<string, string>): RegionStanding[] {
   const groups = new Map<string, PromptAnswer[]>();
   for (const answer of answers) {
     const id = answer.regionId || "global";
@@ -219,7 +223,9 @@ function regionStandings(answers: PromptAnswer[]): RegionStanding[] {
   return [...groups.entries()]
     .map(([regionId, group]) => ({
       regionId,
-      label: region(regionId)?.label || regionId,
+      // A place this project defined has no entry in the fixed list, so its
+      // own label is used before falling back to the bare id.
+      label: region(regionId)?.label || labels?.get(regionId) || regionId,
       score: scoreAnswers(group),
       rank: rankOfTarget(standings(group)),
     }))
@@ -308,6 +314,12 @@ function subtopicStandings(rows: PromptStanding[], answers: PromptAnswer[], set:
   return out;
 }
 
+/** A mention stored before the answer text was checked carries no verdict, so
+ * it is left out rather than counted as one that failed. */
+function hasCorroboration(mention: AnswerMention): mention is CorroboratedMention {
+  return mention.corroboration !== undefined;
+}
+
 export function buildTopicInsights(input: {
   projectId: string;
   set: TopicSet;
@@ -317,6 +329,8 @@ export function buildTopicInsights(input: {
   competitors?: Competitor[] | undefined;
   /** Persona id to label, so a retired persona still reads as its name. */
   personaLabels?: Map<string, string> | undefined;
+  /** Location id to label, for places outside the fixed country list. */
+  locationLabels?: Map<string, string> | undefined;
 }): TopicInsights {
   const { projectId, set, answers } = input;
   const completed = answers.filter((answer) => answer.status === "completed");
@@ -381,13 +395,14 @@ export function buildTopicInsights(input: {
     // False with nothing answered: [].every() is true, which would report a
     // project that never ran as one whose citations are unavailable.
     citationsUnavailable: completed.length > 0 && completed.every((answer) => answer.citationUrls.length === 0),
+    corroboration: summariseCorroboration(completed.flatMap((answer) => answer.mentions).filter(hasCorroboration)),
     trend: buildPromptTrend({
       runs: input.runs || [],
       answers,
       rankOf: (group) => rankOfTarget(standings(group)),
       sharesOf: (group) => standings(group),
     }),
-    byRegion: regionStandings(answers),
+    byRegion: regionStandings(answers, input.locationLabels),
     byLanguage: languageStandings(answers),
     byPersona: personaStandings(answers, input.personaLabels || new Map()),
     regionCaveat: REGION_CAVEAT,

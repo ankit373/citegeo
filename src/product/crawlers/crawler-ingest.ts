@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, open, readFile, rename, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { parseAccessLog } from "./access-log.js";
+import { readAccessLog } from "./access-log.js";
 import {
   activityFromState,
   completeLines,
@@ -150,13 +150,16 @@ export class CrawlerLogIngestService {
     }
 
     const { text, consumed } = completeLines(buffer.toString("utf8"));
-    const entries = parseAccessLog(text);
+    // A restart re-reads the header, so the carried one is dropped with it.
+    const carried = plan.restarted ? undefined : from.logFields;
+    const { entries, fields } = readAccessLog(text, carried);
     const next: CrawlerLogState = {
       ...mergeCrawlerEntries(from, entries),
       source: path,
       offset: plan.start + consumed,
       size,
       ingestedAt: new Date().toISOString(),
+      ...(fields.length ? { logFields: fields } : {}),
     };
     await this.store.write(next);
 

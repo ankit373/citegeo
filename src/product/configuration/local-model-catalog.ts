@@ -1,9 +1,15 @@
-import { azureOpenAIDeployments, openAICompatibleBaseUrl } from "../../config/env.js";
+import { azureOpenAIDeployments, integrationSetting, openAICompatibleBaseUrl } from "../../config/env.js";
 import type { ProductModelCatalog, ProviderModelCatalogItem } from "./model-selection-schema.js";
 
 // Lists whatever an OpenAI-compatible endpoint advertises at /v1/models. That is
 // how local heads (Claude Code, Codex, Ollama, a router) reach the workbench.
-// None of them run provider-native web search, so they are offline-only here.
+// A gateway must opt in explicitly before it can advertise its Responses API
+// web-search tool; local model names alone are never evidence of that support.
+function compatibleGatewayWebSearchEnabled(): boolean {
+  const value = process.env.OPENAI_COMPATIBLE_WEB_SEARCH || integrationSetting("openai-compatible", "webSearch");
+  return value?.trim().toLowerCase() === "true";
+}
+
 export class OpenAiCompatibleProductModelCatalog implements ProductModelCatalog {
   async list(): Promise<ProviderModelCatalogItem[]> {
     const base = openAICompatibleBaseUrl();
@@ -30,7 +36,7 @@ export class OpenAiCompatibleProductModelCatalog implements ProductModelCatalog 
         releasedAt: null,
         available: true,
         unavailableReason: null,
-        nativeWebSearchSupported: false,
+        nativeWebSearchSupported: compatibleGatewayWebSearchEnabled(),
         checkedAt,
         source: "local_capability_registry" as const,
       }];
@@ -68,7 +74,7 @@ export class AzureOpenAiProductModelCatalog implements ProductModelCatalog {
       releasedAt: null,
       available: true,
       unavailableReason: null,
-      nativeWebSearchSupported: false,
+      nativeWebSearchSupported: true,
       checkedAt,
       source: "local_capability_registry" as const,
     }));

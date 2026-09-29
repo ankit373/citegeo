@@ -3,6 +3,11 @@
 // this page". Parsed by hand: the architecture test bans regexes.
 //
 //   1.2.3.4 - - [19/Sep/2026:12:00:00 +0000] "GET /p HTTP/1.1" 200 12 "ref" "ua"
+//
+// A site behind a CDN never sees the crawler at its origin, so cdn-log.ts
+// adds the JSON and CloudFront shapes and this file dispatches between them.
+
+import { CloudFrontReader, parseJsonLogLine } from "./cdn-log.js";
 
 export interface AccessLogEntry {
   path: string;
@@ -73,11 +78,29 @@ export function parseAccessLogLine(line: string): AccessLogEntry | null {
   };
 }
 
-export function parseAccessLog(text: string): AccessLogEntry[] {
+/** Reads whichever of the three shapes a line is in. The shape is taken from
+ * the line, so a file of any of them needs no configuration to be read.
+ *
+ * carriedFields holds a #Fields header seen in an earlier read. The header sits
+ * once at the top of the file and an incremental read resumes past it, so
+ * without carrying it every later CloudFront row is dropped in silence. */
+export function readAccessLog(text: string, carriedFields?: string[] | undefined): { entries: AccessLogEntry[]; fields: string[] } {
   const out: AccessLogEntry[] = [];
+  const cloudFront = new CloudFrontReader(carriedFields);
   for (const line of text.split("\n").join("\r").split("\r")) {
-    const entry = parseAccessLogLine(line);
-    if (entry) out.push(entry);
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    if (cloudFront.header(trimmed)) continue;
+    const json = parseJsonLogLine(trimmed);
+    if (json) { out.push(json); continue; }
+    const combined = parseAccessLogLine(trimmed);
+    if (combined) { out.push(combined); continue; }
+    const tabbed = cloudFront.line(trimmed);
+    if (tabbed) out.push(tabbed);
   }
-  return out;
+  return { entries: out, fields: cloudFront.fieldNames };
+}
+
+export function parseAccessLog(text: string): AccessLogEntry[] {
+  return readAccessLog(text).entries;
 }

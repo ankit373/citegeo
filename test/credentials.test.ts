@@ -7,6 +7,8 @@ import { CredentialFileStore, credentialKey, decryptSecret, encryptSecret } from
 import { CredentialService } from "../src/product/auth/credential-service.js";
 import { handleCredentialApi } from "../src/product/auth/credential-http.js";
 import { productAppSource } from "../src/ui/app-source.js";
+import { INTEGRATIONS, integration } from "../src/product/auth/integrations.js";
+import { integrationSetting, openAICompatibleBaseUrl, resolveProviderKey } from "../src/config/env.js";
 
 const KEY_B64 = Buffer.alloc(32, 7).toString("base64");
 const SECRET = "sk-or-v1-abcdefghijklmnop";
@@ -39,6 +41,39 @@ test("a round trip returns the original secret", () => {
   const key = Buffer.alloc(32, 1);
   const record = encryptSecret(key, SECRET);
   assert.equal(decryptSecret(key, record), SECRET);
+});
+
+test("Ahrefs and Semrush are first-class encrypted integrations with fixed comparison scopes", () => {
+  assert.deepEqual(integration("ahrefs")?.envKeys, ["AHREFS_API_KEY"]);
+  // One key, two readings: the metric snapshots take a country and Brand
+  // Radar takes a report id. Two rows sharing the id overwrote each other.
+  assert.deepEqual(integration("ahrefs")?.settings?.map((row) => row.envKey), ["AHREFS_COUNTRY", "AHREFS_BRAND_RADAR_REPORT"]);
+  assert.equal(INTEGRATIONS.filter((row) => row.id === "ahrefs").length, 1, "two rows with one id is one connection silently replacing another");
+  assert.deepEqual(integration("semrush")?.envKeys, ["SEMRUSH_API_KEY"]);
+  assert.deepEqual(integration("semrush")?.settings?.map((row) => row.envKey), ["SEMRUSH_DATABASE"]);
+});
+
+test("a connection scope can be onboarded through the protected UI store, while an environment value remains authoritative", async () => {
+  await withStore(async (store) => {
+    await withEnv({ AHREFS_COUNTRY: undefined }, async () => {
+      const service = new CredentialService(store);
+      const saved = await service.saveSettings("ahrefs", { country: "in" });
+      assert.equal(saved.outcome, "saved");
+      const [status] = await service.status(["ahrefs"]);
+      assert.deepEqual(status?.settings[0], {
+        key: "country", label: "Country (ISO 3166-1 alpha-2)", envKey: "AHREFS_COUNTRY",
+        value: "in", source: "stored", editable: true,
+      });
+    });
+    await withEnv({ AHREFS_COUNTRY: "us" }, async () => {
+      const service = new CredentialService(store);
+      const [status] = await service.status(["ahrefs"]);
+      assert.equal(status?.settings[0]?.value, "us");
+      assert.equal(status?.settings[0]?.source, "environment");
+      assert.equal(status?.settings[0]?.editable, false);
+      assert.equal((await service.saveSettings("ahrefs", { country: "in" })).outcome, "owned_by_environment");
+    });
+  });
 });
 
 test("the ciphertext does not contain the secret", () => {
@@ -105,6 +140,26 @@ test("a stored key is used when the environment has none", async () => {
       const [status] = await service.status(["openrouter"]);
       assert.equal(status?.source, "stored");
       assert.equal(status?.last4, "mnop");
+    });
+  });
+});
+
+test("UI-onboarded credentials and scope are used by the runtime after a restart", async () => {
+  await withStore(async (store, dir) => {
+    await withEnv({
+      CREDENTIAL_KEY: KEY_B64,
+      PRODUCT_DATA_DIR: dir,
+      OPENROUTER_API_KEY: undefined,
+      OPENROUTER_KEY: undefined,
+      OPENAI_COMPATIBLE_BASE_URL: undefined,
+      OPENAI_COMPATIBLE_WEB_SEARCH: undefined,
+    }, async () => {
+      const service = new CredentialService(store);
+      assert.equal((await service.save("openrouter", SECRET)).outcome, "saved");
+      assert.equal((await service.saveSettings("openai-compatible", { baseUrl: "http://127.0.0.1:11434/v1", webSearch: "true" })).outcome, "saved");
+      assert.equal(resolveProviderKey("openrouter"), SECRET);
+      assert.equal(openAICompatibleBaseUrl(), "http://127.0.0.1:11434/v1");
+      assert.equal(integrationSetting("openai-compatible", "webSearch"), "true");
     });
   });
 });
@@ -233,4 +288,15 @@ test("Setup names both ways into a Google property", () => {
   assert.equal(html.includes("A service account key."), true);
   assert.equal(html.includes("An OAuth client you own."), true);
   assert.equal(html.includes('data-connection="'), true);
+});
+
+test("a shared credential is reported on both cards, not absent on one", async () => {
+  const { INTEGRATIONS } = await import("../src/product/auth/integrations.js");
+  const analytics = INTEGRATIONS.find((row) => row.id === "google-analytics");
+  // One credential serves both Google properties and it is filed under Search
+  // Console. Reading this card's own id found an empty slot, so a working
+  // connection reported as not connected and no amount of setup changed it.
+  assert.equal(analytics?.credentialSlot, "google");
+  const searchConsole = INTEGRATIONS.find((row) => row.id === "google");
+  assert.equal(searchConsole?.credentialSlot, undefined, "the owner names no other slot");
 });
