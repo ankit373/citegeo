@@ -2230,16 +2230,16 @@ export function boot(): void {
       const searched = act.rate === null
         ? 'Between ' + sharePct(act.low) + ' and ' + sharePct(act.high) + ' of answers searched the web'
         : sharePct(act.rate) + ' of answers searched the web';
-      const cited = report.citedGivenActivated === null
-        ? 'Nothing searched, so there is no share of searched answers to give.'
-        : sharePct(report.citedGivenActivated) + ' of the answers that searched cited you.';
       // Both ends equal reads as a band of nothing, so it is stated as one figure.
-      const settled = report.overall !== null || (report.overallLow !== null && report.overallLow === report.overallHigh);
-      const overall = report.overallLow === null
-        ? ''
+      const settled = report.citedGivenActivated !== null || report.citedGivenActivatedLow === report.citedGivenActivatedHigh;
+      const cited = report.citedGivenActivatedHigh === null
+        ? 'Nothing is known to have searched, so there is no share among those to give.'
         : settled
-          ? 'Overall that is ' + sharePct(report.overall !== null ? report.overall : report.overallLow) + ' of all answers.'
-          : 'Overall that is somewhere between ' + sharePct(report.overallLow) + ' and ' + sharePct(report.overallHigh) + ' of all answers.';
+          ? sharePct(report.citedGivenActivatedHigh) + ' of the answers that searched cited you.'
+          : 'Between ' + sharePct(report.citedGivenActivatedLow) + ' and ' + sharePct(report.citedGivenActivatedHigh) + ' of the answers that searched cited you, depending on how many of the unknown ones did.';
+      const overall = report.overall === null
+        ? ''
+        : 'Across all answers it is ' + sharePct(report.overall) + ', which is exact: an answer carrying no source cited nobody.';
       const band = act.unknown
         ? '<p class="subtle">' + act.activated + ' searched, ' + act.unavailable + ' could not search at all, and ' + act.unknown + ' could have searched and carried no source, which is unknown rather than a no.</p>'
         : '';

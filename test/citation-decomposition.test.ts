@@ -79,7 +79,7 @@ test("the share among answers that searched is kept apart from the share of all 
   assert.equal(report.overall, 0.25, "half of half, because half the answers never searched at all");
 });
 
-test("an unknown activation makes the overall share a band, not a number", () => {
+test("an answer carrying no source cited nobody, so the share of all answers is exact", () => {
   const report = decomposeCitations({
     answers: [
       answer("perplexity", ["https://tradomate.one/a"]),
@@ -87,10 +87,21 @@ test("an unknown activation makes the overall share a band, not a number", () =>
     ],
     identity: IDENTITY,
   });
-  assert.equal(report.citedGivenActivated, 1);
-  assert.equal(report.overall, null, "one factor is unknown, so the product is unknown");
-  assert.equal(report.overallLow, 0.5);
-  assert.equal(report.overallHigh, 1);
+  assert.equal(report.activation.unknown, 1, "the openai answer could have searched and did not cite");
+  assert.equal(report.overall, 0.5, "one of two answers cited you, and no unknown can change that count");
+});
+
+test("an unknown activation makes the conditional a band, because its denominator moves", () => {
+  const report = decomposeCitations({
+    answers: [
+      answer("perplexity", ["https://tradomate.one/a"]),
+      answer("openai", []),
+    ],
+    identity: IDENTITY,
+  });
+  assert.equal(report.citedGivenActivated, null, "which answers searched is not knowable, so the share among them is not either");
+  assert.equal(report.citedGivenActivatedLow, 0.5, "if the openai answer searched, one of two searching answers cited you");
+  assert.equal(report.citedGivenActivatedHigh, 1, "if it did not, one of one did");
 });
 
 test("www and the bare host are the same domain when deciding you were cited", () => {
@@ -105,11 +116,20 @@ test("nothing activated is no conditional share rather than a share of zero", ()
   const report = decomposeCitations({ answers: [answer("deepseek", [])], identity: IDENTITY });
   assert.equal(report.activated, 0);
   assert.equal(report.citedGivenActivated, null);
+  assert.equal(report.citedGivenActivatedLow, null);
+  assert.equal(report.citedGivenActivatedHigh, null);
+  assert.equal(report.overall, 0, "one answer was asked and did not cite you, which is a measured nought");
+});
+
+test("nothing answered at all is no share rather than a share of zero", () => {
+  const report = decomposeCitations({ answers: [], identity: IDENTITY });
   assert.equal(report.overall, null);
+  assert.equal(report.citedGivenActivatedLow, null);
 });
 
 test("both judgements travel with the figures", () => {
   const report = decomposeCitations({ answers: [], identity: IDENTITY });
   assert.ok(report.caveat.includes("is not a share of all answers"));
+  assert.ok(report.caveat.includes("The share of all answers is exact"));
   assert.ok(report.activation.caveat.includes("No provider reports whether it searched"));
 });
