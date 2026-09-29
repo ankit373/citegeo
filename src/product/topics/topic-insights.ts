@@ -1,4 +1,5 @@
 import { summariseCorroboration, type CorroboratedMention, type CorroborationSummary } from "./mention-corroboration.js";
+import { splitActivation, type ActivationSplit } from "./search-activation.js";
 import { domainLabel, tokenize } from "./prompt-identity.js";
 import { buildPromptTrend, type PromptTrend } from "./prompt-trend.js";
 import { region, REGION_CAVEAT } from "./region.js";
@@ -112,6 +113,9 @@ export interface TopicInsights {
   absentFrom: PromptStanding[];
   /** True when no answer carried a citation, so source analysis is unavailable. */
   citationsUnavailable: boolean;
+  /** Why there are no citations, when that is knowable. Saying a provider with
+   * web search would produce them is wrong where one ran with it switched off. */
+  activation: ActivationSplit;
   /** How much of the model's report of what it named survived a check against
    * the answer it wrote in the same call. */
   corroboration: CorroborationSummary;
@@ -395,6 +399,7 @@ export function buildTopicInsights(input: {
     // False with nothing answered: [].every() is true, which would report a
     // project that never ran as one whose citations are unavailable.
     citationsUnavailable: completed.length > 0 && completed.every((answer) => answer.citationUrls.length === 0),
+    activation: splitActivation(completed),
     corroboration: summariseCorroboration(completed.flatMap((answer) => answer.mentions).filter(hasCorroboration)),
     trend: buildPromptTrend({
       runs: input.runs || [],

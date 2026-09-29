@@ -2293,7 +2293,23 @@ export function boot(): void {
           + '. ' + (corr.quotesChecked ? corr.quotesFound + ' of ' + corr.quotesChecked + ' quoted lines are really in the answer. ' : '')
           + html(corr.caveat) + '</div>'
         : '';
-      const citationNote = data.citationsUnavailable ? '<div class="warning-box">No answer carried a citation, so there are no sources to analyse. That is a property of the models you ran, not evidence that nobody cites you. A provider with web search will produce them.</div>' : '';
+      // Naming the cause matters more than naming the symptom. Telling somebody
+      // to get a provider with web search is wrong when they have one, switched off.
+      const act0 = data.activation;
+      const citationCause = !act0 || !act0.considered
+        ? 'A provider with web search will produce them.'
+        : act0.notRequested && !act0.activated
+          ? act0.notRequested + ' answer(s) came from a model that can search the web and was told not to. Web search is off in Choose models, so no run could have produced a citation.'
+          : act0.unavailable === act0.considered
+            ? 'None of the models that ran can search the web at all, so no citation was ever possible.'
+            : 'A provider with web search will produce them.';
+      const citationFix = act0 && act0.notRequested && !act0.activated
+        ? '<div class="inline-actions">' + button({ label: "Turn on web search", kind: "primary", on: { "data-page": "models" } }) + '</div>'
+        : '';
+      const citationNote = data.citationsUnavailable
+        ? '<div class="warning-box">No answer carried a citation, so there are no sources to analyse. That is a property of the models you ran, not evidence that nobody cites you. '
+          + html(citationCause) + citationFix + '</div>'
+        : '';
       return '<section class="view"><div class="heading"><div><h1>Answer engine</h1><p class="subtle">' + data.answers + ' answer(s) across ' + data.topics.length + ' topic(s) for ' + html(selected.normalizedDomain) + '. Click any question to read the answers behind it.</p></div><div class="inline-actions">' + button({ label: "Prompts", on: { "data-page": "prompts" } }) + '' + runActionButton("Run prompts") + '</div></div>'
         + renderLiveRun()
         + renderHero(data)
