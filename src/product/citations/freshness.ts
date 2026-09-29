@@ -73,19 +73,28 @@ export function freshnessOf(ageDays: number | null): Freshness {
   return ageDays <= STALE_DAYS ? "ageing" : "stale";
 }
 
-export function ageOf(input: { url: string; host: string; html: string; now?: Date }): PageAge {
-  const { at, source } = statedDate(input.html);
+/** Age from a date already read off the page. Stored pages keep the date and
+ * not the age, because an age written down once is wrong the next day. */
+export function ageFrom(input: { url: string; host: string; statedAt: string | null; source: PageAge["source"]; now?: Date }): PageAge {
   const now = (input.now || new Date()).getTime();
-  const ageDays = at ? Math.floor((now - new Date(at).getTime()) / 86400000) : null;
+  const at = input.statedAt;
+  const days = at ? Math.floor((now - new Date(at).getTime()) / 86400000) : null;
+  // A page dated in the future is not negative days old; it is unusable.
+  const ageDays = days !== null && days >= 0 ? days : null;
   return {
     url: input.url,
     host: input.host,
-    statedAt: at,
-    // A page dated in the future is not negative days old; it is unusable.
-    ageDays: ageDays !== null && ageDays >= 0 ? ageDays : null,
-    freshness: freshnessOf(ageDays !== null && ageDays >= 0 ? ageDays : null),
-    source: ageDays !== null && ageDays >= 0 ? source : null,
+    statedAt: ageDays === null ? null : at,
+    ageDays,
+    freshness: freshnessOf(ageDays),
+    source: ageDays === null ? null : input.source,
   };
+}
+
+export function ageOf(input: { url: string; host: string; html: string; now?: Date }): PageAge {
+  const { at, source } = statedDate(input.html);
+  const rest = input.now === undefined ? {} : { now: input.now };
+  return ageFrom({ url: input.url, host: input.host, statedAt: at, source, ...rest });
 }
 
 export interface FreshnessReport {

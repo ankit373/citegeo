@@ -130,3 +130,79 @@ test("a cited page nobody has read yet says so rather than reading as a page you
   assert.equal(plan.targets[0]?.words, null);
   assert.ok(plan.targets[0]?.why.includes("not read yet"));
 });
+
+const DATED = `<html><head><title>Dated</title>
+<script type="application/ld+json">{"datePublished":"2026-06-01T00:00:00Z"}</script>
+</head><body><h1>Dated</h1><p>Chartink is listed here.</p></body></html>`;
+
+test("the date a cited page states about itself is read back with it", async () => {
+  const site = await serve(() => ({ status: 200, type: "text/html", body: DATED }));
+  try {
+    const read = await readSourcePage({ url: site.base + "/", names: [], brandNames: ["tradomate"], brandHost: "tradomate.one" });
+    assert.equal(read.statedAt, "2026-06-01T00:00:00.000Z");
+    assert.equal(read.dateSource, "json_ld");
+  } finally {
+    await site.close();
+  }
+});
+
+test("a page that states no date is read back undated, never as new", async () => {
+  const site = await serve(() => ({ status: 200, type: "text/html", body: PAGE }));
+  try {
+    const read = await readSourcePage({ url: site.base + "/", names: [], brandNames: ["x"], brandHost: "x.test" });
+    assert.equal(read.statedAt, null);
+    assert.equal(read.dateSource, null);
+  } finally {
+    await site.close();
+  }
+});
+
+const NOW = new Date("2026-09-29T00:00:00.000Z");
+
+const datedPage = (url: string, statedAt: string | null) => ({
+  ...page(url, false),
+  statedAt,
+  dateSource: statedAt ? ("json_ld" as const) : null,
+});
+
+test("a cited page carries its age into the plan, counted from the date it gave", () => {
+  const plan = buildOutreachPlan({
+    answers: [answer(["https://a.test/x"], false)],
+    pages: [datedPage("https://a.test/x", "2026-09-19T00:00:00.000Z")],
+    now: NOW,
+  });
+  assert.equal(plan.targets[0]?.ageDays, 10);
+  assert.equal(plan.targets[0]?.freshness, "fresh");
+  assert.equal(plan.freshness.fresh, 1);
+  assert.equal(plan.freshness.medianAgeDays, 10);
+});
+
+test("a page nobody has read is unread, which is not a page that gave no date", () => {
+  const plan = buildOutreachPlan({
+    answers: [answer(["https://a.test/x", "https://b.test/y"], false)],
+    pages: [datedPage("https://b.test/y", null)],
+    now: NOW,
+  });
+  const unread = plan.targets.find((row) => row.host === "a.test");
+  const undated = plan.targets.find((row) => row.host === "b.test");
+  assert.equal(unread?.freshness, "unread");
+  assert.equal(unread?.ageDays, null);
+  assert.equal(undated?.freshness, "undated");
+  assert.equal(plan.freshness.undated, 1, "the unread page has no age at all, so it is not counted as undated");
+  assert.equal(plan.freshness.medianAgeDays, null);
+});
+
+test("a page read back before dates were captured reads as undated, not as fresh", () => {
+  const plan = buildOutreachPlan({
+    answers: [answer(["https://a.test/x"], false)],
+    pages: [page("https://a.test/x", false)],
+    now: NOW,
+  });
+  assert.equal(plan.targets[0]?.freshness, "undated");
+  assert.equal(plan.targets[0]?.ageDays, null);
+});
+
+test("the ninety day judgement travels with the plan's figures", () => {
+  const plan = buildOutreachPlan({ answers: [answer(["https://a.test/x"], false)], pages: [], now: NOW });
+  assert.ok(plan.freshness.caveat.includes("judgement, not a measurement"));
+});

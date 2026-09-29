@@ -1,4 +1,5 @@
 import { hostOf, type NamedOnPage, type SourcePage } from "./source-page.js";
+import { ageFrom, freshnessReport, type Freshness, type FreshnessReport, type PageAge } from "./freshness.js";
 import type { PromptAnswer } from "../topics/prompt-run-schema.js";
 
 // A cited page you are missing from, on a question you lose, is the most
@@ -28,6 +29,10 @@ export interface OutreachTarget {
   reachable: boolean;
   /** Null when the page could not be read; its reason travels instead. */
   words: number | null;
+  /** How old the page says it is. Undated when it says nothing, and unread
+   * while nobody has read it back. */
+  freshness: Freshness | "unread";
+  ageDays: number | null;
   unread: string | null;
   why: string;
 }
@@ -45,6 +50,9 @@ export interface OutreachPlan {
   reachable: number;
   /** Cited pages belonging to a brand the answers named against you. */
   rivalOwned: number;
+  /** How old the pages that were read say they are. Only read pages count,
+   * because an unread page has no age rather than an unknown one. */
+  freshness: FreshnessReport;
   /** True when nothing cited anything, which is a property of what ran. */
   unavailable: boolean;
 }
@@ -67,6 +75,8 @@ export function buildOutreachPlan(input: {
   domain?: string | undefined;
   /** Domains of the brands the answers named, so their own pages are not either. */
   rivalDomains?: string[] | undefined;
+  /** Fixed by the caller in tests, so an age does not change with the clock. */
+  now?: Date | undefined;
 }): OutreachPlan {
   const completed = input.answers.filter((answer) => answer.status === "completed");
   const byUrl = new Map<string, { citedBy: number; withoutYou: number; prompts: Set<string> }>();
@@ -85,6 +95,7 @@ export function buildOutreachPlan(input: {
   }
 
   const read = new Map(input.pages.map((page) => [page.url, page]));
+  const ages = new Map<string, PageAge>();
   const targets: OutreachTarget[] = [...byUrl.entries()].map(([url, row]) => {
     const page = read.get(url);
     const rivals = page ? page.named.filter((named) => named.name) : [];
@@ -105,11 +116,19 @@ export function buildOutreachPlan(input: {
           : rivals.length
             ? `You are not on this page. ${rivals.slice(0, 3).map((named) => named.name).join(", ")} are, and it was cited in ${row.citedBy} answer(s).`
             : `You are not on this page, and neither is anyone else the answers named.`;
+    // Only a page that was read has an age. Nobody having looked is a
+    // different state from the page giving no date, so the two never merge.
+    const age = page && !page.detail
+      ? ageFrom({ url, host, statedAt: page.statedAt ?? null, source: page.dateSource ?? null, ...(input.now === undefined ? {} : { now: input.now }) })
+      : null;
+    if (age) ages.set(url, age);
     return {
       url,
       host,
       owner,
       reachable: owner === "independent",
+      freshness: age ? age.freshness : "unread",
+      ageDays: age ? age.ageDays : null,
       title: page?.title || null,
       citedBy: row.citedBy,
       prompts: [...row.prompts],
@@ -136,6 +155,7 @@ export function buildOutreachPlan(input: {
     reachable: targets.filter((row) => row.reachable).length,
     rivalOwned: targets.filter((row) => row.owner === "rival").length,
     answersConsidered: completed.length,
+    freshness: freshnessReport([...ages.values()]),
     read: input.pages.filter((page) => !page.detail).length,
     cited: byUrl.size,
     targets,
