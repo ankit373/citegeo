@@ -319,6 +319,20 @@
   @apply cursor-pointer border-0 bg-transparent p-0 font-[inherit] text-text underline;
 }
 
+/* The product app used these three before they existed here, so every badge
+   that meant good, watch or bad rendered as ordinary text. */
+@utility state-ok {
+  @apply font-medium text-confirmed-text;
+}
+
+@utility state-flag {
+  @apply font-medium text-unknown-text;
+}
+
+@utility state-bad {
+  @apply font-medium text-failed-text;
+}
+
 @utility bar {
   @apply mt-2 h-1 overflow-hidden rounded-[2px] bg-sunken;
 }
@@ -349,7 +363,7 @@
   @apply grid-cols-[20px_minmax(0,1fr)_150px] items-start;
 }
 @utility mcols-source {
-  @apply grid-cols-[minmax(0,1fr)_110px_100px] items-start;
+  @apply grid-cols-[minmax(0,1fr)_110px_100px_116px] items-start;
 }
 @utility mcols-search {
   @apply grid-cols-[minmax(0,1fr)_104px_74px_92px] items-start;

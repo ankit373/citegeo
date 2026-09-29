@@ -1,4 +1,5 @@
 import { readPage } from "../discovery/site-read.js";
+import { statedDate, type PageAge } from "./freshness.js";
 import { namesIdentity, tokenize } from "../topics/prompt-identity.js";
 
 // The page a model read, read back. A citation says a source was used; only
@@ -21,6 +22,10 @@ export interface SourcePage {
   description: string;
   headings: string[];
   words: number;
+  /** What the page says about when it was written. Null when it says nothing,
+   * which is not the same as new. Absent on a record read before this existed. */
+  statedAt?: string | null;
+  dateSource?: PageAge["source"];
   namesYou: boolean;
   /** Everyone the answers named who also appears here, in page order. */
   named: NamedOnPage[];
@@ -119,6 +124,8 @@ export async function readSourcePage(input: {
     description: "",
     headings: [] as string[],
     words: 0,
+    statedAt: null as string | null,
+    dateSource: null as PageAge["source"],
     namesYou: false,
     named: [] as NamedOnPage[],
   };
@@ -128,6 +135,7 @@ export async function readSourcePage(input: {
 
   const html = fetched.html;
   const page = readPage(input.url, html);
+  const dated = statedDate(html);
   const text = page.text;
   const named: NamedOnPage[] = [];
   for (const name of [...new Set(input.names)]) {
@@ -147,6 +155,8 @@ export async function readSourcePage(input: {
     description: page.description,
     headings: page.headings.slice(0, 12),
     words: text.split(" ").filter(Boolean).length,
+    statedAt: dated.at,
+    dateSource: dated.source,
     namesYou,
     named,
     detail: null,

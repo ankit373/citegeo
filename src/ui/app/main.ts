@@ -1599,6 +1599,13 @@ export function boot(): void {
       render();
     }
 
+    function ageCell(target: any) {
+      if (target.freshness === "unread") return '<span class="mcell subtle">Not read</span>';
+      if (target.freshness === "undated") return '<span class="mcell subtle">No date given</span>';
+      const tone = target.freshness === "fresh" ? "state-ok" : target.freshness === "ageing" ? "state-flag" : "state-bad";
+      return '<span class="mcell ' + tone + '">' + target.ageDays + ' days</span>';
+    }
+
     function outreachRow(target: any) {
       const rivals = target.rivals.length
         ? '<span class="namechips">' + target.rivals.slice(0, 8).map((named: any, index: any) => '<span class="namechip"><b>' + (index + 1) + '</b>' + html(named.name) + '</span>').join("") + '</span>'
@@ -1609,7 +1616,8 @@ export function boot(): void {
         + '<span class="subtle">' + html(target.why) + '</span>'
         + '<span class="subtle">Cited answering: ' + html(target.prompts.slice(0, 2).join(" · ")) + '</span>' + rivals + '</div>'
         + '<span class="mcell ' + (target.namesYou ? "state-ok" : "state-bad") + '">' + (target.namesYou ? "You are on it" : "You are not") + '</span>'
-        + '<span class="mcell">' + target.citedBy + ' answer(s)</span></div>';
+        + '<span class="mcell">' + target.citedBy + ' answer(s)</span>'
+        + ageCell(target) + '</div>';
     }
 
     function renderOutreach() {
@@ -1622,9 +1630,18 @@ export function boot(): void {
       if (plan.unavailable) {
         return '<p class="subtle">No archived answer carried a source, so there is no page to read. That is a property of the models and surfaces that ran, not evidence that nobody cites you. Turn on a grounded provider or an answer surface and run again.</p>';
       }
+      const age = plan.freshness;
+      const aged = age.fresh + age.ageing + age.stale;
+      const freshLine = aged || age.undated
+        ? '<p class="subtle">Of the pages read back, ' + age.fresh + ' fresh, ' + age.ageing + ' ageing and ' + age.stale + ' stale'
+          + (age.undated ? ', and ' + age.undated + ' state no date at all' : '')
+          + (age.medianAgeDays === null ? '. None of them gave a date to take a median of.' : '. Median age ' + age.medianAgeDays + ' days.')
+          + ' ' + html(age.caveat) + '</p>'
+        : '';
       return '<p class="subtle">' + plan.cited + ' page(s) cited across ' + plan.answersWithCitations + ' of ' + plan.answersConsidered + ' answer(s). ' + plan.read + ' read back.</p>'
+        + freshLine
         + '<div class="inline-actions">' + harvestAction + '</div>'
-        + '<div class="mtable"><div class="mhead mcols-source"><span>Page</span><span>You</span><span>Cited</span></div>'
+        + '<div class="mtable"><div class="mhead mcols-source"><span>Page</span><span>You</span><span>Cited</span><span>Page age</span></div>'
         + plan.targets.slice(0, 20).map(outreachRow).join("") + '</div>';
     }
 

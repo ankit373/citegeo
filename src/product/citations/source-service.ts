@@ -60,7 +60,9 @@ export class SourcePageService {
     for (const url of urls) {
       if (read + failed >= limit) { skipped += 1; continue; }
       const already = await getJson<SourcePage>(this.projects.objects, this.key(input.projectId, url));
-      if (already && !already.detail) { skipped += 1; continue; }
+      // A record written before dates were read has no date field at all, which
+      // is not the same as a page that stated none, so it is read again once.
+      if (already && !already.detail && "statedAt" in already) { skipped += 1; continue; }
       const page = await readSourcePage({
         url,
         names: input.names,
