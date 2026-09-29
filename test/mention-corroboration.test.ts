@@ -76,8 +76,9 @@ test("the summary counts what was checked and what could not be", () => {
   assert.equal(summary.quotesFound, 1);
 });
 
-test("the caveat says the reading is not independent of the writing", () => {
-  assert.ok(CORROBORATION_CAVEAT.includes("not independent of the writing"));
+test("the caveat separates the two paths rather than claiming one for both", () => {
   assert.ok(CORROBORATION_CAVEAT.includes("stays the model's own word"));
+  assert.ok(CORROBORATION_CAVEAT.includes("not independent of the writing"), "true where a provider answered");
+  assert.ok(CORROBORATION_CAVEAT.includes("read off a browser surface"), "and not true where a browser surface did");
   assert.equal(summariseCorroboration([]).caveat, CORROBORATION_CAVEAT);
 });

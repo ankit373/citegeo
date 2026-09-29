@@ -7,7 +7,7 @@ import type { AnswerMention, MentionCorroboration } from "./prompt-run-schema.js
 //
 // What cannot be checked stays as the model's own word, and says so.
 
-export const CORROBORATION_CAVEAT = "The same call wrote the answer and reported what it named, so the reading is not independent of the writing. Names are checked against the answer text and positions are measured from it. Whether a mention recommends or rejects stays the model's own word, because nothing here can check it.";
+export const CORROBORATION_CAVEAT = "Names are checked against the answer text and positions are measured from it. Whether a mention recommends or rejects stays the model's own word, because nothing here can check it. Where a provider answered, one call both wrote the answer and reported what it named, so that reading is not independent of the writing. An answer read off a browser surface was reported on by a different model, which is independent of the one that wrote it.";
 
 /** Whole tokens, the same rule the rest of the product matches names by. */
 function positionOf(tokens: string[], name: string): number {
