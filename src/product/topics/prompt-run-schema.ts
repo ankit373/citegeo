@@ -1,6 +1,7 @@
 import type { AnswerSourceId, ProductProviderId } from "../configuration/provider-id.js";
 import type { DiscoveryRecommendation, FirstPositionState } from "../measurements/measurement-schema.js";
 import type { PromptIntent } from "./topic-schema.js";
+import type { WebSearchUsedMode } from "../../core/types.js";
 
 export const PROMPT_RUN_PROTOCOL_ID = "prompt-run/v1";
 
@@ -26,6 +27,19 @@ export type PromptAnswerStatus = "completed" | "no_answer" | "provider_failed" |
 /** Whether the answer really names this, checked against the text rather than
  * taken from the model that wrote both the answer and the report. */
 export type MentionCorroboration = "measured" | "named_only" | "absent_from_answer";
+
+/** What the provider reported about searching for this answer. Absent on a
+ * record written before it was kept, which is not the same as no search. */
+export interface AnswerSearch {
+  /** Whether the run asked for web search at all. */
+  requested: boolean;
+  /** Whether the provider is taken to have run one. */
+  used: boolean;
+  usedMode: WebSearchUsedMode;
+  /** What it says it searched for. The evidence for used, kept short because
+   * a receipt nobody can read is not one. */
+  queries: string[];
+}
 
 /** One organisation named in one answer, with the evidence for it. */
 export interface AnswerMention {
@@ -65,6 +79,9 @@ export interface PromptAnswer {
   mentions: AnswerMention[];
   /** Provider-native citation URLs from this response only. */
   citationUrls: string[];
+  /** Absent on an answer archived before the provider's own account of
+   * searching was kept, and on a browser surface, which reports none. */
+  search?: AnswerSearch | undefined;
   errorCode: string | null;
   errorMessage: string | null;
   latencyMs: number | null;

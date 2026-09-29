@@ -2251,9 +2251,12 @@ export function boot(): void {
       const overall = report.overall === null
         ? ''
         : 'Across all answers it is ' + sharePct(report.overall) + ', which is exact: an answer carrying no source cited nobody.';
-      const band = act.unknown
-        ? '<p class="subtle">' + act.activated + ' searched, ' + act.unavailable + ' could not search at all, and ' + act.unknown + ' could have searched and carried no source, which is unknown rather than a no.</p>'
-        : '';
+      // Each state is only named when it happened, or the line lists noughts.
+      const parts = [act.activated + ' searched'];
+      if (act.unavailable) parts.push(act.unavailable + ' could not search at all');
+      if (act.notRequested) parts.push(act.notRequested + (act.notRequested === 1 ? ' was' : ' were') + ' never asked to');
+      if (act.unknown) parts.push(act.unknown + ' could have searched and nothing says whether they did, which is unknown rather than a no');
+      const band = parts.length > 1 ? '<p class="subtle">' + parts.join(', ') + '.</p>' : '';
       return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>Searching, then being cited</h3>'
         + '<p class="subtle">' + html(report.caveat) + '</p></div></div>'
         + '<p>' + searched + '. ' + cited + ' ' + overall + '</p>'

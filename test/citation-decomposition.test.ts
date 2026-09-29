@@ -131,5 +131,55 @@ test("both judgements travel with the figures", () => {
   const report = decomposeCitations({ answers: [], identity: IDENTITY });
   assert.ok(report.caveat.includes("is not a share of all answers"));
   assert.ok(report.caveat.includes("The share of all answers is exact"));
-  assert.ok(report.activation.caveat.includes("No provider reports whether it searched"));
+  assert.ok(report.activation.caveat.includes("Most providers report whether they ran a search"));
+});
+
+function searched(providerId: AnswerSourceId, said: PromptAnswer["search"], citationUrls: string[] = []): PromptAnswer {
+  return { ...answer(providerId, citationUrls), ...(said ? { search: said } : {}) };
+}
+
+test("the provider's own account of searching is taken over the guess", () => {
+  const ran = searched("openai", { requested: true, used: true, usedMode: "provider_native", queries: ["best screener india"] });
+  assert.equal(activationOf(ran), "activated", "it says it searched and cited nobody, which the old guess called unknown");
+});
+
+test("a run that never asked for search is a measured nought, not an unknown", () => {
+  const never = searched("openai", { requested: false, used: false, usedMode: "none", queries: [] });
+  assert.equal(activationOf(never), "not_requested");
+  const split = splitActivation([never]);
+  assert.equal(split.notRequested, 1);
+  assert.equal(split.unknown, 0);
+  assert.equal(split.rate, 0, "nothing is unknown any more, so there is a rate");
+});
+
+test("a surface that cannot search says so even when the run asked", () => {
+  const cannot = searched("deepseek", { requested: false, used: false, usedMode: "none", queries: [] });
+  assert.equal(activationOf(cannot), "unavailable", "could not is not the same as was not asked");
+});
+
+test("asked and never confirmed stays unknown, because that is what it is", () => {
+  const murky = searched("openai", { requested: true, used: false, usedMode: "requested_not_confirmed", queries: [] });
+  assert.equal(activationOf(murky), "unknown");
+});
+
+test("an answer archived before the account was kept falls back to the guess", () => {
+  assert.equal(activationOf(answer("openai", [])), "unknown");
+  assert.equal(activationOf(answer("openai", ["https://a.test/x"])), "activated");
+});
+
+test("the recorded account narrows the band the guess left wide", () => {
+  const rows = [
+    searched("openai", { requested: true, used: true, usedMode: "provider_native", queries: ["a"] }, ["https://tradomate.one/a"]),
+    searched("openai", { requested: false, used: false, usedMode: "none", queries: [] }),
+    searched("openai", { requested: true, used: true, usedMode: "provider_native", queries: ["b"] }),
+  ];
+  const split = splitActivation(rows);
+  assert.equal(split.rate, 2 / 3, "guessed from citations alone this was a band from one third to one");
+  assert.equal(split.low, split.high);
+  const report = decomposeCitations({ answers: rows, identity: IDENTITY });
+  assert.equal(report.citedGivenActivated, 0.5, "and the conditional is a number rather than a band");
+});
+
+test("the caveat says the provider's account is preferred to the guess", () => {
+  assert.ok(splitActivation([]).caveat.includes("its own account is taken over any inference"));
 });
