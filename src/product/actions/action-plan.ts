@@ -26,6 +26,10 @@ export interface RecognitionSummary {
 
 const SEVERITY_ORDER: Record<ActionSeverity, number> = { critical: 0, high: 1, medium: 2, done: 3 };
 
+/** Travels with the finding, because the obvious reading of a blocked crawler
+ * is the wrong one and this product used to state it. */
+export const CRAWLER_ACCESS_CAVEAT = "Blocking these agents is not what stops an engine citing a domain. Across a study of four million citations, most sites disallowing each of these agents were cited anyway, and the measured cost of blocking was referred visits. That sample was large publishers with deep coverage elsewhere, so a brand nobody else writes about may not fare the same.";
+
 function list(values: string[], limit: number): string {
   const head = values.slice(0, limit).join(", ");
   return values.length > limit ? `${head} and ${values.length - limit} more` : head;
@@ -49,22 +53,23 @@ export function buildActionPlan(input: {
     }];
   }
 
-  // The hard gate: a blocked crawler can never cite you, whatever else is true.
+  // Blocking costs referred visits. It does not stop citation: measured across
+  // millions of citations, most sites disallowing these agents were cited anyway.
   if (signals.robots.blocked.length) {
     actions.push({
       id: "crawlers-blocked",
-      severity: "critical",
+      severity: "high",
       title: `${signals.robots.blocked.length} AI crawler(s) are disallowed in robots.txt`,
-      why: "A crawler that cannot fetch the site cannot cite it. This outranks every other change on this list.",
-      fix: `Allow ${list(signals.robots.blocked, 4)} in robots.txt, or accept that those engines will never cite this domain.`,
-      evidence: `robots.txt disallows: ${list(signals.robots.blocked, 8)}.`,
+      why: "The measured cost of blocking is referred traffic, not citation. Engines cite blocked domains routinely, from a search result or from what they already hold, so this is worth fixing without expecting citations to follow from it.",
+      fix: `Allow ${list(signals.robots.blocked, 4)} in robots.txt to recover the visits an answer sends. Expect a traffic change, and judge it on traffic.`,
+      evidence: `robots.txt disallows: ${list(signals.robots.blocked, 8)}. ${CRAWLER_ACCESS_CAVEAT}`,
     });
   } else {
     actions.push({
       id: "crawlers-allowed",
       severity: "done",
       title: "AI crawlers can read the site",
-      why: "Access is the precondition for being cited.",
+      why: "Access is what carries a reader from an answer back to the site. It is not what decides whether the answer names you.",
       fix: "Nothing to do. Re-check after any robots.txt change.",
       evidence: `${signals.robots.allowed.length} of ${signals.robots.allowed.length + signals.robots.blocked.length} tracked crawlers are allowed.`,
     });
