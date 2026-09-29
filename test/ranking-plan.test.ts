@@ -1,3 +1,4 @@
+import { buildStabilityReport } from "../src/product/topics/answer-stability.js";
 import { splitActivation } from "../src/product/topics/search-activation.js";
 import { summariseCorroboration } from "../src/product/topics/mention-corroboration.js";
 import { wilsonInterval } from "../src/product/topics/proportion-interval.js";
@@ -44,7 +45,7 @@ function set(prompts: Prompt[]): TopicSet {
 function insights(overrides: Partial<TopicInsights> = {}): TopicInsights {
   return {
     projectId: "p", answers: 10, answersFailed: 0, overall: score(), rank: null, weights: WEIGHTS,
-    leaderboard: [], topics: [], byModel: [], absentFrom: [], citationsUnavailable: false, corroboration: summariseCorroboration([]), activation: splitActivation([]),
+    leaderboard: [], topics: [], byModel: [], absentFrom: [], citationsUnavailable: false, corroboration: summariseCorroboration([]), activation: splitActivation([]), stability: buildStabilityReport([]),
     trend: { points: [], change: null, since: null }, byRegion: [], byLanguage: [], byPersona: [],
     regionCaveat: "", identityCaveat: null, trackedRivals: [], ...overrides,
   };

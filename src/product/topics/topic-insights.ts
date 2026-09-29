@@ -1,5 +1,6 @@
 import { summariseCorroboration, type CorroboratedMention, type CorroborationSummary } from "./mention-corroboration.js";
 import { splitActivation, type ActivationSplit } from "./search-activation.js";
+import { buildStabilityReport, type StabilityReport } from "./answer-stability.js";
 import { domainLabel, tokenize } from "./prompt-identity.js";
 import { buildPromptTrend, type PromptTrend } from "./prompt-trend.js";
 import { region, REGION_CAVEAT } from "./region.js";
@@ -116,6 +117,9 @@ export interface TopicInsights {
   /** Why there are no citations, when that is knowable. Saying a provider with
    * web search would produce them is wrong where one ran with it switched off. */
   activation: ActivationSplit;
+  /** How much the same question moves when asked again. Empty until a run
+   * asks more than once, because one pass cannot show it. */
+  stability: StabilityReport;
   /** How much of the model's report of what it named survived a check against
    * the answer it wrote in the same call. */
   corroboration: CorroborationSummary;
@@ -400,6 +404,7 @@ export function buildTopicInsights(input: {
     // project that never ran as one whose citations are unavailable.
     citationsUnavailable: completed.length > 0 && completed.every((answer) => answer.citationUrls.length === 0),
     activation: splitActivation(completed),
+    stability: buildStabilityReport(completed),
     corroboration: summariseCorroboration(completed.flatMap((answer) => answer.mentions).filter(hasCorroboration)),
     trend: buildPromptTrend({
       runs: input.runs || [],

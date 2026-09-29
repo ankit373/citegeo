@@ -1,3 +1,4 @@
+import { buildStabilityReport } from "../src/product/topics/answer-stability.js";
 import { splitActivation } from "../src/product/topics/search-activation.js";
 import { wilsonInterval } from "../src/product/topics/proportion-interval.js";
 import { SCORE_WEIGHTS } from "../src/product/topics/visibility-score.js";
@@ -24,7 +25,7 @@ function insights(): TopicInsights {
   return {
     projectId: "p", answers: 0, answersFailed: 0, overall: SCORE, rank: null,
     weights: SCORE.weights, leaderboard: [], topics: [], byModel: [], absentFrom: [],
-    citationsUnavailable: false, corroboration: summariseCorroboration([]), activation: splitActivation([]), trend: { points: [], change: null, since: null }, byRegion: [], byLanguage: [], byPersona: [],
+    citationsUnavailable: false, corroboration: summariseCorroboration([]), activation: splitActivation([]), stability: buildStabilityReport([]), trend: { points: [], change: null, since: null }, byRegion: [], byLanguage: [], byPersona: [],
     regionCaveat: "", identityCaveat: null, trackedRivals: [],
   };
 }

@@ -84,6 +84,15 @@ export interface PositionShape {
   worst: number | null;
 }
 
+export interface StabilityShape {
+  measured: number;
+  askedOnce: number;
+  sourceOverlap: number | null;
+  namingUnstable: number;
+  questions: Array<{ promptId: string; promptText: string; modelId: string; passes: number; named: number; namingAgreed: boolean; sourceOverlap: number | null; sourcesAlways: number; sourcesEver: number }>;
+  caveat: string;
+}
+
 export interface ActivationShape {
   considered: number;
   activated: number;
@@ -123,6 +132,7 @@ export interface InsightsShape {
   citationsUnavailable: boolean;
   /** Absent on an archive read before activation was split out. */
   activation?: ActivationShape | undefined;
+  stability?: StabilityShape | undefined;
   /** Absent on an archive answered before mentions were checked against the
    * answer text, so nothing is claimed about those. */
   corroboration?: CorroborationShape | undefined;
