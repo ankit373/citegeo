@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import type { CitationAnalysis } from "../src/product/topics/citation-analysis.js";
 import { citationStanding, positionReport } from "../src/product/topics/position-metrics.js";
+import { decomposeCitations } from "../src/product/topics/citation-decomposition.js";
 import type { PromptStanding } from "../src/product/topics/topic-insights.js";
 
 function prompt(rank: number | null, measures = true): PromptStanding {
@@ -48,6 +49,7 @@ test("never being named anywhere reports no position rather than nought", () => 
 function analysis(domains: Array<{ domain: string; answers: number; isTarget?: boolean }>): CitationAnalysis {
   return {
     answersWithCitations: 10, answersConsidered: 10, ownPages: [], openings: [], unavailable: false,
+    decomposition: decomposeCitations({ answers: [], identity: { distinctive: [], ambiguous: [], host: "mine.com", nameMatchingUnreliable: false, caveat: null } }),
     domains: domains.map((row) => ({
       domain: row.domain, answers: row.answers, pages: 1,
       isTarget: row.isTarget === true, answersWithoutYou: 0,

@@ -2216,9 +2216,38 @@ export function boot(): void {
         : '<p class="subtle">No page won a question you were absent from.</p>';
 
       return '<p class="subtle">' + data.answersWithCitations + ' of ' + data.answersConsidered + ' answers carried a source.</p>'
+        + renderDecomposition(data.decomposition)
         + '<h3 style="margin-top:16px">Pages of yours the models reached for</h3>' + own
         + '<h3 style="margin-top:20px">Every domain cited</h3>' + rivals
         + '<h3 style="margin-top:20px">Pages that won a question you are absent from</h3>' + openings;
+    }
+
+    function sharePct(value: any) { return value === null || value === undefined ? null : (Math.round(value * 1000) / 10) + "%"; }
+
+    function renderDecomposition(report: any) {
+      if (!report || !report.activation || !report.activation.considered) return '';
+      const act = report.activation;
+      const searched = act.rate === null
+        ? 'Between ' + sharePct(act.low) + ' and ' + sharePct(act.high) + ' of answers searched the web'
+        : sharePct(act.rate) + ' of answers searched the web';
+      // Both ends equal reads as a band of nothing, so it is stated as one figure.
+      const settled = report.citedGivenActivated !== null || report.citedGivenActivatedLow === report.citedGivenActivatedHigh;
+      const cited = report.citedGivenActivatedHigh === null
+        ? 'Nothing is known to have searched, so there is no share among those to give.'
+        : settled
+          ? sharePct(report.citedGivenActivatedHigh) + ' of the answers that searched cited you.'
+          : 'Between ' + sharePct(report.citedGivenActivatedLow) + ' and ' + sharePct(report.citedGivenActivatedHigh) + ' of the answers that searched cited you, depending on how many of the unknown ones did.';
+      const overall = report.overall === null
+        ? ''
+        : 'Across all answers it is ' + sharePct(report.overall) + ', which is exact: an answer carrying no source cited nobody.';
+      const band = act.unknown
+        ? '<p class="subtle">' + act.activated + ' searched, ' + act.unavailable + ' could not search at all, and ' + act.unknown + ' could have searched and carried no source, which is unknown rather than a no.</p>'
+        : '';
+      return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>Searching, then being cited</h3>'
+        + '<p class="subtle">' + html(report.caveat) + '</p></div></div>'
+        + '<p>' + searched + '. ' + cited + ' ' + overall + '</p>'
+        + band
+        + '<p class="subtle">' + html(act.caveat) + '</p></div>';
     }
 
     function renderAnswerEngine() {

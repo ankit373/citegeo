@@ -1,4 +1,5 @@
 import { domainLabel } from "./prompt-identity.js";
+import { decomposeCitations, type CitationDecomposition } from "./citation-decomposition.js";
 import type { BrandIdentity } from "./brand-identity.js";
 import type { PromptAnswer } from "./prompt-run-schema.js";
 
@@ -34,6 +35,9 @@ export interface CitationAnalysis {
   openings: Array<{ url: string; domain: string; prompt: string }>;
   /** True when nothing cited anything, which is a property of the models run. */
   unavailable: boolean;
+  /** Searching and being cited, reported apart. Every count above is taken
+   * over all answers, which is not the population any of them holds over. */
+  decomposition: CitationDecomposition;
 }
 
 function parsed(url: string): URL | null {
@@ -106,5 +110,6 @@ export function buildCitationAnalysis(input: { answers: PromptAnswer[]; identity
     // The clearest opening first: the page a rival won most often.
     openings: openings.slice(0, 20),
     unavailable: completed.length > 0 && withCitations === 0,
+    decomposition: decomposeCitations({ answers: completed, identity: input.identity }),
   };
 }
