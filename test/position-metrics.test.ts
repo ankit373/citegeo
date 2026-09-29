@@ -1,3 +1,4 @@
+import { wilsonInterval } from "../src/product/topics/proportion-interval.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import type { CitationAnalysis } from "../src/product/topics/citation-analysis.js";
@@ -9,7 +10,7 @@ function prompt(rank: number | null, measures = true): PromptStanding {
   return {
     promptId: "p", topicId: "t", subtopic: null, text: "q", intent: "commercial",
     measuresVisibility: measures,
-    score: { answers: 1, appearances: rank === null ? 0 : 1, presenceRate: null, prominence: null, sentiment: null, score: null },
+    score: { answers: 1, appearances: rank === null ? 0 : 1, presenceInterval: wilsonInterval(0, 0), tooFewAnswers: false, presenceRate: null, prominence: null, sentiment: null, score: null },
     rank, entitiesNamed: 4, byModel: [], ahead: [], standing: [],
   } as unknown as PromptStanding;
 }

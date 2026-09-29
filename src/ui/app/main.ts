@@ -1086,11 +1086,22 @@ export function boot(): void {
 
     function renderScoreBreakdown(score: any) {
       if (!score || score.answers === 0) return '<p class="subtle">Nothing has been answered yet, so there is nothing to score. This is not a zero.</p>';
+      const band = score.presenceInterval;
+      // Absent on an archive scored before the range existed, so nothing is
+      // claimed about how precise those figures were.
+      const presenceNote = band && band.low !== null
+        ? score.appearances + ' of ' + score.answers + ', consistent with ' + pct(band.low) + ' to ' + pct(band.high)
+        : score.appearances + ' of ' + score.answers + ' answers named you';
+      const width = score.tooFewAnswers
+        ? '<div class="warning-box"><strong>Too few answers to read this as a rate.</strong> '
+          + score.answers + ' answer(s) leave the presence rate anywhere from ' + pct(band.low) + ' to ' + pct(band.high)
+          + ', which decides nothing. Track more questions, or more models, before acting on the number. ' + html(band.caveat) + '</div>'
+        : '';
       return '<div class="statgrid" style="--tile-columns:3">'
-        + stat("Presence", pct(score.presenceRate), score.appearances + ' of ' + score.answers + ' answers named you', score.presenceRate)
+        + stat("Presence", pct(score.presenceRate), presenceNote, score.presenceRate)
         + stat("Prominence", pct(score.prominence), score.prominence === null ? 'No answer gave a readable order' : 'Full marks means always named first', score.prominence)
         + stat("Sentiment", pct(score.sentiment), score.sentiment === null ? 'Nothing named, so nothing judged' : 'Full marks means always recommended', score.sentiment)
-        + '</div>';
+        + '</div>' + width;
     }
 
     function renderAbsent(rows: any[]) {

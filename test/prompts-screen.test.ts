@@ -1,3 +1,4 @@
+import { wilsonInterval } from "../src/product/topics/proportion-interval.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { buildHomeSummary } from "../src/product/alerts/home-summary.js";
@@ -13,7 +14,7 @@ const EMPTY_SET: TopicSet = {
 };
 
 const SCORE: VisibilityScore = {
-  answers: 0, appearances: 0, presenceRate: null, prominence: null, sentiment: null, score: null,
+  answers: 0, appearances: 0, presenceInterval: wilsonInterval(0, 0), tooFewAnswers: false, presenceRate: null, prominence: null, sentiment: null, score: null,
   weights: { prominenceFloor: 0.6, sentimentFloor: 0.5 },
 };
 
