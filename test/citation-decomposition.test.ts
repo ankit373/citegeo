@@ -183,3 +183,37 @@ test("the recorded account narrows the band the guess left wide", () => {
 test("the caveat says the provider's account is preferred to the guess", () => {
   assert.ok(splitActivation([]).caveat.includes("its own account is taken over any inference"));
 });
+
+test("a model that can search and was told not to is why there are no citations", () => {
+  const off = searched("azure-openai", { requested: false, used: false, usedMode: "none", queries: [] });
+  const split = splitActivation([off, off]);
+  assert.equal(split.notRequested, 2);
+  assert.equal(split.activated, 0);
+  assert.equal(split.unavailable, 0, "the model can search, so this is not a provider that cannot");
+  assert.equal(split.rate, 0, "nothing unknown, so the activation rate is a measured nought");
+});
+
+test("a run with nothing but search-incapable models says that instead", () => {
+  const split = splitActivation([answer("deepseek", []), answer("deepseek", [])]);
+  assert.equal(split.unavailable, 2);
+  assert.equal(split.notRequested, 0, "never asked and cannot be asked are different findings");
+});
+
+function browserAnswer(modelId: string, citationUrls: string[] = []): PromptAnswer {
+  return { ...answer("browser", citationUrls), modelId };
+}
+
+test("a surface built out of a search result searched, whatever it rendered", () => {
+  assert.equal(activationOf(browserAnswer("google-ai-overview")), "activated", "an overview is written from the result it sits on");
+  assert.equal(activationOf(browserAnswer("perplexity-web")), "activated");
+  assert.equal(activationOf(browserAnswer("copilot")), "activated");
+});
+
+test("a surface that decides per question stays unknown when it rendered nothing", () => {
+  assert.equal(activationOf(browserAnswer("chatgpt")), "unknown", "it often answers without searching, so no source is not a nought");
+  assert.equal(activationOf(browserAnswer("chatgpt", ["https://a.test/x"])), "activated");
+});
+
+test("an unrecognised surface is not assumed to have searched", () => {
+  assert.equal(activationOf(browserAnswer("something-new")), "unknown");
+});

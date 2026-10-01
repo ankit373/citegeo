@@ -91,6 +91,9 @@ export const googleAiOverview: BrowserEngine = {
   label: "Google AI Overview",
   caveat:
     "Read from a search results page in your own browser. Google shows an overview for some queries and not others, and personalises what it shows, so this is what your session saw rather than what everyone sees.",
+  // An overview is written from the search result it sits on. There is no
+  // version of it that answered without searching.
+  grounding: "always",
   async ask(session, question) {
     const url = `https://www.google.com/search?q=${encodeURIComponent(question)}`;
     await session.send("Page.navigate", { url });
@@ -111,6 +114,9 @@ export const perplexityWeb: BrowserEngine = {
   id: "perplexity-web",
   label: "Perplexity (web)",
   caveat: "Read from perplexity.ai in your own signed-in browser. Signed out it answers but renders no linked sources, so citations come back empty rather than wrong. The web app and the Sonar API do not always answer the same way.",
+  // It searches for every question. Signed out the sources are not rendered,
+  // which is a reading problem here and not the surface declining to search.
+  grounding: "always",
   async ask(session, question) {
     await session.send("Page.navigate", { url: `https://www.perplexity.ai/search?q=${encodeURIComponent(question)}` });
     // "main" is the fallback only so a miss can be reported as a miss; it is
@@ -130,6 +136,7 @@ export const copilotWeb: BrowserEngine = {
   id: "copilot",
   label: "Microsoft Copilot",
   caveat: "Read from copilot.microsoft.com in your own signed-in browser. Copilot personalises by account and region, so this is what your session saw.",
+  grounding: "always",
   async ask(session, question) {
     await session.send("Page.navigate", { url: `https://copilot.microsoft.com/?q=${encodeURIComponent(question)}` });
     const specific = ["[data-content='ai-message']", "div[data-testid='message-content']", "cib-message-group"];
@@ -146,6 +153,9 @@ export const chatgptWeb: BrowserEngine = {
   id: "chatgpt",
   label: "ChatGPT (web)",
   caveat: "Read from chatgpt.com in your own signed-in browser. The product and the API answer differently, because the product runs retrieval and model routing an API key does not expose.",
+  // It decides per question whether to search, and often does not, so an
+  // answer with no sources here is genuinely unknown rather than a nought.
+  grounding: "per_question",
   async ask(session, question) {
     await session.send("Page.navigate", { url: `https://chatgpt.com/?q=${encodeURIComponent(question)}` });
     // The signed-out answer renders in a single article and carries none of

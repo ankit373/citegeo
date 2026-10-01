@@ -1,3 +1,4 @@
+import { splitActivation } from "../src/product/topics/search-activation.js";
 import { summariseCorroboration } from "../src/product/topics/mention-corroboration.js";
 import { wilsonInterval } from "../src/product/topics/proportion-interval.js";
 import { SCORE_WEIGHTS } from "../src/product/topics/visibility-score.js";
@@ -16,7 +17,7 @@ function score(overrides: Partial<VisibilityScore> = {}): VisibilityScore {
 function insights(overrides: Partial<TopicInsights> = {}): TopicInsights {
   return {
     projectId: "p", answers: 10, answersFailed: 0, overall: score(), rank: 4, weights: WEIGHTS,
-    leaderboard: [], topics: [], byModel: [], absentFrom: [], citationsUnavailable: false, corroboration: summariseCorroboration([]),
+    leaderboard: [], topics: [], byModel: [], absentFrom: [], citationsUnavailable: false, corroboration: summariseCorroboration([]), activation: splitActivation([]),
     trend: { points: [], change: null, since: null }, byRegion: [], byLanguage: [], byPersona: [],
     regionCaveat: "", identityCaveat: null, trackedRivals: [], ...overrides,
   };

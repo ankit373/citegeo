@@ -84,6 +84,18 @@ export interface PositionShape {
   worst: number | null;
 }
 
+export interface ActivationShape {
+  considered: number;
+  activated: number;
+  unavailable: number;
+  notRequested: number;
+  unknown: number;
+  rate: number | null;
+  low: number | null;
+  high: number | null;
+  caveat: string;
+}
+
 export interface CorroborationShape {
   reported: number;
   measured: number;
@@ -109,6 +121,8 @@ export interface InsightsShape {
   byModel: ModelStandingRow[];
   absentFrom: PromptStandingRow[];
   citationsUnavailable: boolean;
+  /** Absent on an archive read before activation was split out. */
+  activation?: ActivationShape | undefined;
   /** Absent on an archive answered before mentions were checked against the
    * answer text, so nothing is claimed about those. */
   corroboration?: CorroborationShape | undefined;

@@ -24,11 +24,17 @@ export type EngineOutcome =
   /** The browser, the network or a sign-in wall stopped it before an answer. */
   | { state: "unavailable"; detail: string };
 
+/** A surface built out of a search result is grounded whatever came back.
+ * One that decides per question is not, and saying which is which is the
+ * difference between a measured nought and an unknown. */
+export type EngineGrounding = "always" | "per_question";
+
 export interface BrowserEngine {
   id: EngineId;
   label: string;
   /** What this surface is, and what reading it this way cannot promise. */
   caveat: string;
+  grounding: EngineGrounding;
   ask(session: CdpSession, question: string): Promise<EngineOutcome>;
 }
 

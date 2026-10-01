@@ -1,10 +1,11 @@
 import { providerAccess, type SearchPosture } from "../configuration/provider-access.js";
+import { browserEngine } from "../engines/engine-registry.js";
 import type { AnswerSourceId } from "../configuration/provider-id.js";
 import type { PromptAnswer } from "./prompt-run-schema.js";
 
 // Whether a source can be cited at all is decided before anything about the
-// source: the surface has to have searched. No provider reports that, so it is
-// derived from what is observable, and stays unknown where it is not knowable.
+// source: the surface has to have searched. Its own account of that is taken
+// where there is one, and otherwise it stays unknown rather than being guessed.
 //
 // Counting an answer that never searched alongside one that searched and cited
 // nobody puts two different populations under one denominator, and every rate
@@ -22,16 +23,19 @@ export type SearchActivation =
 
 export const ACTIVATION_CAVEAT = "Most providers report whether they ran a search, and where one does its own account is taken over any inference. Where none is recorded, an answer carrying a source searched and a surface with no web search could not, and anything else is unknown, because a search that found nothing and no search at all look identical from here.";
 
-function postureOf(providerId: AnswerSourceId): SearchPosture {
-  // A browser surface has no provider row. It can search and often does not,
-  // which is the reason the unknown state exists rather than a default.
-  if (providerId === "browser") return "optional";
+function postureOf(providerId: AnswerSourceId, modelId?: string): SearchPosture {
+  // A browser surface has no provider row, and they do not behave alike. One
+  // built out of a search result is always grounded; one that decides per
+  // question is not, and calling both optional threw away the difference.
+  if (providerId === "browser") {
+    return browserEngine(modelId || "")?.grounding === "always" ? "always" : "optional";
+  }
   return providerAccess(providerId)?.search || "optional";
 }
 
-export function activationOf(answer: Pick<PromptAnswer, "providerId" | "citationUrls" | "status" | "search">): SearchActivation {
+export function activationOf(answer: Pick<PromptAnswer, "providerId" | "modelId" | "citationUrls" | "status" | "search">): SearchActivation {
   if (answer.status !== "completed") return "unknown";
-  const posture = postureOf(answer.providerId);
+  const posture = postureOf(answer.providerId, answer.modelId);
   // The provider's own account first. It is the only thing here that can tell
   // a search that found nothing from a search that never ran.
   const said = answer.search;

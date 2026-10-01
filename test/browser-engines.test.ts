@@ -43,6 +43,7 @@ test("a thrown adapter becomes unavailable rather than taking the run down", asy
     id: "chatgpt",
     label: "Broken",
     caveat: "A test engine that always throws, to prove a failure is reported and not raised.",
+    grounding: "per_question",
     ask: async () => { throw new Error("the page went away"); },
   };
   const outcome = await askEngine(broken, "q", { endpoint: "http://127.0.0.1:1" });
