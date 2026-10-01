@@ -895,7 +895,7 @@ export function boot(): void {
 
     function renderActionPlan() {
       if (state.planState === "idle") { loadPlan(); }
-      const head = '<section class="section-card"><div class="section-head"><div><h2>What to do next</h2><p class="subtle">Ordered by what decides whether a model can cite you at all. Every line names the observation behind it.</p></div><div class="inline-actions">' + button({ label: "Probe the site", on: { "data-probe-signals": true } }) + '</div></div>';
+      const head = '<section class="section-card"><div class="section-head"><div><h2>What to fix on the site</h2><p class="subtle">Ordered by what decides whether a model can cite you at all. Every line names the observation behind it. What to do about the answers themselves is on the report.</p></div><div class="inline-actions">' + button({ label: "Probe the site", on: { "data-probe-signals": true } }) + '</div></div>';
       if (state.planState !== "ready" || !state.plan) {
         return head + '<p class="subtle">' + (state.planState === "error" ? "Could not build a plan." : "Building the plan…") + '</p></section>';
       }
@@ -2177,6 +2177,7 @@ export function boot(): void {
           : '<p class="subtle">Nothing has moved since the previous run.</p>';
 
       return heading(hero
+        + renderTasks(3)
         + dashboardBody({ status: "ready", value: view }, state.editingBoard, state.panelViews)
         + '<section class="section-card"><div class="section-head"><div class="headmain"><h2>What changed</h2><p class="subtle">Read off the archived answers, in the words the evidence supports.</p></div></div>' + changed + '</section>'
         + '<section class="section-card"><div class="section-head"><div class="headmain"><h2>Needs attention</h2><p class="subtle">Only what moved, and only where both runs could be measured.</p></div></div>' + alerts + '</section>');
@@ -2271,14 +2272,14 @@ export function boot(): void {
         + '<p class="subtle">' + html(report.caveat) + '</p></div></div>'
         + '<p>' + searched + '. ' + cited + ' ' + overall + '</p>'
         + band
-        + '<p class="subtle">' + html(act.caveat) + '</p></div>';
+        + '<p class="subtle">' + html(act.caveat) + '</p>' + taskCta("activation-unknown") + '</div>';
     }
 
     function renderStability(report: any) {
       if (!report) return '';
       if (!report.measured) {
         return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>How much the answer moves</h3>'
-          + '<p class="subtle">Every question here was asked once, so nothing can be said about how much of an answer is the question and how much is the day. Ask two or three times on the next run.</p></div></div></div>';
+          + '<p class="subtle">Every question here was asked once, so nothing can be said about how much of an answer is the question and how much is the day.</p></div></div>' + taskCta("asked-once") + '</div>';
       }
       const overall = report.sourceOverlap === null
         ? 'No pair of passes cited a source between them, so there is no overlap to take.'
@@ -2297,7 +2298,64 @@ export function boot(): void {
         + '<p class="subtle">' + html(report.caveat) + '</p></div></div>'
         + '<p>' + overall + ' ' + naming + '</p>'
         + '<div class="mtable"><div class="mhead mcols-stability"><span>Question</span><span>Named you</span><span>Sources every pass</span><span>Overlap</span><span>Span</span></div>'
-        + rows + '</div></div>';
+        + rows + '</div>'
+        + (taskCta("naming-unstable") || taskCta("sources-turn-over") || taskCta("asked-once")) + '</div>';
+    }
+
+    // One list, two places: the listing at the top of a page and the button
+    // on the panel that measured it both read the same task.
+    function tasks(): any[] {
+      const data: any = state.answerEngine;
+      return data && Array.isArray(data.tasks) ? data.tasks : [];
+    }
+
+    function taskFor(id: string): any {
+      return tasks().find((task: any) => task.id === id) || null;
+    }
+
+    function urgencyLabel(urgency: string) {
+      return urgency === "blocking" ? "blocking" : urgency === "limiting" ? "limiting" : "to do";
+    }
+
+    function urgencyInk(urgency: string) {
+      return urgency === "blocking" ? "state-bad" : urgency === "limiting" ? "state-flag" : "state-ok";
+    }
+
+    /** Attached to the panel that measured it, so the action is where the
+     * finding is and nobody has to scroll back to the list to act on it. */
+    function taskCta(id: string) {
+      const task = taskFor(id);
+      if (!task) return '';
+      return '<div class="task-cta"><span class="' + urgencyInk(task.urgency) + '">' + html(urgencyLabel(task.urgency)) + '</span>'
+        + '<span><strong>' + html(task.title) + '</strong></span>'
+        + button({ label: task.action, kind: task.urgency === "blocking" ? "primary" : "quiet", on: { "data-page": task.page } }) + '</div>';
+    }
+
+    function taskRow(task: any) {
+      // Not "done": that greys the label, and work still to do is not done.
+      return '<li class="step task-step" data-state="' + (task.urgency === "blocking" ? "warn" : task.urgency === "limiting" ? "next" : "work") + '">'
+        + '<span class="step-index ' + urgencyInk(task.urgency) + '">' + html(urgencyLabel(task.urgency)) + '</span>'
+        + '<span class="step-label"><strong>' + html(task.title) + '</strong>'
+        + '<br><span class="step-why">' + html(task.why) + '</span>'
+        + '<br><span class="step-note">Observed: ' + html(task.evidence) + '</span></span>'
+        + '<span class="step-action">' + button({ label: task.action, kind: task.urgency === "blocking" ? "primary" : "quiet", on: { "data-page": task.page } }) + '</span></li>';
+    }
+
+    // Absent on an archive scored before tasks existed, which is not the same
+    // as a project with nothing to do, so neither is drawn for the other.
+    function renderTasks(limit?: number) {
+      const rows = tasks();
+      if (!rows.length) return '';
+      const blocking = rows.filter((task: any) => task.urgency === "blocking").length;
+      const shown = limit ? rows.slice(0, limit) : rows;
+      const rest = rows.length - shown.length;
+      const blurb = blocking
+        ? blocking + ' of these ' + (blocking === 1 ? 'stops' : 'stop') + ' a number being produced at all. Nothing below it can be read until it is cleared.'
+        : 'Ordered by what is holding the measurement back, then by what the measurement says to do.';
+      return '<section class="section-card"><div class="section-head"><div class="headmain"><h2>What to do next</h2>'
+        + '<p class="subtle">' + html(blurb) + '</p></div></div>'
+        + '<ol class="steps">' + shown.map(taskRow).join("") + '</ol>'
+        + (rest > 0 ? '<p class="mlegend">' + rest + ' more on the full report.</p>' : '') + '</section>';
     }
 
     function renderAnswerEngine() {
@@ -2317,7 +2375,7 @@ export function boot(): void {
         ? '<p class="subtle"><strong>What it is built to maximise.</strong> ' + html(weights.objective) + '</p>'
           + '<p class="subtle"><strong>What it cannot be used for.</strong> ' + html(weights.limits || "") + '</p>'
         : '';
-      const failedNote = data.answersFailed ? '<div class="warning-box">' + data.answersFailed + ' answer(s) failed and are excluded. They are not counted as answers that did not name you.</div>' : '';
+      const failedNote = data.answersFailed ? '<div class="warning-box">' + data.answersFailed + ' answer(s) failed and are excluded. They are not counted as answers that did not name you.' + taskCta("answers-failed") + '</div>' : '';
       const identityNote = data.identityCaveat ? '<div class="warning-box"><strong>Your name is a word in your own category.</strong> ' + html(data.identityCaveat) + '</div>' : '';
       const corr = data.corroboration;
       // Absent on an archive answered before the check existed, so nothing is
@@ -2327,7 +2385,7 @@ export function boot(): void {
           + corr.measured + ' of ' + corr.reported + ' mentions were found in the answer and their position measured from it'
           + (corr.absentFromAnswer ? ', and ' + corr.absentFromAnswer + ' named nothing the answer actually contains' : '')
           + '. ' + (corr.quotesChecked ? corr.quotesFound + ' of ' + corr.quotesChecked + ' quoted lines are really in the answer. ' : '')
-          + html(corr.caveat) + '</div>'
+          + html(corr.caveat) + taskCta("quotes-not-found") + taskCta("mentions-absent") + '</div>'
         : '';
       // Naming the cause matters more than naming the symptom. Telling somebody
       // to get a provider with web search is wrong when they have one, switched off.
@@ -2339,21 +2397,21 @@ export function boot(): void {
           : act0.unavailable === act0.considered
             ? 'None of the models that ran can search the web at all, so no citation was ever possible.'
             : 'A provider with web search will produce them.';
-      const citationFix = act0 && act0.notRequested && !act0.activated
-        ? '<div class="inline-actions">' + button({ label: "Turn on web search", kind: "primary", on: { "data-page": "models" } }) + '</div>'
-        : '';
+      const citationFix = taskCta("search-switched-off") || taskCta("no-model-can-search") || taskCta("no-sources-returned");
       const citationNote = data.citationsUnavailable
         ? '<div class="warning-box">No answer carried a citation, so there are no sources to analyse. That is a property of the models you ran, not evidence that nobody cites you. '
           + html(citationCause) + citationFix + '</div>'
         : '';
       return '<section class="view"><div class="heading"><div><h1>Answer engine</h1><p class="subtle">' + data.answers + ' answer(s) across ' + data.topics.length + ' topic(s) for ' + html(selected.normalizedDomain) + '. Click any question to read the answers behind it.</p></div><div class="inline-actions">' + button({ label: "Prompts", on: { "data-page": "prompts" } }) + '' + runActionButton("Run prompts") + '</div></div>'
         + renderLiveRun()
+        + renderTasks()
         + renderHero(data)
         + renderSavedViews()
         + renderSegment(data)
         + identityNote + failedNote + citationNote + corroborationNote
         + '<section class="section-card"><div class="section-head"><div><h2>How the score is built</h2><p class="subtle">Presence scaled by where you appear and how you are described.</p></div></div>'
         + renderScoreBreakdown(data.overall)
+        + taskCta("too-few-answers")
         + renderStability(data.stability)
         + '<details class="technical-details"><summary>The formula, and the judgement in it</summary>' + objective + '<p class="subtle">score = presence × (' + weights.prominenceFloor + ' + ' + (1 - weights.prominenceFloor).toFixed(1) + ' × prominence) × (' + weights.sentimentFloor + ' + ' + (1 - weights.sentimentFloor).toFixed(1) + ' × sentiment) × 100.</p><p class="subtle">The two floors are a judgement, not a measurement: being named late and grudgingly is still better than not being named, so prominence and sentiment scale presence rather than replacing it. Every component above is reported separately so you can ignore the composite entirely.</p></details></section>'
         + '<section class="section-card"><div class="section-head"><div><h2>What would move this</h2><p class="subtle">Read off the archived answers, strongest lever first. None of it is an opinion about your marketing.</p></div></div>' + renderRankingPlan() + '</section>'
@@ -2361,7 +2419,7 @@ export function boot(): void {
         + '<section class="section-card"><div class="section-head"><div><h2>Rivals you name</h2><p class="subtle">Name a competitor here and it is tracked whether or not an answer mentions it. A tracked rival nobody named reads as zero, which is a finding; leaving it out would hide it.</p></div></div>' + renderRivals(data) + '</section>'
         + '<div class="section-head" style="margin-top:24px"><div><h2>Topics, weakest first</h2><p class="subtle">Where you are losing, in the order worth fixing. Every question opens its answers.</p></div></div>'
         + renderTopicRows(data.topics)
-        + '<section class="section-card"><div class="section-head"><div><h2>Questions you never appear in</h2><p class="subtle">Answered, and you were not named once. Open one to read what the models credited the winners with, which is the standard that question is answered against.</p></div></div>' + renderAbsent(data.absentFrom) + '</section>'
+        + '<section class="section-card"><div class="section-head"><div><h2>Questions you never appear in</h2><p class="subtle">Answered, and you were not named once. Open one to read what the models credited the winners with, which is the standard that question is answered against.</p></div></div>' + renderAbsent(data.absentFrom) + taskCta("absent-questions") + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>Movement</h2><p class="subtle">One point per run. A run where everything failed is left out rather than drawn as a drop.</p></div></div>' + renderPromptTrend(data.trend) + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>By market</h2><p class="subtle">The same questions, asked for a different buyer.</p></div></div>' + renderRegionRows(data.byRegion, data.regionCaveat) + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>By persona</h2><p class="subtle">The same questions, asked on behalf of someone else. A market says where a buyer is; a persona says what they are, which moves the answer further.</p></div></div>' + renderPersonaRows(data.byPersona) + '</section>'

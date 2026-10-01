@@ -377,7 +377,12 @@ export function renderProductPhase2AppHtml(): string {
     .step[data-state="todo"] .step-label { color:var(--weak); }
     .step[data-state="warn"] .step-mark,.step[data-state="warn"] .step-index { color:var(--unknown-text); }
     .step-action:empty { display:none; }
-    @media(max-width:760px){ .step { grid-template-columns:24px minmax(0,1fr); } .step-note,.step-mark { grid-column:2; } }
+    .step.task-step { grid-template-columns:76px minmax(0,1fr) auto; align-items:start; gap:14px; }
+    .task-step .step-index { font-size:10px; letter-spacing:.07em; text-transform:uppercase; padding-top:3px; }
+    .task-cta { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:12px; padding-top:12px; border-top:1px solid var(--line); font-size:12px; }
+    .task-cta > span:first-child { font-size:10px; letter-spacing:.07em; text-transform:uppercase; }
+    .task-cta > span:nth-child(2) { flex:1 1 220px; }
+    @media(max-width:760px){ .step { grid-template-columns:24px minmax(0,1fr); } .step-note,.step-mark { grid-column:2; } .step.task-step { grid-template-columns:minmax(0,1fr); } .task-step .step-action { grid-column:1; } }
     .recognition-summary { display:grid; grid-template-columns:minmax(140px,210px) minmax(0,1fr); border-top:1px solid var(--line); margin-top:14px; }
     .recognition-summary > div { display:contents; }
     .recognition-summary span { padding:10px 16px 10px 0; border-bottom:1px solid var(--line); color:var(--muted); font-size:12px; }

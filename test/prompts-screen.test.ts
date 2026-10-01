@@ -25,7 +25,7 @@ function insights(): TopicInsights {
   return {
     projectId: "p", answers: 0, answersFailed: 0, overall: SCORE, rank: null,
     weights: SCORE.weights, leaderboard: [], topics: [], byModel: [], absentFrom: [],
-    citationsUnavailable: false, corroboration: summariseCorroboration([]), activation: splitActivation([]), stability: buildStabilityReport([]), trend: { points: [], change: null, since: null }, byRegion: [], byLanguage: [], byPersona: [],
+    citationsUnavailable: false, corroboration: summariseCorroboration([]), activation: splitActivation([]), stability: buildStabilityReport([]), tasks: [], trend: { points: [], change: null, since: null }, byRegion: [], byLanguage: [], byPersona: [],
     regionCaveat: "", identityCaveat: null, trackedRivals: [],
   };
 }
