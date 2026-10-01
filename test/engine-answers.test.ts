@@ -20,6 +20,7 @@ const ENGINE: BrowserEngine = {
   id: "perplexity-web",
   label: "Perplexity (web)",
   caveat: "read from the web app",
+  grounding: "always",
   ask: async () => ({ state: "unavailable", detail: "not driven in this test" }),
 };
 

@@ -219,8 +219,10 @@ export async function handleTopicApi(input: {
     const languageIds = stringList(body.languageIds);
     const engineIds = stringList(body.engineIds);
     const personaIds = stringList(body.personaIds);
+    const repetitions = typeof body.repetitions === "number" ? body.repetitions : undefined;
     await guard(() => runs.start({
       projectId,
+      ...(repetitions === undefined ? {} : { repetitions }),
       promptIds: promptIds.length ? promptIds : undefined,
       regionIds: regionIds.length ? regionIds : undefined,
       languageIds: languageIds.length ? languageIds : undefined,

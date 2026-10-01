@@ -84,6 +84,37 @@ export interface PositionShape {
   worst: number | null;
 }
 
+export interface StabilityShape {
+  measured: number;
+  askedOnce: number;
+  sourceOverlap: number | null;
+  namingUnstable: number;
+  questions: Array<{ promptId: string; promptText: string; modelId: string; passes: number; named: number; namingAgreed: boolean; sourceOverlap: number | null; sourcesAlways: number; sourcesEver: number }>;
+  caveat: string;
+}
+
+export interface ActivationShape {
+  considered: number;
+  activated: number;
+  unavailable: number;
+  notRequested: number;
+  unknown: number;
+  rate: number | null;
+  low: number | null;
+  high: number | null;
+  caveat: string;
+}
+
+export interface TaskShape {
+  id: string;
+  urgency: "blocking" | "limiting" | "work";
+  title: string;
+  why: string;
+  evidence: string;
+  page: string;
+  action: string;
+}
+
 export interface CorroborationShape {
   reported: number;
   measured: number;
@@ -109,9 +140,15 @@ export interface InsightsShape {
   byModel: ModelStandingRow[];
   absentFrom: PromptStandingRow[];
   citationsUnavailable: boolean;
+  /** Absent on an archive read before activation was split out. */
+  activation?: ActivationShape | undefined;
+  stability?: StabilityShape | undefined;
   /** Absent on an archive answered before mentions were checked against the
    * answer text, so nothing is claimed about those. */
   corroboration?: CorroborationShape | undefined;
+  /** Absent on an archive read before the tasks were derived, so the page
+   * shows the panels without a task list rather than an empty one. */
+  tasks?: TaskShape[] | undefined;
   trend: TrendShape;
   byRegion: SplitRow[];
   byLanguage: SplitRow[];

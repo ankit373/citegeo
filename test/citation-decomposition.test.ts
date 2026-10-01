@@ -131,5 +131,89 @@ test("both judgements travel with the figures", () => {
   const report = decomposeCitations({ answers: [], identity: IDENTITY });
   assert.ok(report.caveat.includes("is not a share of all answers"));
   assert.ok(report.caveat.includes("The share of all answers is exact"));
-  assert.ok(report.activation.caveat.includes("No provider reports whether it searched"));
+  assert.ok(report.activation.caveat.includes("Most providers report whether they ran a search"));
+});
+
+function searched(providerId: AnswerSourceId, said: PromptAnswer["search"], citationUrls: string[] = []): PromptAnswer {
+  return { ...answer(providerId, citationUrls), ...(said ? { search: said } : {}) };
+}
+
+test("the provider's own account of searching is taken over the guess", () => {
+  const ran = searched("openai", { requested: true, used: true, usedMode: "provider_native", queries: ["best screener india"] });
+  assert.equal(activationOf(ran), "activated", "it says it searched and cited nobody, which the old guess called unknown");
+});
+
+test("a run that never asked for search is a measured nought, not an unknown", () => {
+  const never = searched("openai", { requested: false, used: false, usedMode: "none", queries: [] });
+  assert.equal(activationOf(never), "not_requested");
+  const split = splitActivation([never]);
+  assert.equal(split.notRequested, 1);
+  assert.equal(split.unknown, 0);
+  assert.equal(split.rate, 0, "nothing is unknown any more, so there is a rate");
+});
+
+test("a surface that cannot search says so even when the run asked", () => {
+  const cannot = searched("deepseek", { requested: false, used: false, usedMode: "none", queries: [] });
+  assert.equal(activationOf(cannot), "unavailable", "could not is not the same as was not asked");
+});
+
+test("asked and never confirmed stays unknown, because that is what it is", () => {
+  const murky = searched("openai", { requested: true, used: false, usedMode: "requested_not_confirmed", queries: [] });
+  assert.equal(activationOf(murky), "unknown");
+});
+
+test("an answer archived before the account was kept falls back to the guess", () => {
+  assert.equal(activationOf(answer("openai", [])), "unknown");
+  assert.equal(activationOf(answer("openai", ["https://a.test/x"])), "activated");
+});
+
+test("the recorded account narrows the band the guess left wide", () => {
+  const rows = [
+    searched("openai", { requested: true, used: true, usedMode: "provider_native", queries: ["a"] }, ["https://tradomate.one/a"]),
+    searched("openai", { requested: false, used: false, usedMode: "none", queries: [] }),
+    searched("openai", { requested: true, used: true, usedMode: "provider_native", queries: ["b"] }),
+  ];
+  const split = splitActivation(rows);
+  assert.equal(split.rate, 2 / 3, "guessed from citations alone this was a band from one third to one");
+  assert.equal(split.low, split.high);
+  const report = decomposeCitations({ answers: rows, identity: IDENTITY });
+  assert.equal(report.citedGivenActivated, 0.5, "and the conditional is a number rather than a band");
+});
+
+test("the caveat says the provider's account is preferred to the guess", () => {
+  assert.ok(splitActivation([]).caveat.includes("its own account is taken over any inference"));
+});
+
+test("a model that can search and was told not to is why there are no citations", () => {
+  const off = searched("azure-openai", { requested: false, used: false, usedMode: "none", queries: [] });
+  const split = splitActivation([off, off]);
+  assert.equal(split.notRequested, 2);
+  assert.equal(split.activated, 0);
+  assert.equal(split.unavailable, 0, "the model can search, so this is not a provider that cannot");
+  assert.equal(split.rate, 0, "nothing unknown, so the activation rate is a measured nought");
+});
+
+test("a run with nothing but search-incapable models says that instead", () => {
+  const split = splitActivation([answer("deepseek", []), answer("deepseek", [])]);
+  assert.equal(split.unavailable, 2);
+  assert.equal(split.notRequested, 0, "never asked and cannot be asked are different findings");
+});
+
+function browserAnswer(modelId: string, citationUrls: string[] = []): PromptAnswer {
+  return { ...answer("browser", citationUrls), modelId };
+}
+
+test("a surface built out of a search result searched, whatever it rendered", () => {
+  assert.equal(activationOf(browserAnswer("google-ai-overview")), "activated", "an overview is written from the result it sits on");
+  assert.equal(activationOf(browserAnswer("perplexity-web")), "activated");
+  assert.equal(activationOf(browserAnswer("copilot")), "activated");
+});
+
+test("a surface that decides per question stays unknown when it rendered nothing", () => {
+  assert.equal(activationOf(browserAnswer("chatgpt")), "unknown", "it often answers without searching, so no source is not a nought");
+  assert.equal(activationOf(browserAnswer("chatgpt", ["https://a.test/x"])), "activated");
+});
+
+test("an unrecognised surface is not assumed to have searched", () => {
+  assert.equal(activationOf(browserAnswer("something-new")), "unknown");
 });

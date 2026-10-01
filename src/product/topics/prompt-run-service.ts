@@ -27,6 +27,26 @@ import type { BrowserEngine } from "../engines/browser-engine.js";
 import type { Prompt } from "./topic-schema.js";
 import { NO_PERSONA, personaFrom, personaInstruction, type Persona, type PersonaService } from "./persona.js";
 
+/** Enough of the provider's own queries to see what it went looking for,
+ * without turning every answer record into a search log. */
+const SEARCH_QUERIES_KEPT = 8;
+
+/** Asking the same question again is the only way to see how much of an answer
+ * is the question and how much is the day. Each one is a paid call, so the
+ * ceiling is low and the default is the single pass every run used to be. */
+export const MAX_REPETITIONS = 10;
+
+function repetitionsFrom(value: number | undefined): number {
+  if (value === undefined) return 1;
+  if (!Number.isInteger(value) || value < 1) {
+    throw new PromptRunUnavailableError("Repetitions must be a whole number of at least one.");
+  }
+  if (value > MAX_REPETITIONS) {
+    throw new PromptRunUnavailableError(`Repetitions are capped at ${MAX_REPETITIONS}, because each one is another paid call for every question and model.`);
+  }
+  return value;
+}
+
 export class PromptRunUnavailableError extends Error {}
 
 function nowIso(): string {
@@ -35,6 +55,9 @@ function nowIso(): string {
 
 export interface StartPromptRunInput {
   projectId: string;
+  /** How many times to ask each question of each model. One when omitted, so
+   * a run asked before this existed and one asked now are the same run. */
+  repetitions?: number | undefined;
   /** Limits the run to these prompts. Every active prompt when omitted. */
   promptIds?: string[] | undefined;
   /** Markets to ask in. The global region alone when omitted. */
@@ -143,6 +166,7 @@ export class PromptRunService {
     }
 
 
+    const repetitions = repetitionsFrom(input.repetitions);
     const set = await this.topics.get(input.projectId);
     const wanted = input.promptIds ? new Set(input.promptIds) : null;
     const prompts = activePrompts(set).filter((prompt) => !wanted || wanted.has(prompt.id));
@@ -204,7 +228,8 @@ export class PromptRunService {
       languageIds: languages.map((row) => row.id),
       personaIds: personas.map((row) => row.id),
       skippedModels: skipped,
-      answersRequested: prompts.length * (models.length * regions.length * languages.length * personas.length + chosenEngines.length),
+      repetitions,
+      answersRequested: repetitions * prompts.length * (models.length * regions.length * languages.length * personas.length + chosenEngines.length),
       answersCompleted: 0,
       answersFailed: 0,
       startedAt: nowIso(),
@@ -222,34 +247,39 @@ export class PromptRunService {
           for (const tongue of languages) {
             if (stopped) break;
             for (const who of personas) {
-              if (this.cancelled.has(run.id)) { stopped = true; break; }
-              // Written before the call so the interface can name what is in
-              // flight rather than only how many are done.
-              run.currentPromptText = prompt.text;
-              run.currentModelId = model.modelId;
-              await this.store.saveRun(run);
-              const answer = await this.ask({ run, baseline, model, prompt, identity, market, tongue, who });
-              await this.store.saveAnswer(answer);
-              if (countsTowardProgress(answer)) run.answersCompleted += 1;
-              else run.answersFailed += 1;
-              // Progress is written as it happens, so a long run is readable while it runs.
-              await this.store.saveRun(run);
+              if (stopped) break;
+              for (let pass = 1; pass <= repetitions; pass += 1) {
+                if (this.cancelled.has(run.id)) { stopped = true; break; }
+                // Written before the call so the interface can name what is in
+                // flight rather than only how many are done.
+                run.currentPromptText = prompt.text;
+                run.currentModelId = model.modelId;
+                await this.store.saveRun(run);
+                const answer = await this.ask({ run, baseline, model, prompt, identity, market, tongue, who });
+                await this.store.saveAnswer({ ...answer, repetition: pass });
+                if (countsTowardProgress(answer)) run.answersCompleted += 1;
+                else run.answersFailed += 1;
+                // Progress is written as it happens, so a long run is readable while it runs.
+                await this.store.saveRun(run);
+              }
             }
           }
         }
       }
       for (const engine of chosenEngines) {
         if (stopped) break;
-        if (this.cancelled.has(run.id)) { stopped = true; break; }
-        run.currentPromptText = prompt.text;
-        run.currentModelId = engine.id;
-        await this.store.saveRun(run);
-        const answer = await this.engines?.ask({ run, prompt, engine, identity });
-        if (!answer) continue;
-        await this.store.saveAnswer(answer);
-        if (countsTowardProgress(answer)) run.answersCompleted += 1;
-        else run.answersFailed += 1;
-        await this.store.saveRun(run);
+        for (let pass = 1; pass <= repetitions; pass += 1) {
+          if (this.cancelled.has(run.id)) { stopped = true; break; }
+          run.currentPromptText = prompt.text;
+          run.currentModelId = engine.id;
+          await this.store.saveRun(run);
+          const answer = await this.engines?.ask({ run, prompt, engine, identity });
+          if (!answer) continue;
+          await this.store.saveAnswer({ ...answer, repetition: pass });
+          if (countsTowardProgress(answer)) run.answersCompleted += 1;
+          else run.answersFailed += 1;
+          await this.store.saveRun(run);
+        }
       }
     }
 
@@ -384,6 +414,17 @@ export class PromptRunService {
 
       const providerCitations = result.citations.map((citation) => citation.url).filter(Boolean);
       const citationUrls = [...new Set([...providerCitations, ...parsed.citationUrls])];
+      // The provider already says whether it searched. Inferring it from
+      // whether a citation came back cannot tell a search that found nothing
+      // from no search at all, and that guess was the wider half of the band.
+      const search = result.search
+        ? {
+            requested: result.search.requested,
+            used: result.search.used,
+            usedMode: result.search.usedMode,
+            queries: result.search.webQueries.slice(0, SEARCH_QUERIES_KEPT),
+          }
+        : undefined;
 
       return {
         ...base,
@@ -391,6 +432,7 @@ export class PromptRunService {
         text: parsed.answer,
         mentions,
         citationUrls,
+        ...(search ? { search } : {}),
         errorCode: null,
         errorMessage: null,
         latencyMs: result.latencyMs,
