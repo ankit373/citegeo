@@ -82,6 +82,9 @@ export interface PromptAnswer {
   /** Absent on an answer archived before the provider's own account of
    * searching was kept, and on a browser surface, which reports none. */
   search?: AnswerSearch | undefined;
+  /** Which pass of the same question this was, from one. Absent on an answer
+   * archived before a run could ask more than once. */
+  repetition?: number | undefined;
   errorCode: string | null;
   errorMessage: string | null;
   latencyMs: number | null;
@@ -97,6 +100,9 @@ export interface PromptRun {
   regionIds: string[];
   languageIds: string[];
   personaIds?: string[] | undefined;
+  /** How many times each question was asked of each model. Absent on a run
+   * from before this existed, which asked once. */
+  repetitions?: number | undefined;
   answersRequested: number;
   answersCompleted: number;
   answersFailed: number;
