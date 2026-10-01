@@ -2332,7 +2332,8 @@ export function boot(): void {
     }
 
     function taskRow(task: any) {
-      return '<li class="step task-step" data-state="' + (task.urgency === "blocking" ? "warn" : task.urgency === "limiting" ? "next" : "done") + '">'
+      // Not "done": that greys the label, and work still to do is not done.
+      return '<li class="step task-step" data-state="' + (task.urgency === "blocking" ? "warn" : task.urgency === "limiting" ? "next" : "work") + '">'
         + '<span class="step-index ' + urgencyInk(task.urgency) + '">' + html(urgencyLabel(task.urgency)) + '</span>'
         + '<span class="step-label"><strong>' + html(task.title) + '</strong>'
         + '<br><span class="step-why">' + html(task.why) + '</span>'
