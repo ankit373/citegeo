@@ -1,6 +1,7 @@
 import { summariseCorroboration, type CorroboratedMention, type CorroborationSummary } from "./mention-corroboration.js";
 import { splitActivation, type ActivationSplit } from "./search-activation.js";
 import { buildStabilityReport, type StabilityReport } from "./answer-stability.js";
+import { nextTasks, type MeasurementTask } from "./next-task.js";
 import { domainLabel, tokenize } from "./prompt-identity.js";
 import { buildPromptTrend, type PromptTrend } from "./prompt-trend.js";
 import { region, REGION_CAVEAT } from "./region.js";
@@ -123,6 +124,9 @@ export interface TopicInsights {
   /** How much of the model's report of what it named survived a check against
    * the answer it wrote in the same call. */
   corroboration: CorroborationSummary;
+  /** What to do about all of the above, ordered by what is holding the
+   * measurement back. Built here so a view never has to infer a task. */
+  tasks: MeasurementTask[];
   /** One point per run, oldest first. */
   trend: PromptTrend;
   /** Per market, worst first. Empty until a run states one. */
@@ -387,25 +391,52 @@ export function buildTopicInsights(input: {
   }
   topics.sort((left, right) => (left.score.score || 0) - (right.score.score || 0));
 
+  const overall = completed.length ? scoreAnswers(answers) : emptyScore();
+  const absentFrom = promptRows
+    .filter((row) => row.score.appearances === 0 && row.score.answers > 0)
+    .sort((left, right) => right.score.answers - left.score.answers);
+  // False with nothing answered: [].every() is true, which would report a
+  // project that never ran as one whose citations are unavailable.
+  const citationsUnavailable = completed.length > 0 && completed.every((answer) => answer.citationUrls.length === 0);
+  const activation = splitActivation(completed);
+  const stability = buildStabilityReport(completed);
+  const corroboration = summariseCorroboration(completed.flatMap((answer) => answer.mentions).filter(hasCorroboration));
+  const failed = new Map<string, number>();
+  for (const answer of answers) {
+    if (answer.status === "completed") continue;
+    const code = answer.errorCode || answer.status;
+    failed.set(code, (failed.get(code) || 0) + 1);
+  }
+  const failureReasons = [...failed.entries()]
+    .map(([code, count]) => ({ code, count }))
+    .sort((left, right) => right.count - left.count);
+
   return {
     projectId,
     answers: completed.length,
     answersFailed: answers.length - completed.length,
-    overall: completed.length ? scoreAnswers(answers) : emptyScore(),
+    overall,
     rank: rankOfTarget(leaderboard),
     weights: SCORE_WEIGHTS,
     leaderboard,
     topics,
     byModel: modelStandings(answers),
-    absentFrom: promptRows
-      .filter((row) => row.score.appearances === 0 && row.score.answers > 0)
-      .sort((left, right) => right.score.answers - left.score.answers),
-    // False with nothing answered: [].every() is true, which would report a
-    // project that never ran as one whose citations are unavailable.
-    citationsUnavailable: completed.length > 0 && completed.every((answer) => answer.citationUrls.length === 0),
-    activation: splitActivation(completed),
-    stability: buildStabilityReport(completed),
-    corroboration: summariseCorroboration(completed.flatMap((answer) => answer.mentions).filter(hasCorroboration)),
+    absentFrom,
+    citationsUnavailable,
+    activation,
+    stability,
+    corroboration,
+    tasks: nextTasks({
+      answers: completed.length,
+      answersFailed: answers.length - completed.length,
+      overall,
+      activation,
+      stability,
+      corroboration,
+      citationsUnavailable,
+      absentFrom: absentFrom.length,
+      failureReasons,
+    }),
     trend: buildPromptTrend({
       runs: input.runs || [],
       answers,

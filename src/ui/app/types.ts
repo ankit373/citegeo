@@ -105,6 +105,16 @@ export interface ActivationShape {
   caveat: string;
 }
 
+export interface TaskShape {
+  id: string;
+  urgency: "blocking" | "limiting" | "work";
+  title: string;
+  why: string;
+  evidence: string;
+  page: string;
+  action: string;
+}
+
 export interface CorroborationShape {
   reported: number;
   measured: number;
@@ -136,6 +146,9 @@ export interface InsightsShape {
   /** Absent on an archive answered before mentions were checked against the
    * answer text, so nothing is claimed about those. */
   corroboration?: CorroborationShape | undefined;
+  /** Absent on an archive read before the tasks were derived, so the page
+   * shows the panels without a task list rather than an empty one. */
+  tasks?: TaskShape[] | undefined;
   trend: TrendShape;
   byRegion: SplitRow[];
   byLanguage: SplitRow[];
