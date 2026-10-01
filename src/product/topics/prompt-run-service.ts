@@ -27,6 +27,10 @@ import type { BrowserEngine } from "../engines/browser-engine.js";
 import type { Prompt } from "./topic-schema.js";
 import { NO_PERSONA, personaFrom, personaInstruction, type Persona, type PersonaService } from "./persona.js";
 
+/** Enough of the provider's own queries to see what it went looking for,
+ * without turning every answer record into a search log. */
+const SEARCH_QUERIES_KEPT = 8;
+
 export class PromptRunUnavailableError extends Error {}
 
 function nowIso(): string {
@@ -384,6 +388,17 @@ export class PromptRunService {
 
       const providerCitations = result.citations.map((citation) => citation.url).filter(Boolean);
       const citationUrls = [...new Set([...providerCitations, ...parsed.citationUrls])];
+      // The provider already says whether it searched. Inferring it from
+      // whether a citation came back cannot tell a search that found nothing
+      // from no search at all, and that guess was the wider half of the band.
+      const search = result.search
+        ? {
+            requested: result.search.requested,
+            used: result.search.used,
+            usedMode: result.search.usedMode,
+            queries: result.search.webQueries.slice(0, SEARCH_QUERIES_KEPT),
+          }
+        : undefined;
 
       return {
         ...base,
@@ -391,6 +406,7 @@ export class PromptRunService {
         text: parsed.answer,
         mentions,
         citationUrls,
+        ...(search ? { search } : {}),
         errorCode: null,
         errorMessage: null,
         latencyMs: result.latencyMs,
