@@ -35,6 +35,10 @@ async function unusedPort(): Promise<number> {
   return address.port;
 }
 
+/** Generous because the suite runs this beside everything else. A budget that
+ * only just covers a quiet machine fails as a timeout and reads as a bug. */
+const START_BUDGET_MS = 60_000;
+
 async function startServer(root: string, port: number): Promise<{ child: ChildProcess; baseUrl: string; output: string[] }> {
   const output: string[] = [];
   const child = spawn(process.execPath, [join(process.cwd(), "node_modules", "tsx", "dist", "cli.mjs"), "src/server.ts"], {
@@ -51,17 +55,23 @@ async function startServer(root: string, port: number): Promise<{ child: ChildPr
   child.stdout?.on("data", (chunk: Buffer) => output.push(chunk.toString("utf8")));
   child.stderr?.on("data", (chunk: Buffer) => output.push(chunk.toString("utf8")));
   const baseUrl = `http://127.0.0.1:${port}`;
-  for (let attempt = 0; attempt < 80; attempt += 1) {
+  // A deadline, not a count of tries: this spawns tsx, which compiles the
+  // server before it listens, and that takes longer on a loaded machine.
+  const deadline = Date.now() + START_BUDGET_MS;
+  while (Date.now() < deadline) {
     try {
       const response = await fetch(`${baseUrl}/api/projects`);
       if (response.status === 200) return { child, baseUrl, output };
     } catch {
       // The server process is still starting.
     }
+    if (child.exitCode !== null) {
+      throw new Error(`Product server exited with code ${child.exitCode} before it listened. Output: ${output.join("") || "(it printed nothing)"}`);
+    }
     await wait(50);
   }
   await stopServer(child);
-  throw new Error(`Product server did not start. Output: ${output.join("")}`);
+  throw new Error(`Product server did not listen on ${baseUrl} within ${START_BUDGET_MS}ms. Output: ${output.join("") || "(it printed nothing)"}`);
 }
 
 async function stopServer(child: ChildProcess): Promise<void> {
