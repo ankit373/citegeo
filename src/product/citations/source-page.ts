@@ -1,4 +1,4 @@
-import { readPage } from "../discovery/site-read.js";
+import { readPage, type PageShape } from "../discovery/site-read.js";
 import { statedDate, type PageAge } from "./freshness.js";
 import { namesIdentity, tokenize } from "../topics/prompt-identity.js";
 
@@ -36,6 +36,9 @@ export interface SourcePage {
    * page that changed under a URL an answer already cites can be seen. */
   previousText?: string | undefined;
   previousFetchedAt?: string | undefined;
+  /** How it is laid out, which is separate from what it says. Absent on a
+   * record stored before the markup was counted. */
+  shape?: PageShape | undefined;
   detail: string | null;
 }
 
@@ -171,6 +174,7 @@ export async function readSourcePage(input: {
     namesYou,
     named,
     text: text.slice(0, TEXT_KEPT),
+    shape: page.shape,
     detail: null,
   };
 }

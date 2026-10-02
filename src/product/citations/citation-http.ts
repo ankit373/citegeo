@@ -63,6 +63,16 @@ export async function handleCitationApi(input: {
     return true;
   }
 
+  if (method === "GET" && tail[0] === "source-shape") {
+    try {
+      const scope = await input.scope(projectId);
+      send(200, await pages.shape(projectId, scope.domain));
+    } catch (error) {
+      send(404, { error: message(error) });
+    }
+    return true;
+  }
+
   if (tail[0] !== "source-pages") return false;
 
   if (method === "GET") {
