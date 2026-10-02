@@ -95,6 +95,7 @@ export interface StabilityShape {
 
 export interface PhrasingShape {
   measured: number;
+  namesTheBrand: number;
   oneWording: number;
   unstable: number;
   spread: number | null;

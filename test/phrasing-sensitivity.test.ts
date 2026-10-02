@@ -9,11 +9,12 @@ const TARGET: AnswerMention = {
   firstMentionOffset: 0, firstMentionState: "unique", isTarget: true,
 };
 
-function prompt(id: string, text: string, variantOf?: string): Prompt {
+function prompt(id: string, text: string, variantOf?: string, measuresVisibility = true): Prompt {
   return {
     id, projectId: "p", topicId: "t", text, normalizedText: text, intent: "discovery",
-    variantOf: variantOf || null, source: "generated", measuresVisibility: true,
-    visibilityExclusionReason: null, status: "active", createdAt: "", activatedAt: null,
+    variantOf: variantOf || null, source: "generated", measuresVisibility,
+    visibilityExclusionReason: measuresVisibility ? null : "names_the_brand",
+    status: "active", createdAt: "", activatedAt: null,
   };
 }
 
@@ -130,8 +131,21 @@ test("the loudest disagreement comes first, because its figure depends most on t
   assert.equal(report.spread, 0.5);
 });
 
+test("a wording that names the brand is not a wording of the same question", () => {
+  // The model discusses a brand the question names whatever it thinks, so the
+  // gap would be the name rather than the words.
+  const report = buildPhrasingReport(
+    [answer("a"), answer("b", { mentions: [TARGET] })],
+    set([prompt("a", "best screener"), prompt("b", "is Tradomate the best screener", "a", false)]),
+  );
+  assert.equal(report.measured, 0, "one usable wording is one wording");
+  assert.equal(report.namesTheBrand, 1);
+  assert.equal(report.unstable, 0, "it must never read as the words deciding it");
+});
+
 test("the caveat says what was held still and what it does not cover", () => {
   assert.ok(PHRASING_CAVEAT.includes("what moved is the words"));
   assert.ok(PHRASING_CAVEAT.includes("how much the answer moves"), "it is read beside repetition, not instead of it");
+  assert.ok(PHRASING_CAVEAT.includes("names the brand is left out"));
   assert.equal(buildPhrasingReport([], set([])).caveat, PHRASING_CAVEAT);
 });

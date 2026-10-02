@@ -2472,6 +2472,9 @@ export function boot(): void {
       const naming = report.unstable
         ? ' ' + report.unstable + ' question(s) named you under one wording and not another, so that figure is about the words rather than about you.'
         : ' Every question agreed with itself whichever way it was put.';
+      const named = report.namesTheBrand
+        ? ' ' + report.namesTheBrand + ' wording(s) name you and are left out, because the model discusses a brand the question names whatever it thinks.'
+        : '';
       const rows = report.questions.slice(0, 6).map((row: any) => '<div class="mrow mcols-phrasing"><div class="mname"><strong>' + html(row.rootText) + '</strong>'
         + '<span class="mono">' + html(row.modelId) + ' \u00b7 ' + row.wordings.length + ' wordings</span>'
         + row.wordings.slice(0, 4).map((wording: any) => '<span class="subtle">' + (wording.named ? '\u2713' : '\u2717') + ' ' + html(wording.text) + '</span>').join("")
@@ -2480,7 +2483,7 @@ export function boot(): void {
         + '<span class="mcell">' + (row.spread === null ? '\u2014' : sharePct(row.spread)) + '</span></div>').join("");
       return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>How much the wording decides</h3>'
         + '<p class="subtle">' + html(report.caveat) + '</p></div></div>'
-        + '<p>' + html(lead + naming) + '</p>'
+        + '<p>' + html(lead + naming + named) + '</p>'
         + '<div class="mtable"><div class="mhead mcols-phrasing"><span>Question and its wordings</span><span>Named you</span><span>Widest gap</span></div>'
         + rows + '</div></div>';
     }

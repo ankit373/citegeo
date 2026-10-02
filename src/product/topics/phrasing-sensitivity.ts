@@ -15,7 +15,7 @@ function groupKey(answer: PromptAnswer, root: string): string {
   return [root, answer.providerId, answer.modelId, answer.regionId, answer.languageId, answer.personaId || "anyone"].join("\u0000");
 }
 
-export const PHRASING_CAVEAT = "Measured between answers to wordings of one question, with the model, market, language and persona held still, so what moved is the words. Each wording is asked as many times as the run asks, and a wording asked once carries whatever the day did to it, which is why this reads next to how much the answer moves rather than instead of it.";
+export const PHRASING_CAVEAT = "Measured between answers to wordings of one question, with the model, market, language and persona held still, so what moved is the words. A wording that names the brand is left out, because the model will discuss it whatever it thinks and the difference would be the name rather than the words. Each wording is asked as many times as the run asks, and a wording asked once carries whatever the day did to it, which is why this reads next to how much the answer moves rather than instead of it.";
 
 export interface WordingResult {
   promptId: string;
@@ -44,6 +44,9 @@ export interface QuestionPhrasing {
 export interface PhrasingReport {
   /** Questions with more than one wording asked under matching conditions. */
   measured: number;
+  /** Wordings left out because they name the brand. The model will discuss it
+   * whatever it thinks, so the difference would be the name, not the words. */
+  namesTheBrand: number;
   /** Questions asked in one wording only, which say nothing about phrasing. */
   oneWording: number;
   /** Questions where the wordings disagreed about whether the brand appears. */
@@ -69,10 +72,15 @@ export function buildPhrasingReport(answers: PromptAnswer[], set: TopicSet): Phr
   const prompts = new Map(set.prompts.map((prompt) => [prompt.id, prompt]));
   const groups = new Map<string, Map<string, PromptAnswer[]>>();
 
+  const excluded = new Set<string>();
   for (const answer of answers) {
     if (answer.status !== "completed") continue;
     const prompt = prompts.get(answer.promptId);
     if (!prompt) continue;
+    // A wording that names the brand is not a wording of the same question.
+    // The model will discuss it whatever it thinks, so comparing it against
+    // one that does not would report the name as the words.
+    if (!prompt.measuresVisibility) { excluded.add(prompt.id); continue; }
     const root = rootOf(prompt);
     const key = groupKey(answer, root);
     const byWording = groups.get(key) || new Map<string, PromptAnswer[]>();
@@ -119,6 +127,7 @@ export function buildPhrasingReport(answers: PromptAnswer[], set: TopicSet): Phr
   const spreads = questions.map((row) => row.spread).filter((value): value is number => value !== null);
   return {
     measured: questions.length,
+    namesTheBrand: excluded.size,
     oneWording,
     unstable: questions.filter((row) => !row.agreed).length,
     spread: mean(spreads),
