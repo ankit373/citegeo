@@ -33,7 +33,9 @@ const ASSISTANT_HOSTS: Array<{ label: string; hosts: string[] }> = [
   { label: "ChatGPT", hosts: ["chatgpt.com", "chat.openai.com", "openai.com"] },
   { label: "Perplexity", hosts: ["perplexity.ai"] },
   { label: "Gemini", hosts: ["gemini.google.com", "bard.google.com"] },
-  { label: "Copilot", hosts: ["copilot.microsoft.com", "bing.com"] },
+  // The consumer surface moved to copilot.com. The old host stays, because a
+  // referral archived before the move is still a Copilot referral.
+  { label: "Copilot", hosts: ["copilot.com", "copilot.microsoft.com", "bing.com"] },
   { label: "Claude", hosts: ["claude.ai"] },
 ];
 

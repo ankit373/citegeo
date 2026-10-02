@@ -25,7 +25,7 @@ later runs reuse it. Nothing here signs in for you or works around a sign-in.
 | `google-ai-overview` | Google search results | Shows an overview for some queries and not others. No overview is a finding, not a failure. |
 | `perplexity-web` | perplexity.ai | Also sold as an API, so the two answers can be compared. Signed out it answers but links nothing. |
 | `chatgpt` | chatgpt.com | Waits for the stream to finish; half an answer is worse than none. |
-| `copilot` | copilot.microsoft.com | Personalises by account and region. |
+| `copilot` | copilot.com | Personalises by account and region. The question is typed in: the old host redirects and drops a question put in the URL. Sources are listed by domain with no link, so citations come back empty. |
 
 ## The four outcomes
 

@@ -4,6 +4,37 @@
 
 Nothing yet.
 
+## 0.3.1 - 2026-10-02
+
+Two browser surfaces that were reporting the wrong thing.
+
+### Fixed
+
+- **Copilot answers again.** The surface moved to `copilot.com`, the old host
+  redirects, and the redirect drops the query string the question was put in,
+  so every run landed on an empty chat however the browser was signed in. The
+  question is typed into the composer now, and the posted question is read back
+  before anything is waited for: an empty composer still gets a reply, and
+  archiving that would record an answer to a question nobody asked.
+- **Copilot citations come back empty rather than invented.** It lists each
+  source as a title and a domain and keeps the link in a click handler, so
+  there is no page URL to read. Guessing one would have sent the page reader to
+  fetch a homepage and report it as the page the model cited.
+- **A ChatGPT sign-in wall is reported as a sign-in wall.** The signed-out page
+  carries one `article` element, and `article` was treated as proof a transcript
+  had rendered, so the wall was reported as a surface that answered nothing. One
+  of those is a finding about the surface and the other is an instruction to
+  whoever runs this.
+- **Referral attribution learnt the new Copilot host,** keeping the old one,
+  because a referral archived before the move is still a Copilot referral.
+  Every `copilot.com` arrival had been going uncounted.
+
+### Changed
+
+- The marketing page states what the product now measures: searching measured
+  before citation, asking a question more than once, and the range a rate is
+  consistent with.
+
 ## 0.3.0 - 2026-10-02
 
 First release under the CiteGEO name.
