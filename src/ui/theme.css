@@ -398,6 +398,10 @@
   @apply grid-cols-[minmax(0,1fr)_170px_110px] items-start;
 }
 
+@utility mcols-check {
+  @apply grid-cols-[minmax(0,1fr)_96px_110px_140px] items-start;
+}
+
 @utility mcols-source {
   @apply grid-cols-[minmax(0,1fr)_110px_100px_116px] items-start;
 }

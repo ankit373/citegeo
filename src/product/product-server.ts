@@ -41,6 +41,7 @@ import { handleTopicApi } from "./topics/topic-http.js";
 import { handleEngineApi } from "./engines/engine-http.js";
 import { handleRankingActionApi } from "./topics/action-http.js";
 import { handleCitationApi } from "./citations/citation-http.js";
+import { handleHumanCheckApi } from "./topics/human-check-http.js";
 import { handleSearchConsoleApi } from "./search-console/search-console-http.js";
 import { projectInsights } from "./topics/project-insights.js";
 import { handleStorageApi } from "./storage/storage-http.js";
@@ -188,6 +189,8 @@ async function handle(req: IncomingMessage, res: ServerResponse, services: Produ
   if (await handleSearchConsoleApi({ method, route, send: json, searchConsole: services.searchConsole, externalMetrics: services.externalMetrics, readJson: body,
     prompts: async (id) => (await topics.get(id)).prompts.filter((prompt) => prompt.status === "active"),
     insights: (id) => projectInsights({ projectId: id, topics, runs: promptRuns, competitors: services.competitors, personas: services.personas, locations: services.locations }) })) return;
+  if (await handleHumanCheckApi({ method, route, send: json, service: services.humanCheck,
+    answers: (id) => promptRuns.listAnswers(id), readJson: body })) return;
   if (await handleCitationApi({ method, route, send: json, pages: services.sourcePages,
     refresh: url.searchParams.get("refresh") === "true",
     runs: (id) => promptRuns.listRuns(id),
