@@ -6,6 +6,7 @@ import { buildOutreachPlan, type OutreachPlan } from "./outreach.js";
 import { summariseUptake, uptakeOf, type UptakeSummary } from "./answer-uptake.js";
 import { buildInterferenceReport, type InterferenceReport } from "./interference.js";
 import { buildConcentrationReport, type ConcentrationReport } from "./concentration.js";
+import { compareShapes, type ShapeComparison } from "./page-shape.js";
 import type { ProductProjectFileStore } from "../projects/project-store.js";
 import type { BrandIdentity } from "../topics/brand-identity.js";
 import type { PromptAnswer, PromptRun } from "../topics/prompt-run-schema.js";
@@ -78,6 +79,11 @@ export class SourcePageService {
    * from whether the brand is in them. */
   concentration(answers: PromptAnswer[], domain?: string | undefined): ConcentrationReport {
     return buildConcentrationReport({ answers, domain });
+  }
+
+  /** How the pages that beat you are laid out, against your own. */
+  async shape(projectId: string, domain?: string | undefined): Promise<ShapeComparison> {
+    return compareShapes({ pages: await this.list(projectId), domain });
   }
 
   /** Shapes that a source was pushed into the answers rather than grew there. */
