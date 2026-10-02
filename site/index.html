@@ -86,8 +86,8 @@
 <section id="what">
   <div class="wrap">
     <h2>Evidence, not a score</h2>
-    <p class="intro">Every competitor in this category sells you a number. A number you cannot check is a number you cannot act on.</p>
-    <div class="grid"><article><h3>Ask the models directly</h3><p>Put your domain to as many models as you want and keep every answer. The raw provider response is archived beside the parsed result, so a claim can always be traced back to the text that produced it.</p></article><article><h3>Find who is cited instead of you</h3><p>When a model names a competitor it usually cites a source. The citation gap lists the domains cited alongside your competitors that never appear in an answer naming you. That is a short, concrete list of places to get into.</p></article><article><h3>Prove the crawlers arrived</h3><p>robots.txt says a crawler may fetch you. Your access log says whether it did. Reading both separates a permission problem from an obscurity problem, which look identical from the outside.</p></article><article><h3>Get a plan, not a score</h3><p>Findings are ordered by what decides whether a model can cite you at all, each one naming the observation behind it. Where the fix is a file, it can be opened as a pull request against your own repository.</p></article></div>
+    <p class="intro">Every other tool in this category sells you a number. A number you cannot check is a number you cannot act on, and a number taken over the wrong population is worse than none.</p>
+    <div class="grid"><article><h3>Ask the models directly</h3><p>Put your domain to as many models as you want and keep every answer. The raw provider response is archived beside the parsed result, so a claim can always be traced back to the text that produced it.</p></article><article><h3>Find who is cited instead of you</h3><p>When a model names a competitor it usually cites a source. The citation gap lists the domains cited alongside your competitors that never appear in an answer naming you. That is a short, concrete list of places to get into.</p></article><article><h3>Ask whether it searched before asking whether it cited you</h3><p>An answer that never searched the web and an answer that searched and cited nobody are two different findings. Counting them together puts two populations under one denominator. Both are measured, and where a provider says nothing either way that stays unknown rather than being read as a no.</p></article><article><h3>Ask the same question again, and see how much moved</h3><p>The same question does not come back the same. Published work puts the day to day overlap of cited sources near a third, which makes a single pass close to a coin. Ask up to ten times and the passes are compared on the sources they cited, so you know whether a number is a finding or a draw.</p></article><article><h3>Read a rate with the range it is consistent with</h3><p>Two of twelve answers is not seventeen percent. It is a sample, and the interval around it is wide enough that a move inside it is not a move. Every rate carries that range, and says plainly when it is too wide to decide anything.</p></article><article><h3>Prove the crawlers arrived</h3><p>robots.txt says a crawler may fetch you. Your access log says whether it did. Reading both separates a permission problem from an obscurity problem, which look identical from the outside. Blocking is reported as what it measurably costs, which is referred traffic, not citation.</p></article><article><h3>Get the next thing to do, not a score</h3><p>Every figure ends in the task it implies, ordered by what is holding the measurement back: what stops a number existing, what stops it being trusted, then what it says to do. Each one names the observation behind it and the button goes to the page that clears it.</p></article></div>
   </div>
 </section>
 
@@ -95,7 +95,7 @@
   <div class="wrap">
     <h2>What it refuses to do</h2>
     <p class="intro">The limits are the product. Anything here that guessed would make the rest untrustworthy.</p>
-    <div class="grid"><article><h3>It will not invent a number</h3><p>Visibility with nothing parsed reads as not measurable, never 0%. A share of voice with no competitor named reads as not comparable, never 100%. An absence is reported as an absence.</p></article><article><h3>It will not guess at a fix</h3><p>A robots.txt or llms.txt can be generated correctly, so it is. A schema change lives in a template that differs per site, so it is described rather than patched. A wrong diff that looks authoritative is worse than no diff.</p></article><article><h3>It will not sell you demand data it does not have</h3><p>Knowing what people actually ask an assistant needs a consumer panel. This project does not have one and will not estimate it. It reads your Search Console instead and says so.</p></article></div>
+    <div class="grid"><article><h3>It will not invent a number</h3><p>Visibility with nothing parsed reads as not measurable, never 0%. A share of voice with no competitor named reads as not comparable, never 100%. An absence is reported as an absence.</p></article><article><h3>It will not guess at a fix</h3><p>A robots.txt or llms.txt can be generated correctly, so it is. A schema change lives in a template that differs per site, so it is described rather than patched. A wrong diff that looks authoritative is worse than no diff.</p></article><article><h3>It will not sell you demand data it does not have</h3><p>Knowing what people actually ask an assistant needs a consumer panel. This project does not have one and will not estimate it. It reads your Search Console instead and says so.</p></article><article><h3>It will not invent a citation it could not read</h3><p>One surface lists its sources by domain and keeps the link to itself. Turning that into an address would send the page reader off to fetch a homepage and report it as the page the model cited. The citation comes back empty, and the reason is printed beside it.</p></article><article><h3>It will not take what a model says it did on trust</h3><p>A model reporting which brands it named is a second claim, not evidence for the first. Every reported mention is checked against the answer the model actually wrote, including whether the line it quoted as proof is in there at all. Often enough, it is not.</p></article></div>
   </div>
 </section>
 
@@ -109,12 +109,15 @@
 
 citegeo listening on http://127.0.0.1:8787
 
-<span class="prompt">#</span> what it tells you about a domain that no model knows yet
-<span class="bad">critical</span>  No model recognised this domain (0 of 12)
-<span class="flag">high</span>      Every sameAs link points at a profile the brand controls
-<span class="flag">high</span>      No Wikidata entity
-<span class="ok">ok</span>        AI crawlers can read the site      11 of 11 allowed
-<span class="ok">ok</span>        llms.txt is published              875,431 bytes</pre></div>
+<span class="prompt">#</span> what it tells you to do after a run, and what it saw
+<span class="bad">blocking</span>  Add a model that can search the web
+          All 12 answers came from models with no web search.
+<span class="flag">limiting</span>  Ask each question more than once
+          6 of 11 questions were asked once, so most of this is a single draw.
+<span class="flag">limiting</span>  Read the source list as one draw, not as the sources
+          0% of cited sources survived one pass to the next, against 34% published.
+<span class="ok">to do</span>     Write for the 4 questions you never appear in
+          4 tracked questions returned answers that never named you.</pre></div>
   </div>
 </section>
 
