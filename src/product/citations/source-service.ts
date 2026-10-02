@@ -4,9 +4,10 @@ import { readSourcePage, type SourcePage } from "./source-page.js";
 import { canonicalUrl } from "./canonical-url.js";
 import { buildOutreachPlan, type OutreachPlan } from "./outreach.js";
 import { summariseUptake, uptakeOf, type UptakeSummary } from "./answer-uptake.js";
+import { buildInterferenceReport, type InterferenceReport } from "./interference.js";
 import type { ProductProjectFileStore } from "../projects/project-store.js";
 import type { BrandIdentity } from "../topics/brand-identity.js";
-import type { PromptAnswer } from "../topics/prompt-run-schema.js";
+import type { PromptAnswer, PromptRun } from "../topics/prompt-run-schema.js";
 
 // Reading someone else's page is a request to their server, so it is capped,
 // spaced, and never repeated for a page already read.
@@ -72,6 +73,11 @@ export class SourcePageService {
     return summariseUptake(rows);
   }
 
+  /** Shapes that a source was pushed into the answers rather than grew there. */
+  async interference(projectId: string, answers: PromptAnswer[], runs: PromptRun[]): Promise<InterferenceReport> {
+    return buildInterferenceReport({ answers, runs, pages: await this.list(projectId) });
+  }
+
   /** Reads the cited pages this project has not read yet. A page already read
    * is left alone: re-reading it is another request for the same answer. */
   async harvest(input: {
@@ -83,6 +89,9 @@ export class SourcePageService {
     /** The same scope the read path uses. Without it a harvested plan calls
      * every page independent, and the two paths disagree about the same page. */
     scope?: { domain?: string | undefined; rivalDomains?: string[] | undefined } | undefined;
+    /** Reads pages already stored, so a page that changed can be seen. Off by
+     * default, because re-reading is another request to somebody's server. */
+    refresh?: boolean | undefined;
   }): Promise<{ read: number; skipped: number; failed: number; plan: OutreachPlan }> {
     const completed = input.answers.filter((answer) => answer.status === "completed");
     // Keyed by the page, not the string. One page cited with an assistant's
@@ -107,14 +116,19 @@ export class SourcePageService {
       // field entirely, which is not the same as a page that had none, so it
       // is read again once rather than reported as unknown for ever.
       const complete = Boolean(already) && "statedAt" in (already as SourcePage) && typeof (already as SourcePage).text === "string";
-      if (already && !already.detail && complete) { skipped += 1; continue; }
+      if (already && !already.detail && complete && !input.refresh) { skipped += 1; continue; }
       const page = await readSourcePage({
         url,
         names: input.names,
         brandNames: input.identity.distinctive,
         brandHost: input.identity.host,
       });
-      await putJson(this.projects.objects, this.key(input.projectId, key), page);
+      // What it said last time travels with it, so a page that changed under a
+      // URL an answer already cites can be seen rather than silently replaced.
+      const carried: SourcePage = already && already.text && page.text
+        ? { ...page, previousText: already.text, previousFetchedAt: already.fetchedAt }
+        : page;
+      await putJson(this.projects.objects, this.key(input.projectId, key), carried);
       if (page.detail) failed += 1;
       else read += 1;
       await new Promise((resolve) => setTimeout(resolve, SPACING_MS));

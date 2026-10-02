@@ -32,6 +32,10 @@ export interface SourcePage {
   /** What the page says, capped. Kept so an answer can be compared against the
    * page that was cited for it. Absent on a record stored before this existed. */
   text?: string | undefined;
+  /** What it said when it was last read, and when that was. Kept only so a
+   * page that changed under a URL an answer already cites can be seen. */
+  previousText?: string | undefined;
+  previousFetchedAt?: string | undefined;
   detail: string | null;
 }
 
