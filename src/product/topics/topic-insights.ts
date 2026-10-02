@@ -2,6 +2,7 @@ import { summariseCorroboration, type CorroboratedMention, type CorroborationSum
 import { splitActivation, type ActivationSplit } from "./search-activation.js";
 import { buildStabilityReport, type StabilityReport } from "./answer-stability.js";
 import { buildPhrasingReport, type PhrasingReport } from "./phrasing-sensitivity.js";
+import { buildDecoyReport, isDecoy, type DecoyReport } from "./decoy-check.js";
 import { nextTasks, type MeasurementTask } from "./next-task.js";
 import { domainLabel, tokenize } from "./prompt-identity.js";
 import { buildPromptTrend, type PromptTrend } from "./prompt-trend.js";
@@ -125,6 +126,9 @@ export interface TopicInsights {
   /** How much the wording decides, as opposed to the day. Empty until a
    * question has been written down more than one way. */
   phrasing: PhrasingReport;
+  /** How often a name declared irrelevant turns up anyway, which is the error
+   * rate every other figure here should be read against. */
+  decoys: DecoyReport;
   /** How much of the model's report of what it named survived a check against
    * the answer it wrote in the same call. */
   corroboration: CorroborationSummary;
@@ -284,7 +288,9 @@ function personaStandings(answers: PromptAnswer[], labels: Map<string, string>):
 
 function trackedStandings(competitors: Competitor[], leaderboard: EntityStanding[], answers: number): EntityStanding[] {
   return competitors
-    .filter((row) => row.tracked)
+    // A decoy is not a rival. It is carried to measure the error rate, and
+    // ranking it beside the real ones would read as competing with it.
+    .filter((row) => row.tracked && !isDecoy(row))
     .map((competitor) => {
       const seen = leaderboard.find((row) => !row.isTarget && matchesCompetitor(competitor, row.name, row.domain));
       if (seen) return { ...seen, name: competitor.name, isTracked: true };
@@ -405,6 +411,7 @@ export function buildTopicInsights(input: {
   const activation = splitActivation(completed);
   const stability = buildStabilityReport(completed);
   const phrasing = buildPhrasingReport(completed, set);
+  const decoys = buildDecoyReport({ answers: completed, competitors: input.competitors || [] });
   const corroboration = summariseCorroboration(completed.flatMap((answer) => answer.mentions).filter(hasCorroboration));
   const failed = new Map<string, number>();
   for (const answer of answers) {
@@ -431,6 +438,7 @@ export function buildTopicInsights(input: {
     activation,
     stability,
     phrasing,
+    decoys,
     corroboration,
     tasks: nextTasks({
       answers: completed.length,

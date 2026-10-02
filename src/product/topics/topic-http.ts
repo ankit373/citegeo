@@ -6,6 +6,7 @@ import { citationStanding, positionReport } from "./position-metrics.js";
 import { sliceByWindow, windowFor } from "./period-window.js";
 import { buildRankingPlan, type RankingPlan } from "./ranking-plan.js";
 import { projectInsights } from "./project-insights.js";
+import { DECOY_SOURCE } from "./decoy-check.js";
 import { NO_PERSONA, type PersonaService } from "./persona.js";
 import { buildPromptBrief, type PromptBrief } from "./prompt-brief.js";
 import { briefMarkdown } from "./brief-export.js";
@@ -343,6 +344,18 @@ export async function handleTopicApi(input: {
     await guard(() => competitors.add(projectId, {
       name: typeof body.name === "string" ? body.name : "",
       domain: typeof body.domain === "string" ? body.domain : null,
+    }));
+    return true;
+  }
+
+  // A decoy is stored as a competitor with its own source, so it retires and
+  // resolves the same way, and every count that means rival excludes it.
+  if (method === "POST" && tail.length === 2 && tail[0] === "competitors" && tail[1] === "decoy") {
+    const body = await readJson();
+    await guard(() => competitors.add(projectId, {
+      name: typeof body.name === "string" ? body.name : "",
+      domain: typeof body.domain === "string" ? body.domain : null,
+      source: DECOY_SOURCE,
     }));
     return true;
   }

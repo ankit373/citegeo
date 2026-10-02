@@ -25,7 +25,7 @@ function insights(): TopicInsights {
   return {
     projectId: "p", answers: 0, answersFailed: 0, overall: SCORE, rank: null,
     weights: SCORE.weights, leaderboard: [], topics: [], byModel: [], absentFrom: [],
-    citationsUnavailable: false, corroboration: summariseCorroboration([]), activation: splitActivation([]), stability: buildStabilityReport([]), phrasing: { measured: 0, namesTheBrand: 0, oneWording: 0, unstable: 0, spread: null, questions: [], caveat: "" }, tasks: [], trend: { points: [], change: null, since: null }, byRegion: [], byLanguage: [], byPersona: [],
+    citationsUnavailable: false, corroboration: summariseCorroboration([]), activation: splitActivation([]), stability: buildStabilityReport([]), phrasing: { measured: 0, namesTheBrand: 0, oneWording: 0, unstable: 0, spread: null, questions: [], caveat: "" }, decoys: { considered: 0, decoys: [], noiseFloor: null, matcherErrors: 0, presenceRate: null, clearsFloor: null, caveat: "" }, tasks: [], trend: { points: [], change: null, since: null }, byRegion: [], byLanguage: [], byPersona: [],
     regionCaveat: "", identityCaveat: null, trackedRivals: [],
   };
 }

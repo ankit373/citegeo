@@ -2488,6 +2488,36 @@ export function boot(): void {
         + rows + '</div></div>';
     }
 
+    // The error rate every other figure here should be read against. It sits
+    // with the score rather than in a corner, because that is what it qualifies.
+    function renderDecoys(report: any) {
+      if (!report) return '';
+      if (!report.decoys.length) {
+        return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>A brand that should never appear</h3>'
+          + '<p class="subtle">Nothing here measures how often this product finds a name that is not there. Declare a brand you know is irrelevant to these questions and every run carries it, so the share it turns up in becomes the figure yours has to beat.</p></div></div>'
+          + '<div class="inline-actions">' + button({ label: "Add a decoy", kind: "quiet", on: { "data-page": "answer-engine", "data-focus-decoy": "true" } }) + '</div></div>';
+      }
+      const floor = sharePct(report.noiseFloor);
+      const verdict = report.clearsFloor === null
+        ? 'Nothing answered yet, so there is nothing to compare.'
+        : report.clearsFloor
+          ? 'Your ' + sharePct(report.presenceRate) + ' clears it.'
+          : 'Your ' + sharePct(report.presenceRate) + ' does not clear it, so it has not been told apart from a name that should never have been there.';
+      const errors = report.matcherErrors
+        ? '<div class="warning-box"><strong>' + report.matcherErrors + ' reported mention(s) of a decoy are not in the answer that was said to contain them.</strong> That is this product reading a name that is not there, not a model writing one. Every figure built on reported mentions carries that error.</div>'
+        : '';
+      const rows = report.decoys.map((row: any) => '<div class="mrow mcols-decoy"><div class="mname"><strong>' + html(row.name) + '</strong>'
+        + '<span class="subtle">' + (row.absentFromText ? row.absentFromText + ' read into an answer that does not contain it' : 'never read into an answer that does not contain it') + '</span></div>'
+        + '<span class="mcell">' + row.namedIn + ' of ' + report.considered + '</span>'
+        + '<span class="mcell ' + (row.namedIn ? "state-flag" : "state-ok") + '">' + (row.share === null ? '\u2014' : sharePct(row.share)) + '</span>'
+        + '<span class="mcell">' + (row.high === null ? '\u2014' : sharePct(row.high)) + '</span></div>').join("");
+      return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>A brand that should never appear</h3>'
+        + '<p class="subtle">' + html(report.caveat) + '</p></div></div>'
+        + '<p><strong>Anything under ' + floor + ' is not a finding.</strong> ' + html(verdict) + '</p>' + errors
+        + '<div class="mtable"><div class="mhead mcols-decoy"><span>Decoy</span><span>Named in</span><span>Share</span><span>Consistent with up to</span></div>'
+        + rows + '</div></div>';
+    }
+
     function renderAnswerEngine() {
       const selected = project();
       if (!selected) return '<section class="view"><div class="empty"><div class="empty-copy"><h2>Select a project first</h2></div></div></section>';
@@ -2541,6 +2571,7 @@ export function boot(): void {
         + identityNote + failedNote + citationNote + corroborationNote
         + '<section class="section-card"><div class="section-head"><div><h2>How the score is built</h2><p class="subtle">Presence scaled by where you appear and how you are described.</p></div></div>'
         + renderScoreBreakdown(data.overall)
+        + renderDecoys(data.decoys)
         + taskCta("too-few-answers")
         + renderStability(data.stability)
         + renderPhrasing(data.phrasing)
