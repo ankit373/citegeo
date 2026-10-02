@@ -150,6 +150,18 @@ export async function handleTopicApi(input: {
     return true;
   }
 
+  // Rewordings are written down against the question they reword, so what
+  // moved between them is the words and not which question was asked.
+  if (method === "POST" && tail.length === 2 && tail[0] === "prompts" && tail[1] === "wordings") {
+    const body = await readJson();
+    const texts = Array.isArray(body.texts) ? body.texts.filter((line: unknown): line is string => typeof line === "string") : [];
+    await guard(() => topics.addWordings(projectId, {
+      promptId: typeof body.promptId === "string" ? body.promptId : "",
+      texts,
+    }));
+    return true;
+  }
+
   if (method === "POST" && tail.length === 2 && tail[0] === "prompts" && tail[1] === "bulk") {
     const body = await readJson();
     const intent = body.intent;

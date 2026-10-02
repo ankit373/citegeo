@@ -136,6 +136,8 @@ export class TopicService {
     source: Prompt["source"];
     identity: BrandIdentity;
     status: EntityStatus;
+    /** Set when this prompt is a rewording of another. */
+    variantOf?: string | undefined;
   }): Prompt {
     const named = textNamesBrand(input.text, input.identity);
     return {
@@ -145,6 +147,7 @@ export class TopicService {
       text: input.text.trim(),
       normalizedText: normalizePrompt(input.text),
       intent: input.intent,
+      variantOf: input.variantOf || null,
       source: input.source,
       measuresVisibility: !named,
       visibilityExclusionReason: named ? "names_the_brand" : null,
@@ -282,6 +285,41 @@ export class TopicService {
       await this.store.save(set);
     }
     return this.store.load(projectId);
+  }
+
+  /** Rewordings of one question, saved against it. The same question asked in
+   * other words is a different test from the same question asked again. */
+  async addWordings(projectId: string, input: { promptId: string; texts: string[] }): Promise<{ set: TopicSet; added: number; skipped: number }> {
+    const set = await this.store.load(projectId);
+    const root = set.prompts.find((prompt) => prompt.id === input.promptId);
+    if (!root) throw new TopicSetUnavailableError(`Prompt ${input.promptId} does not exist.`);
+    // A rewording of a rewording belongs to the question both are wordings of,
+    // or one group would quietly split into two.
+    const rootId = root.variantOf || root.id;
+    const identity = await this.targetIdentity(projectId);
+    const seen = new Set(set.prompts.map((prompt) => prompt.id));
+    let added = 0;
+    let skipped = 0;
+    for (const line of input.texts) {
+      const text = line.trim();
+      if (!text) { skipped += 1; continue; }
+      const prompt = this.buildPrompt({
+        projectId,
+        topicId: root.topicId,
+        text,
+        intent: root.intent,
+        source: "generated",
+        identity,
+        status: "active",
+        variantOf: rootId,
+      });
+      if (seen.has(prompt.id)) { skipped += 1; continue; }
+      seen.add(prompt.id);
+      set.prompts.push(prompt);
+      added += 1;
+    }
+    if (added) await this.store.save(set);
+    return { set: await this.store.load(projectId), added, skipped };
   }
 
   /** One question per line. Blank lines and duplicates are skipped rather than
