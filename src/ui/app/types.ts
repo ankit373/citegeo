@@ -106,6 +106,16 @@ export interface PhrasingShape {
   caveat: string;
 }
 
+export interface DecoyShape {
+  considered: number;
+  decoys: Array<{ name: string; namedIn: number; inText: number; absentFromText: number; share: number | null; high: number | null }>;
+  noiseFloor: number | null;
+  matcherErrors: number;
+  presenceRate: number | null;
+  clearsFloor: boolean | null;
+  caveat: string;
+}
+
 export interface ActivationShape {
   considered: number;
   activated: number;
@@ -170,6 +180,8 @@ export interface InsightsShape {
   stability?: StabilityShape | undefined;
   /** Absent on an archive read before wordings were compared. */
   phrasing?: PhrasingShape | undefined;
+  /** Absent on an archive read before a decoy could be carried. */
+  decoys?: DecoyShape | undefined;
   /** Absent on an archive answered before mentions were checked against the
    * answer text, so nothing is claimed about those. */
   corroboration?: CorroborationShape | undefined;

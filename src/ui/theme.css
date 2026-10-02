@@ -374,6 +374,10 @@
   @apply grid-cols-[minmax(0,1fr)_132px_110px] items-start;
 }
 
+@utility mcols-decoy {
+  @apply grid-cols-[minmax(0,1fr)_110px_96px_150px] items-start;
+}
+
 @utility mcols-source {
   @apply grid-cols-[minmax(0,1fr)_110px_100px_116px] items-start;
 }
