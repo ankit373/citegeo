@@ -254,7 +254,9 @@ export const chatgptWeb: BrowserEngine = {
     // The signed-out answer renders in a single article and carries none of
     // the attributes the signed-in transcript does, so both shapes are read.
     const specific = ["[data-message-author-role='assistant']", "div.markdown.prose", "article"];
-    if (await signedOut(session, specific)) return SIGN_IN_OUTCOME;
+    // The wall itself contains an article, so it cannot be the proof a
+    // transcript exists. Only the two it never carries can be.
+    if (await signedOut(session, specific.slice(0, 2))) return SIGN_IN_OUTCOME;
     const expression = readerExpression([...specific, "main"], "a[href^='http']");
     // The stop button's test id no longer exists, so a settled answer is one
     // whose length stopped changing rather than one with no button on screen.
