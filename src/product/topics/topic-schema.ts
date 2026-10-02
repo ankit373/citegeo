@@ -45,6 +45,9 @@ export interface Prompt {
   /** One level finer than the topic. Absent on every prompt written before
    * grouping existed, which reads as the topic itself, not as an empty group. */
   subtopic?: string | null;
+  /** The prompt this one rewords, when it is a rewording. Absent on a prompt
+   * written before rewordings existed, which is its own question, not a copy. */
+  variantOf?: string | null;
   source: EntitySource;
   /** False when the prompt names the brand: the model will discuss it whatever
    * it thinks, so an appearance is not evidence of being found. */

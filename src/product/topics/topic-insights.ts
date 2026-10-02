@@ -1,6 +1,7 @@
 import { summariseCorroboration, type CorroboratedMention, type CorroborationSummary } from "./mention-corroboration.js";
 import { splitActivation, type ActivationSplit } from "./search-activation.js";
 import { buildStabilityReport, type StabilityReport } from "./answer-stability.js";
+import { buildPhrasingReport, type PhrasingReport } from "./phrasing-sensitivity.js";
 import { nextTasks, type MeasurementTask } from "./next-task.js";
 import { domainLabel, tokenize } from "./prompt-identity.js";
 import { buildPromptTrend, type PromptTrend } from "./prompt-trend.js";
@@ -121,6 +122,9 @@ export interface TopicInsights {
   /** How much the same question moves when asked again. Empty until a run
    * asks more than once, because one pass cannot show it. */
   stability: StabilityReport;
+  /** How much the wording decides, as opposed to the day. Empty until a
+   * question has been written down more than one way. */
+  phrasing: PhrasingReport;
   /** How much of the model's report of what it named survived a check against
    * the answer it wrote in the same call. */
   corroboration: CorroborationSummary;
@@ -400,6 +404,7 @@ export function buildTopicInsights(input: {
   const citationsUnavailable = completed.length > 0 && completed.every((answer) => answer.citationUrls.length === 0);
   const activation = splitActivation(completed);
   const stability = buildStabilityReport(completed);
+  const phrasing = buildPhrasingReport(completed, set);
   const corroboration = summariseCorroboration(completed.flatMap((answer) => answer.mentions).filter(hasCorroboration));
   const failed = new Map<string, number>();
   for (const answer of answers) {
@@ -425,6 +430,7 @@ export function buildTopicInsights(input: {
     citationsUnavailable,
     activation,
     stability,
+    phrasing,
     corroboration,
     tasks: nextTasks({
       answers: completed.length,

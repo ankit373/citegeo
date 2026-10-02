@@ -93,6 +93,19 @@ export interface StabilityShape {
   caveat: string;
 }
 
+export interface PhrasingShape {
+  measured: number;
+  namesTheBrand: number;
+  oneWording: number;
+  unstable: number;
+  spread: number | null;
+  questions: Array<{
+    rootId: string; rootText: string; modelId: string; namedIn: number; agreed: boolean; spread: number | null;
+    wordings: Array<{ promptId: string; text: string; answers: number; named: number }>;
+  }>;
+  caveat: string;
+}
+
 export interface ActivationShape {
   considered: number;
   activated: number;
@@ -155,6 +168,8 @@ export interface InsightsShape {
   /** Absent on an archive read before activation was split out. */
   activation?: ActivationShape | undefined;
   stability?: StabilityShape | undefined;
+  /** Absent on an archive read before wordings were compared. */
+  phrasing?: PhrasingShape | undefined;
   /** Absent on an archive answered before mentions were checked against the
    * answer text, so nothing is claimed about those. */
   corroboration?: CorroborationShape | undefined;

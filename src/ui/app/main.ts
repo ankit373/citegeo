@@ -2457,6 +2457,37 @@ export function boot(): void {
         + (rest > 0 ? '<p class="mlegend">' + rest + ' more on the full report.</p>' : '') + '</section>';
     }
 
+    // Repetition holds the wording and varies the day. This holds the day and
+    // varies the wording, so the two read together and neither alone.
+    function renderPhrasing(report: any) {
+      if (!report) return '';
+      if (!report.measured) {
+        return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>How much the wording decides</h3>'
+          + '<p class="subtle">Every question here is written down one way, so nothing says whether you are visible for what was asked or for the exact words it was asked in. Add a rewording to a question and the next run compares them.</p></div></div>'
+          + '<div class="inline-actions">' + button({ label: "Open questions", kind: "quiet", on: { "data-page": "prompts" } }) + '</div></div>';
+      }
+      const lead = report.spread === null
+        ? 'No pair of wordings produced an answer to compare.'
+        : 'Across ' + report.measured + ' question(s) written more than one way, the widest gap between two wordings averages ' + sharePct(report.spread) + '.';
+      const naming = report.unstable
+        ? ' ' + report.unstable + ' question(s) named you under one wording and not another, so that figure is about the words rather than about you.'
+        : ' Every question agreed with itself whichever way it was put.';
+      const named = report.namesTheBrand
+        ? ' ' + report.namesTheBrand + ' wording(s) name you and are left out, because the model discusses a brand the question names whatever it thinks.'
+        : '';
+      const rows = report.questions.slice(0, 6).map((row: any) => '<div class="mrow mcols-phrasing"><div class="mname"><strong>' + html(row.rootText) + '</strong>'
+        + '<span class="mono">' + html(row.modelId) + ' \u00b7 ' + row.wordings.length + ' wordings</span>'
+        + row.wordings.slice(0, 4).map((wording: any) => '<span class="subtle">' + (wording.named ? '\u2713' : '\u2717') + ' ' + html(wording.text) + '</span>').join("")
+        + '</div>'
+        + '<span class="mcell ' + (row.agreed ? "state-ok" : "state-bad") + '">' + (row.agreed ? "Agreed" : row.namedIn + ' of ' + row.wordings.length) + '</span>'
+        + '<span class="mcell">' + (row.spread === null ? '\u2014' : sharePct(row.spread)) + '</span></div>').join("");
+      return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>How much the wording decides</h3>'
+        + '<p class="subtle">' + html(report.caveat) + '</p></div></div>'
+        + '<p>' + html(lead + naming + named) + '</p>'
+        + '<div class="mtable"><div class="mhead mcols-phrasing"><span>Question and its wordings</span><span>Named you</span><span>Widest gap</span></div>'
+        + rows + '</div></div>';
+    }
+
     function renderAnswerEngine() {
       const selected = project();
       if (!selected) return '<section class="view"><div class="empty"><div class="empty-copy"><h2>Select a project first</h2></div></div></section>';
@@ -2512,6 +2543,7 @@ export function boot(): void {
         + renderScoreBreakdown(data.overall)
         + taskCta("too-few-answers")
         + renderStability(data.stability)
+        + renderPhrasing(data.phrasing)
         + '<details class="technical-details"><summary>The formula, and the judgement in it</summary>' + objective + '<p class="subtle">score = presence × (' + weights.prominenceFloor + ' + ' + (1 - weights.prominenceFloor).toFixed(1) + ' × prominence) × (' + weights.sentimentFloor + ' + ' + (1 - weights.sentimentFloor).toFixed(1) + ' × sentiment) × 100.</p><p class="subtle">The two floors are a judgement, not a measurement: being named late and grudgingly is still better than not being named, so prominence and sentiment scale presence rather than replacing it. Every component above is reported separately so you can ignore the composite entirely.</p></details></section>'
         + '<section class="section-card"><div class="section-head"><div><h2>What would move this</h2><p class="subtle">Read off the archived answers, strongest lever first. None of it is an opinion about your marketing.</p></div></div>' + renderRankingPlan() + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>Competitors named in the answers</h2><p class="subtle">Organisations the assistants named while answering your questions. Not the assistants themselves. Ranked by how many answers named them, then by how early.</p></div></div>' + renderLeaderboard(data.leaderboard) + '</section>'
