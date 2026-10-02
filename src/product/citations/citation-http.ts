@@ -73,6 +73,15 @@ export async function handleCitationApi(input: {
     return true;
   }
 
+  if (method === "GET" && tail[0] === "source-credit") {
+    try {
+      send(200, await pages.credit(projectId, await input.answers(projectId)));
+    } catch (error) {
+      send(404, { error: message(error) });
+    }
+    return true;
+  }
+
   if (tail[0] !== "source-pages") return false;
 
   if (method === "GET") {

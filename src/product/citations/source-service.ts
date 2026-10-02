@@ -7,6 +7,7 @@ import { summariseUptake, uptakeOf, type UptakeSummary } from "./answer-uptake.j
 import { buildInterferenceReport, type InterferenceReport } from "./interference.js";
 import { buildConcentrationReport, type ConcentrationReport } from "./concentration.js";
 import { compareShapes, type ShapeComparison } from "./page-shape.js";
+import { creditGaps, type CreditReport } from "./credit-gap.js";
 import type { ProductProjectFileStore } from "../projects/project-store.js";
 import type { BrandIdentity } from "../topics/brand-identity.js";
 import type { PromptAnswer, PromptRun } from "../topics/prompt-run-schema.js";
@@ -84,6 +85,38 @@ export class SourcePageService {
   /** How the pages that beat you are laid out, against your own. */
   async shape(projectId: string, domain?: string | undefined): Promise<ShapeComparison> {
     return compareShapes({ pages: await this.list(projectId), domain });
+  }
+
+  /** Where a page was credited against how much of the answer it accounts for.
+   * Grouped per answer, because only one citation list can be ranked within. */
+  async credit(projectId: string, answers: PromptAnswer[]): Promise<CreditReport> {
+    const pages = new Map<string, SourcePage>();
+    for (const page of await this.list(projectId)) {
+      const key = canonicalUrl(page.url)?.key || page.url;
+      const held = pages.get(key);
+      if (!held || (!held.text && page.text)) pages.set(key, page);
+    }
+    const perAnswer = [];
+    for (const answer of answers) {
+      if (answer.status !== "completed" || !answer.text) continue;
+      const rows = [];
+      const seen = new Set<string>();
+      let place = 0;
+      for (const raw of answer.citationUrls) {
+        const cited = canonicalUrl(raw);
+        if (!cited || seen.has(cited.key)) continue;
+        seen.add(cited.key);
+        place += 1;
+        const page = pages.get(cited.key);
+        rows.push(uptakeOf({
+          answerText: answer.text,
+          page: page || { url: cited.raw, host: cited.host, detail: "This page has not been read back yet." },
+          citedAt: place,
+        }));
+      }
+      if (rows.length) perAnswer.push(rows);
+    }
+    return creditGaps(perAnswer);
   }
 
   /** Shapes that a source was pushed into the answers rather than grew there. */
