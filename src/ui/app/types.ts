@@ -125,6 +125,18 @@ export interface CorroborationShape {
   caveat: string;
 }
 
+export interface UptakeShape {
+  measured: number;
+  unread: number;
+  mean: number | null;
+  citedNotUsed: number;
+  pages: Array<{
+    url: string; host: string; uptake: number | null; coverage: number | null;
+    citedAt: number; detail: string | null; phrases: Array<{ text: string; at: number }>;
+  }>;
+  caveat: string;
+}
+
 export interface InsightsShape {
   /** Computed on the server, so the view never imports the module that holds it. */
   position?: PositionShape | undefined;
