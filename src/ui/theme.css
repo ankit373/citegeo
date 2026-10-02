@@ -378,6 +378,14 @@
   @apply grid-cols-[minmax(0,1fr)_110px_96px_150px] items-start;
 }
 
+@utility mcols-arrival {
+  @apply grid-cols-[minmax(0,1fr)_132px_96px] items-start;
+}
+
+@utility mcols-shift {
+  @apply grid-cols-[minmax(0,1fr)_110px_120px] items-start;
+}
+
 @utility mcols-source {
   @apply grid-cols-[minmax(0,1fr)_110px_100px_116px] items-start;
 }

@@ -189,6 +189,8 @@ async function handle(req: IncomingMessage, res: ServerResponse, services: Produ
     prompts: async (id) => (await topics.get(id)).prompts.filter((prompt) => prompt.status === "active"),
     insights: (id) => projectInsights({ projectId: id, topics, runs: promptRuns, competitors: services.competitors, personas: services.personas, locations: services.locations }) })) return;
   if (await handleCitationApi({ method, route, send: json, pages: services.sourcePages,
+    refresh: url.searchParams.get("refresh") === "true",
+    runs: (id) => promptRuns.listRuns(id),
     answers: (id) => promptRuns.listAnswers(id),
     identity: (id) => topics.targetIdentity(id),
     names: async (id) => [...new Set((await promptRuns.listAnswers(id)).flatMap((answer) => answer.mentions.map((row) => row.name)))],

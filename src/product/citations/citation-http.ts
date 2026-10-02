@@ -1,6 +1,6 @@
 import type { SourcePageService } from "./source-service.js";
 import type { BrandIdentity } from "../topics/brand-identity.js";
-import type { PromptAnswer } from "../topics/prompt-run-schema.js";
+import type { PromptAnswer, PromptRun } from "../topics/prompt-run-schema.js";
 
 type CitationJsonSender = (status: number, body: unknown) => void;
 
@@ -20,6 +20,10 @@ export async function handleCitationApi(input: {
   /** The project's domain and the domains the answers named, so a page nobody
    * can be added to is not offered as somewhere to get listed. */
   scope: (projectId: string) => Promise<{ domain?: string | undefined; rivalDomains?: string[] | undefined }>;
+  /** Re-reads pages already stored, so a page that changed can be seen. */
+  refresh?: boolean | undefined;
+  /** What each answer took from the pages cited for it, over time. */
+  runs?: ((projectId: string) => Promise<PromptRun[]>) | undefined;
 }): Promise<boolean> {
   const { method, route, send, pages } = input;
   if (route[0] !== "api" || route[1] !== "projects") return false;
@@ -32,6 +36,17 @@ export async function handleCitationApi(input: {
   if (method === "GET" && tail[0] === "source-uptake") {
     try {
       send(200, await pages.uptake(projectId, await input.answers(projectId)));
+    } catch (error) {
+      send(404, { error: message(error) });
+    }
+    return true;
+  }
+
+  // Shapes that a source was pushed rather than grew. Read only, and built
+  // from what is already stored, so asking never reaches outside.
+  if (method === "GET" && tail[0] === "source-interference") {
+    try {
+      send(200, await pages.interference(projectId, await input.answers(projectId), input.runs ? await input.runs(projectId) : []));
     } catch (error) {
       send(404, { error: message(error) });
     }
@@ -58,6 +73,7 @@ export async function handleCitationApi(input: {
         identity: await input.identity(projectId),
         names: await input.names(projectId),
         scope: await input.scope(projectId),
+        refresh: input.refresh,
       }));
     } catch (error) {
       send(400, { error: message(error) });
