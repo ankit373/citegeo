@@ -88,6 +88,7 @@ async function readAnswer(input: {
  * sees too. */
 export const googleAiOverview: BrowserEngine = {
   id: "google-ai-overview",
+  home: "https://www.google.com/",
   label: "Google AI Overview",
   caveat:
     "Read from a search results page in your own browser. Google shows an overview for some queries and not others, and personalises what it shows, so this is what your session saw rather than what everyone sees.",
@@ -112,6 +113,7 @@ export const googleAiOverview: BrowserEngine = {
 /** Also sold as an API, so the web answer and the API answer can be compared. */
 export const perplexityWeb: BrowserEngine = {
   id: "perplexity-web",
+  home: "https://www.perplexity.ai/",
   label: "Perplexity (web)",
   caveat: "Read from perplexity.ai in your own signed-in browser. Signed out it answers but renders no linked sources, so citations come back empty rather than wrong. The web app and the Sonar API do not always answer the same way.",
   // It searches for every question. Signed out the sources are not rendered,
@@ -200,6 +202,7 @@ async function askByTyping(session: CdpSession, question: string): Promise<boole
  * source as a title and a domain with no link, so no page URL can be read. */
 export const copilotWeb: BrowserEngine = {
   id: "copilot",
+  home: "https://copilot.com/",
   label: "Microsoft Copilot",
   caveat: "Read from copilot.com in your own signed-in browser. It personalises by account and region, so this is what your session saw. It names its sources by domain without linking them, so citations come back empty rather than invented, and nothing here reports which page it read.",
   grounding: "always",
@@ -244,6 +247,7 @@ export const copilotWeb: BrowserEngine = {
  * answer and the API's answer to the same question are different measurements. */
 export const chatgptWeb: BrowserEngine = {
   id: "chatgpt",
+  home: "https://chatgpt.com/",
   label: "ChatGPT (web)",
   caveat: "Read from chatgpt.com in your own signed-in browser. The product and the API answer differently, because the product runs retrieval and model routing an API key does not expose.",
   // It decides per question whether to search, and often does not, so an

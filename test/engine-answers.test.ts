@@ -19,6 +19,7 @@ const PROMPT = { id: "q1", topicId: "t", text: "best stock screener", intent: "d
 const ENGINE: BrowserEngine = {
   id: "perplexity-web",
   label: "Perplexity (web)",
+  home: "https://www.perplexity.ai/",
   caveat: "read from the web app",
   grounding: "always",
   ask: async () => ({ state: "unavailable", detail: "not driven in this test" }),

@@ -32,6 +32,8 @@ export type EngineGrounding = "always" | "per_question";
 export interface BrowserEngine {
   id: EngineId;
   label: string;
+  /** Where the surface lives, so it can be checked without asking it anything. */
+  home: string;
   /** What this surface is, and what reading it this way cannot promise. */
   caveat: string;
   grounding: EngineGrounding;
