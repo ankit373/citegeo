@@ -3,6 +3,7 @@ import { splitActivation, type ActivationSplit } from "./search-activation.js";
 import { buildStabilityReport, type StabilityReport } from "./answer-stability.js";
 import { buildPhrasingReport, type PhrasingReport } from "./phrasing-sensitivity.js";
 import { buildDecoyReport, isDecoy, type DecoyReport } from "./decoy-check.js";
+import { buildVarianceReport, type VarianceReport } from "./variance-share.js";
 import { nextTasks, type MeasurementTask } from "./next-task.js";
 import { domainLabel, tokenize } from "./prompt-identity.js";
 import { buildPromptTrend, type PromptTrend } from "./prompt-trend.js";
@@ -129,6 +130,9 @@ export interface TopicInsights {
   /** How often a name declared irrelevant turns up anyway, which is the error
    * rate every other figure here should be read against. */
   decoys: DecoyReport;
+  /** Of everything that varies between answers, how much of whether the brand
+   * appears goes with each. Not a decomposition: the factors are confounded. */
+  variance: VarianceReport;
   /** How much of the model's report of what it named survived a check against
    * the answer it wrote in the same call. */
   corroboration: CorroborationSummary;
@@ -412,6 +416,7 @@ export function buildTopicInsights(input: {
   const stability = buildStabilityReport(completed);
   const phrasing = buildPhrasingReport(completed, set);
   const decoys = buildDecoyReport({ answers: completed, competitors: input.competitors || [] });
+  const variance = buildVarianceReport(completed);
   const corroboration = summariseCorroboration(completed.flatMap((answer) => answer.mentions).filter(hasCorroboration));
   const failed = new Map<string, number>();
   for (const answer of answers) {
@@ -439,6 +444,7 @@ export function buildTopicInsights(input: {
     stability,
     phrasing,
     decoys,
+    variance,
     corroboration,
     tasks: nextTasks({
       answers: completed.length,

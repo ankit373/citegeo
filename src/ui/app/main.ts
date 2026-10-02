@@ -2605,6 +2605,36 @@ export function boot(): void {
         + rows + '</div></div>';
     }
 
+    // Published work decomposing what decides a recommendation put the product's
+    // own parameters at most of it and the brand at close to none. This asks
+    // the same of one project's archive rather than taking that on trust.
+    function renderVariance(report: any) {
+      if (!report || !report.answers) return '';
+      if (report.flat) {
+        return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>What decides whether you appear</h3>'
+          + '<p class="subtle">Every answer said the same thing about you, so nothing here varies and nothing can explain it. That is a finding about the brand rather than a gap in the measurement.</p></div></div></div>';
+      }
+      const measured = report.factors.filter((row: any) => row.share !== null);
+      if (!measured.length) return '';
+      const few = report.tooFew
+        ? '<div class="warning-box">' + report.answers + ' answers is too few for these to be read as anything but arithmetic.</div>'
+        : '';
+      const rows = measured.map((row: any) => '<div class="mrow mcols-variance"><div class="mname"><strong>' + html(row.label) + '</strong>'
+        + (row.best && row.worst ? '<span class="subtle">' + html(String(row.best.level).slice(0, 40)) + ' ' + Math.round(row.best.rate * 100) + '% against ' + html(String(row.worst.level).slice(0, 40)) + ' ' + Math.round(row.worst.rate * 100) + '%</span>' : '')
+        + '</div>'
+        + '<span class="mcell">' + row.levels + '</span>'
+        + '<span class="mcell ' + (row.share >= 0.4 ? "state-flag" : "") + '">' + Math.round(row.share * 100) + '%</span>'
+        + '<span class="mcell">' + bar(row.share) + '</span></div>').join("");
+      const unvaried = report.factors.filter((row: any) => row.share === null);
+      const nothing = unvaried.length
+        ? '<p class="subtle">' + unvaried.map((row: any) => html(row.label)).join(", ") + ' took one value, so nothing varied for them to explain.</p>'
+        : '';
+      return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>What decides whether you appear</h3>'
+        + '<p class="subtle">' + html(report.caveat) + '</p></div></div>' + few
+        + '<div class="mtable"><div class="mhead mcols-variance"><span>Factor</span><span>Values</span><span>Goes with</span><span></span></div>' + rows + '</div>'
+        + nothing + '</div>';
+    }
+
     function renderAnswerEngine() {
       const selected = project();
       if (!selected) return '<section class="view"><div class="empty"><div class="empty-copy"><h2>Select a project first</h2></div></div></section>';
@@ -2659,6 +2689,7 @@ export function boot(): void {
         + '<section class="section-card"><div class="section-head"><div><h2>How the score is built</h2><p class="subtle">Presence scaled by where you appear and how you are described.</p></div></div>'
         + renderScoreBreakdown(data.overall)
         + renderDecoys(data.decoys)
+        + renderVariance(data.variance)
         + taskCta("too-few-answers")
         + renderStability(data.stability)
         + renderPhrasing(data.phrasing)

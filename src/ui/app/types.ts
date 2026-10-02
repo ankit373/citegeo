@@ -116,6 +116,19 @@ export interface DecoyShape {
   caveat: string;
 }
 
+export interface VarianceShape {
+  answers: number;
+  rate: number | null;
+  flat: boolean;
+  tooFew: boolean;
+  factors: Array<{
+    factor: string; label: string; levels: number; share: number | null;
+    best: { level: string; rate: number } | null;
+    worst: { level: string; rate: number } | null;
+  }>;
+  caveat: string;
+}
+
 export interface ActivationShape {
   considered: number;
   activated: number;
@@ -182,6 +195,8 @@ export interface InsightsShape {
   phrasing?: PhrasingShape | undefined;
   /** Absent on an archive read before a decoy could be carried. */
   decoys?: DecoyShape | undefined;
+  /** Absent on an archive read before the factors were compared. */
+  variance?: VarianceShape | undefined;
   /** Absent on an archive answered before mentions were checked against the
    * answer text, so nothing is claimed about those. */
   corroboration?: CorroborationShape | undefined;
