@@ -1,4 +1,4 @@
-import { AI_CRAWLERS, type SiteSignals } from "./site-signals.js";
+import type { SiteSignals } from "./site-signals.js";
 
 // A fix you can paste has to be right. Everything here is generated from
 // something observed on the site, never from a guess at what the site is like,
@@ -64,6 +64,13 @@ export function perDayFrom(value: unknown): number {
   const count = Number(value);
   if (!Number.isFinite(count)) return DEFAULT_PER_DAY;
   return Math.min(Math.max(Math.round(count), 1), MAX_PER_DAY);
+}
+
+/** Matched on the entity rather than the address, because a site writing it
+ * without the www would be told to add what it already has. */
+function listsEntity(sameAs: string[], id: string | null): boolean {
+  if (!id) return false;
+  return sameAs.some((entry) => entry.includes("wikidata.org") && entry.includes(id));
 }
 
 function jsonLd(value: Record<string, unknown>): string {
@@ -179,7 +186,7 @@ export function readyToPaste(input: PasteInput): PasteList {
       language: "html",
       snippet: organizationSnippet(input, wikidata ? [wikidata] : []),
     });
-  } else if (wikidata && !signals.structuredData.sameAs.includes(wikidata)) {
+  } else if (wikidata && !listsEntity(signals.structuredData.sameAs, signals.wikidata.id)) {
     fixes.push({
       id: "sameas-wikidata",
       title: "Point sameAs at the Wikidata entity",

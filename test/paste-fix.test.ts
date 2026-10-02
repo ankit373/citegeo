@@ -99,6 +99,22 @@ test("Organization schema carries the Wikidata entity when one resolves", () => 
   assert.ok(fix?.snippet.includes('"@type": "Organization"'));
 });
 
+test("a Wikidata entry already there is not offered again in another spelling", () => {
+  for (const spelling of ["https://wikidata.org/wiki/Q1", "http://www.wikidata.org/wiki/Q1"]) {
+    const list = readyToPaste(input({
+      signals: signals({ structuredData: { organization: true, sameAs: [spelling], independent: [spelling] } }),
+    }));
+    assert.ok(!list.fixes.some((row) => row.id === "sameas-wikidata"), `told to add what it has, for ${spelling}`);
+  }
+});
+
+test("a Wikidata entry genuinely missing is still offered", () => {
+  const list = readyToPaste(input({
+    signals: signals({ structuredData: { organization: true, sameAs: ["https://linkedin.com/company/example"], independent: [] } }),
+  }));
+  assert.ok(list.fixes.some((row) => row.id === "sameas-wikidata"));
+});
+
 test("a sameAs nobody has observed is never written for them", () => {
   const list = readyToPaste(input({
     signals: signals({
