@@ -46,7 +46,11 @@ export function squash(value: string): string {
   return out.join("").trim();
 }
 
-export function readPage(url: string, html: string): SitePage {
+/** Enough of a page to describe what it is. A page read to compare against an
+ * answer needs more, and asks for it. */
+export const PAGE_TEXT_DEFAULT = 4000;
+
+export function readPage(url: string, html: string, textLimit = PAGE_TEXT_DEFAULT): SitePage {
   const document = load(html);
   const meta = (name: string) =>
     squash(document(`meta[name="${name}"]`).attr("content") || document(`meta[property="${name}"]`).attr("content") || "");
@@ -65,7 +69,7 @@ export function readPage(url: string, html: string): SitePage {
     title: squash(document("title").first().text()) || meta("og:title"),
     description: meta("description") || meta("og:description"),
     headings,
-    text: squash(document("body").text()).slice(0, 4000),
+    text: squash(document("body").text()).slice(0, textLimit),
   };
 }
 

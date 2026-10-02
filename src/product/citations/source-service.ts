@@ -3,6 +3,7 @@ import { sha256 } from "../../utils/hash.js";
 import { readSourcePage, type SourcePage } from "./source-page.js";
 import { canonicalUrl } from "./canonical-url.js";
 import { buildOutreachPlan, type OutreachPlan } from "./outreach.js";
+import { summariseUptake, uptakeOf, type UptakeSummary } from "./answer-uptake.js";
 import type { ProductProjectFileStore } from "../projects/project-store.js";
 import type { BrandIdentity } from "../topics/brand-identity.js";
 import type { PromptAnswer } from "../topics/prompt-run-schema.js";
@@ -39,6 +40,38 @@ export class SourcePageService {
     });
   }
 
+  /** What each answer took from the pages cited for it. One row per page per
+   * answer, because the same page can be used hard by one and ignored by the next. */
+  async uptake(projectId: string, answers: PromptAnswer[]): Promise<UptakeSummary> {
+    // One page can be stored twice, once before its text was kept. Whichever
+    // the listing returns last would win, and the empty one reports unknown.
+    const pages = new Map<string, SourcePage>();
+    for (const page of await this.list(projectId)) {
+      const key = canonicalUrl(page.url)?.key || page.url;
+      const held = pages.get(key);
+      if (!held || (!held.text && page.text)) pages.set(key, page);
+    }
+    const rows = [];
+    for (const answer of answers) {
+      if (answer.status !== "completed" || !answer.text) continue;
+      let place = 0;
+      const seen = new Set<string>();
+      for (const raw of answer.citationUrls) {
+        const cited = canonicalUrl(raw);
+        if (!cited || seen.has(cited.key)) continue;
+        seen.add(cited.key);
+        place += 1;
+        const page = pages.get(cited.key);
+        rows.push(uptakeOf({
+          answerText: answer.text,
+          page: page || { url: cited.raw, host: cited.host, detail: "This page has not been read back yet." },
+          citedAt: place,
+        }));
+      }
+    }
+    return summariseUptake(rows);
+  }
+
   /** Reads the cited pages this project has not read yet. A page already read
    * is left alone: re-reading it is another request for the same answer. */
   async harvest(input: {
@@ -70,9 +103,11 @@ export class SourcePageService {
     for (const [key, url] of urls) {
       if (read + failed >= limit) { skipped += 1; continue; }
       const already = await getJson<SourcePage>(this.projects.objects, this.key(input.projectId, key));
-      // A record written before dates were read has no date field at all, which
-      // is not the same as a page that stated none, so it is read again once.
-      if (already && !already.detail && "statedAt" in already) { skipped += 1; continue; }
+      // A record written before dates or page text were kept is missing the
+      // field entirely, which is not the same as a page that had none, so it
+      // is read again once rather than reported as unknown for ever.
+      const complete = Boolean(already) && "statedAt" in (already as SourcePage) && typeof (already as SourcePage).text === "string";
+      if (already && !already.detail && complete) { skipped += 1; continue; }
       const page = await readSourcePage({
         url,
         names: input.names,
