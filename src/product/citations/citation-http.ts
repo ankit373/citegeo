@@ -25,7 +25,20 @@ export async function handleCitationApi(input: {
   if (route[0] !== "api" || route[1] !== "projects") return false;
   const projectId = route[2];
   const tail = route.slice(3);
-  if (!projectId || tail.length !== 1 || tail[0] !== "source-pages") return false;
+  if (!projectId || tail.length !== 1) return false;
+
+  // What each answer took from the pages cited for it, which is a different
+  // question from which pages were cited and lives on its own route.
+  if (method === "GET" && tail[0] === "source-uptake") {
+    try {
+      send(200, await pages.uptake(projectId, await input.answers(projectId)));
+    } catch (error) {
+      send(404, { error: message(error) });
+    }
+    return true;
+  }
+
+  if (tail[0] !== "source-pages") return false;
 
   if (method === "GET") {
     try {
