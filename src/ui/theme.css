@@ -386,6 +386,10 @@
   @apply grid-cols-[minmax(0,1fr)_110px_120px] items-start;
 }
 
+@utility mcols-concentration {
+  @apply grid-cols-[minmax(0,1fr)_72px_96px_86px] items-start;
+}
+
 @utility mcols-source {
   @apply grid-cols-[minmax(0,1fr)_110px_100px_116px] items-start;
 }

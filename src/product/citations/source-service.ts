@@ -5,6 +5,7 @@ import { canonicalUrl } from "./canonical-url.js";
 import { buildOutreachPlan, type OutreachPlan } from "./outreach.js";
 import { summariseUptake, uptakeOf, type UptakeSummary } from "./answer-uptake.js";
 import { buildInterferenceReport, type InterferenceReport } from "./interference.js";
+import { buildConcentrationReport, type ConcentrationReport } from "./concentration.js";
 import type { ProductProjectFileStore } from "../projects/project-store.js";
 import type { BrandIdentity } from "../topics/brand-identity.js";
 import type { PromptAnswer, PromptRun } from "../topics/prompt-run-schema.js";
@@ -71,6 +72,12 @@ export class SourcePageService {
       }
     }
     return summariseUptake(rows);
+  }
+
+  /** Who supplies the answers in this category, which is a different question
+   * from whether the brand is in them. */
+  concentration(answers: PromptAnswer[], domain?: string | undefined): ConcentrationReport {
+    return buildConcentrationReport({ answers, domain });
   }
 
   /** Shapes that a source was pushed into the answers rather than grew there. */
