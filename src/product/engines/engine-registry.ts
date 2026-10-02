@@ -130,19 +130,112 @@ export const perplexityWeb: BrowserEngine = {
 };
 
 
-/** Copilot answers from Bing's index and cites as it goes, so a missing
- * citation list means the page changed rather than that it cited nothing. */
+const COMPOSER = "[contenteditable='true']";
+
+/** Unchanged readings a second apart before a streaming answer is taken as
+ * finished. One is not enough: the stream pauses while it is still writing. */
+const STREAM_STABLE_POLLS = 4;
+
+/** The editor is wired up a few seconds after it appears, so an insert is
+ * retried. Four tries covers what was observed with room to spare. */
+const TYPING_ATTEMPTS = 4;
+const TYPING_WAIT_MS = 3000;
+
+/** Finds the send control by its accessible name, which survives a class hash
+ * changing on every deploy. */
+const SEND_BUTTON = `(() => {
+  const buttons = Array.from(document.querySelectorAll("button"));
+  return buttons.find((button) => {
+    const label = (button.getAttribute("aria-label") || "").toLowerCase();
+    return label === "send" && button.getBoundingClientRect().width > 0 && !button.disabled;
+  }) || null;
+})()`;
+
+/** Clears the editor so a retry cannot append to a half-taken attempt. */
+async function clearComposer(session: CdpSession): Promise<void> {
+  await session.evaluate(`(() => {
+    const editor = document.querySelector(${jsonString(COMPOSER)});
+    if (!editor) return;
+    editor.focus();
+    const range = document.createRange();
+    range.selectNodeContents(editor);
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+  })()`);
+  await session.send("Input.dispatchKeyEvent", { type: "keyDown", windowsVirtualKeyCode: 8, nativeVirtualKeyCode: 8, key: "Backspace", code: "Backspace" });
+  await session.send("Input.dispatchKeyEvent", { type: "keyUp", windowsVirtualKeyCode: 8, nativeVirtualKeyCode: 8, key: "Backspace", code: "Backspace" });
+}
+
+/** Types the question in rather than putting it in the URL. Insertion goes
+ * through the browser so the editor's own handling runs. */
+async function askByTyping(session: CdpSession, question: string): Promise<boolean> {
+  if (!await waitFor(session, `Boolean(document.querySelector(${jsonString(COMPOSER)}))`, 20000)) return false;
+  // The send control only exists once the editor is holding text, so it is
+  // the proof the editor took it rather than the markup merely showing it.
+  const taken = `(() => {
+    const editor = document.querySelector(${jsonString(COMPOSER)});
+    const held = Boolean(editor) && (editor.innerText || "").indexOf(${jsonString(question)}) >= 0;
+    return held && Boolean(${SEND_BUTTON});
+  })()`;
+  let ready = false;
+  for (let attempt = 0; attempt < TYPING_ATTEMPTS && !ready; attempt += 1) {
+    if (attempt > 0) await clearComposer(session);
+    await session.evaluate(`document.querySelector(${jsonString(COMPOSER)}).focus()`);
+    await session.send("Input.insertText", { text: question });
+    ready = await waitFor(session, taken, TYPING_WAIT_MS);
+  }
+  if (!ready) return false;
+  const sent = await session.evaluate<boolean>(`(() => { const button = ${SEND_BUTTON}; if (!button) return false; button.click(); return true; })()`);
+  if (!sent) return false;
+  // The posted question is the receipt. An empty one still gets an answer, and
+  // archiving that would record a reply to a question nobody asked.
+  return waitFor(session, `(() => {
+    const asked = document.querySelector("[data-testid='chatQuestion']");
+    return Boolean(asked) && (asked.innerText || "").indexOf(${jsonString(question)}) >= 0;
+  })()`, 20000);
+}
+
+/** Copilot searches for every question and shows what it used, but lists each
+ * source as a title and a domain with no link, so no page URL can be read. */
 export const copilotWeb: BrowserEngine = {
   id: "copilot",
   label: "Microsoft Copilot",
-  caveat: "Read from copilot.microsoft.com in your own signed-in browser. Copilot personalises by account and region, so this is what your session saw.",
+  caveat: "Read from copilot.com in your own signed-in browser. It personalises by account and region, so this is what your session saw. It names its sources by domain without linking them, so citations come back empty rather than invented, and nothing here reports which page it read.",
   grounding: "always",
   async ask(session, question) {
-    await session.send("Page.navigate", { url: `https://copilot.microsoft.com/?q=${encodeURIComponent(question)}` });
-    const specific = ["[data-content='ai-message']", "div[data-testid='message-content']", "cib-message-group"];
-    if (await signedOut(session, specific)) return SIGN_IN_OUTCOME;
+    // The old host redirects and drops the question with it, so the deep link
+    // that used to work now lands on an empty chat.
+    await session.send("Page.navigate", { url: "https://copilot.com/" });
+    const specific = ["[data-testid='markdown-reply']"];
+    if (await signedOut(session, [COMPOSER], 20000)) return SIGN_IN_OUTCOME;
+    if (!await askByTyping(session, question)) {
+      return { state: "unreadable", detail: "The question could not be put to this surface: no composer or send control was found. The page has changed shape, so this engine needs updating." };
+    }
     const expression = readerExpression([...specific, "main"], "a[href^='http']");
-    await waitFor(session, `(() => { const found = ${expression}; return Boolean(found && found.text.length > 200); })()`, 60000);
+    // Waiting keys on the answer container alone. Including the fallback would
+    // settle on the chat furniture, which is already past the length floor.
+    const answerOnly = readerExpression(specific, "a[href^='http']");
+    // Streaming pauses, so one unchanged reading is not a finished answer.
+    // The length has to hold across several before it counts as settled.
+    const settled = await waitFor(
+      session,
+      `(() => {
+        const found = ${answerOnly};
+        if (!found || found.text.length <= 200) return false;
+        const same = window.__citegeoCopilotLength === found.text.length;
+        window.__citegeoCopilotLength = found.text.length;
+        window.__citegeoCopilotStable = same ? (window.__citegeoCopilotStable || 0) + 1 : 0;
+        return window.__citegeoCopilotStable >= ${STREAM_STABLE_POLLS};
+      })()`,
+      90000,
+      1000,
+    );
+    if (!settled) {
+      const reached = await session.evaluate<number>(`(() => { const found = ${answerOnly}; return found ? found.text.length : 0; })()`).catch(() => 0);
+      if (reached <= 200) return { state: "no_answer", detail: "This session produced no answer to read." };
+      return { state: "no_answer", detail: "The answer was still being written when the time allowed ran out." };
+    }
     return readAnswer({ session, engineId: "copilot", expression, minimumLength: 200, specificSelectors: specific });
   },
 };
