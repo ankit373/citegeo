@@ -170,7 +170,21 @@ async function handle(req: IncomingMessage, res: ServerResponse, services: Produ
   if (await handleCrawlerApi({ method, route, send: json, crawlerLog, insights,
     answers: (id) => promptRuns.listAnswers(id),
     domain: async (id) => (await services.projects.get(id))?.normalizedDomain || "" })) return;
-  if (await handleActionApi({ method, route, send: json, signals, insights })) return;
+  if (await handleActionApi({ method, route, send: json, signals, insights,
+    wanted: url.searchParams.has("count") ? Number(url.searchParams.get("count")) : undefined,
+    profile: async (id) => {
+      const stored = await services.profiles.get(id).catch(() => null);
+      if (!stored) return null;
+      const project = await services.projects.get(id).catch(() => null);
+      return {
+        brandName: project?.name || "",
+        description: stored.businessDescription,
+        category: stored.productCategory,
+        audience: stored.audience,
+        features: stored.features,
+        sources: stored.sources || [],
+      };
+    } })) return;
   if (await handleSearchConsoleApi({ method, route, send: json, searchConsole: services.searchConsole, externalMetrics: services.externalMetrics, readJson: body,
     prompts: async (id) => (await topics.get(id)).prompts.filter((prompt) => prompt.status === "active"),
     insights: (id) => projectInsights({ projectId: id, topics, runs: promptRuns, competitors: services.competitors, personas: services.personas, locations: services.locations }) })) return;

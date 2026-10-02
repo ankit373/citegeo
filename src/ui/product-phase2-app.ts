@@ -377,6 +377,11 @@ export function renderProductPhase2AppHtml(): string {
     .step[data-state="todo"] .step-label { color:var(--weak); }
     .step[data-state="warn"] .step-mark,.step[data-state="warn"] .step-index { color:var(--unknown-text); }
     .step-action:empty { display:none; }
+    .fix { border:1px solid var(--line); border-radius:9px; padding:16px 18px; margin-top:14px; min-width:0; }
+    .fix-top { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:8px; }
+    .fix-top strong { flex:1 1 auto; }
+    .fix-snippet { margin:12px 0 0; padding:14px 16px; background:var(--panel); border:1px solid var(--line); border-radius:7px; max-width:100%; overflow-x:auto; font-family:"JetBrains Mono",ui-monospace,monospace; font-size:12px; line-height:1.7; white-space:pre-wrap; overflow-wrap:anywhere; }
+    .picker { display:inline-flex; align-items:center; gap:8px; }
     .step.task-step { grid-template-columns:76px minmax(0,1fr) auto; align-items:start; gap:14px; }
     .task-step .step-index { font-size:10px; letter-spacing:.07em; text-transform:uppercase; padding-top:3px; }
     .task-cta { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:12px; padding-top:12px; border-top:1px solid var(--line); font-size:12px; }
