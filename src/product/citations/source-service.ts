@@ -43,7 +43,14 @@ export class SourcePageService {
   /** What each answer took from the pages cited for it. One row per page per
    * answer, because the same page can be used hard by one and ignored by the next. */
   async uptake(projectId: string, answers: PromptAnswer[]): Promise<UptakeSummary> {
-    const pages = new Map((await this.list(projectId)).map((page) => [canonicalUrl(page.url)?.key || page.url, page]));
+    // One page can be stored twice, once before its text was kept. Whichever
+    // the listing returns last would win, and the empty one reports unknown.
+    const pages = new Map<string, SourcePage>();
+    for (const page of await this.list(projectId)) {
+      const key = canonicalUrl(page.url)?.key || page.url;
+      const held = pages.get(key);
+      if (!held || (!held.text && page.text)) pages.set(key, page);
+    }
     const rows = [];
     for (const answer of answers) {
       if (answer.status !== "completed" || !answer.text) continue;

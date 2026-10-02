@@ -72,6 +72,15 @@ test("an empty answer or an empty page is unmeasurable, not nought", () => {
   assert.equal(termOverlap(PAGE, ""), null);
 });
 
+test("nothing comparable leaves the whole figure unknown, not a low score", () => {
+  // The vocabulary carries half the weight. Reading it as nought would score
+  // the page on position alone and present that as a measurement.
+  const row = uptakeOf({ answerText: "a of to in on", page: page(), citedAt: 1 });
+  assert.equal(row.uptake, null);
+  assert.equal(row.shared, null);
+  assert.ok(row.detail?.includes("enough words to compare"));
+});
+
 test("the summary never averages an unread page into the figure", () => {
   const rows = [
     uptakeOf({ answerText: PAGE, page: page(), citedAt: 1 }),

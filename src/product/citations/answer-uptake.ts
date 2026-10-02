@@ -132,19 +132,30 @@ export function uptakeOf(input: UptakeInput): PageUptake {
       detail: input.page.detail || "The page has not been read back, so nothing can be said about what the answer took from it.",
     };
   }
-  const phrases = sharedPhrases(input.answerText, text);
   const shared = termOverlap(input.answerText, text);
+  // The component carrying half the weight. Without it the rest would be
+  // averaged against a nought nobody measured.
+  if (shared === null) {
+    return {
+      ...shell,
+      uptake: null,
+      shared: null,
+      phrases: [],
+      coverage: null,
+      detail: "Neither the answer nor the page carries enough words to compare, so nothing can be said about what was taken from it.",
+    };
+  }
+  const phrases = sharedPhrases(input.answerText, text);
   const coverage = coverageOf(input.answerText, text);
   // Four things that can each be checked on their own, because a composite
   // nobody can take apart is a number nobody can argue with. Copied wording
   // is the smallest share because it is the rarest, not the weakest.
-  const vocabulary = shared ?? 0;
   const spread = coverage ?? 0;
   const copied = Math.min(phrases.length / 3, 1);
   const place = positionWeight(input.citedAt);
   return {
     ...shell,
-    uptake: Math.round((0.5 * vocabulary + 0.25 * spread + 0.15 * place + 0.1 * copied) * 1000) / 1000,
+    uptake: Math.round((0.5 * shared + 0.25 * spread + 0.15 * place + 0.1 * copied) * 1000) / 1000,
     shared,
     phrases: phrases.slice(0, 5),
     coverage,
