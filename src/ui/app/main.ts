@@ -2803,6 +2803,31 @@ export function boot(): void {
         + nothing + '</div>';
     }
 
+    // The more volatile half of the score, and the half that had no stability
+    // figure. Published work puts framing flipping far more often than naming.
+    function renderFraming(report: any) {
+      if (!report) return '';
+      if (!report.measured) {
+        return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>How steady the framing is</h3>'
+          + '<p class="subtle">No question named you more than once under identical conditions, so nothing says whether the way you are described holds still. Published work puts framing flipping about '
+          + report.publishedRatio + ' times as often as whether you are named at all, so this is the half of the score most likely to be moving.</p></div></div></div>';
+      }
+      const lead = report.flipped
+        ? report.flipped + ' of ' + report.measured + ' question(s) described you more than one way across passes that all named you.'
+        : 'Every question that named you more than once described you the same way each time.';
+      const against = report.ratio === null
+        ? ' Whether you are named never flipped here, so there is nothing to compare the framing against.'
+        : ' Framing flipped ' + report.ratio + ' times as often as naming did, against the ' + report.publishedRatio + ' published.';
+      const rows = report.questions.slice(0, 6).map((row: any) => '<div class="mrow mcols-framing"><div class="mname"><strong>' + html(row.promptText) + '</strong>'
+        + '<span class="mono">' + html(row.modelId) + ' \u00b7 named in ' + row.named + ' passes</span></div>'
+        + '<span class="mcell ' + (row.steady ? "state-ok" : "state-bad") + '">' + (row.steady ? "Steady" : row.framings.length + ' ways') + '</span>'
+        + '<span class="mcell subtle">' + html(row.framings.join(", ")) + '</span></div>').join("");
+      return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>How steady the framing is</h3>'
+        + '<p class="subtle">' + html(report.caveat) + '</p></div></div>'
+        + '<p>' + html(lead + against) + '</p>'
+        + '<div class="mtable"><div class="mhead mcols-framing"><span>Question</span><span>Framing</span><span>Called it</span></div>' + rows + '</div></div>';
+    }
+
     function renderAnswerEngine() {
       const selected = project();
       if (!selected) return '<section class="view"><div class="empty"><div class="empty-copy"><h2>Select a project first</h2></div></div></section>';
@@ -2861,6 +2886,7 @@ export function boot(): void {
         + taskCta("too-few-answers")
         + renderStability(data.stability)
         + renderPhrasing(data.phrasing)
+        + renderFraming(data.framing)
         + '<details class="technical-details"><summary>The formula, and the judgement in it</summary>' + objective + '<p class="subtle">score = presence × (' + weights.prominenceFloor + ' + ' + (1 - weights.prominenceFloor).toFixed(1) + ' × prominence) × (' + weights.sentimentFloor + ' + ' + (1 - weights.sentimentFloor).toFixed(1) + ' × sentiment) × 100.</p><p class="subtle">The two floors are a judgement, not a measurement: being named late and grudgingly is still better than not being named, so prominence and sentiment scale presence rather than replacing it. Every component above is reported separately so you can ignore the composite entirely.</p></details></section>'
         + '<section class="section-card"><div class="section-head"><div><h2>What would move this</h2><p class="subtle">Read off the archived answers, strongest lever first. None of it is an opinion about your marketing.</p></div></div>' + renderRankingPlan() + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>Competitors named in the answers</h2><p class="subtle">Organisations the assistants named while answering your questions. Not the assistants themselves. Ranked by how many answers named them, then by how early.</p></div></div>' + renderLeaderboard(data.leaderboard) + '</section>'
