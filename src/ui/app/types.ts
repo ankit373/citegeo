@@ -141,6 +141,15 @@ export interface FramingShape {
   caveat: string;
 }
 
+export interface TierShape {
+  tier: string;
+  baseline: { tier: string; label: string; rate: number; note: string } | null;
+  presence: { rate: number | null; low: number | null; high: number | null; trials: number; caveat: string };
+  typical: boolean | null;
+  standing: string | null;
+  caveat: string;
+}
+
 export interface ActivationShape {
   considered: number;
   activated: number;
@@ -211,6 +220,8 @@ export interface InsightsShape {
   variance?: VarianceShape | undefined;
   /** Absent on an archive read before framing was compared across passes. */
   framing?: FramingShape | undefined;
+  /** Absent on an archive read before the tier baselines existed. */
+  tier?: TierShape | undefined;
   /** Absent on an archive answered before mentions were checked against the
    * answer text, so nothing is claimed about those. */
   corroboration?: CorroborationShape | undefined;

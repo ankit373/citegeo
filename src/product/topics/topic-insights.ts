@@ -5,6 +5,7 @@ import { buildPhrasingReport, type PhrasingReport } from "./phrasing-sensitivity
 import { buildDecoyReport, isDecoy, type DecoyReport } from "./decoy-check.js";
 import { buildVarianceReport, type VarianceReport } from "./variance-share.js";
 import { buildSentimentVolatility, type SentimentVolatility } from "./sentiment-volatility.js";
+import { compareToTier, type BrandTier, type TierComparison } from "./visibility-tier.js";
 import { nextTasks, type MeasurementTask } from "./next-task.js";
 import { domainLabel, tokenize } from "./prompt-identity.js";
 import { buildPromptTrend, type PromptTrend } from "./prompt-trend.js";
@@ -137,6 +138,9 @@ export interface TopicInsights {
   /** How steady the framing is. Published work puts it flipping far more often
    * than naming does, and it is the more volatile half of the score. */
   framing: SentimentVolatility;
+  /** The brand's presence against what its declared kind of brand tends to
+   * get. Absent comparison until a tier is declared, never inferred. */
+  tier: TierComparison;
   /** How much of the model's report of what it named survived a check against
    * the answer it wrote in the same call. */
   corroboration: CorroborationSummary;
@@ -356,6 +360,9 @@ export function buildTopicInsights(input: {
   answers: PromptAnswer[];
   runs?: PromptRun[];
   identityCaveat?: string | null;
+  /** Declared, never inferred: inferring it from the brand's own visibility
+   * would compare the figure against itself. */
+  tier?: BrandTier | undefined;
   competitors?: Competitor[] | undefined;
   /** Persona id to label, so a retired persona still reads as its name. */
   personaLabels?: Map<string, string> | undefined;
@@ -422,6 +429,11 @@ export function buildTopicInsights(input: {
   const decoys = buildDecoyReport({ answers: completed, competitors: input.competitors || [] });
   const variance = buildVarianceReport(completed);
   const framing = buildSentimentVolatility(completed);
+  const tier = compareToTier({
+    tier: input.tier || "unstated",
+    appearances: overall.appearances,
+    answers: overall.answers,
+  });
   const corroboration = summariseCorroboration(completed.flatMap((answer) => answer.mentions).filter(hasCorroboration));
   const failed = new Map<string, number>();
   for (const answer of answers) {
@@ -451,6 +463,7 @@ export function buildTopicInsights(input: {
     decoys,
     variance,
     framing,
+    tier,
     corroboration,
     tasks: nextTasks({
       answers: completed.length,
