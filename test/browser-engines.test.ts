@@ -42,6 +42,7 @@ test("a thrown adapter becomes unavailable rather than taking the run down", asy
   const broken: BrowserEngine = {
     id: "chatgpt",
     label: "Broken",
+    home: "https://example.test/",
     caveat: "A test engine that always throws, to prove a failure is reported and not raised.",
     grounding: "per_question",
     ask: async () => { throw new Error("the page went away"); },
