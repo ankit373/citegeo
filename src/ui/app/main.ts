@@ -2828,6 +2828,56 @@ export function boot(): void {
         + '<div class="mtable"><div class="mhead mcols-framing"><span>Question</span><span>Framing</span><span>Called it</span></div>' + rows + '</div></div>';
     }
 
+    const TIERS = [["unstated", "Not said"], ["household", "Global household name"], ["mid_market", "Mid-market or regional"], ["niche", "Niche or small"]];
+
+    async function setTier(value: string) {
+      const selected = project();
+      if (!selected) return;
+      try {
+        await request("/api/projects/" + encodeURIComponent(selected.id), {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ primaryDomain: selected.primaryDomain || selected.normalizedDomain, tier: value }),
+        });
+        await refreshProjects();
+        state.answerEngineState = "idle";
+        loadAnswerEngine();
+      } catch (error) {
+        state.promptNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind: "error" };
+      }
+      render();
+    }
+
+    // A rate on its own answers nothing: the same figure is poor for a
+    // household name and ordinary for a brand nobody has heard of.
+    function renderTier(report: any) {
+      if (!report) return '';
+      const picker = '<label class="picker"><span class="subtle">This brand is</span><select data-brand-tier>'
+        + TIERS.map(([value, label]) => '<option value="' + value + '"' + (report.tier === value ? " selected" : "") + '>' + html(label) + '</option>').join("")
+        + '</select></label>';
+      if (!report.baseline) {
+        return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>Against brands like yours</h3>'
+          + '<p class="subtle">A visibility figure on its own answers nothing. The same number is poor for a household name and ordinary for a brand nobody has heard of. Say which this is and the figure gets something to be read against.</p></div>'
+          + '<div class="inline-actions">' + picker + '</div></div></div>';
+      }
+      const yours = report.presence.rate === null
+        ? 'Nothing answered yet, so there is nothing of yours to compare.'
+        : 'You are named in ' + sharePct(report.presence.rate) + ' of answers, consistent with ' + sharePct(report.presence.low) + ' to ' + sharePct(report.presence.high) + '.';
+      const verdict = report.standing === null
+        ? ''
+        : report.standing === "typical"
+          ? ' That range covers the ' + sharePct(report.baseline.rate) + ' brands of this kind tended to get, so you are doing what your kind does.'
+          : report.standing === "above"
+            ? ' That is clear of the ' + sharePct(report.baseline.rate) + ' brands of this kind tended to get.'
+            : ' That falls short of the ' + sharePct(report.baseline.rate) + ' brands of this kind tended to get.';
+      const ink = report.standing === "above" ? "state-ok" : report.standing === "below" ? "state-bad" : "state-flag";
+      return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>Against brands like yours</h3>'
+        + '<p class="subtle">' + html(report.caveat) + '</p></div><div class="inline-actions">' + picker + '</div></div>'
+        + '<div class="countstrip"><span class="count ' + ink + '"><strong>' + (report.presence.rate === null ? '\u2014' : sharePct(report.presence.rate)) + '</strong>yours</span>'
+        + '<span class="count"><strong>' + sharePct(report.baseline.rate) + '</strong>' + html(report.baseline.label) + '</span></div>'
+        + '<p>' + html(yours + verdict) + '</p></div>';
+    }
+
     function renderAnswerEngine() {
       const selected = project();
       if (!selected) return '<section class="view"><div class="empty"><div class="empty-copy"><h2>Select a project first</h2></div></div></section>';
@@ -2881,6 +2931,7 @@ export function boot(): void {
         + identityNote + failedNote + citationNote + corroborationNote
         + '<section class="section-card"><div class="section-head"><div><h2>How the score is built</h2><p class="subtle">Presence scaled by where you appear and how you are described.</p></div></div>'
         + renderScoreBreakdown(data.overall)
+        + renderTier(data.tier)
         + renderDecoys(data.decoys)
         + renderVariance(data.variance)
         + taskCta("too-few-answers")
@@ -3751,7 +3802,7 @@ export function boot(): void {
       const probeButton = target && target.closest ? target.closest("[data-probe-signals]") : null;
       if (probeButton) { await captureSignals(probeButton); state.signalsState = "idle"; loadSignals(); return; } if (!(target instanceof Element)) return; const pageButton = target.closest("[data-page]"); if (pageButton) { await setPage(pageButton.getAttribute("data-page") || "overview"); return; } const listModeButton = target.closest("[data-list-mode]"); if (listModeButton) { state.mode = listModeButton.getAttribute("data-list-mode") || "current"; await refreshProjects(); render(); return; } if (target.id === "new-project" || target.id === "empty-new-project") { openDrawer(); return; } if (target.id === "close-drawer" || target.id === "cancel-draft" || target.id === "drawer-backdrop") { closeDrawer(); return; } if (target.id === "retry-catalog") { state.catalogState = "idle"; await loadCatalog(); return; } const opened = target.closest("[data-matrix-open]"); if (opened) { const key = opened.getAttribute("data-matrix-open") || ""; const at = state.matrixOpen.indexOf(key); if (at >= 0) state.matrixOpen.splice(at, 1); else state.matrixOpen.push(key); render(); return; } const expand = target.closest("[data-expand-panel]"); if (expand && !target.closest("button:not(.panel-open),a,select,input,textarea,label")) { openPanel(expand.getAttribute("data-expand-panel") || ""); return; } if (target.closest("[data-edit-board]")) { state.editingBoard = !state.editingBoard; render(); return; } const span = target.closest("[data-panel-span]"); if (span) { const parts = (span.getAttribute("data-panel-span") || "").split(":"); setPanelSpan(parts[0] || "", Number(parts[1])); render(); return; } const hide = target.closest("[data-panel-hide]"); if (hide) { togglePanelHidden(hide.getAttribute("data-panel-hide") || ""); render(); return; } if (target.closest("[data-reset-panels]")) { resetPanelOrder(); state.editingBoard = false; render(); return; } const brand = target.closest("[data-brand-evidence]"); if (brand) { await openBrandEvidence(brand.getAttribute("data-brand-evidence") || "", brand.getAttribute("data-brand-tone") || ""); return; } const dropped = target.closest("[data-drop-selection]"); if (dropped) { dropSelection(dropped.getAttribute("data-drop-selection") || ""); return; } if (target.id === "save-models") { await saveModels((target as any)); return; } if (target.id === "save-monitoring-configuration") { await saveMonitoringConfiguration(); return; } if (target.id === "archive-project") { const selected = project(); if (selected) await projectAction("archive", selected.id, (target as any)); return; } if (target.id === "delete-project") { const selected = project(); if (selected) await projectAction("delete", selected.id, (target as any)); return; } const action = target.closest("[data-project-action]"); if (action) { const projectId = action.getAttribute("data-project-id"); const name = action.getAttribute("data-project-action"); if (projectId && name) await projectAction(name, projectId, (action as any)); } });
     document.addEventListener("change", async (event) => { const target = el(event.target) as any; if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) return; if (target.id === "project-select") { setSelectedProject(target.value); state.selectionsDirty = false; await refreshConfiguration(); loadLiveRun(); render(); return; } if (target instanceof HTMLInputElement && target.hasAttribute("data-model-checkbox")) { changeModel(target.getAttribute("data-model-checkbox") || "", target.checked); return; } if (target instanceof HTMLSelectElement && target.hasAttribute("data-model-mode")) { changeModelMode(target.getAttribute("data-model-mode") || "", target.value); return; } if (target instanceof HTMLSelectElement && target.hasAttribute("data-selected-model-mode")) { changeModelMode(target.getAttribute("data-selected-model-mode") || "", target.value); return; } });
-    document.addEventListener("change", (event) => { const target = el(event.target) as any; if (!(target instanceof HTMLSelectElement)) return; if (target.id === "model-provider-filter") { state.catalogProvider = target.value; render(); return; } if (target.id === "model-native-search-filter") { state.catalogNativeSearch = target.value; render(); return; } if (target.id === "model-catalog-sort") { state.catalogSort = target.value; render(); return; } if (target.hasAttribute("data-repetitions")) { state.repetitions = Number(target.value) || 1; savePreference("repetitions", String(state.repetitions)); render(); return; } if (target.hasAttribute("data-paste-count")) { state.pasteCount = Number(target.value) || 2; savePreference("pasteCount", String(state.pasteCount)); state.pasteState = "idle"; loadPaste(); render(); } });
+    document.addEventListener("change", (event) => { const target = el(event.target) as any; if (!(target instanceof HTMLSelectElement)) return; if (target.id === "model-provider-filter") { state.catalogProvider = target.value; render(); return; } if (target.id === "model-native-search-filter") { state.catalogNativeSearch = target.value; render(); return; } if (target.id === "model-catalog-sort") { state.catalogSort = target.value; render(); return; } if (target.hasAttribute("data-repetitions")) { state.repetitions = Number(target.value) || 1; savePreference("repetitions", String(state.repetitions)); render(); return; } if (target.hasAttribute("data-brand-tier")) { setTier(target.value); return; } if (target.hasAttribute("data-paste-count")) { state.pasteCount = Number(target.value) || 2; savePreference("pasteCount", String(state.pasteCount)); state.pasteState = "idle"; loadPaste(); render(); } });
     // The drawer filters in place rather than through a re-render, because a
     // re-render takes the focus out of the box you are typing in.
     const PANEL_ROWS = ".mrow, .rankrow, .panel-body li";

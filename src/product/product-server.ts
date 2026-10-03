@@ -208,7 +208,8 @@ async function handle(req: IncomingMessage, res: ServerResponse, services: Produ
   if (await handleRankingActionApi({ method, route, send: json, actions: services.actions, readJson: body,
     insights: (id) => projectInsights({ projectId: id, topics, runs: promptRuns, competitors: services.competitors, personas: services.personas, locations: services.locations }) })) return;
   if (await handleEngineApi({ method, route, send: json, engines: services.engines, readJson: body })) return;
-  if (await handleTopicApi({ method, route, url, send: json, topics, runs: promptRuns, schedule: promptSchedule, demand, profiles, models: async (id) => (await selections.list(id)).length, competitors: services.competitors, segments: services.segments, personas: services.personas, ask: services.ask, readJson: body })) return;
+  if (await handleTopicApi({ method, route, url, send: json, topics, runs: promptRuns, schedule: promptSchedule, demand, profiles, models: async (id) => (await selections.list(id)).length, competitors: services.competitors, segments: services.segments, personas: services.personas, tier: async (id) => (await services.projects.get(id))?.tier || "unstated",
+    ask: services.ask, readJson: body })) return;
 
   if (await handleProductConfigurationApi({ method, route, projects, selections, baselines, catalog, readJson: () => readJson(req), send: (status, body) => send(res, status, body) })) return;
   if (await handleMeasurementApi({ method, route, readJson: () => readJson(req), send: (status, body) => send(res, status, body), projects, watchSets, measurements, stats })) return;

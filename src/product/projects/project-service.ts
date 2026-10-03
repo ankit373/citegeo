@@ -95,6 +95,7 @@ export class ProductProjectService {
         brandName: cleanOptionalText(input.brandName) || project.brandName,
         aliases: input.aliases === undefined ? project.aliases : uniqueText(input.aliases),
         defaultLanguage: cleanOptionalText(input.defaultLanguage) || project.defaultLanguage,
+        tier: input.tier === undefined ? project.tier : input.tier,
         updatedAt: nowIso(),
       };
       await this.store.save(updated);
