@@ -357,7 +357,7 @@
   @apply grid-cols-[minmax(0,1fr)_210px_124px_minmax(0,1.5fr)] items-start;
 }
 @utility mcols-promptrow {
-  @apply grid-cols-[20px_minmax(0,1fr)_96px_82px_104px] items-start;
+  @apply grid-cols-[20px_minmax(0,1fr)_96px_82px_96px_104px] items-start;
 }
 @utility mcols-engine {
   @apply grid-cols-[20px_minmax(0,1fr)_150px] items-start;

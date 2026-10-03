@@ -7,6 +7,7 @@ import { sliceByWindow, windowFor } from "./period-window.js";
 import { buildRankingPlan, type RankingPlan } from "./ranking-plan.js";
 import { projectInsights } from "./project-insights.js";
 import { DECOY_SOURCE } from "./decoy-check.js";
+import { proposeWordings } from "./wording-protocol.js";
 import { NO_PERSONA, type PersonaService } from "./persona.js";
 import { buildPromptBrief, type PromptBrief } from "./prompt-brief.js";
 import { briefMarkdown } from "./brief-export.js";
@@ -148,6 +149,27 @@ export async function handleTopicApi(input: {
       text: typeof body.text === "string" ? body.text : "",
       intent,
     }));
+    return true;
+  }
+
+  // Asks a model for rewordings and saves the ones it vouched for. Separate
+  // from adding them by hand, because this one costs a call.
+  if (method === "POST" && tail.length === 2 && tail[0] === "prompts" && tail[1] === "suggest-wordings") {
+    const body = await readJson();
+    const promptId = typeof body.promptId === "string" ? body.promptId : "";
+    const count = Number(body.count);
+    await guard(async () => {
+      const set = await topics.get(projectId);
+      const root = set.prompts.find((prompt) => prompt.id === promptId);
+      if (!root) throw new Error(`Prompt ${promptId} does not exist.`);
+      const texts = await proposeWordings({
+        ask,
+        projectId,
+        question: root.text,
+        count: Number.isFinite(count) && count > 0 ? Math.min(Math.round(count), 8) : 3,
+      });
+      return topics.addWordings(projectId, { promptId, texts });
+    });
     return true;
   }
 

@@ -2748,7 +2748,7 @@ export function boot(): void {
       if (!report.decoys.length) {
         return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>A brand that should never appear</h3>'
           + '<p class="subtle">Nothing here measures how often this product finds a name that is not there. Declare a brand you know is irrelevant to these questions and every run carries it, so the share it turns up in becomes the figure yours has to beat.</p></div></div>'
-          + '<div class="inline-actions">' + button({ label: "Add a decoy", kind: "quiet", on: { "data-page": "answer-engine", "data-focus-decoy": "true" } }) + '</div></div>';
+          + '<div class="inline-actions">' + button({ label: "Add a decoy", kind: "quiet", on: { "data-add-decoy": "true" } }) + '</div></div>';
       }
       const floor = sharePct(report.noiseFloor);
       const verdict = report.clearsFloor === null
@@ -2756,6 +2756,8 @@ export function boot(): void {
         : report.clearsFloor
           ? 'Your ' + sharePct(report.presenceRate) + ' clears it.'
           : 'Your ' + sharePct(report.presenceRate) + ' does not clear it, so it has not been told apart from a name that should never have been there.';
+      const add = '<div class="inline-actions" style="margin-top:12px">'
+        + button({ label: "Add a decoy", kind: "quiet", on: { "data-add-decoy": "true" } }) + '</div>';
       const errors = report.matcherErrors
         ? '<div class="warning-box"><strong>' + report.matcherErrors + ' reported mention(s) of a decoy are not in the answer that was said to contain them.</strong> That is this product reading a name that is not there, not a model writing one. Every figure built on reported mentions carries that error.</div>'
         : '';
@@ -2768,7 +2770,7 @@ export function boot(): void {
         + '<p class="subtle">' + html(report.caveat) + '</p></div></div>'
         + '<p><strong>Anything under ' + floor + ' is not a finding.</strong> ' + html(verdict) + '</p>' + errors
         + '<div class="mtable"><div class="mhead mcols-decoy"><span>Decoy</span><span>Named in</span><span>Share</span><span>Consistent with up to</span></div>'
-        + rows + '</div></div>';
+        + rows + '</div>' + add + '</div>';
     }
 
     // Published work decomposing what decides a recommendation put the product's
@@ -2889,6 +2891,62 @@ export function boot(): void {
 
     // Score and rank come from the answer engine, so a question shows whether
     // it is working rather than only that it is tracked.
+    // The comparison had no way to be fed from the product at all: it shipped
+    // with the measurement and without a door into it.
+    async function suggestWordings(control: Element) {
+      const promptId = control.getAttribute("data-reword-prompt") || "";
+      await runAction(control, { loading: "Asking\u2026", success: "Added", error: "Failed" }, async () => {
+        const result = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/prompts/suggest-wordings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ promptId, count: 3 }),
+        });
+        state.topicSet = result.set || result;
+        state.promptNotice = result.added === undefined
+          ? { text: "Wordings added.", kind: "success" }
+          : { text: result.added + " wording(s) added, " + result.skipped + " skipped as blank or already there.", kind: result.added ? "success" : "warning" };
+        render();
+      }).catch(() => {
+        state.promptNotice = { text: "Could not get rewordings. The model that writes them needs to be reachable.", kind: "error" };
+        render();
+      });
+    }
+
+    async function addWordingByHand(promptId: string, text: string) {
+      if (!text.trim()) return;
+      try {
+        const result = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/prompts/wordings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ promptId, texts: [text] }),
+        });
+        state.topicSet = result.set || result;
+        state.promptNotice = { text: result.added ? "Wording added." : "That wording is already there.", kind: result.added ? "success" : "warning" };
+      } catch (error) {
+        state.promptNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind: "error" };
+      }
+      render();
+    }
+
+    // Declared the same way a rival is, so it retires and resolves like one,
+    // and every count that means rival leaves it out.
+    async function addDecoy(name: string) {
+      try {
+        await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/competitors/decoy", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name }),
+        });
+        state.answerEngineState = "idle";
+        state.rivalsState = "idle";
+        state.promptNotice = { text: "Decoy added. The next read of the answers reports how often it turns up.", kind: "success" };
+        loadAnswerEngine();
+      } catch (error) {
+        state.promptNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind: "error" };
+      }
+      render();
+    }
+
     async function loadPriority() {
       if (!state.selectedId || state.priorityState === "loading") return;
       state.priorityState = "loading";
@@ -3079,6 +3137,9 @@ export function boot(): void {
         + (priority ? '<span class="rowtags">' + fieldBadge(priority) + demandBadge(priority) + '</span>' : '') + '</div>'
         + '<span class="mcell ' + scoreClass + '">' + (answers ? scoreText(standing.score.score) : "Not asked yet") + '</span>'
         + '<span class="mcell">' + (answers ? (standing.rank === null ? "Not named" : "#" + standing.rank) : "") + '</span>'
+        + '<span class="mcell">'
+        + (prompt.variantOf ? '<span class="subtle">a rewording</span>' : button({ label: "Reword it", kind: "link", on: { "data-reword-prompt": prompt.id, "data-reword-text": prompt.text } }))
+        + '</span>'
         + '<span class="mcell">' + (prompt.status === "active"
           ? button({ label: "Stop tracking", kind: "link", on: { "data-retire-prompt": prompt.id } })
           : button({ label: "Track it", kind: "link", on: { "data-activate-prompt": prompt.id } })) + '</span></div>';
@@ -3098,7 +3159,7 @@ export function boot(): void {
         const bulk = proposed ? button({ label: "Track all " + (proposed), kind: "quiet", on: { "data-activate-topic": topic.id } }) : '';
         const description = topic.description ? html(topic.description) + ' · ' : '';
         return '<section class="section-card"><div class="section-head"><div class="headmain"><h2>' + html(topic.name) + '</h2><p class="subtle">' + description + tracked + ' of ' + mine.length + ' shown tracked</p></div><div class="headaside">' + bulk + score + '</div></div>'
-          + '<div class="mtable"><div class="mhead mcols-promptrow"><span></span><span>Question</span><span>Score</span><span>Rank</span><span></span></div>'
+          + '<div class="mtable"><div class="mhead mcols-promptrow"><span></span><span>Question</span><span>Score</span><span>Rank</span><span>Wordings</span><span></span></div>'
           + sortedPrompts(mine, standings).map((prompt) => promptRow(prompt, standings.get(prompt.id))).join("") + '</div></section>';
       }).join("");
     }
@@ -3482,6 +3543,19 @@ export function boot(): void {
       if (target.closest("[data-refresh-pages]")) { harvestPages(true); return; }
       const reachNow = target && target.closest ? target.closest("[data-probe-reach]") : null;
       if (reachNow) { probeReachNow(reachNow); return; }
+      if (target.closest("[data-add-decoy]")) {
+        const name = window.prompt("Name a brand you know is irrelevant to these questions. It is never asked about, only matched against the answers, so it costs nothing to run.");
+        if (name && name.trim()) addDecoy(name.trim());
+        return;
+      }
+      const reword = target && target.closest ? target.closest("[data-reword-prompt]") : null;
+      if (reword) {
+        const typed = window.prompt("Add a wording of this question, or leave it blank to have one written for you.\n\n" + (reword.getAttribute("data-reword-text") || ""));
+        if (typed === null) return;
+        if (typed.trim()) addWordingByHand(reword.getAttribute("data-reword-prompt") || "", typed);
+        else suggestWordings(reword);
+        return;
+      }
       const verdict = target && target.closest ? target.closest("[data-verdict-id]") : null;
       if (verdict) { recordVerdict(verdict); return; }
       if (target.closest("[data-pull-search]")) { pullSearchDemand(); return; }
