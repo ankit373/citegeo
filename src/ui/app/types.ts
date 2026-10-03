@@ -129,6 +129,18 @@ export interface VarianceShape {
   caveat: string;
 }
 
+export interface FramingShape {
+  measured: number;
+  flipped: number;
+  flipRate: number | null;
+  namingFlipped: number;
+  namingFlipRate: number | null;
+  ratio: number | null;
+  publishedRatio: number;
+  questions: Array<{ promptId: string; promptText: string; modelId: string; named: number; framings: string[]; steady: boolean }>;
+  caveat: string;
+}
+
 export interface ActivationShape {
   considered: number;
   activated: number;
@@ -197,6 +209,8 @@ export interface InsightsShape {
   decoys?: DecoyShape | undefined;
   /** Absent on an archive read before the factors were compared. */
   variance?: VarianceShape | undefined;
+  /** Absent on an archive read before framing was compared across passes. */
+  framing?: FramingShape | undefined;
   /** Absent on an archive answered before mentions were checked against the
    * answer text, so nothing is claimed about those. */
   corroboration?: CorroborationShape | undefined;

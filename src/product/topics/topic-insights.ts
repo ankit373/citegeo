@@ -4,6 +4,7 @@ import { buildStabilityReport, type StabilityReport } from "./answer-stability.j
 import { buildPhrasingReport, type PhrasingReport } from "./phrasing-sensitivity.js";
 import { buildDecoyReport, isDecoy, type DecoyReport } from "./decoy-check.js";
 import { buildVarianceReport, type VarianceReport } from "./variance-share.js";
+import { buildSentimentVolatility, type SentimentVolatility } from "./sentiment-volatility.js";
 import { nextTasks, type MeasurementTask } from "./next-task.js";
 import { domainLabel, tokenize } from "./prompt-identity.js";
 import { buildPromptTrend, type PromptTrend } from "./prompt-trend.js";
@@ -133,6 +134,9 @@ export interface TopicInsights {
   /** Of everything that varies between answers, how much of whether the brand
    * appears goes with each. Not a decomposition: the factors are confounded. */
   variance: VarianceReport;
+  /** How steady the framing is. Published work puts it flipping far more often
+   * than naming does, and it is the more volatile half of the score. */
+  framing: SentimentVolatility;
   /** How much of the model's report of what it named survived a check against
    * the answer it wrote in the same call. */
   corroboration: CorroborationSummary;
@@ -417,6 +421,7 @@ export function buildTopicInsights(input: {
   const phrasing = buildPhrasingReport(completed, set);
   const decoys = buildDecoyReport({ answers: completed, competitors: input.competitors || [] });
   const variance = buildVarianceReport(completed);
+  const framing = buildSentimentVolatility(completed);
   const corroboration = summariseCorroboration(completed.flatMap((answer) => answer.mentions).filter(hasCorroboration));
   const failed = new Map<string, number>();
   for (const answer of answers) {
@@ -445,6 +450,7 @@ export function buildTopicInsights(input: {
     phrasing,
     decoys,
     variance,
+    framing,
     corroboration,
     tasks: nextTasks({
       answers: completed.length,
