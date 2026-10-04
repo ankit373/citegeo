@@ -18,6 +18,7 @@ import { corroborateMentions } from "./mention-corroboration.js";
 import { answerNamesBrand, type BrandIdentity } from "./brand-identity.js";
 import {
   parsePromptAnswerOutput,
+  plainAnswerPrompt,
   promptAnswerPrompt,
   promptAnswerResponseSchema,
   PROMPT_ANSWER_SCHEMA_HASH,
@@ -30,7 +31,7 @@ import { readStructuredValue } from "./structured-value.js";
 import { activePrompts, type PromptIntent } from "./topic-schema.js";
 import { audienceInstruction, GLOBAL_REGION, region, type Region } from "./region.js";
 import { asRegion, trackedLocationFrom, type LocationService } from "./location.js";
-import { DEFAULT_LANGUAGE, language, languageInstruction, type AnswerLanguage } from "./language.js";
+import { DEFAULT_LANGUAGE, language, languageInstruction, plainLanguageInstruction, type AnswerLanguage } from "./language.js";
 import { currentBaseline } from "../configuration/current-baseline.js";
 import type { TopicService } from "./topic-service.js";
 import type { BrowserEngine } from "../engines/browser-engine.js";
@@ -453,9 +454,9 @@ export class PromptRunService {
         baseline: input.baseline,
         modelSnapshot: input.model,
         ...(grounded ? { unstructured: true } : {}),
-        prompt: promptAnswerPrompt({
+        prompt: (grounded ? plainAnswerPrompt : promptAnswerPrompt)({
           question: input.prompt.text,
-          languageInstruction: languageInstruction(input.tongue),
+          languageInstruction: grounded ? plainLanguageInstruction(input.tongue) : languageInstruction(input.tongue),
           audience: [audienceInstruction(input.market), personaInstruction(input.who)].filter(Boolean).join(" "),
         }),
         requestParameters: {
