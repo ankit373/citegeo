@@ -36,7 +36,7 @@ import { currentBaseline } from "../configuration/current-baseline.js";
 import type { TopicService } from "./topic-service.js";
 import type { BrowserEngine } from "../engines/browser-engine.js";
 import type { Prompt } from "./topic-schema.js";
-import { NO_PERSONA, personaFrom, personaInstruction, type Persona, type PersonaService } from "./persona.js";
+import { NO_PERSONA, personaFrom, personaInstruction, trackedPersonas, type Persona, type PersonaService } from "./persona.js";
 
 /** Enough of the provider's own queries to see what it went looking for,
  * without turning every answer record into a search log. */
@@ -249,8 +249,15 @@ export class PromptRunService {
 
     // An unknown persona is refused rather than dropped, or the run would
     // cover fewer audiences than it was asked for and never say so.
+    //
+    // Asked for nothing in particular, a run covers every persona being
+    // tracked, which is what adding one is for, plus the arm that states
+    // nobody so the figures stay comparable with every run before personas.
     const personaSet = this.personas ? await this.personas.get(input.projectId) : null;
-    const personas: Persona[] = (input.personaIds && input.personaIds.length ? input.personaIds : [NO_PERSONA.id]).map((id) => {
+    const wantedPersonas = input.personaIds && input.personaIds.length
+      ? input.personaIds
+      : [NO_PERSONA.id, ...(personaSet ? trackedPersonas(personaSet).map((row) => row.id) : [])];
+    const personas: Persona[] = [...new Set(wantedPersonas)].map((id) => {
       const found = personaFrom(personaSet, id);
       if (!found) throw new PromptRunUnavailableError(`Unknown persona "${id}".`);
       return found;
