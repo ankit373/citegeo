@@ -1994,8 +1994,16 @@ export function boot(): void {
       const report = state.kinds;
       if (!report.pages) return '<p class="subtle">No cited page has been read back, so there is nothing to say about what kind of page wins here.</p>';
       const listicle = 'Ranked best-of pages are ' + Math.round((report.listicleShare || 0) * 100) + '% of what is cited here, against ' + Math.round(report.listicleBaseline * 100) + '% published.';
-      const corporate = ' A company\u2019s own site accounts for ' + Math.round((report.corporateShare || 0) * 100) + '%, against ' + Math.round(report.corporateBaseline * 100) + '%.';
+      const corporate = ' A site belonging to a company in this category accounts for ' + Math.round((report.corporateShare || 0) * 100) + '%, against ' + Math.round(report.corporateBaseline * 100) + '%.';
+      // Being absent from your own citations is what usually happens, so the
+      // figure is given with the band rather than as nought out of ten.
+      const ownedPercent = Math.round((report.ownedShare || 0) * 100);
+      const band = Math.round(report.ownedBaselineLow * 100) + ' to ' + Math.round(report.ownedBaselineHigh * 100) + '%';
+      const owned = report.ownedShare === null ? '' : report.ownedShare >= report.ownedBaselineLow
+        ? 'Your own pages are ' + ownedPercent + '% of what was cited, inside the ' + band + ' a brand\u2019s own domain usually gets.'
+        : 'Your own pages are ' + ownedPercent + '% of what was cited. Published work puts a brand\u2019s own domain at ' + band + ' of its citations, so the work is on the pages you do not own.';
       return '<p>' + html(listicle + corporate) + '</p>'
+        + (owned ? '<p>' + html(owned) + '</p>' : '')
         + '<div class="mtable"><div class="mhead mcols-kind"><span>Format</span><span>Pages</span><span>Share</span><span></span></div>' + kindRows(report.formats) + '</div>'
         + '<div class="mtable" style="margin-top:14px"><div class="mhead mcols-kind"><span>Belongs to</span><span>Pages</span><span>Share</span><span></span></div>' + kindRows(report.sources) + '</div>'
         + '<p class="mlegend">' + html(report.caveat) + '</p>';
