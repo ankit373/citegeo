@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildPageKinds, CORPORATE_BASELINE, formatOf, KIND_CAVEAT, LISTICLE_BASELINE, sourceOf } from "../src/product/citations/page-kind.js";
+import {
+  OWNED_BASELINE_HIGH,
+  OWNED_BASELINE_LOW, buildPageKinds, CORPORATE_BASELINE, formatOf, KIND_CAVEAT, LISTICLE_BASELINE, sourceOf } from "../src/product/citations/page-kind.js";
 import type { SourcePage } from "../src/product/citations/source-page.js";
 
 function page(over: Partial<SourcePage> = {}): SourcePage {
@@ -44,7 +46,7 @@ test("your own site and a rival's are told apart from everybody else", () => {
   const scope = { domain: "mine.test", rivalDomains: ["rival.test"] };
   assert.equal(sourceOf({ host: "blog.mine.test" }, scope), "yours");
   assert.equal(sourceOf({ host: "rival.test" }, scope), "rival");
-  assert.equal(sourceOf({ host: "somebody.test" }, scope), "corporate");
+  assert.equal(sourceOf({ host: "somebody.test" }, scope), "independent");
   assert.equal(sourceOf({ host: "www.linkedin.com" }, scope), "social");
   assert.equal(sourceOf({ host: "www.reddit.com" }, scope), "community");
   assert.equal(sourceOf({ host: "youtu.be" }, scope), "video");
@@ -53,8 +55,8 @@ test("your own site and a rival's are told apart from everybody else", () => {
 
 test("a host that merely ends in a known name is not that site", () => {
   // notreddit.com is not reddit, and the suffix check has to know it.
-  assert.equal(sourceOf({ host: "notreddit.com" }, {}), "corporate");
-  assert.equal(sourceOf({ host: "myreddit.com" }, {}), "corporate");
+  assert.equal(sourceOf({ host: "notreddit.com" }, {}), "independent");
+  assert.equal(sourceOf({ host: "myreddit.com" }, {}), "independent");
 });
 
 test("a page that would not load says nothing about what gets cited", () => {
@@ -74,14 +76,33 @@ test("shares are taken over the pages that could be read", () => {
   });
   assert.equal(report.pages, 4);
   assert.equal(report.listicleShare, 0.25);
-  assert.equal(report.corporateShare, 0.75, "your own site counts as corporate, which is what the study counted");
+  // Only the two sites belonging to somebody in this category. A publisher
+  // writing about it is not a company's own site, and counting it as one put
+  // this share at 1.00 on live data and made the comparison meaningless.
+  assert.equal(report.corporateShare, 0.25);
+  assert.equal(report.ownedShare, 0.25);
+  assert.equal(report.sources.find((row) => row.kind === "independent")?.pages, 2);
   assert.equal(report.sources.find((row) => row.kind === "community")?.pages, 1);
+});
+
+test("your own domain is read against what a brand's own domain usually gets", () => {
+  // Every 2026 study puts a brand's own site at a twentieth to a tenth of its
+  // citations, so nought of six being yours is usual rather than a finding.
+  const report = buildPageKinds({
+    domain: "mine.test",
+    pages: [page(), page({ url: "https://b.test/x", host: "b.test", title: "Another" })],
+  });
+  assert.equal(report.ownedShare, 0);
+  assert.equal(report.ownedBaselineLow, OWNED_BASELINE_LOW);
+  assert.equal(report.ownedBaselineHigh, OWNED_BASELINE_HIGH);
+  assert.ok(report.ownedBaselineLow < report.ownedBaselineHigh);
 });
 
 test("with nothing read back every share is unknown rather than nought", () => {
   const report = buildPageKinds({ pages: [] });
   assert.equal(report.listicleShare, null);
   assert.equal(report.corporateShare, null);
+  assert.equal(report.ownedShare, null);
   assert.deepEqual(report.formats, []);
 });
 
@@ -90,5 +111,6 @@ test("the baselines travel and the caveat refuses to call the split a census", (
   assert.equal(report.listicleBaseline, LISTICLE_BASELINE);
   assert.equal(report.corporateBaseline, CORPORATE_BASELINE);
   assert.ok(KIND_CAVEAT.includes("a reading rather than a census"));
+  assert.ok(KIND_CAVEAT.includes("reads as a publisher here"));
   assert.equal(report.caveat, KIND_CAVEAT);
 });

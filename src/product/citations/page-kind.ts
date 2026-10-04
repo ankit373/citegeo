@@ -2,25 +2,31 @@ import type { SourcePage } from "./source-page.js";
 
 // A page is cited for what it is as much as for what it says. Across a study of
 // 100k responses the ranked best-of listicle was the most cited format at about
-// a fifth of all citations, and roughly four citations in five went to a
-// corporate site, with video ahead of community, editorial and reference among
-// the rest.
+// a fifth of all citations, and roughly four citations in five went to a site
+// belonging to a company in the category rather than to a publisher.
 //
-// Both are read off the page that was actually cited, so the answer is what
-// wins here rather than what wins on average.
+// Separately, every 2026 study of where a brand's own citations come from puts
+// the brand's own domain at a twentieth to a tenth of them. Those are different
+// questions and the panel reports both rather than one standing for the other.
 
 export type PageFormat = "listicle" | "comparison" | "guide" | "documentation" | "review" | "forum" | "video" | "reference" | "article";
 
-export type SourceKind = "yours" | "rival" | "social" | "community" | "video" | "reference" | "corporate";
+export type SourceKind = "yours" | "rival" | "social" | "community" | "video" | "reference" | "independent";
 
 /** Published share of citations the ranked best-of listicle took, which is the
  * most cited format there. Carried so a project can see its own against it. */
 export const LISTICLE_BASELINE = 0.21;
 
-/** Published share of citations going to corporate sites. */
+/** Published share of citations going to a company's own site rather than to
+ * a publisher. Counted across every company in the category, not just yours. */
 export const CORPORATE_BASELINE = 0.78;
 
-export const KIND_CAVEAT = "Read off the pages these answers cited, from the address, the title and the shape of the markup. A page can be a comparison and a listicle at once and only its strongest signal is kept, so the split is a reading rather than a census. The baselines are from one published study, on its prompts and its engines.";
+/** Published share of a brand's citations that sit on the brand's own domain.
+ * A band rather than a figure, because the studies disagree inside it. */
+export const OWNED_BASELINE_LOW = 0.05;
+export const OWNED_BASELINE_HIGH = 0.1;
+
+export const KIND_CAVEAT = "Read off the pages these answers cited, from the address, the title and the shape of the markup. A page can be a comparison and a listicle at once and only its strongest signal is kept, so the split is a reading rather than a census. A site counts as a company's only where an answer named a brand at that domain, so a company nobody named reads as a publisher here. The baselines come from published studies, on their prompts and their engines.";
 
 const VIDEO_HOSTS = ["youtube.com", "youtu.be", "vimeo.com", "dailymotion.com"];
 const COMMUNITY_HOSTS = ["reddit.com", "quora.com", "stackexchange.com", "stackoverflow.com", "ycombinator.com", "discourse.org"];
@@ -74,7 +80,9 @@ export function sourceOf(page: { host: string; namesYou?: boolean }, scope: { do
   if (isOn(host, COMMUNITY_HOSTS)) return "community";
   if (isOn(host, VIDEO_HOSTS)) return "video";
   if (isOn(host, REFERENCE_HOSTS)) return "reference";
-  return "corporate";
+  // Not your site, not a site an answer named a brand for, and not one of the
+  // kinds above. A publisher writing about the category, as far as this knows.
+  return "independent";
 }
 
 export interface KindShare<T extends string> {
@@ -92,10 +100,15 @@ export interface PageKindReport {
    * nothing read back. */
   listicleShare: number | null;
   listicleBaseline: number;
-  /** Corporate here counts your own and your rivals' sites too, which is what
-   * the published figure counted. */
+  /** Pages on a site belonging to a company in this category, yours included.
+   * A publisher writing about the category is not one. */
   corporateShare: number | null;
   corporateBaseline: number;
+  /** Pages on your own domain, which published work puts at a twentieth to a
+   * tenth, so being absent here is usual rather than a finding. */
+  ownedShare: number | null;
+  ownedBaselineLow: number;
+  ownedBaselineHigh: number;
   caveat: string;
 }
 
@@ -119,7 +132,8 @@ export function buildPageKinds(input: {
   const formats = readable.map((page) => formatOf(page));
   const sources = readable.map((page) => sourceOf(page, { domain: input.domain, rivalDomains: input.rivalDomains }));
   const total = readable.length;
-  const corporate = sources.filter((kind) => kind === "corporate" || kind === "yours" || kind === "rival").length;
+  const corporate = sources.filter((kind) => kind === "yours" || kind === "rival").length;
+  const owned = sources.filter((kind) => kind === "yours").length;
   return {
     pages: total,
     formats: tally(formats),
@@ -128,6 +142,9 @@ export function buildPageKinds(input: {
     listicleBaseline: LISTICLE_BASELINE,
     corporateShare: total ? corporate / total : null,
     corporateBaseline: CORPORATE_BASELINE,
+    ownedShare: total ? owned / total : null,
+    ownedBaselineLow: OWNED_BASELINE_LOW,
+    ownedBaselineHigh: OWNED_BASELINE_HIGH,
     caveat: KIND_CAVEAT,
   };
 }
