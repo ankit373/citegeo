@@ -83,6 +83,7 @@ export function boot(): void {
     concentration: Unshaped; concentrationState: LoadState;
     shape: Unshaped; shapeState: LoadState;
     kinds: Unshaped; kindsState: LoadState;
+    experiments: Unshaped; experimentsState: LoadState;
     check: Unshaped; checkState: LoadState;
     credit: Unshaped; creditState: LoadState;
     reach: Unshaped; reachState: LoadState;
@@ -103,7 +104,7 @@ export function boot(): void {
     matrixHidden: string[];
   }
 
-    const state: State = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", marketer:null, drafts:null, claims:null, buying:null, conversations:null, entity:null, marketerState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, integrations:[], integrationsState:"idle", externalMetrics:null, externalMetricsState:"idle", externalMetricsPulling:"", externalMetricsNotice:{text:"",kind:""}, digest:null, digestState:"idle", demand:null, demandState:"idle", repetitions:Number(savedPreference("repetitions", "1")) || 1, dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", promptFilters:{ query:"", topicId:"", intent:"", status:"" }, promptSelection:[], answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", rivals:null, rivalsState:"idle", segments:null, segmentsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, lastRun:null, runPollTimer:0, runFeed:[], runFeedState:"idle", runFeedTimer:0, rankPlan:null, rankPlanState:"idle", brief:null, briefState:"idle", outreach:null, outreachState:"idle", harvesting:false, paste:null, pasteState:"idle", pasteCount:Number(savedPreference("pasteCount", "2")) || 2, uptake:null, uptakeState:"idle", interference:null, interferenceState:"idle", concentration:null, concentrationState:"idle", shape:null, shapeState:"idle", kinds:null, kindsState:"idle", check:null, checkState:"idle", credit:null, creditState:"idle", reach:null, reachState:"idle", searchDemand:null, searchDemandState:"idle", pulling:false, personas:null, personasState:"idle", priority:null, priorityState:"idle", promptSort:"topic", referrals:null, referralsState:"idle", pullingReferrals:false, engines:null, enginesState:"idle", actions:[], actionsState:"idle", matrixOpen:[], editingBoard:false, brandIcons:{}, panelViews:savedJson("panelViews"), matrixHidden:savedList("matrixHidden") };
+    const state: State = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", marketer:null, drafts:null, claims:null, buying:null, conversations:null, entity:null, marketerState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, integrations:[], integrationsState:"idle", externalMetrics:null, externalMetricsState:"idle", externalMetricsPulling:"", externalMetricsNotice:{text:"",kind:""}, digest:null, digestState:"idle", demand:null, demandState:"idle", repetitions:Number(savedPreference("repetitions", "1")) || 1, dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", promptFilters:{ query:"", topicId:"", intent:"", status:"" }, promptSelection:[], answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", rivals:null, rivalsState:"idle", segments:null, segmentsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, lastRun:null, runPollTimer:0, runFeed:[], runFeedState:"idle", runFeedTimer:0, rankPlan:null, rankPlanState:"idle", brief:null, briefState:"idle", outreach:null, outreachState:"idle", harvesting:false, paste:null, pasteState:"idle", pasteCount:Number(savedPreference("pasteCount", "2")) || 2, uptake:null, uptakeState:"idle", interference:null, interferenceState:"idle", concentration:null, concentrationState:"idle", shape:null, shapeState:"idle", kinds:null, kindsState:"idle", experiments:null, experimentsState:"idle", check:null, checkState:"idle", credit:null, creditState:"idle", reach:null, reachState:"idle", searchDemand:null, searchDemandState:"idle", pulling:false, personas:null, personasState:"idle", priority:null, priorityState:"idle", promptSort:"topic", referrals:null, referralsState:"idle", pullingReferrals:false, engines:null, enginesState:"idle", actions:[], actionsState:"idle", matrixOpen:[], editingBoard:false, brandIcons:{}, panelViews:savedJson("panelViews"), matrixHidden:savedList("matrixHidden") };
     const app = document.getElementById("app") as HTMLElement;
     let renderOverride: (() => void) | null = null;
     // render() was a hoisted declaration that a later line reassigned. A
@@ -115,7 +116,7 @@ export function boot(): void {
     const formatTime = (value: string) => new Date(value).toLocaleString();
     const modeText = (mode: string) => mode === "provider_native" ? "Provider Native web search" : "Offline";
     const statusText = (status: string) => status === "draft" ? "Draft" : status === "active" ? "Running" : status === "archived" ? "Archived" : "Deleted";
-    function setSelectedProject(projectId: string) { if (projectId !== state.selectedId) { state.liveRun = null; state.lastRun = null; state.insights = null; state.insightsState = "idle"; state.plan = null; state.planState = "idle"; state.rankPlan = null; state.rankPlanState = "idle"; state.engines = null; state.enginesState = "idle"; state.actions = []; state.actionsState = "idle"; state.outreach = null; state.outreachState = "idle"; state.paste = null; state.pasteState = "idle"; state.uptake = null; state.uptakeState = "idle"; state.interference = null; state.interferenceState = "idle"; state.concentration = null; state.concentrationState = "idle"; state.shape = null; state.shapeState = "idle"; state.kinds = null; state.kindsState = "idle"; state.check = null; state.checkState = "idle"; state.credit = null; state.creditState = "idle"; state.reach = null; state.reachState = "idle"; state.searchDemand = null; state.searchDemandState = "idle"; state.personas = null; state.personasState = "idle"; state.priority = null; state.priorityState = "idle"; state.referrals = null; state.referralsState = "idle"; state.crawlers = null; state.crawlersState = "idle"; state.signals = null; state.signalsState = "idle"; state.externalMetrics = null; state.externalMetricsState = "idle"; state.externalMetricsPulling = ""; state.externalMetricsNotice = { text:"", kind:"" }; } state.selectedId = projectId || ""; if (state.selectedId) localStorage.setItem("citegeo.product.projectId", state.selectedId); else localStorage.removeItem("citegeo.product.projectId"); const next = new URL(window.location.href); if (state.selectedId) next.searchParams.set("projectId", state.selectedId); else next.searchParams.delete("projectId"); window.history.replaceState({ projectId:state.selectedId }, "", next); }
+    function setSelectedProject(projectId: string) { if (projectId !== state.selectedId) { state.liveRun = null; state.lastRun = null; state.insights = null; state.insightsState = "idle"; state.plan = null; state.planState = "idle"; state.rankPlan = null; state.rankPlanState = "idle"; state.engines = null; state.enginesState = "idle"; state.actions = []; state.actionsState = "idle"; state.outreach = null; state.outreachState = "idle"; state.paste = null; state.pasteState = "idle"; state.uptake = null; state.uptakeState = "idle"; state.interference = null; state.interferenceState = "idle"; state.concentration = null; state.concentrationState = "idle"; state.shape = null; state.shapeState = "idle"; state.kinds = null; state.kindsState = "idle"; state.experiments = null; state.experimentsState = "idle"; state.check = null; state.checkState = "idle"; state.credit = null; state.creditState = "idle"; state.reach = null; state.reachState = "idle"; state.searchDemand = null; state.searchDemandState = "idle"; state.personas = null; state.personasState = "idle"; state.priority = null; state.priorityState = "idle"; state.referrals = null; state.referralsState = "idle"; state.crawlers = null; state.crawlersState = "idle"; state.signals = null; state.signalsState = "idle"; state.externalMetrics = null; state.externalMetricsState = "idle"; state.externalMetricsPulling = ""; state.externalMetricsNotice = { text:"", kind:"" }; } state.selectedId = projectId || ""; if (state.selectedId) localStorage.setItem("citegeo.product.projectId", state.selectedId); else localStorage.removeItem("citegeo.product.projectId"); const next = new URL(window.location.href); if (state.selectedId) next.searchParams.set("projectId", state.selectedId); else next.searchParams.delete("projectId"); window.history.replaceState({ projectId:state.selectedId }, "", next); }
     function setDrawer(open: boolean) { document.body.classList.toggle("drawer-open", open); element("project-drawer").setAttribute("aria-hidden", String(!open)); }
     function openDrawer() { state.drawerSession += 1; setFormStatus("", ""); setDrawer(true); window.setTimeout(() => element("project-domain").focus(), 0); }
     function closeDrawer() { state.drawerSession += 1; setDrawer(false); }
@@ -2928,6 +2929,100 @@ export function boot(): void {
         + '<p>' + html(yours + verdict) + '</p></div>';
     }
 
+    // Everything else here is an observation. This is the only thing that can
+    // say a change did something, and only because a control absorbs whatever
+    // moved for reasons that were not the change.
+    async function loadExperiments() {
+      if (!state.selectedId || state.experimentsState === "loading") return;
+      state.experimentsState = "loading";
+      try {
+        state.experiments = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/experiments");
+        state.experimentsState = "ready";
+      } catch (error) {
+        state.experimentsState = "error";
+      }
+      render();
+    }
+
+    async function startExperiment() {
+      const selected = state.promptSelection.slice();
+      if (selected.length < 2) {
+        state.promptNotice = { text: "Select at least two questions on the Prompts page first: the ones the change should move, and the ones it should not.", kind: "warning" };
+        render();
+        return;
+      }
+      const name = window.prompt("Name this experiment.");
+      if (!name || !name.trim()) return;
+      const changed = window.prompt("What did you change? Write it down now, so it can be checked later.") || "";
+      const half = Math.ceil(selected.length / 2);
+      try {
+        state.experiments = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/experiments", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: name.trim(),
+            hypothesis: "",
+            changed,
+            treatedPromptIds: selected.slice(0, half),
+            controlPromptIds: selected.slice(half),
+          }),
+        });
+        state.experimentsState = "ready";
+        state.promptNotice = { text: "Experiment started. Run the questions again and the comparison fills.", kind: "success" };
+      } catch (error) {
+        state.promptNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind: "error" };
+      }
+      render();
+    }
+
+    async function stopExperiment(id: string) {
+      try {
+        state.experiments = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/experiments/" + encodeURIComponent(id) + "/stop", { method: "POST" });
+        state.experimentsState = "ready";
+      } catch (error) {
+        state.promptNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind: "error" };
+      }
+      render();
+    }
+
+    function armCell(label: string, side: any) {
+      return '<span class="count"><strong>' + (side.rate === null ? '\u2014' : Math.round(side.rate * 100) + '%') + '</strong>' + html(label) + ' (' + side.trials + ')</span>';
+    }
+
+    function experimentCard(row: any) {
+      const result = row.result;
+      const ink = result.verdict === "moved" ? "state-ok" : result.verdict === "no_effect_shown" ? "state-flag" : "state-bad";
+      const words = result.verdict === "moved" ? "Moved" : result.verdict === "no_effect_shown" ? "Nothing shown" : result.verdict === "no_control" ? "No control" : "Too thin yet";
+      const band = result.difference === null
+        ? ''
+        : '<p><strong>' + (result.difference > 0 ? '+' : '') + Math.round(result.difference * 100) + ' points</strong> more than the control moved, consistent with '
+          + Math.round((result.low || 0) * 100) + ' to ' + Math.round((result.high || 0) * 100) + ' points.</p>';
+      return '<div class="fix"><div class="fix-top"><strong>' + html(row.name) + '</strong>'
+        + '<span class="tag ' + ink + '">' + html(words) + '</span>'
+        + (row.status === "running" ? '<button type="button" class="card-action" data-stop-experiment="' + html(row.id) + '">Stop</button>' : '<span class="subtle">stopped</span>')
+        + '</div>'
+        + (row.changed ? '<p class="evidence-note">Changed: ' + html(row.changed) + '</p>' : '')
+        + '<p class="evidence-note">Measured from ' + html(row.changedAt.slice(0, 10)) + ' \u00b7 ' + row.treatedPromptIds.length + ' treated, ' + row.controlPromptIds.length + ' control</p>'
+        + band
+        + '<div class="countstrip">' + armCell("treated before", result.treated.before) + armCell("treated after", result.treated.after)
+        + armCell("control before", result.control.before) + armCell("control after", result.control.after) + '</div>'
+        + '<p class="subtle">' + html(result.detail) + '</p></div>';
+    }
+
+    function renderExperiments() {
+      if (state.experimentsState === "idle") { loadExperiments(); }
+      const start = '<div class="inline-actions">' + button({ label: "Start one from the selected questions", kind: "quiet", on: { "data-start-experiment": "true" } }) + '</div>';
+      if (state.experimentsState !== "ready" || !state.experiments) {
+        return start + (state.experimentsState === "error" ? '<p class="subtle">Could not read the experiments.</p>' : '');
+      }
+      const rows = state.experiments.experiments || [];
+      if (!rows.length) {
+        return '<p class="subtle">Nothing is being tested. Select the questions a change should move and the ones it should not on the Prompts page, then start one here. Everything else in this product watches; this is the only part that tests.</p>' + start;
+      }
+      return rows.map(experimentCard).join("") + start
+        + '<p class="mlegend">' + html(rows[0].result.caveat) + '</p>';
+    }
+
     function renderAnswerEngine() {
       const selected = project();
       if (!selected) return '<section class="view"><div class="empty"><div class="empty-copy"><h2>Select a project first</h2></div></div></section>';
@@ -3005,6 +3100,7 @@ export function boot(): void {
         + '<section class="section-card"><div class="section-head"><div><h2>Cited, or actually used</h2><p class="subtle">A citation says a page was listed. This says how much of the answer came from it. A page cited and used for nothing is the finding worth having.</p></div></div>' + renderUptake() + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>Who gets the credit</h2><p class="subtle">Where a page was cited against how much of the answer it actually accounts for. A page credited first that the answer took nothing from was credited for something other than its content.</p></div></div>' + renderCredit() + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>Check the machine</h2><p class="subtle">Every figure here rests on a model classifying what another model wrote. Judge a few yourself and the agreement rate becomes the confidence in the whole column.</p></div></div>' + renderHumanCheck() + '</section>'
+        + '<section class="section-card"><div class="section-head"><div><h2>Did your change do anything</h2><p class="subtle">Everything else here watches. This tests. Change something, leave a comparable set of questions alone, and whatever moved for both is subtracted rather than claimed.</p></div></div>' + renderExperiments() + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>What kind of page gets cited</h2><p class="subtle">The ranked best-of listicle was the most cited format in published work, at about a fifth of everything. What wins here is a different question, and this is the answer to it.</p></div></div>' + renderKinds() + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>How the pages that beat you are built</h2><p class="subtle">The same facts rendered as structure instead of prose were measured to take citation credit from the page that stayed prose. This is the one lever here with a causal test behind it.</p></div></div>' + renderShape() + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>Who supplies these answers</h2><p class="subtle">A category where a handful of domains account for most citations is one where getting onto those domains is the whole game. A long tail is one where a new page can still get in.</p></div></div>' + renderConcentration() + '</section>'
@@ -3671,6 +3767,9 @@ export function boot(): void {
       if (target.closest("[data-refresh-pages]")) { harvestPages(true); return; }
       const reachNow = target && target.closest ? target.closest("[data-probe-reach]") : null;
       if (reachNow) { probeReachNow(reachNow); return; }
+      if (target.closest("[data-start-experiment]")) { startExperiment(); return; }
+      const stopIt = target && target.closest ? target.closest("[data-stop-experiment]") : null;
+      if (stopIt) { stopExperiment(stopIt.getAttribute("data-stop-experiment") || ""); return; }
       if (target.closest("[data-add-decoy]")) {
         const name = window.prompt("Name a brand you know is irrelevant to these questions. It is never asked about, only matched against the answers, so it costs nothing to run.");
         if (name && name.trim()) addDecoy(name.trim());
