@@ -35,6 +35,9 @@ export interface ArmResult {
 export interface ExperimentResult {
   treated: ArmResult;
   control: ArmResult;
+  /** Model versions that changed inside the window. The control absorbs a
+   * change that hit both sides alike, and nothing absorbs one that did not. */
+  versionsChanged: string[];
   /** Treated lift less control lift. Null where either is missing. */
   difference: number | null;
   low: number | null;
@@ -69,6 +72,31 @@ function arm(answers: PromptAnswer[], promptIds: Set<string>, changedAt: number)
   };
 }
 
+/** Models whose reported version differs on the two sides of the change. A
+ * version the provider only echoed back is not a change anybody can see. */
+function versionsAcross(answers: PromptAnswer[], changedAt: number): string[] {
+  const before = new Map<string, Set<string>>();
+  const after = new Map<string, Set<string>>();
+  for (const answer of answers) {
+    if (answer.status !== "completed") continue;
+    const version = answer.modelVersion;
+    if (!version || version === answer.modelId) continue;
+    const at = new Date(answer.createdAt).getTime();
+    if (!Number.isFinite(at)) continue;
+    const side = at < changedAt ? before : after;
+    const seen = side.get(answer.modelId) || new Set<string>();
+    seen.add(version);
+    side.set(answer.modelId, seen);
+  }
+  const moved: string[] = [];
+  for (const [modelId, early] of before) {
+    const late = after.get(modelId);
+    if (!late || !late.size) continue;
+    if ([...late].some((version) => !early.has(version))) moved.push(modelId);
+  }
+  return moved.sort();
+}
+
 export function analyseExperiment(input: {
   answers: PromptAnswer[];
   treatedPromptIds: string[];
@@ -78,13 +106,14 @@ export function analyseExperiment(input: {
   const changed = new Date(input.changedAt).getTime();
   const treated = arm(input.answers, new Set(input.treatedPromptIds), changed);
   const control = arm(input.answers, new Set(input.controlPromptIds), changed);
+  const versionsChanged = versionsAcross(input.answers, changed);
 
   const thin = [treated.before, treated.after, control.before, control.after]
     .filter((side) => side.trials < MIN_PER_ARM).length;
 
   if (!input.controlPromptIds.length) {
     return {
-      treated, control, difference: null, low: null, high: null,
+      treated, control, versionsChanged, difference: null, low: null, high: null,
       verdict: "no_control",
       detail: "No control questions, so anything that moved for every question would read as the change working. A number moving after you changed something is not evidence your change moved it.",
       caveat: EXPERIMENT_CAVEAT,
@@ -93,7 +122,7 @@ export function analyseExperiment(input: {
 
   if (thin || treated.lift === null || control.lift === null) {
     return {
-      treated, control, difference: null, low: null, high: null,
+      treated, control, versionsChanged, difference: null, low: null, high: null,
       verdict: "too_thin",
       detail: thin === 1
         ? `Each of the four groups needs ${MIN_PER_ARM} answers before the arithmetic says anything, and one of them does not have that yet. Run the questions again on both sides.`
@@ -105,7 +134,7 @@ export function analyseExperiment(input: {
   const difference = treated.lift - control.lift;
   const parts = [treated.before, treated.after, control.before, control.after].map(variance);
   if (parts.some((value) => value === null)) {
-    return { treated, control, difference, low: null, high: null, verdict: "too_thin", detail: "A group had nothing to take a rate from.", caveat: EXPERIMENT_CAVEAT };
+    return { treated, control, versionsChanged, difference, low: null, high: null, verdict: "too_thin", detail: "A group had nothing to take a rate from.", caveat: EXPERIMENT_CAVEAT };
   }
   const spread = INTERVAL_Z * Math.sqrt((parts as number[]).reduce((sum, value) => sum + value, 0));
   const low = difference - spread;
@@ -113,16 +142,20 @@ export function analyseExperiment(input: {
   // The interval has to clear nought in one direction. A band that straddles
   // it is consistent with the change having done nothing.
   const moved = low > 0 || high < 0;
+  const confound = versionsChanged.length
+    ? ` A model version changed inside the window for ${versionsChanged.join(", ")}. The control absorbs that where it hit both sides alike and nothing absorbs it where it did not.`
+    : "";
   return {
     treated,
     control,
+    versionsChanged,
     difference: Math.round(difference * 1000) / 1000,
     low: Math.round(low * 1000) / 1000,
     high: Math.round(high * 1000) / 1000,
     verdict: moved ? "moved" : "no_effect_shown",
     detail: moved
-      ? `The treated questions moved ${Math.round(difference * 100)} points more than the control did, and the range that is consistent with does not cross nought.`
-      : "The difference between how the two sides moved is consistent with nought, so nothing here shows the change did anything. That is not the same as showing it did nothing.",
+      ? `The treated questions moved ${Math.round(difference * 100)} points more than the control did, and the range that is consistent with does not cross nought.${confound}`
+      : `The difference between how the two sides moved is consistent with nought, so nothing here shows the change did anything. That is not the same as showing it did nothing.${confound}`,
     caveat: EXPERIMENT_CAVEAT,
   };
 }

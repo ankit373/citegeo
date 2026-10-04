@@ -183,6 +183,32 @@ test("the band narrows as the answers pile up", () => {
   assert.ok(width(50) < width(10));
 });
 
+test("a model version changing inside the window is named as a confound", () => {
+  const withVersion = (rows: PromptAnswer[], version: string) => rows.map((row) => ({ ...row, modelVersion: version }));
+  const result = analyseExperiment({
+    answers: [
+      ...withVersion(arm("t", 5, 40, BEFORE), "m-march"), ...withVersion(arm("t", 30, 40, AFTER), "m-august"),
+      ...withVersion(arm("c", 5, 40, BEFORE), "m-march"), ...withVersion(arm("c", 5, 40, AFTER), "m-august"),
+    ],
+    treatedPromptIds: ["t"], controlPromptIds: ["c"], changedAt: CHANGED,
+  });
+  assert.deepEqual(result.versionsChanged, ["gpt-4o"]);
+  assert.ok(result.detail.includes("model version changed inside the window"));
+  assert.ok(result.detail.includes("nothing absorbs it where it did not"));
+});
+
+test("a version the provider only echoed back is not a change", () => {
+  const echoed = (rows: PromptAnswer[]) => rows.map((row) => ({ ...row, modelVersion: row.modelId }));
+  const result = analyseExperiment({
+    answers: [
+      ...echoed(arm("t", 5, 40, BEFORE)), ...echoed(arm("t", 30, 40, AFTER)),
+      ...echoed(arm("c", 5, 40, BEFORE)), ...echoed(arm("c", 5, 40, AFTER)),
+    ],
+    treatedPromptIds: ["t"], controlPromptIds: ["c"], changedAt: CHANGED,
+  });
+  assert.deepEqual(result.versionsChanged, [], "echoing the model back is not a version anybody can see");
+});
+
 test("the caveat refuses the word proof and names what it cannot remove", () => {
   assert.ok(EXPERIMENT_CAVEAT.includes("evidence for the change rather than proof of it"));
   assert.ok(EXPERIMENT_CAVEAT.includes("only as good as the control being comparable"));

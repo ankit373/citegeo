@@ -150,6 +150,17 @@ export interface TierShape {
   caveat: string;
 }
 
+export interface VersionShape {
+  models: Array<{
+    modelId: string; reported: boolean;
+    versions: Array<{ version: string; answers: number; firstAt: string; lastAt: string; presence: { rate: number | null; low: number | null; high: number | null; trials: number } }>;
+    shifts: Array<{ modelId: string; from: { version: string }; to: { version: string }; change: number | null; separated: boolean | null }>;
+  }>;
+  unconfirmed: string[];
+  separatedShifts: number;
+  caveat: string;
+}
+
 export interface ActivationShape {
   considered: number;
   activated: number;
@@ -222,6 +233,8 @@ export interface InsightsShape {
   framing?: FramingShape | undefined;
   /** Absent on an archive read before the tier baselines existed. */
   tier?: TierShape | undefined;
+  /** Absent on an archive read before the model version was kept. */
+  versions?: VersionShape | undefined;
   /** Absent on an archive answered before mentions were checked against the
    * answer text, so nothing is claimed about those. */
   corroboration?: CorroborationShape | undefined;
