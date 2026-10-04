@@ -3023,6 +3023,34 @@ export function boot(): void {
         + '<p class="mlegend">' + html(rows[0].result.caveat) + '</p>';
     }
 
+    // Every trend line here assumes the thing being measured held still while
+    // the brand changed. A model shipping is the confound that breaks that.
+    function renderVersions(report: any) {
+      if (!report || (!report.models.length && !report.unconfirmed.length)) return '';
+      const shifts = report.models.flatMap((row: any) => row.shifts.filter((shift: any) => shift.separated));
+      const lead = shifts.length
+        ? shifts.length + ' model version change(s) moved your presence by more than the noise on either side. Nothing you did caused those, and no trend drawn across them compares like with like.'
+        : report.models.some((row: any) => row.reported)
+          ? 'No model version change here moved your presence by more than the noise either side of it.'
+          : 'No provider here names the version it ran, so a change would be invisible rather than absent.';
+      const rows = report.models.filter((row: any) => row.reported).flatMap((row: any) => row.shifts.map((shift: any) => {
+        const ink = shift.separated ? "state-bad" : shift.separated === null ? "state-flag" : "state-ok";
+        const words = shift.change === null ? "Too thin" : (shift.change > 0 ? "+" : "") + Math.round(shift.change * 100) + " points";
+        return '<div class="mrow mcols-version"><div class="mname"><strong>' + html(shift.modelId) + '</strong>'
+          + '<span class="mono">' + html(shift.from.version) + ' \u2192 ' + html(shift.to.version) + '</span></div>'
+          + '<span class="mcell ' + ink + '">' + html(words) + '</span>'
+          + '<span class="mcell subtle">' + (shift.separated === null ? 'not readable' : shift.separated ? 'beyond the noise' : 'within the noise') + '</span></div>';
+      })).join("");
+      const blind = report.unconfirmed.length
+        ? '<p class="subtle">' + report.unconfirmed.map((id: string) => html(id)).join(", ") + ' never named a version, so a change there cannot be seen. That is unconfirmed, not steady.</p>'
+        : '';
+      return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>Was it you, or did the model ship</h3>'
+        + '<p class="subtle">' + html(report.caveat) + '</p></div></div>'
+        + '<p>' + html(lead) + '</p>'
+        + (rows ? '<div class="mtable"><div class="mhead mcols-version"><span>Change</span><span>Presence moved</span><span>Reading</span></div>' + rows + '</div>' : '')
+        + blind + '</div>';
+    }
+
     function renderAnswerEngine() {
       const selected = project();
       if (!selected) return '<section class="view"><div class="empty"><div class="empty-copy"><h2>Select a project first</h2></div></div></section>';
@@ -3077,6 +3105,7 @@ export function boot(): void {
         + '<section class="section-card"><div class="section-head"><div><h2>How the score is built</h2><p class="subtle">Presence scaled by where you appear and how you are described.</p></div></div>'
         + renderScoreBreakdown(data.overall)
         + renderTier(data.tier)
+        + renderVersions(data.versions)
         + renderDecoys(data.decoys)
         + renderVariance(data.variance)
         + taskCta("too-few-answers")

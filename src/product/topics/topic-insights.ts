@@ -6,6 +6,7 @@ import { buildDecoyReport, isDecoy, type DecoyReport } from "./decoy-check.js";
 import { buildVarianceReport, type VarianceReport } from "./variance-share.js";
 import { buildSentimentVolatility, type SentimentVolatility } from "./sentiment-volatility.js";
 import { compareToTier, type BrandTier, type TierComparison } from "./visibility-tier.js";
+import { buildVersionReport, type VersionReport } from "./model-version.js";
 import { nextTasks, type MeasurementTask } from "./next-task.js";
 import { domainLabel, tokenize } from "./prompt-identity.js";
 import { buildPromptTrend, type PromptTrend } from "./prompt-trend.js";
@@ -141,6 +142,9 @@ export interface TopicInsights {
   /** The brand's presence against what its declared kind of brand tends to
    * get. Absent comparison until a tier is declared, never inferred. */
   tier: TierComparison;
+  /** Which machine actually answered, and where it changed under you. Every
+   * trend line assumes it held still, and it does not. */
+  versions: VersionReport;
   /** How much of the model's report of what it named survived a check against
    * the answer it wrote in the same call. */
   corroboration: CorroborationSummary;
@@ -429,6 +433,7 @@ export function buildTopicInsights(input: {
   const decoys = buildDecoyReport({ answers: completed, competitors: input.competitors || [] });
   const variance = buildVarianceReport(completed);
   const framing = buildSentimentVolatility(completed);
+  const versions = buildVersionReport(completed);
   const tier = compareToTier({
     tier: input.tier || "unstated",
     appearances: overall.appearances,
@@ -464,6 +469,7 @@ export function buildTopicInsights(input: {
     variance,
     framing,
     tier,
+    versions,
     corroboration,
     tasks: nextTasks({
       answers: completed.length,
