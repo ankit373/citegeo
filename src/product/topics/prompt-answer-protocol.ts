@@ -1,4 +1,5 @@
 import { sha256 } from "../../utils/hash.js";
+import { asDomain } from "./prompt-identity.js";
 import type { DiscoveryRecommendation, FirstPositionState } from "../measurements/measurement-schema.js";
 
 type Schema = Record<string, unknown>;
@@ -118,7 +119,7 @@ export function parsePromptAnswerOutput(raw: unknown): StructuredPromptAnswer {
     const position = text(row?.firstMentionState);
     mentions.push({
       name,
-      domain: text(row?.domain) || null,
+      domain: asDomain(row?.domain),
       // An unreadable judgement is uncertain, never a neutral-looking "mentioned".
       recommendation: (RECOMMENDATIONS.includes(recommendation) ? recommendation : "uncertain") as DiscoveryRecommendation,
       mentionQuote: text(row?.mentionQuote) || null,

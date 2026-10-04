@@ -8,7 +8,7 @@ import { buildSentimentVolatility, type SentimentVolatility } from "./sentiment-
 import { compareToTier, type BrandTier, type TierComparison } from "./visibility-tier.js";
 import { buildVersionReport, type VersionReport } from "./model-version.js";
 import { nextTasks, type MeasurementTask } from "./next-task.js";
-import { domainLabel, tokenize } from "./prompt-identity.js";
+import { asDomain, domainLabel, tokenize } from "./prompt-identity.js";
 import { buildPromptTrend, type PromptTrend } from "./prompt-trend.js";
 import { region, REGION_CAVEAT } from "./region.js";
 import { language } from "./language.js";
@@ -37,6 +37,9 @@ export interface EntityStanding {
   prominence: number | null;
   positive: number;
   negative: number;
+  /** The other names the answers used for this same site, most used first.
+   * Merging without showing them would hide what was actually written. */
+  alsoKnownAs?: string[];
 }
 
 export interface ModelStanding {
@@ -170,16 +173,58 @@ export interface TopicInsights {
   trackedRivals: EntityStanding[];
 }
 
-/** Keyed on the name: a model gives ChatGPT as openai.com in one answer and
- * chatgpt.com in the next, which ranked one product as two rivals. */
-function entityKey(mention: AnswerMention): string {
-  const name = tokenize(mention.name).join(" ");
-  return name || (mention.domain ? domainLabel(mention.domain) : "");
+// Neither the name nor the site identifies a rival on its own. A model gives
+// ChatGPT as openai.com in one answer and chatgpt.com in the next, and it
+// writes Tickertape and Ticker Tape for one site. Each alone splits a rival in
+// half; what holds is that two mentions sharing either are the same rival.
+class SameRival {
+  private readonly parent = new Map<string, string>();
+
+  private root(key: string): string {
+    let current = key;
+    while (this.parent.get(current) && this.parent.get(current) !== current) {
+      current = this.parent.get(current) as string;
+    }
+    this.parent.set(key, current);
+    return current;
+  }
+
+  join(left: string, right: string): void {
+    if (!left || !right) return;
+    const a = this.root(left);
+    const b = this.root(right);
+    if (a !== b) this.parent.set(b, a);
+  }
+
+  add(key: string): void {
+    if (key && !this.parent.has(key)) this.parent.set(key, key);
+  }
+
+  keyFor(mention: AnswerMention): string {
+    const name = tokenize(mention.name).join(" ");
+    const host = asDomain(mention.domain);
+    return this.root(name || host || "");
+  }
+}
+
+function sameRivals(answers: PromptAnswer[]): SameRival {
+  const groups = new SameRival();
+  for (const answer of answers) {
+    for (const mention of answer.mentions) {
+      const name = tokenize(mention.name).join(" ");
+      const host = asDomain(mention.domain);
+      groups.add(name);
+      groups.add(host || "");
+      if (name && host) groups.join(name, host);
+    }
+  }
+  return groups;
 }
 
 function standings(answers: PromptAnswer[]): EntityStanding[] {
   const completed = answers.filter((answer) => answer.status === "completed");
-  const rows = new Map<string, EntityStanding & { positions: number[] }>();
+  const rows = new Map<string, EntityStanding & { positions: number[]; names: Map<string, number> }>();
+  const groups = sameRivals(completed);
 
   for (const answer of completed) {
     const ordered = answer.mentions
@@ -189,12 +234,12 @@ function standings(answers: PromptAnswer[]): EntityStanding[] {
     // in one answer has still produced one observation, not three.
     const seen = new Set<string>();
     for (const mention of answer.mentions) {
-      const key = entityKey(mention);
+      const key = groups.keyFor(mention);
       if (!key || seen.has(key)) continue;
       seen.add(key);
       const existing = rows.get(key) || {
         name: mention.name,
-        domain: mention.domain,
+        domain: asDomain(mention.domain),
         isTarget: mention.isTarget,
         appearances: 0,
         shareOfAnswers: null,
@@ -202,10 +247,13 @@ function standings(answers: PromptAnswer[]): EntityStanding[] {
         positive: 0,
         negative: 0,
         positions: [],
+        names: new Map<string, number>(),
       };
       existing.appearances += 1;
+      const written = mention.name.trim();
+      if (written) existing.names.set(written, (existing.names.get(written) || 0) + 1);
       if (mention.isTarget) existing.isTarget = true;
-      if (!existing.domain && mention.domain) existing.domain = mention.domain;
+      if (!existing.domain) existing.domain = asDomain(mention.domain);
       if (mention.recommendation === "positive") existing.positive += 1;
       if (mention.recommendation === "negative") existing.negative += 1;
       const index = ordered.findIndex((row) => row === mention);
@@ -217,9 +265,15 @@ function standings(answers: PromptAnswer[]): EntityStanding[] {
 
   return [...rows.values()]
     .map((row) => {
-      const { positions, ...rest } = row;
+      const { positions, names, ...rest } = row;
+      // Labelled by the name the answers used most, with the rest kept so a
+      // merge can be checked rather than taken on trust.
+      const written = [...names.entries()].sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]));
+      const alsoKnownAs = written.slice(1).map(([name]) => name);
       return {
         ...rest,
+        name: written[0]?.[0] || rest.name,
+        ...(alsoKnownAs.length ? { alsoKnownAs } : {}),
         shareOfAnswers: completed.length ? row.appearances / completed.length : null,
         prominence: positions.length ? positions.reduce((total, value) => total + value, 0) / positions.length : null,
       };
