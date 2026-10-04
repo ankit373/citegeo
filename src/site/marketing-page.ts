@@ -59,6 +59,14 @@ const CAPABILITIES: Capability[] = [
     body: "Every figure here rests on a model classifying what another model wrote. Judge a random sample yourself and the agreement rate becomes the confidence in the whole column. One review of one mention reads as twenty one to a hundred percent, not as perfect.",
   },
   {
+    title: "Test whether your change did anything",
+    body: "A number moving after you changed something is not evidence your change moved it. Mark the questions you worked on, leave the rest as a control, and the two are compared on how much each moved rather than on where either ended up. No control and the answer is that nothing can be concluded, which is the honest end of most of this field's claims.",
+  },
+  {
+    title: "Know whether it was you or the model that changed",
+    body: "Every trend line in this category assumes the thing being measured held still while the brand changed. Models ship. The version a provider says it ran is stored with the answer, and a boundary where your presence moved by more than the noise on either side is named as what it is, which is not something you did.",
+  },
+  {
     title: "Prove the crawlers arrived",
     body: "robots.txt says a crawler may fetch you. Your access log says whether it did. Reading both separates a permission problem from an obscurity problem, which look identical from the outside. Blocking is reported as what it measurably costs, which is referred traffic, not citation.",
   },
@@ -92,6 +100,10 @@ const REFUSALS: Capability[] = [
   {
     title: "It will not guess what kind of brand you are",
     body: "The baseline a figure is read against depends on whether you are a household name or nobody has heard of you. Working that out from your own visibility would compare the number with itself, so it is declared or there is no comparison at all.",
+  },
+  {
+    title: "It will not call a version it cannot see a version that held still",
+    body: "Some providers name the model they actually ran and some hand back the name they were given. Reading the second as proof the version never changed would invent the one fact the panel exists to establish, so it reads as unconfirmed and says which providers report and which do not.",
   },
   {
     title: "It will not ship a fix the evidence argues against",
