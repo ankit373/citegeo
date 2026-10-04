@@ -49,14 +49,6 @@ export interface EngineRunOptions {
   driver?: BrowserDriver | undefined;
 }
 
-export const DEFAULT_DEBUG_ENDPOINT = "http://127.0.0.1:9222";
-
-/** Picks a page target, preferring one already open on the engine's own site. */
-export function chooseTarget(targets: CdpTarget[]): CdpTarget | null {
-  const pages = targets.filter((target) => target.type === "page" && target.webSocketDebuggerUrl);
-  return pages[0] || null;
-}
-
 export async function findBrowser(options: EngineRunOptions = {}): Promise<BrowserSearch> {
   return discoverBrowser({
     configured: options.endpoint || process.env.BROWSER_DEBUG_ENDPOINT,

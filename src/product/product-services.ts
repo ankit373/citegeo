@@ -1,4 +1,5 @@
 import { answerIndexDir, browserDebugEndpoint, integrationSetting, productDataDir } from "../config/env.js";
+import { providerStatuses } from "./configuration/provider-status.js";
 import { AnswerIndexService } from "./index/answer-index-service.js";
 import { PROVIDER_MODEL_CAPABILITIES } from "../providers/catalog.js";
 import { ProductConfigurationFileStore } from "./configuration/configuration-store.js";
@@ -213,7 +214,7 @@ export function createProductServices(dependencies: ProductServerDependencies = 
     saved: (projectId) => engines.saved(projectId),
     lookup: (engineId) => engines.lookup(engineId),
     ask: (input) => engines.askOne(input),
-  }, personas, locations);
+  }, personas, locations, () => providerStatuses(catalog));
   const promptSchedule = new PromptScheduleService(new PromptScheduleFileStore(projectStore), promptRuns);
   const agents = new ProductAgentService(projects,
     (id) => projectInsights({ projectId: id, topics, runs: promptRuns, competitors, personas, locations }),

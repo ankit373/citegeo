@@ -1,7 +1,7 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { readFile } from "node:fs/promises";
-import { BrowserConnection, JsonApiClosedError, type CdpTarget } from "./cdp-client.js";
+import { BrowserConnection, JsonApiClosedError, listTargets, type CdpTarget } from "./cdp-client.js";
 
 // Switching debugging on from chrome://inspect leaves the browser serving its
 // own socket and refusing to list its tabs over HTTP, which is the most common
@@ -214,9 +214,7 @@ export const liveDiscoveryIo: DiscoveryIo = {
   },
   tabs: async (endpoint) => {
     try {
-      const response = await fetch(new URL("/json/list", endpoint), { signal: AbortSignal.timeout(2500) });
-      if (!response.ok) return null;
-      return (await response.json()) as CdpTarget[];
+      return await listTargets(endpoint);
     } catch {
       return null;
     }
