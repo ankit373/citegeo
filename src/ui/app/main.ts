@@ -1688,6 +1688,9 @@ export function boot(): void {
       }
       const report = state.uptake;
       if (!report.measured && !report.unread) return '<p class="subtle">No answer carried a citation, so there is no page to compare one against.</p>';
+      // The button that clears this sits on the outreach panel, so the task
+      // is shown where the figure is missing rather than only in the list.
+      const unreadCta = report.unread ? taskCta("sources-unread") : '';
       const lead = report.mean === null
         ? 'No cited page has been read back, so nothing can be said about what the answers took from them.'
         : 'Across ' + report.measured + ' cited page(s) read back, the mean uptake is ' + uptakePct(report.mean) + '.'
@@ -1706,7 +1709,7 @@ export function boot(): void {
         + (row.uptake === null ? 'Not read' : uptakePct(row.uptake)) + '</span>'
         + '<span class="mcell">' + (row.shared === null ? '\u2014' : uptakePct(row.shared)) + '</span>'
         + '<span class="mcell">' + (row.coverage === null ? '\u2014' : uptakePct(row.coverage)) + '</span></div>').join("");
-      return '<p>' + html(lead) + '</p>' + unread
+      return '<p>' + html(lead) + '</p>' + unread + unreadCta
         + '<div class="mtable"><div class="mhead mcols-uptake"><span>Page</span><span>Cited</span><span>Uptake</span><span>Shared subject</span><span>Coverage</span></div>' + rows + '</div>'
         + '<p class="mlegend">' + html(report.caveat) + '</p>';
     }

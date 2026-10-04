@@ -372,6 +372,9 @@ export function buildTopicInsights(input: {
   personaLabels?: Map<string, string> | undefined;
   /** Location id to label, for places outside the fixed country list. */
   locationLabels?: Map<string, string> | undefined;
+  /** Cited pages and how many were read back, so the task list can say
+   * which panels are empty for want of a read rather than for want of data. */
+  citedPages?: { cited: number; read: number } | undefined;
 }): TopicInsights {
   const { projectId, set, answers } = input;
   const completed = answers.filter((answer) => answer.status === "completed");
@@ -472,6 +475,7 @@ export function buildTopicInsights(input: {
     versions,
     corroboration,
     tasks: nextTasks({
+      ...(input.citedPages ? { citedPages: input.citedPages } : {}),
       answers: completed.length,
       answersFailed: answers.length - completed.length,
       overall,
