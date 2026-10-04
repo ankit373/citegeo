@@ -1,4 +1,5 @@
 import { sha256 } from "../../utils/hash.js";
+import { asDomain } from "../topics/prompt-identity.js";
 import type { DiscoveryRecommendation, FirstPositionState } from "../measurements/measurement-schema.js";
 
 // A browser engine returns prose, not a schema. The mentions have to be read
@@ -87,7 +88,7 @@ export function parseEngineAnalysisOutput(raw: unknown): StructuredEngineAnalysi
     const position = text(row?.firstMentionState);
     mentions.push({
       name,
-      domain: text(row?.domain) || null,
+      domain: asDomain(row?.domain),
       recommendation: (RECOMMENDATIONS.includes(recommendation) ? recommendation : "uncertain") as DiscoveryRecommendation,
       mentionQuote: text(row?.mentionQuote) || null,
       firstMentionOffset: typeof row?.firstMentionOffset === "number" ? row.firstMentionOffset : null,

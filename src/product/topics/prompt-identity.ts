@@ -49,6 +49,42 @@ const HOST_SUFFIXES = new Set([
   "au", "ca", "de", "fr", "es", "it", "nl", "jp", "kr", "cn", "br", "sg", "ae", "ch", "se", "pl",
 ]);
 
+// Asked for a brand's domain, a model answers "finance" or "financial data
+// platform" often enough that the field cannot be trusted as a host. Stored
+// raw, those group four unrelated brands under one key.
+function isHostCharacter(character: string): boolean {
+  return isWordCharacter(character) || character === "-";
+}
+
+/** The host in a value a model offered as one, or null where it offered
+ * something else. A category is not a domain and is not stored as one. */
+export function asDomain(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  let text = value.trim().toLocaleLowerCase();
+  const scheme = text.indexOf("://");
+  if (scheme >= 0) text = text.slice(scheme + 3);
+  const slash = text.indexOf("/");
+  if (slash >= 0) text = text.slice(0, slash);
+  const at = text.indexOf("@");
+  if (at >= 0) text = text.slice(at + 1);
+  if (text.startsWith("www.")) text = text.slice(4);
+  const labels = text.split(".");
+  if (labels.length < 2) return null;
+  for (const label of labels) {
+    if (!label) return null;
+    for (const character of label) {
+      if (!isHostCharacter(character)) return null;
+    }
+    if (label.startsWith("-") || label.endsWith("-")) return null;
+  }
+  const tld = labels[labels.length - 1] as string;
+  if (tld.length < 2) return null;
+  for (const character of tld) {
+    if (!isWordCharacter(character) || (character >= "0" && character <= "9")) return null;
+  }
+  return text;
+}
+
 /** The label that distinguishes a host: "screener.in" and "www.screener.co.uk"
  * both reduce to "screener", because people name a brand without its suffix. */
 export function domainLabel(domain: string): string {
