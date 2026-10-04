@@ -1,4 +1,13 @@
 import { randomUUID } from "node:crypto";
+import type { AnswerResult } from "../../core/types.js";
+import type { StructuredAsk } from "./topic-service.js";
+import {
+  engineAnalysisPrompt,
+  engineAnalysisResponseSchema,
+  parseEngineAnalysisOutput,
+  ENGINE_ANALYSIS_SCHEMA_NAME,
+  ENGINE_ANALYSIS_TOOL_DESCRIPTION,
+} from "../engines/engine-answer-protocol.js";
 import { modelsBlockedByAccount, type ProviderStatus } from "../configuration/provider-status.js";
 import type { ProductBaseline, ProductModelSnapshot } from "../configuration/baseline-schema.js";
 import type { ProductBaselineService } from "../configuration/baseline-service.js";
@@ -97,6 +106,9 @@ export class PromptRunService {
     /** What each provider can run right now. Absent in a test, which blocks
      * nothing, because an unknown account is not an empty one. */
     private readonly providerStatus?: (() => Promise<ProviderStatus[]>) | undefined,
+    /** Reads a grounded answer back into mentions. Absent leaves the grounded
+     * path on one call, which measures the JSON instead of the answer. */
+    private readonly read?: StructuredAsk | undefined,
   ) {}
 
   /** Splits the saved models into the ones the catalogue still says can answer
@@ -343,6 +355,69 @@ export class PromptRunService {
     return current;
   }
 
+  /** A grounded answer and its sources come back as prose, so the mentions are
+   * read from that prose, the same two steps a browser surface already takes. */
+  private async readGrounded(
+    base: Omit<PromptAnswer, "status" | "text" | "mentions" | "citationUrls" | "errorCode" | "errorMessage" | "latencyMs">,
+    input: { prompt: { text: string }; identity: BrandIdentity; run: PromptRun },
+    result: AnswerResult,
+  ): Promise<PromptAnswer> {
+    const providerCitations = result.citations.map((citation) => citation.url).filter(Boolean);
+    const citationUrls = [...new Set(providerCitations)];
+    const search = result.search
+      ? {
+          requested: result.search.requested,
+          used: result.search.used,
+          usedMode: result.search.usedMode,
+          queries: result.search.webQueries.slice(0, SEARCH_QUERIES_KEPT),
+        }
+      : undefined;
+    const shell = {
+      ...base,
+      ...(result.modelVersion ? { modelVersion: result.modelVersion } : {}),
+      text: result.text,
+      citationUrls,
+      ...(search ? { search } : {}),
+      latencyMs: result.latencyMs,
+    };
+    if (!result.text.trim()) {
+      return { ...shell, status: "no_answer", mentions: [], errorCode: "empty_answer", errorMessage: "The provider searched and returned no answer to read.", };
+    }
+    let analysis;
+    try {
+      analysis = parseEngineAnalysisOutput(await (this.read as StructuredAsk)({
+        projectId: input.run.projectId,
+        prompt: engineAnalysisPrompt({ question: input.prompt.text, answer: result.text }),
+        schemaName: ENGINE_ANALYSIS_SCHEMA_NAME,
+        schemaDescription: ENGINE_ANALYSIS_TOOL_DESCRIPTION,
+        schema: engineAnalysisResponseSchema,
+      }));
+    } catch (error) {
+      // The answer and its sources are real and kept. Only the reading failed.
+      return {
+        ...shell,
+        status: "analysis_failed",
+        mentions: [],
+        errorCode: "analysis_failed",
+        errorMessage: error instanceof Error ? error.message : String(error),
+      };
+    }
+    if (analysis.analysisStatus !== "completed") {
+      return { ...shell, status: "analysis_failed", mentions: [], errorCode: "unreadable_answer", errorMessage: "The reader could not finish reading this answer, so it counts as nothing rather than as an absence of mentions." };
+    }
+    const reported: AnswerMention[] = analysis.mentions.map((row) => ({
+      ...row,
+      isTarget: answerNamesBrand({ text: "", citationUrls: row.domain ? [row.domain] : [], names: [row.name] }, input.identity),
+    }));
+    return {
+      ...shell,
+      status: "completed",
+      mentions: corroborateMentions({ answer: result.text, mentions: reported }),
+      errorCode: null,
+      errorMessage: null,
+    };
+  }
+
   private async ask(input: {
     run: PromptRun;
     baseline: ProductBaseline;
@@ -370,10 +445,14 @@ export class PromptRunService {
       createdAt: nowIso(),
     };
 
+    // A grounded provider drops its source annotations the moment a schema is
+    // attached, so the answer is asked for plainly and then read in a step.
+    const grounded = input.model.webSearchMode === "provider_native" && Boolean(this.read);
     try {
       const result = await this.executor.execute({
         baseline: input.baseline,
         modelSnapshot: input.model,
+        ...(grounded ? { unstructured: true } : {}),
         prompt: promptAnswerPrompt({
           question: input.prompt.text,
           languageInstruction: languageInstruction(input.tongue),
@@ -397,6 +476,7 @@ export class PromptRunService {
         },
       });
 
+      if (grounded) return await this.readGrounded(base, input, result);
       if (!result.structuredOutput) {
         return {
           ...base,
