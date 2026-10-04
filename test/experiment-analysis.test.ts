@@ -213,3 +213,29 @@ test("the caveat refuses the word proof and names what it cannot remove", () => 
   assert.ok(EXPERIMENT_CAVEAT.includes("evidence for the change rather than proof of it"));
   assert.ok(EXPERIMENT_CAVEAT.includes("only as good as the control being comparable"));
 });
+
+test("a version change on a question in neither arm is not this experiment's confound", () => {
+  const withVersion = (rows: PromptAnswer[], version: string) => rows.map((row) => ({ ...row, modelVersion: version }));
+  const result = analyseExperiment({
+    answers: [
+      ...withVersion(arm("t", 5, 40, BEFORE), "m-march"), ...withVersion(arm("t", 30, 40, AFTER), "m-march"),
+      ...withVersion(arm("c", 5, 40, BEFORE), "m-march"), ...withVersion(arm("c", 5, 40, AFTER), "m-march"),
+      ...withVersion(arm("other", 1, 40, BEFORE), "m-march"), ...withVersion(arm("other", 1, 40, AFTER), "m-august"),
+    ],
+    treatedPromptIds: ["t"], controlPromptIds: ["c"], changedAt: CHANGED,
+  });
+  assert.deepEqual(result.versionsChanged, [], "the arms were answered by one version throughout");
+});
+
+test("a side answered by two versions is already two machines", () => {
+  const withVersion = (rows: PromptAnswer[], version: string) => rows.map((row) => ({ ...row, modelVersion: version }));
+  const result = analyseExperiment({
+    answers: [
+      ...withVersion(arm("t", 2, 20, BEFORE), "m-march"), ...withVersion(arm("t", 3, 20, BEFORE), "m-april"),
+      ...withVersion(arm("t", 30, 40, AFTER), "m-april"),
+      ...withVersion(arm("c", 5, 40, BEFORE), "m-march"), ...withVersion(arm("c", 5, 40, AFTER), "m-april"),
+    ],
+    treatedPromptIds: ["t"], controlPromptIds: ["c"], changedAt: CHANGED,
+  });
+  assert.deepEqual(result.versionsChanged, ["gpt-4o"], "two versions on one side is not a window that held still");
+});

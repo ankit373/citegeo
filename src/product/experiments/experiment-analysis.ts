@@ -72,13 +72,13 @@ function arm(answers: PromptAnswer[], promptIds: Set<string>, changedAt: number)
   };
 }
 
-/** Models whose reported version differs on the two sides of the change. A
- * version the provider only echoed back is not a change anybody can see. */
-function versionsAcross(answers: PromptAnswer[], changedAt: number): string[] {
+/** Models that were not one single reported version on both sides of the
+ * change. A version the provider only echoed back is not a change to see. */
+function versionsAcross(answers: PromptAnswer[], inArms: Set<string>, changedAt: number): string[] {
   const before = new Map<string, Set<string>>();
   const after = new Map<string, Set<string>>();
   for (const answer of answers) {
-    if (answer.status !== "completed") continue;
+    if (answer.status !== "completed" || !inArms.has(answer.promptId)) continue;
     const version = answer.modelVersion;
     if (!version || version === answer.modelId) continue;
     const at = new Date(answer.createdAt).getTime();
@@ -91,8 +91,10 @@ function versionsAcross(answers: PromptAnswer[], changedAt: number): string[] {
   const moved: string[] = [];
   for (const [modelId, early] of before) {
     const late = after.get(modelId);
+    // A side that named more than one version is already two machines, so
+    // only one version answering throughout is a window that held still.
     if (!late || !late.size) continue;
-    if ([...late].some((version) => !early.has(version))) moved.push(modelId);
+    if (early.size !== 1 || late.size !== 1 || ![...late].every((version) => early.has(version))) moved.push(modelId);
   }
   return moved.sort();
 }
@@ -106,7 +108,7 @@ export function analyseExperiment(input: {
   const changed = new Date(input.changedAt).getTime();
   const treated = arm(input.answers, new Set(input.treatedPromptIds), changed);
   const control = arm(input.answers, new Set(input.controlPromptIds), changed);
-  const versionsChanged = versionsAcross(input.answers, changed);
+  const versionsChanged = versionsAcross(input.answers, new Set([...input.treatedPromptIds, ...input.controlPromptIds]), changed);
 
   const thin = [treated.before, treated.after, control.before, control.after]
     .filter((side) => side.trials < MIN_PER_ARM).length;
