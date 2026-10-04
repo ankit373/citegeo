@@ -4,6 +4,80 @@
 
 Nothing yet.
 
+## 0.4.0 - 2026-10-04
+
+Twenty merges, and one theme: the distance between a number and a claim.
+
+Every panel added here answers something the category reports a figure for
+without ever asking. Whether a cited page was used or only listed. Whether the
+figure is any good for a brand of this kind. Whether the wording or the day
+decided it. Whether the product is right about what it read. And whether the
+change you made is what moved it.
+
+### Added
+
+- **Uptake, whether a cited page shaped the answer.** A citation says a page was
+  listed. Measured as vocabulary overlap between the page and the answer, because
+  exact phrases find nothing on a real archive: models rewrite rather than copy.
+  Six live runs scored nought on phrases and 0.48 to 0.67 on terms. A page with
+  no text read reports no uptake rather than none.
+- **Ready to paste.** Fixes written from what the site actually shows, one to
+  twenty a day, default two, remembered per browser. The count is a setting
+  rather than somebody else's constraint. Generation never reaches out and never
+  invents one, and fewer than asked for says so instead of padding.
+- **Phrasing.** Holds the day still and varies the wording, the companion to
+  asking the same question again on another day. Neither says anything alone:
+  together they say whether the wording or the day decided the answer.
+- **The decoy.** A name you declare irrelevant, carried through every run beside
+  the brand. How often the product finds something that is not there is its own
+  error rate, reported as the upper end rather than as a share.
+- **Interference.** Published work pushes a rewritten document into generated
+  answers at about a one in two success rate, and the rewrites stay factually
+  consistent with their originals, so nothing that checks facts catches one.
+  What is left is shape, compared over reads already stored.
+- **Who supplies these answers.** Citation concentration as a curve. A category
+  where a handful of domains hold most of the citations is a different game from
+  a long tail, and nothing here said which one you are in.
+- **What decides whether you appear.** The variance share across the question,
+  the model and the day, asked of your own archive rather than quoted from a
+  paper.
+- **How the pages that beat you are built.** The one lever here with a causal
+  test behind it rather than a correlation, and the panel says it is zero sum:
+  in that audit the credit moved between documents and the total did not rise.
+- **Check the machine.** A random sample of what the classifier decided, put to
+  a person. Every figure here rests on a model reading what another model wrote,
+  and until now nothing put a number on that.
+- **Who gets the credit.** The gap between being cited and being named, from the
+  two halves already stored.
+- **Which surfaces this browser can actually drive.** Asked before a run rather
+  than discovered by spending one. A surface that is gone, walled or blocked
+  fails every question put to it, and from inside a run those look alike.
+- **How steady the framing is.** Naming had a stability figure and framing, the
+  more volatile half of the same score, had none.
+- **Against brands like yours.** A visibility figure read against what a declared
+  kind of brand tends to get. Absent until the kind is declared, never inferred,
+  and the verdict is read off the range rather than the point.
+- **What kind of page gets cited.** The format and the source of each cited page
+  against the published shares, so a result says which kind of page is winning
+  and not only which ones.
+- **Did your change do anything.** A difference in differences against a control
+  arm. No control concludes nothing, because a number moving after you changed
+  something is not evidence your change moved it. A band that straddles nought
+  says nothing was shown, which is not the same as showing nothing happened.
+- **Was it you, or did the model ship.** The version the provider says it ran is
+  stored and reported. Boundaries where presence moved by more than the noise on
+  either side are named, a provider that only echoes the model back is
+  unconfirmed rather than steady, and an experiment names a version that changed
+  inside its window.
+
+### Changed
+
+- **Two measurements had no door.** A rewording and a decoy could be measured and
+  not added. Both can now be created from the panel that reports them.
+- The image runs on Node 26, and the suite is tested on the version it ships on.
+- The marketing page states what the latest measurements do.
+- Dependency bumps for the minor and patch group.
+
 ## 0.3.1 - 2026-10-02
 
 Two browser surfaces that were reporting the wrong thing.
