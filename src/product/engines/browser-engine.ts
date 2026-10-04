@@ -1,4 +1,5 @@
-import { CdpSession, listTargets, type CdpTarget } from "./cdp-client.js";
+import { BrowserConnection, CdpSession, type CdpTarget } from "./cdp-client.js";
+import { browserSocketUrl, discoverBrowser, installedProfileDirectories, liveDiscoveryIo, type BrowserSearch } from "./browser-discovery.js";
 
 // The surfaces buyers use, not the APIs behind them. It drives your own
 // signed-in browser, breaks when a page changes, and is off by default.
@@ -41,17 +42,48 @@ export interface BrowserEngine {
 }
 
 export interface EngineRunOptions {
-  /** Where Chrome is listening. */
+  /** Where Chrome is listening. Looked for when this is not given. */
   endpoint?: string | undefined;
   timeoutMs?: number | undefined;
+  /** A connection already open, so a run of many questions opens one. */
+  driver?: BrowserDriver | undefined;
 }
 
-export const DEFAULT_DEBUG_ENDPOINT = "http://127.0.0.1:9222";
+export async function findBrowser(options: EngineRunOptions = {}): Promise<BrowserSearch> {
+  return discoverBrowser({
+    configured: options.endpoint || process.env.BROWSER_DEBUG_ENDPOINT,
+    directories: installedProfileDirectories(),
+    io: liveDiscoveryIo,
+  });
+}
 
-/** Picks a page target, preferring one already open on the engine's own site. */
-export function chooseTarget(targets: CdpTarget[]): CdpTarget | null {
-  const pages = targets.filter((target) => target.type === "page" && target.webSocketDebuggerUrl);
-  return pages[0] || null;
+/** Holds one connection and hands out a fresh tab per question, so a run never
+ * navigates a tab somebody is reading or posts into an open conversation. */
+export class BrowserDriver {
+  private constructor(readonly connection: BrowserConnection, readonly search: BrowserSearch) {}
+
+  static async open(options: EngineRunOptions = {}): Promise<BrowserDriver> {
+    const search = await findBrowser(options);
+    if (!search.found) throw new Error(search.detail);
+    const connection = await BrowserConnection.open(await browserSocketUrl(search.found));
+    return new BrowserDriver(connection, search);
+  }
+
+  async withTab<T>(run: (session: CdpSession) => Promise<T>): Promise<T> {
+    const targetId = await this.connection.openTab();
+    try {
+      const session = await this.connection.attach(targetId);
+      await session.send("Page.enable");
+      await session.send("Runtime.enable");
+      return await run(session);
+    } finally {
+      await this.connection.closeTab(targetId);
+    }
+  }
+
+  close(): void {
+    this.connection.close();
+  }
 }
 
 export async function askEngine(
@@ -59,23 +91,16 @@ export async function askEngine(
   question: string,
   options: EngineRunOptions = {},
 ): Promise<EngineOutcome> {
-  const endpoint = options.endpoint || DEFAULT_DEBUG_ENDPOINT;
-  let session: CdpSession | null = null;
+  let driver: BrowserDriver | null = null;
   try {
-    const target = chooseTarget(await listTargets(endpoint));
-    if (!target) {
-      return { state: "unavailable", detail: `The browser at ${endpoint} has no open tab to drive.` };
-    }
-    session = await CdpSession.attach(target);
-    await session.send("Page.enable");
-    await session.send("Runtime.enable");
-    return await engine.ask(session, question);
+    driver = options.driver || await BrowserDriver.open(options);
+    return await driver.withTab((session) => engine.ask(session, question));
   } catch (error) {
     // Every failure shape lands here as "unavailable" rather than as an empty
     // answer, because an empty answer is a measurement and this is not one.
     return { state: "unavailable", detail: error instanceof Error ? error.message : String(error) };
   } finally {
-    session?.close();
+    if (!options.driver) driver?.close();
   }
 }
 

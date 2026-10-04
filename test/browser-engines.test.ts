@@ -1,28 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { askEngine, chooseTarget, type BrowserEngine, type EngineOutcome } from "../src/product/engines/browser-engine.js";
+import { askEngine, type BrowserEngine, type EngineOutcome } from "../src/product/engines/browser-engine.js";
 import { BROWSER_ENGINES, browserEngine, googleAiOverview, perplexityWeb } from "../src/product/engines/engine-registry.js";
-import type { CdpTarget } from "../src/product/engines/cdp-client.js";
-
-function target(overrides: Partial<CdpTarget> = {}): CdpTarget {
-  return { id: "t", type: "page", url: "about:blank", webSocketDebuggerUrl: "ws://127.0.0.1:1/x", ...overrides };
-}
-
 test("a browser that is not running is unavailable, never an empty answer", async () => {
   // An empty answer is a measurement. A missing browser is not one.
   const outcome = await askEngine(googleAiOverview, "best screener", { endpoint: "http://127.0.0.1:1" });
   assert.equal(outcome.state, "unavailable");
   assert.ok(outcome.state === "unavailable" && outcome.detail.length > 0);
-});
-
-test("only a page target can be driven", () => {
-  assert.equal(chooseTarget([target({ type: "service_worker" }), target({ type: "background_page" })]), null);
-  assert.equal(chooseTarget([target({ type: "service_worker" }), target({ id: "p", type: "page" })])?.id, "p");
-  assert.equal(chooseTarget([]), null);
-});
-
-test("a target with no debugger url is not drivable", () => {
-  assert.equal(chooseTarget([target({ webSocketDebuggerUrl: "" })]), null);
 });
 
 test("every engine states what reading it this way cannot promise", () => {

@@ -1,3 +1,4 @@
+import { DROPPABLE_PARAMETERS, refusedParameter } from "./provider-error.js";
 import type {
   AnswerProvider,
   AnswerResult,
@@ -54,6 +55,19 @@ function extractText(raw: unknown): string {
   return parts.filter(Boolean).join("\n").trim();
 }
 
+/** A function tool's arguments on this API arrive as their own output item,
+ * not inside the message, so the text extractor never sees them. */
+function extractFunctionArguments(raw: unknown, name: string): string {
+  const output = Array.isArray(asObject(raw)?.output) ? (asObject(raw)?.output as unknown[]) : [];
+  for (const item of output) {
+    const obj = asObject(item);
+    if (!obj || obj.type !== "function_call") continue;
+    if (typeof obj.name === "string" && obj.name !== name) continue;
+    if (typeof obj.arguments === "string" && obj.arguments.trim()) return obj.arguments;
+  }
+  return "";
+}
+
 function extractModelVersion(raw: unknown, fallback: string): string {
   const root = asObject(raw);
   return typeof root?.model === "string" ? root.model : fallback;
@@ -94,29 +108,65 @@ export class ResponsesCompatibleProvider implements AnswerProvider {
       temperature: input.temperature,
       max_output_tokens: input.maxTokens,
     };
-    if (input.webSearchEnabled) {
-      body.tools = [{ type: this.webSearchToolName }];
+    const tools: unknown[] = [];
+    if (input.webSearchEnabled) tools.push({ type: this.webSearchToolName });
+    // This API carries a schema in its own field and a tool at the top level,
+    // and asking for neither is how a grounded answer came back unreadable.
+    if (input.structuredOutputTool) {
+      tools.push({
+        type: "function",
+        name: input.structuredOutputTool.name,
+        description: input.structuredOutputTool.description,
+        parameters: input.structuredOutputTool.schema,
+      });
+    } else if (input.responseJsonSchema) {
+      body.text = {
+        format: {
+          type: "json_schema",
+          name: input.responseJsonSchema.name,
+          strict: true,
+          schema: input.responseJsonSchema.schema,
+        },
+      };
+    }
+    if (tools.length) body.tools = tools;
+
+    const headers = {
+      ...(this.authHeader === "bearer" ? { Authorization: `Bearer ${input.apiKey}` } : { [this.authHeader]: input.apiKey }),
+      "Content-Type": "application/json",
+      ...this.extraHeaders,
+    };
+    const post = () => postJsonWithRetry(this.endpoint, { method: "POST", headers, body: JSON.stringify(body) });
+
+    let response = await post();
+    let error = asObject(asObject(response.data)?.error);
+    // A model that refuses a sampling parameter is asked again without it
+    // rather than counted as a failure, and the answer says it was dropped.
+    const dropped: string[] = [];
+    const refused = !response.ok ? refusedParameter(error) : null;
+    if (refused && DROPPABLE_PARAMETERS.has(refused) && refused in body) {
+      delete body[refused];
+      dropped.push(refused);
+      response = await post();
+      error = asObject(asObject(response.data)?.error);
     }
 
-    const response = await postJsonWithRetry(this.endpoint, {
-      method: "POST",
-      headers: {
-        ...(this.authHeader === "bearer" ? { Authorization: `Bearer ${input.apiKey}` } : { [this.authHeader]: input.apiKey }),
-        "Content-Type": "application/json",
-        ...this.extraHeaders,
-      },
-      body: JSON.stringify(body),
-    });
-
     const raw = response.data;
-    const error = asObject(asObject(raw)?.error);
     if (!response.ok || error) {
       const message = typeof error?.message === "string" ? error.message : `Provider ${this.definition.id} failed with HTTP ${response.status}`;
       throw new ProviderRequestError({ code: failureCodeForStatus(response.status), message, status: response.status });
     }
 
-    const text = extractText(raw);
+    const toolArguments = input.structuredOutputTool
+      ? extractFunctionArguments(raw, input.structuredOutputTool.name)
+      : "";
+    const text = toolArguments || extractText(raw);
     if (!text) throw new ProviderRequestError({ code: "empty_answer", message: `Provider ${this.definition.id} returned an empty answer.` });
+    const structuredOutput = toolArguments
+      ? { transport: "function_tool" as const, value: toolArguments }
+      : input.responseJsonSchema
+        ? { transport: "response_json_schema" as const, value: text }
+        : undefined;
     const nativeCitations = this.citationExtractor(raw);
     const citations = dedupeCitations([...nativeCitations, ...extractTextUrlCitations(text, nativeCitations.length)]);
     const webQueries = extractResponseWebQueries(raw);
@@ -137,10 +187,13 @@ export class ResponsesCompatibleProvider implements AnswerProvider {
       providerName: this.definition.label,
       sourceType: this.definition.sourceType,
       sourceLabel: `Source: ${this.definition.label} API`,
-      resultCaveat: this.definition.resultCaveat,
+      resultCaveat: dropped.length
+        ? `${this.definition.resultCaveat} This model refused ${dropped.join(" and ")}, so the answer was taken at its own default instead of the one asked for.`
+        : this.definition.resultCaveat,
       model: input.model,
       modelVersion: extractModelVersion(raw, input.model),
       text,
+      structuredOutput,
       rawProviderResponse: raw,
       citations,
       webQueries,

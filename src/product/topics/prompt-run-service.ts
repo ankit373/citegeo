@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { modelsBlockedByAccount, type ProviderStatus } from "../configuration/provider-status.js";
 import type { ProductBaseline, ProductModelSnapshot } from "../configuration/baseline-schema.js";
 import type { ProductBaselineService } from "../configuration/baseline-service.js";
 import type { ProductModelCatalog } from "../configuration/model-selection-schema.js";
@@ -93,26 +94,50 @@ export class PromptRunService {
     private readonly engines?: EnginePlan | undefined,
     private readonly personas?: PersonaService | undefined,
     private readonly locations?: LocationService | undefined,
+    /** What each provider can run right now. Absent in a test, which blocks
+     * nothing, because an unknown account is not an empty one. */
+    private readonly providerStatus?: (() => Promise<ProviderStatus[]>) | undefined,
   ) {}
 
   /** Splits the saved models into the ones the catalogue still says can answer
    * and the ones it does not. A catalogue that cannot be read blocks nothing. */
   private async usable(models: ProductModelSnapshot[]): Promise<{ run: ProductModelSnapshot[]; skipped: Array<{ modelId: string; reason: string }> }> {
-    if (!this.catalog) return { run: models, skipped: [] };
-    let current;
-    try {
-      current = await this.catalog.list();
-    } catch {
-      return { run: models, skipped: [] };
-    }
-    const run: ProductModelSnapshot[] = [];
     const skipped: Array<{ modelId: string; reason: string }> = [];
-    for (const model of models) {
-      const row = current.find((item) => item.providerId === model.providerId && item.modelId === model.modelId);
-      if (row && !row.available) skipped.push({ modelId: model.modelId, reason: row.unavailableReason || "The catalogue reports it as unavailable." });
-      else run.push(model);
+    let kept = models;
+    if (this.catalog) {
+      let current;
+      try {
+        current = await this.catalog.list();
+      } catch {
+        current = null;
+      }
+      if (current) {
+        const listed = current;
+        kept = [];
+        for (const model of models) {
+          const row = listed.find((item) => item.providerId === model.providerId && item.modelId === model.modelId);
+          if (row && !row.available) skipped.push({ modelId: model.modelId, reason: row.unavailableReason || "The catalogue reports it as unavailable." });
+          else kept.push(model);
+        }
+      }
     }
-    return { run, skipped };
+    // The catalogue says what exists. The account says what can be paid for,
+    // and asking a model the account cannot pay for files one error a question.
+    if (this.providerStatus) {
+      try {
+        const statuses = await this.providerStatus();
+        const blocked = modelsBlockedByAccount(kept.map((model) => ({ providerId: model.providerId, modelId: model.modelId })), statuses);
+        if (blocked.length) {
+          const ids = new Set(blocked.map((row) => row.modelId));
+          skipped.push(...blocked);
+          kept = kept.filter((model) => !ids.has(model.modelId));
+        }
+      } catch {
+        // An account that cannot be read blocks nothing, the same rule the
+        // catalogue follows, because unknown is not empty.
+      }
+    }
+    return { run: kept, skipped };
   }
 
   /** Ids asked to stop. In memory, because a cancel only means anything to the

@@ -3600,7 +3600,8 @@ export function boot(): void {
         + '<span class="subtle">' + html(row.detail) + '</span></div>'
         + '<span class="mcell ' + reachInk(row.reach) + '">' + html(reachWords(row.reach)) + '</span>'
         + '<span class="mcell mono">' + html((row.landedOn || row.home).slice(0, 34)) + '</span></div>').join("");
-      return action + '<div class="mtable"><div class="mhead mcols-reach"><span>Surface</span><span>State</span><span>Landed on</span></div>' + rows + '</div>'
+      const where = state.reach.found ? '<p class="subtle">' + html(state.reach.found) + '</p>' : '';
+      return action + where + '<div class="mtable"><div class="mhead mcols-reach"><span>Surface</span><span>State</span><span>Landed on</span></div>' + rows + '</div>'
         + '<p class="mlegend">' + html(state.reach.caveat) + '</p>';
     }
 
@@ -3610,12 +3611,16 @@ export function boot(): void {
         return '<p class="subtle">' + (state.enginesState === "error" ? "Could not read the engines." : "Checking for a browser to drive.") + '</p>';
       }
       const data = state.engines;
+      const looked = (data.looked || []).length
+        ? '<p class="subtle">Looked at: ' + (data.looked || []).map((where: string) => '<span class="mono">' + html(where) + '</span>').join(", ") + '.</p>'
+        : '';
       const reach = data.reachable === null
         ? '<div class="warning-box">Not checked yet.</div>'
         : data.reachable
-          ? '<div class="success-box">Browser reachable at <span class="mono">' + html(data.endpoint) + '</span>. ' + html(data.detail) + '</div>'
-          : '<div class="warning-box"><strong>No browser to drive at <span class="mono">' + html(data.endpoint) + '</span>.</strong> ' + html(data.detail)
-            + ' Start Chrome with remote debugging and sign in to the surfaces you want read. Selecting an engine here is still saved; it just cannot run yet.</div>';
+          ? '<div class="success-box">' + html(data.detail) + ' <span class="mono">' + html(data.endpoint) + '</span></div>'
+          : '<div class="warning-box"><strong>No browser to drive.</strong> ' + html(data.detail)
+            + ' Start the browser with remote debugging, or switch it on from the browser\'s own inspect page. Selecting a surface here is still saved; it just cannot run yet.'
+            + looked + '</div>';
       const rows = data.engines.map((engine: any) => '<div class="mrow mcols-engine">'
         + '<input type="checkbox" data-engine-checkbox="' + html(engine.id) + '"' + (engine.selected ? ' checked' : '') + ' aria-label="Ask ' + html(engine.label) + '">'
         + '<div class="mname"><strong>' + html(engine.label) + '</strong><span class="subtle">' + html(engine.caveat) + '</span></div>'
