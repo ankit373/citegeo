@@ -75,3 +75,16 @@ test("an unfinished reading counts as nothing rather than as an absence of menti
   assert.equal(result.status, "analysis_failed");
   assert.equal(result.errorCode, "unreadable_answer");
 });
+
+test("a grounded question is put the way a buyer puts it, with no mention of JSON", async () => {
+  // Seen live: the schema instruction survived into the answer text as
+  // "Here is the answer to your question, followed by the requested JSON",
+  // and that text is what the reader then has to read.
+  const captured: Array<Record<string, unknown>> = [];
+  await ask(service({ result: answer(), captured }));
+  const prompt = String(captured[0]?.prompt);
+  assert.ok(prompt.includes("best stock screener"));
+  assert.ok(prompt.includes("Answer in prose"));
+  assert.equal(prompt.toLocaleLowerCase().includes("json schema"), false);
+  assert.equal(prompt.includes("Return only the requested JSON"), false);
+});
