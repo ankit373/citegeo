@@ -8,6 +8,7 @@ import { buildInterferenceReport, type InterferenceReport } from "./interference
 import { buildConcentrationReport, type ConcentrationReport } from "./concentration.js";
 import { compareShapes, type ShapeComparison } from "./page-shape.js";
 import { creditGaps, type CreditReport } from "./credit-gap.js";
+import { buildPageKinds, type PageKindReport } from "./page-kind.js";
 import type { ProductProjectFileStore } from "../projects/project-store.js";
 import type { BrandIdentity } from "../topics/brand-identity.js";
 import type { PromptAnswer, PromptRun } from "../topics/prompt-run-schema.js";
@@ -117,6 +118,11 @@ export class SourcePageService {
       if (rows.length) perAnswer.push(rows);
     }
     return creditGaps(perAnswer);
+  }
+
+  /** What kind of page gets cited here, and who it belongs to. */
+  async kinds(projectId: string, scope: { domain?: string | undefined; rivalDomains?: string[] | undefined } = {}): Promise<PageKindReport> {
+    return buildPageKinds({ pages: await this.list(projectId), domain: scope.domain, rivalDomains: scope.rivalDomains });
   }
 
   /** Shapes that a source was pushed into the answers rather than grew there. */
