@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { providerFailureCode } from "../../providers/provider-error.js";
 import type { AnswerResult } from "../../core/types.js";
 import type { StructuredAsk } from "./topic-service.js";
 import {
@@ -569,13 +570,16 @@ export class PromptRunService {
         latencyMs: result.latencyMs,
       };
     } catch (error) {
+      // The provider layer already worked out which kind of failure this is,
+      // and flattening every one of them to provider_error threw that away.
+      const code = providerFailureCode(error);
       return {
         ...base,
         status: "provider_failed",
         text: "",
         mentions: [],
         citationUrls: [],
-        errorCode: "provider_error",
+        errorCode: code === "unknown" ? "provider_error" : code,
         errorMessage: error instanceof Error ? error.message : String(error),
         latencyMs: null,
       };

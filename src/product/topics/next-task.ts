@@ -47,8 +47,16 @@ const FAILURE_WORDS: Record<string, string> = {
   unavailable: "a browser surface that could not be reached or was asking to sign in",
   no_answer: "a surface that returned nothing to read",
   unreadable: "an answer that could not be read back",
+  unreadable_answer: "an answer that could not be read back",
   provider_error: "the provider returning an error",
   empty_answer: "the model returning an empty answer",
+  rate_limited: "a model asked more often than its plan allows",
+  billing: "a model the account cannot pay for",
+  authentication: "a key the provider refused",
+  timeout: "a model that did not answer in the time allowed",
+  upstream_unavailable: "the provider being down",
+  invalid_response: "the provider refusing the request",
+  analysis_failed: "an answer that arrived and could not be read",
 };
 
 /** Where a failure of that kind is actually cleared. Sending somebody to the
@@ -57,6 +65,13 @@ const FAILURE_FIX: Record<string, { page: string; action: string }> = {
   provider_error: { page: "setup", action: "Check the keys" },
   unavailable: { page: "models", action: "Check the surfaces" },
   empty_answer: { page: "models", action: "Check the models" },
+  // A plan's limit is cleared by dropping the model or paying for it, and
+  // neither of those happens on the page the keys live on.
+  rate_limited: { page: "models", action: "Choose models" },
+  billing: { page: "setup", action: "Check the account" },
+  authentication: { page: "setup", action: "Check the keys" },
+  timeout: { page: "models", action: "Choose models" },
+  upstream_unavailable: { page: "models", action: "Choose models" },
 };
 
 const URGENCY_ORDER: Record<TaskUrgency, number> = { blocking: 0, limiting: 1, work: 2 };
