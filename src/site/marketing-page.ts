@@ -35,6 +35,30 @@ const CAPABILITIES: Capability[] = [
     body: "Two of twelve answers is not seventeen percent. It is a sample, and the interval around it is wide enough that a move inside it is not a move. Every rate carries that range, and says plainly when it is too wide to decide anything.",
   },
   {
+    title: "Carry a name that should never appear",
+    body: "Declare a brand you know is irrelevant and it rides along on every run. How often it turns up anyway is this tool's own error rate, and anything of yours below it has not been told apart from a name nobody wrote. On a real project, nought of twenty two answers still left a floor near fifteen percent.",
+  },
+  {
+    title: "Know whether a page was cited or actually used",
+    body: "A citation says a page was listed. It does not say the answer used it. Published work separating the two found one engine citing twice as many pages as another and taking a fifth as much from them. Every cited page is read back and scored on how much of the answer it accounts for, so a page cited first and leaned on for nothing is visible.",
+  },
+  {
+    title: "See whether the words decide it, or the day",
+    body: "Asking again holds the wording and varies the day. Asking it another way holds the day and varies the wording. Without both, a brand visible for an intent and a brand visible for one exact string give you the same number.",
+  },
+  {
+    title: "Read your figure against brands like yours",
+    body: "The same rate is poor for a household name and ordinary for a brand nobody has heard of. Say which you are and the figure gets something to mean. Nought of twenty two reads as catastrophic and is, for a niche brand at that many answers, exactly what its kind tends to get.",
+  },
+  {
+    title: "Find what kind of page wins, not just which",
+    body: "The ranked best-of listicle is the most cited format in published work. What wins in your category is a different question. Every cited page is classified by what it is and who it belongs to, so the answer comes from your own archive.",
+  },
+  {
+    title: "Check the machine against a person",
+    body: "Every figure here rests on a model classifying what another model wrote. Judge a random sample yourself and the agreement rate becomes the confidence in the whole column. One review of one mention reads as twenty one to a hundred percent, not as perfect.",
+  },
+  {
     title: "Prove the crawlers arrived",
     body: "robots.txt says a crawler may fetch you. Your access log says whether it did. Reading both separates a permission problem from an obscurity problem, which look identical from the outside. Blocking is reported as what it measurably costs, which is referred traffic, not citation.",
   },
@@ -64,6 +88,14 @@ const REFUSALS: Capability[] = [
   {
     title: "It will not take what a model says it did on trust",
     body: "A model reporting which brands it named is a second claim, not evidence for the first. Every reported mention is checked against the answer the model actually wrote, including whether the line it quoted as proof is in there at all. Often enough, it is not.",
+  },
+  {
+    title: "It will not guess what kind of brand you are",
+    body: "The baseline a figure is read against depends on whether you are a household name or nobody has heard of you. Working that out from your own visibility would compare the number with itself, so it is declared or there is no comparison at all.",
+  },
+  {
+    title: "It will not ship a fix the evidence argues against",
+    body: "Question and answer formatting is the fix this field sells hardest. Measured, it carries a small disadvantage for how much of an answer a page accounts for. It is offered here with that figure attached rather than generated into your site alongside the rest.",
   },
 ];
 
@@ -193,7 +225,13 @@ citegeo listening on http://127.0.0.1:8787
 <span class="flag">limiting</span>  Read the source list as one draw, not as the sources
           0% of cited sources survived one pass to the next, against 34% published.
 <span class="ok">to do</span>     Write for the 4 questions you never appear in
-          4 tracked questions returned answers that never named you.</pre></div>
+          4 tracked questions returned answers that never named you.
+
+<span class="prompt">#</span> and what it refuses to call a finding
+<span class="ok">ok</span>        Named in 0% of answers, consistent with 0% to 14.9%
+          That range covers the 11% a niche brand tends to get.
+<span class="ok">ok</span>        Anything under 14.9% is not a finding
+          A name invented for this project never appeared either.</pre></div>
   </div>
 </section>
 
