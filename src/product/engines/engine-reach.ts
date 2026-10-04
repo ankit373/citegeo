@@ -1,5 +1,5 @@
-import { listTargets, CdpSession, type CdpTarget } from "./cdp-client.js";
-import { chooseTarget, DEFAULT_DEBUG_ENDPOINT, waitFor, type BrowserEngine } from "./browser-engine.js";
+import { CdpSession } from "./cdp-client.js";
+import { BrowserDriver, waitFor, type BrowserEngine } from "./browser-engine.js";
 
 // Which surfaces this browser can actually drive, asked before a run rather
 // than discovered by spending one. A surface that is gone, walled or blocked
@@ -75,38 +75,64 @@ export function verdictFor(home: string, look: Look): { reach: Reach; detail: st
 
 export const REACH_CAVEAT = "Each surface is loaded once and read, and nothing is asked of it. Drivable means there is somewhere to type a question, not that an answer will come back: a surface can take a question signed out and then decline to answer it.";
 
+/** An application shell paints before it hydrates, and reading at the first
+ * byte of text calls a shell that is still arriving a wall. */
+const SETTLED = `(() => {
+  if (!document.body) return false;
+  const text = document.body.innerText || "";
+  if (document.querySelector("textarea, [contenteditable='true']")) return true;
+  if (text.length > 2500) return true;
+  const lower = text.slice(0, 4000).toLocaleLowerCase();
+  return ${JSON.stringify(SIGN_IN_WORDS)}.some((word) => lower.includes(word)) && text.length > 0;
+})()`;
+
+async function lookAt(session: CdpSession, engine: BrowserEngine): Promise<EngineReach> {
+  const shell = { id: engine.id, label: engine.label, home: engine.home };
+  try {
+    await session.send("Page.navigate", { url: engine.home });
+    const settled = await waitFor(session, SETTLED, REACH_TIMEOUT_MS, 500);
+    let look = await session.evaluate<Look>(LOOK);
+    // An empty read a moment after a settled page is a race with the paint,
+    // and calling that surface unreadable would be a verdict about the timing.
+    if (!look.length) {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      look = await session.evaluate<Look>(LOOK);
+    }
+    const verdict = verdictFor(engine.home, look);
+    // A verdict read off a page that never settled is a verdict about the wait.
+    if (!settled && verdict.reach !== "drivable") {
+      return { ...shell, reach: "unreachable", landedOn: look.url, detail: `Still arriving after ${Math.round(REACH_TIMEOUT_MS / 1000)}s, so what it does once loaded was never seen. ${verdict.detail}` };
+    }
+    return { ...shell, ...verdict, landedOn: look.url };
+  } catch (error) {
+    return { ...shell, reach: "unreachable", detail: error instanceof Error ? error.message : String(error), landedOn: "" };
+  }
+}
+
 export async function probeReach(input: {
   engines: BrowserEngine[];
   endpoint?: string | undefined;
-  attach?: ((target: CdpTarget) => Promise<CdpSession>) | undefined;
-}): Promise<{ endpoint: string; engines: EngineReach[]; caveat: string }> {
-  const endpoint = input.endpoint || DEFAULT_DEBUG_ENDPOINT;
-  const results: EngineReach[] = [];
-  let session: CdpSession | null = null;
+  /** Supplied by a test, or opened against whichever browser is found. */
+  driver?: BrowserDriver | undefined;
+}): Promise<{ endpoint: string; found: string; engines: EngineReach[]; caveat: string }> {
+  let driver: BrowserDriver | null = input.driver || null;
+  const opened = !driver;
   try {
-    const target = chooseTarget(await listTargets(endpoint));
-    if (!target) throw new Error(`The browser at ${endpoint} has no open tab to drive.`);
-    session = await (input.attach ? input.attach(target) : CdpSession.attach(target));
-    await session.send("Page.enable");
-    await session.send("Runtime.enable");
-    for (const engine of input.engines) {
-      const shell = { id: engine.id, label: engine.label, home: engine.home };
-      try {
-        await session.send("Page.navigate", { url: engine.home });
-        await waitFor(session, `Boolean(document.body && document.body.innerText.length > 0)`, REACH_TIMEOUT_MS, 500);
-        const look = await session.evaluate<Look>(LOOK);
-        results.push({ ...shell, ...verdictFor(engine.home, look), landedOn: look.url });
-      } catch (error) {
-        results.push({
-          ...shell,
-          reach: "unreachable",
-          detail: error instanceof Error ? error.message : String(error),
-          landedOn: "",
-        });
-      }
-    }
+    driver = driver || await BrowserDriver.open({ endpoint: input.endpoint });
+    const where = driver.search.found;
+    const engines: EngineReach[] = [];
+    // One tab for the whole sweep, thrown away after, so no tab anybody is
+    // reading is navigated and nothing is left open behind the run.
+    await driver.withTab(async (session) => {
+      for (const engine of input.engines) engines.push(await lookAt(session, engine));
+    });
+    return {
+      endpoint: where?.endpoint || where?.browserWsUrl || "",
+      found: driver.search.detail,
+      engines,
+      caveat: REACH_CAVEAT,
+    };
   } finally {
-    session?.close();
+    if (opened) driver?.close();
   }
-  return { endpoint, engines: results, caveat: REACH_CAVEAT };
 }
