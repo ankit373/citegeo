@@ -276,34 +276,49 @@ export class PromptRunService {
     await this.store.saveRun(run);
 
     let stopped = false;
+    // One question at a time per provider, and every provider at once. Asking
+    // a provider twice at once risks its rate limit; waiting on one while the
+    // others idle is how 28 questions became a three hour job.
+    const queues = new Map<string, Array<() => Promise<void>>>();
     for (const prompt of prompts) {
-      if (stopped) break;
       for (const model of models) {
-        if (stopped) break;
         for (const market of regions) {
-          if (stopped) break;
           for (const tongue of languages) {
-            if (stopped) break;
             for (const who of personas) {
-              if (stopped) break;
               for (let pass = 1; pass <= repetitions; pass += 1) {
-                if (this.cancelled.has(run.id)) { stopped = true; break; }
-                // Written before the call so the interface can name what is in
-                // flight rather than only how many are done.
-                run.currentPromptText = prompt.text;
-                run.currentModelId = model.modelId;
-                await this.store.saveRun(run);
-                const answer = await this.ask({ run, baseline, model, prompt, identity, market, tongue, who });
-                await this.store.saveAnswer({ ...answer, repetition: pass });
-                if (countsTowardProgress(answer)) run.answersCompleted += 1;
-                else run.answersFailed += 1;
-                // Progress is written as it happens, so a long run is readable while it runs.
-                await this.store.saveRun(run);
+                const queue = queues.get(model.providerId) || [];
+                queue.push(async () => {
+                  // Written before the call so the interface can name what is in
+                  // flight rather than only how many are done.
+                  run.currentPromptText = prompt.text;
+                  run.currentModelId = model.modelId;
+                  await this.store.saveRun(run);
+                  const answer = await this.ask({ run, baseline, model, prompt, identity, market, tongue, who });
+                  await this.store.saveAnswer({ ...answer, repetition: pass });
+                  if (countsTowardProgress(answer)) run.answersCompleted += 1;
+                  else run.answersFailed += 1;
+                  // Progress is written as it happens, so a long run is readable while it runs.
+                  await this.store.saveRun(run);
+                });
+                queues.set(model.providerId, queue);
               }
             }
           }
         }
       }
+    }
+
+    await Promise.all([...queues.values()].map(async (queue) => {
+      for (const job of queue) {
+        if (this.cancelled.has(run.id)) { stopped = true; return; }
+        await job();
+      }
+    }));
+
+    // The surfaces stay one at a time. They are one browser, and two questions
+    // at once in the same signed-in session is a different thing to measure.
+    for (const prompt of prompts) {
+      if (stopped) break;
       for (const engine of chosenEngines) {
         if (stopped) break;
         for (let pass = 1; pass <= repetitions; pass += 1) {
