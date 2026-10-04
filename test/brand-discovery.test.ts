@@ -12,7 +12,7 @@ import type { SiteRead } from "../src/product/discovery/site-read.js";
 
 const GOOD_READ: SiteRead = {
   domain: "example.com", reachable: true, detail: null,
-  pages: [{ url: "https://example.com", title: "Example", description: "A screener", headings: ["Screen stocks"], text: "We screen stocks." }],
+  pages: [{ url: "https://example.com", title: "Example", description: "A screener", shape: { headings: 0, listItems: 0, tables: 0, paragraphs: 0 }, headings: ["Screen stocks"], text: "We screen stocks." }],
 };
 
 async function harness(read: (domain: string) => Promise<SiteRead>) {
@@ -87,7 +87,7 @@ test("a competitor with no name is dropped rather than stored as blank", () => {
 test("the digest carries the pages and is capped so it cannot crowd out the instructions", () => {
   const long: SiteRead = {
     ...GOOD_READ,
-    pages: [{ url: "https://example.com", title: "T", description: "D", headings: ["H"], text: "x".repeat(20000) }],
+    pages: [{ url: "https://example.com", title: "T", description: "D", shape: { headings: 0, listItems: 0, tables: 0, paragraphs: 0 }, headings: ["H"], text: "x".repeat(20000) }],
   };
   const digest = siteDigest(long, 500);
   assert.equal(digest.length, 500);

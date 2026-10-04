@@ -93,6 +93,74 @@ export interface StabilityShape {
   caveat: string;
 }
 
+export interface PhrasingShape {
+  measured: number;
+  namesTheBrand: number;
+  oneWording: number;
+  unstable: number;
+  spread: number | null;
+  questions: Array<{
+    rootId: string; rootText: string; modelId: string; namedIn: number; agreed: boolean; spread: number | null;
+    wordings: Array<{ promptId: string; text: string; answers: number; named: number }>;
+  }>;
+  caveat: string;
+}
+
+export interface DecoyShape {
+  considered: number;
+  decoys: Array<{ name: string; namedIn: number; inText: number; absentFromText: number; share: number | null; high: number | null }>;
+  noiseFloor: number | null;
+  matcherErrors: number;
+  presenceRate: number | null;
+  clearsFloor: boolean | null;
+  caveat: string;
+}
+
+export interface VarianceShape {
+  answers: number;
+  rate: number | null;
+  flat: boolean;
+  tooFew: boolean;
+  factors: Array<{
+    factor: string; label: string; levels: number; share: number | null;
+    best: { level: string; rate: number } | null;
+    worst: { level: string; rate: number } | null;
+  }>;
+  caveat: string;
+}
+
+export interface FramingShape {
+  measured: number;
+  flipped: number;
+  flipRate: number | null;
+  namingFlipped: number;
+  namingFlipRate: number | null;
+  ratio: number | null;
+  publishedRatio: number;
+  questions: Array<{ promptId: string; promptText: string; modelId: string; named: number; framings: string[]; steady: boolean }>;
+  caveat: string;
+}
+
+export interface TierShape {
+  tier: string;
+  baseline: { tier: string; label: string; rate: number; note: string } | null;
+  presence: { rate: number | null; low: number | null; high: number | null; trials: number; caveat: string };
+  typical: boolean | null;
+  standing: string | null;
+  caveat: string;
+}
+
+export interface VersionShape {
+  models: Array<{
+    modelId: string; reported: boolean;
+    versions: Array<{ version: string; answers: number; firstAt: string; lastAt: string; presence: { rate: number | null; low: number | null; high: number | null; trials: number } }>;
+    shifts: Array<{ modelId: string; from: { version: string }; to: { version: string }; change: number | null; separated: boolean | null }>;
+  }>;
+  unconfirmed: string[];
+  separatedShifts: number;
+  caveat: string;
+}
+
 export interface ActivationShape {
   considered: number;
   activated: number;
@@ -125,6 +193,18 @@ export interface CorroborationShape {
   caveat: string;
 }
 
+export interface UptakeShape {
+  measured: number;
+  unread: number;
+  mean: number | null;
+  citedNotUsed: number;
+  pages: Array<{
+    url: string; host: string; uptake: number | null; coverage: number | null;
+    citedAt: number; detail: string | null; phrases: Array<{ text: string; at: number }>;
+  }>;
+  caveat: string;
+}
+
 export interface InsightsShape {
   /** Computed on the server, so the view never imports the module that holds it. */
   position?: PositionShape | undefined;
@@ -143,6 +223,18 @@ export interface InsightsShape {
   /** Absent on an archive read before activation was split out. */
   activation?: ActivationShape | undefined;
   stability?: StabilityShape | undefined;
+  /** Absent on an archive read before wordings were compared. */
+  phrasing?: PhrasingShape | undefined;
+  /** Absent on an archive read before a decoy could be carried. */
+  decoys?: DecoyShape | undefined;
+  /** Absent on an archive read before the factors were compared. */
+  variance?: VarianceShape | undefined;
+  /** Absent on an archive read before framing was compared across passes. */
+  framing?: FramingShape | undefined;
+  /** Absent on an archive read before the tier baselines existed. */
+  tier?: TierShape | undefined;
+  /** Absent on an archive read before the model version was kept. */
+  versions?: VersionShape | undefined;
   /** Absent on an archive answered before mentions were checked against the
    * answer text, so nothing is claimed about those. */
   corroboration?: CorroborationShape | undefined;

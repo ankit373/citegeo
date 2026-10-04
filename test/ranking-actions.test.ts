@@ -18,7 +18,7 @@ function score(overrides: Partial<VisibilityScore> = {}): VisibilityScore {
 function insights(overrides: Partial<TopicInsights> = {}): TopicInsights {
   return {
     projectId: "p", answers: 10, answersFailed: 0, overall: score(), rank: 4, weights: WEIGHTS,
-    leaderboard: [], topics: [], byModel: [], absentFrom: [], citationsUnavailable: false, corroboration: summariseCorroboration([]), activation: splitActivation([]), stability: buildStabilityReport([]), tasks: [],
+    leaderboard: [], topics: [], byModel: [], absentFrom: [], citationsUnavailable: false, corroboration: summariseCorroboration([]), activation: splitActivation([]), stability: buildStabilityReport([]), phrasing: { measured: 0, namesTheBrand: 0, oneWording: 0, unstable: 0, spread: null, questions: [], caveat: "" }, decoys: { considered: 0, decoys: [], noiseFloor: null, matcherErrors: 0, presenceRate: null, clearsFloor: null, caveat: "" }, variance: { answers: 0, rate: null, flat: false, factors: [], tooFew: true, caveat: "" }, framing: { measured: 0, flipped: 0, flipRate: null, namingFlipped: 0, namingFlipRate: null, ratio: null, publishedRatio: 6.7, questions: [], caveat: "" }, tier: { tier: "unstated" as const, baseline: null, presence: wilsonInterval(0, 0), typical: null, standing: null, caveat: "" }, versions: { models: [], unconfirmed: [], separatedShifts: 0, caveat: "" }, tasks: [],
     trend: { points: [], change: null, since: null }, byRegion: [], byLanguage: [], byPersona: [],
     regionCaveat: "", identityCaveat: null, trackedRivals: [], ...overrides,
   };

@@ -428,6 +428,9 @@ export class PromptRunService {
 
       return {
         ...base,
+        // What the provider says it ran, not what was asked for. Some only
+        // echo the request back, which the reading has to tell apart.
+        ...(result.modelVersion ? { modelVersion: result.modelVersion } : {}),
         status: "completed",
         text: parsed.answer,
         mentions,

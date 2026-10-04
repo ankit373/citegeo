@@ -1,3 +1,4 @@
+import type { BrandTier } from "../topics/visibility-tier.js";
 import {
   ProductProjectConflictError,
   ProductProjectInputError,
@@ -26,7 +27,17 @@ function createInput(body: Record<string, unknown>): CreateProductProjectInput {
     brandName: optionalText(body, "brandName"),
     aliases: textList(body, "aliases"),
     defaultLanguage: optionalText(body, "defaultLanguage"),
+    tier: readTier(body),
   };
+}
+
+/** Only a tier the baselines know. Anything else is left unset rather than
+ * stored, because a tier with no baseline compares against nothing. */
+function readTier(body: Record<string, unknown>): BrandTier | undefined {
+  const value = body.tier;
+  if (typeof value !== "string") return undefined;
+  const known: BrandTier[] = ["household", "mid_market", "niche", "unstated"];
+  return known.includes(value as BrandTier) ? (value as BrandTier) : undefined;
 }
 
 function updateInput(body: Record<string, unknown>): UpdateProductProjectInput {
@@ -36,6 +47,7 @@ function updateInput(body: Record<string, unknown>): UpdateProductProjectInput {
     brandName: optionalText(body, "brandName"),
     aliases: textList(body, "aliases"),
     defaultLanguage: optionalText(body, "defaultLanguage"),
+    tier: readTier(body),
   };
 }
 

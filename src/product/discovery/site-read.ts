@@ -3,11 +3,21 @@ import { load } from "cheerio";
 // Reads enough of a site to say what the company does. Not a crawler: a
 // handful of pages a human would open to answer that same question.
 
+/** How a page is laid out, which is separate from what it says. Presentation
+ * has been shown to move citation credit between pages making the same claim. */
+export interface PageShape {
+  headings: number;
+  listItems: number;
+  tables: number;
+  paragraphs: number;
+}
+
 export interface SitePage {
   url: string;
   title: string;
   description: string;
   headings: string[];
+  shape: PageShape;
   text: string;
 }
 
@@ -46,7 +56,11 @@ export function squash(value: string): string {
   return out.join("").trim();
 }
 
-export function readPage(url: string, html: string): SitePage {
+/** Enough of a page to describe what it is. A page read to compare against an
+ * answer needs more, and asks for it. */
+export const PAGE_TEXT_DEFAULT = 4000;
+
+export function readPage(url: string, html: string, textLimit = PAGE_TEXT_DEFAULT): SitePage {
   const document = load(html);
   const meta = (name: string) =>
     squash(document(`meta[name="${name}"]`).attr("content") || document(`meta[property="${name}"]`).attr("content") || "");
@@ -60,12 +74,21 @@ export function readPage(url: string, html: string): SitePage {
     const text = squash(document(node).text());
     if (text && headings.length < 30) headings.push(text);
   });
+  // Counted before the text is squashed, because the markup is the only place
+  // the layout exists: the text reads the same either way.
+  const shape: PageShape = {
+    headings: document("h1,h2,h3,h4,h5,h6").length,
+    listItems: document("li").length,
+    tables: document("table").length,
+    paragraphs: document("p").length,
+  };
   return {
     url,
     title: squash(document("title").first().text()) || meta("og:title"),
     description: meta("description") || meta("og:description"),
     headings,
-    text: squash(document("body").text()).slice(0, 4000),
+    shape,
+    text: squash(document("body").text()).slice(0, textLimit),
   };
 }
 

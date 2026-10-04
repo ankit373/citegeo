@@ -6,6 +6,9 @@ import { citationStanding, positionReport } from "./position-metrics.js";
 import { sliceByWindow, windowFor } from "./period-window.js";
 import { buildRankingPlan, type RankingPlan } from "./ranking-plan.js";
 import { projectInsights } from "./project-insights.js";
+import { DECOY_SOURCE } from "./decoy-check.js";
+import { proposeWordings } from "./wording-protocol.js";
+import type { BrandTier } from "./visibility-tier.js";
 import { NO_PERSONA, type PersonaService } from "./persona.js";
 import { buildPromptBrief, type PromptBrief } from "./prompt-brief.js";
 import { briefMarkdown } from "./brief-export.js";
@@ -72,6 +75,9 @@ export async function handleTopicApi(input: {
   segments: SegmentService;
   personas: PersonaService;
   ask: StructuredAsk;
+  /** The kind of brand this is, so a visibility figure can be read against
+   * what that kind tends to get. Unstated until somebody declares it. */
+  tier?: ((projectId: string) => Promise<BrandTier>) | undefined;
   readJson: () => Promise<Record<string, unknown>>;
 }): Promise<boolean> {
   const { method, route, url, send, topics, runs, schedule, demand, profiles, models, competitors, segments, personas, ask, readJson } = input;
@@ -146,6 +152,39 @@ export async function handleTopicApi(input: {
       topicId: typeof body.topicId === "string" ? body.topicId : "",
       text: typeof body.text === "string" ? body.text : "",
       intent,
+    }));
+    return true;
+  }
+
+  // Asks a model for rewordings and saves the ones it vouched for. Separate
+  // from adding them by hand, because this one costs a call.
+  if (method === "POST" && tail.length === 2 && tail[0] === "prompts" && tail[1] === "suggest-wordings") {
+    const body = await readJson();
+    const promptId = typeof body.promptId === "string" ? body.promptId : "";
+    const count = Number(body.count);
+    await guard(async () => {
+      const set = await topics.get(projectId);
+      const root = set.prompts.find((prompt) => prompt.id === promptId);
+      if (!root) throw new Error(`Prompt ${promptId} does not exist.`);
+      const texts = await proposeWordings({
+        ask,
+        projectId,
+        question: root.text,
+        count: Number.isFinite(count) && count > 0 ? Math.min(Math.round(count), 8) : 3,
+      });
+      return topics.addWordings(projectId, { promptId, texts });
+    });
+    return true;
+  }
+
+  // Rewordings are written down against the question they reword, so what
+  // moved between them is the words and not which question was asked.
+  if (method === "POST" && tail.length === 2 && tail[0] === "prompts" && tail[1] === "wordings") {
+    const body = await readJson();
+    const texts = Array.isArray(body.texts) ? body.texts.filter((line: unknown): line is string => typeof line === "string") : [];
+    await guard(() => topics.addWordings(projectId, {
+      promptId: typeof body.promptId === "string" ? body.promptId : "",
+      texts,
     }));
     return true;
   }
@@ -335,6 +374,18 @@ export async function handleTopicApi(input: {
     return true;
   }
 
+  // A decoy is stored as a competitor with its own source, so it retires and
+  // resolves the same way, and every count that means rival excludes it.
+  if (method === "POST" && tail.length === 2 && tail[0] === "competitors" && tail[1] === "decoy") {
+    const body = await readJson();
+    await guard(() => competitors.add(projectId, {
+      name: typeof body.name === "string" ? body.name : "",
+      domain: typeof body.domain === "string" ? body.domain : null,
+      source: DECOY_SOURCE,
+    }));
+    return true;
+  }
+
   if (method === "POST" && tail.length === 2 && tail[0] === "competitors" && tail[1] === "retire") {
     const body = await readJson();
     await guard(() => competitors.retire(projectId, stringList(body.competitorIds)));
@@ -350,7 +401,7 @@ export async function handleTopicApi(input: {
         topics.targetIdentity(projectId).catch(() => null),
       ]);
       const set = await topics.get(projectId);
-      const insights = buildTopicInsights({ projectId, set, answers, identityCaveat: identity?.caveat || null });
+      const insights = buildTopicInsights({ projectId, set, answers, identityCaveat: identity?.caveat || null, tier: input.tier ? await input.tier(projectId) : undefined });
       const fromSite = (profile?.competitors || []).map((row) => ({ name: row.name, domain: row.domain }));
       const named = insights.leaderboard.filter((row) => !row.isTarget && row.appearances > 1).slice(0, 20)
         .map((row) => ({ name: row.name, domain: row.domain }));
@@ -384,7 +435,7 @@ export async function handleTopicApi(input: {
         topics.targetIdentity(projectId).catch(() => null),
         models(projectId).catch(() => 0),
       ]);
-      const insights = buildTopicInsights({ projectId, set, answers, runs: runList, identityCaveat: identity?.caveat || null });
+      const insights = buildTopicInsights({ projectId, set, answers, runs: runList, identityCaveat: identity?.caveat || null, tier: input.tier ? await input.tier(projectId) : undefined });
       const home = buildHomeSummary({ projectId, domain: identity?.host || projectId, set, insights, runs: runList, modelCount: selections });
       return buildAnswerDigest({ home });
     }, 404);
@@ -400,7 +451,7 @@ export async function handleTopicApi(input: {
         topics.targetIdentity(projectId).catch(() => null),
         models(projectId).catch(() => 0),
       ]);
-      const insights = buildTopicInsights({ projectId, set, answers, runs: runList, identityCaveat: identity?.caveat || null });
+      const insights = buildTopicInsights({ projectId, set, answers, runs: runList, identityCaveat: identity?.caveat || null, tier: input.tier ? await input.tier(projectId) : undefined });
       return buildHomeSummary({
         projectId,
         domain: identity?.host || projectId,
@@ -492,6 +543,7 @@ export async function handleTopicApi(input: {
         answers: scoped,
         runs: runList,
         identityCaveat: identity?.caveat || null,
+        tier: input.tier ? await input.tier(projectId) : undefined,
         competitors: rivals?.competitors,
       });
       return buildRankingPlan({
@@ -505,7 +557,7 @@ export async function handleTopicApi(input: {
 
   if (method === "GET" && tail.length === 1 && tail[0] === "prompt-insights") {
     await guard(async () => {
-      const insights = await projectInsights({ projectId, topics, runs, competitors, slice: (rows) => sliced(rows, url) });
+      const insights = await projectInsights({ projectId, topics, runs, competitors, tier: input.tier, slice: (rows) => sliced(rows, url) });
       // Computed here rather than in the browser, so the figure has one source
       // and the page never imports a module the app route cannot serve.
       const prompts = insights.topics.flatMap((topic) => topic.prompts);

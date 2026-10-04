@@ -7,7 +7,9 @@ import { domainLabel, tokenize } from "./prompt-identity.js";
 // A rival you track and never see is a finding; one you never declared is
 // invisible, and those are different things.
 
-export type CompetitorSource = "declared" | "from_site" | "discovered";
+/** A decoy is declared to be irrelevant, and carried so the product can report
+ * how often it finds a name that should never have been there. */
+export type CompetitorSource = "declared" | "from_site" | "discovered" | "decoy";
 
 export interface Competitor {
   id: string;

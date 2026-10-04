@@ -357,13 +357,69 @@
   @apply grid-cols-[minmax(0,1fr)_210px_124px_minmax(0,1.5fr)] items-start;
 }
 @utility mcols-promptrow {
-  @apply grid-cols-[20px_minmax(0,1fr)_96px_82px_104px] items-start;
+  @apply grid-cols-[20px_minmax(0,1fr)_96px_82px_96px_104px] items-start;
 }
 @utility mcols-engine {
   @apply grid-cols-[20px_minmax(0,1fr)_150px] items-start;
 }
 @utility mcols-stability {
   @apply grid-cols-[minmax(0,1fr)_96px_132px_86px_110px] items-start;
+}
+
+@utility mcols-uptake {
+  @apply grid-cols-[minmax(0,1fr)_96px_132px_86px_110px] items-start;
+}
+
+@utility mcols-phrasing {
+  @apply grid-cols-[minmax(0,1fr)_132px_110px] items-start;
+}
+
+@utility mcols-framing {
+  @apply grid-cols-[minmax(0,1fr)_110px_180px] items-start;
+}
+
+@utility mcols-version {
+  @apply grid-cols-[minmax(0,1fr)_130px_150px] items-start;
+}
+
+@utility mcols-decoy {
+  @apply grid-cols-[minmax(0,1fr)_110px_96px_150px] items-start;
+}
+
+@utility mcols-arrival {
+  @apply grid-cols-[minmax(0,1fr)_132px_96px] items-start;
+}
+
+@utility mcols-shift {
+  @apply grid-cols-[minmax(0,1fr)_110px_120px] items-start;
+}
+
+@utility mcols-concentration {
+  @apply grid-cols-[minmax(0,1fr)_72px_96px_86px] items-start;
+}
+
+@utility mcols-variance {
+  @apply grid-cols-[minmax(0,1fr)_72px_96px_120px] items-start;
+}
+
+@utility mcols-shape {
+  @apply grid-cols-[minmax(0,1fr)_170px_110px] items-start;
+}
+
+@utility mcols-kind {
+  @apply grid-cols-[minmax(0,1fr)_72px_72px_120px] items-start;
+}
+
+@utility mcols-check {
+  @apply grid-cols-[minmax(0,1fr)_96px_110px_140px] items-start;
+}
+
+@utility mcols-credit {
+  @apply grid-cols-[minmax(0,1fr)_72px_72px_72px] items-start;
+}
+
+@utility mcols-reach {
+  @apply grid-cols-[minmax(0,1fr)_150px_200px] items-start;
 }
 
 @utility mcols-source {

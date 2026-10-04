@@ -1,6 +1,12 @@
 import { summariseCorroboration, type CorroboratedMention, type CorroborationSummary } from "./mention-corroboration.js";
 import { splitActivation, type ActivationSplit } from "./search-activation.js";
 import { buildStabilityReport, type StabilityReport } from "./answer-stability.js";
+import { buildPhrasingReport, type PhrasingReport } from "./phrasing-sensitivity.js";
+import { buildDecoyReport, isDecoy, type DecoyReport } from "./decoy-check.js";
+import { buildVarianceReport, type VarianceReport } from "./variance-share.js";
+import { buildSentimentVolatility, type SentimentVolatility } from "./sentiment-volatility.js";
+import { compareToTier, type BrandTier, type TierComparison } from "./visibility-tier.js";
+import { buildVersionReport, type VersionReport } from "./model-version.js";
 import { nextTasks, type MeasurementTask } from "./next-task.js";
 import { domainLabel, tokenize } from "./prompt-identity.js";
 import { buildPromptTrend, type PromptTrend } from "./prompt-trend.js";
@@ -121,6 +127,24 @@ export interface TopicInsights {
   /** How much the same question moves when asked again. Empty until a run
    * asks more than once, because one pass cannot show it. */
   stability: StabilityReport;
+  /** How much the wording decides, as opposed to the day. Empty until a
+   * question has been written down more than one way. */
+  phrasing: PhrasingReport;
+  /** How often a name declared irrelevant turns up anyway, which is the error
+   * rate every other figure here should be read against. */
+  decoys: DecoyReport;
+  /** Of everything that varies between answers, how much of whether the brand
+   * appears goes with each. Not a decomposition: the factors are confounded. */
+  variance: VarianceReport;
+  /** How steady the framing is. Published work puts it flipping far more often
+   * than naming does, and it is the more volatile half of the score. */
+  framing: SentimentVolatility;
+  /** The brand's presence against what its declared kind of brand tends to
+   * get. Absent comparison until a tier is declared, never inferred. */
+  tier: TierComparison;
+  /** Which machine actually answered, and where it changed under you. Every
+   * trend line assumes it held still, and it does not. */
+  versions: VersionReport;
   /** How much of the model's report of what it named survived a check against
    * the answer it wrote in the same call. */
   corroboration: CorroborationSummary;
@@ -280,7 +304,9 @@ function personaStandings(answers: PromptAnswer[], labels: Map<string, string>):
 
 function trackedStandings(competitors: Competitor[], leaderboard: EntityStanding[], answers: number): EntityStanding[] {
   return competitors
-    .filter((row) => row.tracked)
+    // A decoy is not a rival. It is carried to measure the error rate, and
+    // ranking it beside the real ones would read as competing with it.
+    .filter((row) => row.tracked && !isDecoy(row))
     .map((competitor) => {
       const seen = leaderboard.find((row) => !row.isTarget && matchesCompetitor(competitor, row.name, row.domain));
       if (seen) return { ...seen, name: competitor.name, isTracked: true };
@@ -338,6 +364,9 @@ export function buildTopicInsights(input: {
   answers: PromptAnswer[];
   runs?: PromptRun[];
   identityCaveat?: string | null;
+  /** Declared, never inferred: inferring it from the brand's own visibility
+   * would compare the figure against itself. */
+  tier?: BrandTier | undefined;
   competitors?: Competitor[] | undefined;
   /** Persona id to label, so a retired persona still reads as its name. */
   personaLabels?: Map<string, string> | undefined;
@@ -400,6 +429,16 @@ export function buildTopicInsights(input: {
   const citationsUnavailable = completed.length > 0 && completed.every((answer) => answer.citationUrls.length === 0);
   const activation = splitActivation(completed);
   const stability = buildStabilityReport(completed);
+  const phrasing = buildPhrasingReport(completed, set);
+  const decoys = buildDecoyReport({ answers: completed, competitors: input.competitors || [] });
+  const variance = buildVarianceReport(completed);
+  const framing = buildSentimentVolatility(completed);
+  const versions = buildVersionReport(completed);
+  const tier = compareToTier({
+    tier: input.tier || "unstated",
+    appearances: overall.appearances,
+    answers: overall.answers,
+  });
   const corroboration = summariseCorroboration(completed.flatMap((answer) => answer.mentions).filter(hasCorroboration));
   const failed = new Map<string, number>();
   for (const answer of answers) {
@@ -425,6 +464,12 @@ export function buildTopicInsights(input: {
     citationsUnavailable,
     activation,
     stability,
+    phrasing,
+    decoys,
+    variance,
+    framing,
+    tier,
+    versions,
     corroboration,
     tasks: nextTasks({
       answers: completed.length,

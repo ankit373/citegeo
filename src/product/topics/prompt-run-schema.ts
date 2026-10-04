@@ -67,6 +67,10 @@ export interface PromptAnswer {
   providerId: AnswerSourceId;
   modelId: string;
   modelDisplayName: string;
+  /** What the provider said it actually ran, which is often more specific than
+   * what was asked for. Absent where it was never recorded, and equal to the
+   * model asked for where the provider only echoes it back. */
+  modelVersion?: string | undefined;
   /** The market stated to the model. "global" means none was. */
   regionId: string;
   /** The language the answer was asked for. */

@@ -41,6 +41,8 @@ import { handleTopicApi } from "./topics/topic-http.js";
 import { handleEngineApi } from "./engines/engine-http.js";
 import { handleRankingActionApi } from "./topics/action-http.js";
 import { handleCitationApi } from "./citations/citation-http.js";
+import { handleHumanCheckApi } from "./topics/human-check-http.js";
+import { handleExperimentApi } from "./experiments/experiment-http.js";
 import { handleSearchConsoleApi } from "./search-console/search-console-http.js";
 import { projectInsights } from "./topics/project-insights.js";
 import { handleStorageApi } from "./storage/storage-http.js";
@@ -170,11 +172,31 @@ async function handle(req: IncomingMessage, res: ServerResponse, services: Produ
   if (await handleCrawlerApi({ method, route, send: json, crawlerLog, insights,
     answers: (id) => promptRuns.listAnswers(id),
     domain: async (id) => (await services.projects.get(id))?.normalizedDomain || "" })) return;
-  if (await handleActionApi({ method, route, send: json, signals, insights })) return;
+  if (await handleActionApi({ method, route, send: json, signals, insights,
+    wanted: url.searchParams.has("count") ? Number(url.searchParams.get("count")) : undefined,
+    profile: async (id) => {
+      const stored = await services.profiles.get(id).catch(() => null);
+      if (!stored) return null;
+      const project = await services.projects.get(id).catch(() => null);
+      return {
+        brandName: project?.name || "",
+        description: stored.businessDescription,
+        category: stored.productCategory,
+        audience: stored.audience,
+        features: stored.features,
+        sources: stored.sources || [],
+      };
+    } })) return;
   if (await handleSearchConsoleApi({ method, route, send: json, searchConsole: services.searchConsole, externalMetrics: services.externalMetrics, readJson: body,
     prompts: async (id) => (await topics.get(id)).prompts.filter((prompt) => prompt.status === "active"),
     insights: (id) => projectInsights({ projectId: id, topics, runs: promptRuns, competitors: services.competitors, personas: services.personas, locations: services.locations }) })) return;
+  if (await handleExperimentApi({ method, route, send: json, service: services.experiments,
+    answers: (id) => promptRuns.listAnswers(id), readJson: body })) return;
+  if (await handleHumanCheckApi({ method, route, send: json, service: services.humanCheck,
+    answers: (id) => promptRuns.listAnswers(id), readJson: body })) return;
   if (await handleCitationApi({ method, route, send: json, pages: services.sourcePages,
+    refresh: url.searchParams.get("refresh") === "true",
+    runs: (id) => promptRuns.listRuns(id),
     answers: (id) => promptRuns.listAnswers(id),
     identity: (id) => topics.targetIdentity(id),
     names: async (id) => [...new Set((await promptRuns.listAnswers(id)).flatMap((answer) => answer.mentions.map((row) => row.name)))],
@@ -189,7 +211,8 @@ async function handle(req: IncomingMessage, res: ServerResponse, services: Produ
   if (await handleRankingActionApi({ method, route, send: json, actions: services.actions, readJson: body,
     insights: (id) => projectInsights({ projectId: id, topics, runs: promptRuns, competitors: services.competitors, personas: services.personas, locations: services.locations }) })) return;
   if (await handleEngineApi({ method, route, send: json, engines: services.engines, readJson: body })) return;
-  if (await handleTopicApi({ method, route, url, send: json, topics, runs: promptRuns, schedule: promptSchedule, demand, profiles, models: async (id) => (await selections.list(id)).length, competitors: services.competitors, segments: services.segments, personas: services.personas, ask: services.ask, readJson: body })) return;
+  if (await handleTopicApi({ method, route, url, send: json, topics, runs: promptRuns, schedule: promptSchedule, demand, profiles, models: async (id) => (await selections.list(id)).length, competitors: services.competitors, segments: services.segments, personas: services.personas, tier: async (id) => (await services.projects.get(id))?.tier || "unstated",
+    ask: services.ask, readJson: body })) return;
 
   if (await handleProductConfigurationApi({ method, route, projects, selections, baselines, catalog, readJson: () => readJson(req), send: (status, body) => send(res, status, body) })) return;
   if (await handleMeasurementApi({ method, route, readJson: () => readJson(req), send: (status, body) => send(res, status, body), projects, watchSets, measurements, stats })) return;

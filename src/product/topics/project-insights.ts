@@ -1,4 +1,5 @@
 import { buildTopicInsights, type TopicInsights } from "./topic-insights.js";
+import type { BrandTier } from "./visibility-tier.js";
 import type { CompetitorService } from "./competitor-set.js";
 import type { PromptAnswer } from "./prompt-run-schema.js";
 import type { PromptRunService } from "./prompt-run-service.js";
@@ -18,6 +19,9 @@ export async function projectInsights(input: {
   locations?: LocationService | undefined;
   /** Narrows the answers to a slice of the archive. Everything when omitted. */
   slice?: ((answers: PromptAnswer[]) => PromptAnswer[]) | undefined;
+  /** The kind of brand this is, so a visibility figure has something to be
+   * read against. Unstated when nobody has declared one. */
+  tier?: ((projectId: string) => Promise<BrandTier>) | undefined;
 }): Promise<TopicInsights> {
   const [set, answers, runList, identity] = await Promise.all([
     input.topics.get(input.projectId),
@@ -28,8 +32,10 @@ export async function projectInsights(input: {
   const rivals = await input.competitors.get(input.projectId).catch(() => null);
   const personas = input.personas ? await input.personas.get(input.projectId).catch(() => null) : null;
   const places = input.locations ? await input.locations.get(input.projectId).catch(() => null) : null;
+  const tier = input.tier ? await input.tier(input.projectId).catch(() => undefined) : undefined;
   return buildTopicInsights({
     projectId: input.projectId,
+    tier,
     set,
     answers: input.slice ? input.slice(answers) : answers,
     runs: runList,

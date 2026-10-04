@@ -78,6 +78,16 @@ export function boot(): void {
     rankPlan: Unshaped; rankPlanState: LoadState;
     brief: Unshaped; briefState: LoadState;
     outreach: Unshaped; outreachState: LoadState; harvesting: boolean;
+    uptake: Unshaped; uptakeState: LoadState;
+    interference: Unshaped; interferenceState: LoadState;
+    concentration: Unshaped; concentrationState: LoadState;
+    shape: Unshaped; shapeState: LoadState;
+    kinds: Unshaped; kindsState: LoadState;
+    experiments: Unshaped; experimentsState: LoadState;
+    check: Unshaped; checkState: LoadState;
+    credit: Unshaped; creditState: LoadState;
+    reach: Unshaped; reachState: LoadState;
+    paste: Unshaped; pasteState: LoadState; pasteCount: number;
     repetitions: number;
     searchDemand: Unshaped; searchDemandState: LoadState; pulling: boolean;
     personas: Unshaped; personasState: LoadState;
@@ -94,7 +104,7 @@ export function boot(): void {
     matrixHidden: string[];
   }
 
-    const state: State = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", marketer:null, drafts:null, claims:null, buying:null, conversations:null, entity:null, marketerState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, integrations:[], integrationsState:"idle", externalMetrics:null, externalMetricsState:"idle", externalMetricsPulling:"", externalMetricsNotice:{text:"",kind:""}, digest:null, digestState:"idle", demand:null, demandState:"idle", repetitions:Number(savedPreference("repetitions", "1")) || 1, dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", promptFilters:{ query:"", topicId:"", intent:"", status:"" }, promptSelection:[], answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", rivals:null, rivalsState:"idle", segments:null, segmentsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, lastRun:null, runPollTimer:0, runFeed:[], runFeedState:"idle", runFeedTimer:0, rankPlan:null, rankPlanState:"idle", brief:null, briefState:"idle", outreach:null, outreachState:"idle", harvesting:false, searchDemand:null, searchDemandState:"idle", pulling:false, personas:null, personasState:"idle", priority:null, priorityState:"idle", promptSort:"topic", referrals:null, referralsState:"idle", pullingReferrals:false, engines:null, enginesState:"idle", actions:[], actionsState:"idle", matrixOpen:[], editingBoard:false, brandIcons:{}, panelViews:savedJson("panelViews"), matrixHidden:savedList("matrixHidden") };
+    const state: State = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", marketer:null, drafts:null, claims:null, buying:null, conversations:null, entity:null, marketerState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, integrations:[], integrationsState:"idle", externalMetrics:null, externalMetricsState:"idle", externalMetricsPulling:"", externalMetricsNotice:{text:"",kind:""}, digest:null, digestState:"idle", demand:null, demandState:"idle", repetitions:Number(savedPreference("repetitions", "1")) || 1, dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", promptFilters:{ query:"", topicId:"", intent:"", status:"" }, promptSelection:[], answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", rivals:null, rivalsState:"idle", segments:null, segmentsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, lastRun:null, runPollTimer:0, runFeed:[], runFeedState:"idle", runFeedTimer:0, rankPlan:null, rankPlanState:"idle", brief:null, briefState:"idle", outreach:null, outreachState:"idle", harvesting:false, paste:null, pasteState:"idle", pasteCount:Number(savedPreference("pasteCount", "2")) || 2, uptake:null, uptakeState:"idle", interference:null, interferenceState:"idle", concentration:null, concentrationState:"idle", shape:null, shapeState:"idle", kinds:null, kindsState:"idle", experiments:null, experimentsState:"idle", check:null, checkState:"idle", credit:null, creditState:"idle", reach:null, reachState:"idle", searchDemand:null, searchDemandState:"idle", pulling:false, personas:null, personasState:"idle", priority:null, priorityState:"idle", promptSort:"topic", referrals:null, referralsState:"idle", pullingReferrals:false, engines:null, enginesState:"idle", actions:[], actionsState:"idle", matrixOpen:[], editingBoard:false, brandIcons:{}, panelViews:savedJson("panelViews"), matrixHidden:savedList("matrixHidden") };
     const app = document.getElementById("app") as HTMLElement;
     let renderOverride: (() => void) | null = null;
     // render() was a hoisted declaration that a later line reassigned. A
@@ -106,7 +116,7 @@ export function boot(): void {
     const formatTime = (value: string) => new Date(value).toLocaleString();
     const modeText = (mode: string) => mode === "provider_native" ? "Provider Native web search" : "Offline";
     const statusText = (status: string) => status === "draft" ? "Draft" : status === "active" ? "Running" : status === "archived" ? "Archived" : "Deleted";
-    function setSelectedProject(projectId: string) { if (projectId !== state.selectedId) { state.liveRun = null; state.lastRun = null; state.insights = null; state.insightsState = "idle"; state.plan = null; state.planState = "idle"; state.rankPlan = null; state.rankPlanState = "idle"; state.engines = null; state.enginesState = "idle"; state.actions = []; state.actionsState = "idle"; state.outreach = null; state.outreachState = "idle"; state.searchDemand = null; state.searchDemandState = "idle"; state.personas = null; state.personasState = "idle"; state.priority = null; state.priorityState = "idle"; state.referrals = null; state.referralsState = "idle"; state.crawlers = null; state.crawlersState = "idle"; state.signals = null; state.signalsState = "idle"; state.externalMetrics = null; state.externalMetricsState = "idle"; state.externalMetricsPulling = ""; state.externalMetricsNotice = { text:"", kind:"" }; } state.selectedId = projectId || ""; if (state.selectedId) localStorage.setItem("citegeo.product.projectId", state.selectedId); else localStorage.removeItem("citegeo.product.projectId"); const next = new URL(window.location.href); if (state.selectedId) next.searchParams.set("projectId", state.selectedId); else next.searchParams.delete("projectId"); window.history.replaceState({ projectId:state.selectedId }, "", next); }
+    function setSelectedProject(projectId: string) { if (projectId !== state.selectedId) { state.liveRun = null; state.lastRun = null; state.insights = null; state.insightsState = "idle"; state.plan = null; state.planState = "idle"; state.rankPlan = null; state.rankPlanState = "idle"; state.engines = null; state.enginesState = "idle"; state.actions = []; state.actionsState = "idle"; state.outreach = null; state.outreachState = "idle"; state.paste = null; state.pasteState = "idle"; state.uptake = null; state.uptakeState = "idle"; state.interference = null; state.interferenceState = "idle"; state.concentration = null; state.concentrationState = "idle"; state.shape = null; state.shapeState = "idle"; state.kinds = null; state.kindsState = "idle"; state.experiments = null; state.experimentsState = "idle"; state.check = null; state.checkState = "idle"; state.credit = null; state.creditState = "idle"; state.reach = null; state.reachState = "idle"; state.searchDemand = null; state.searchDemandState = "idle"; state.personas = null; state.personasState = "idle"; state.priority = null; state.priorityState = "idle"; state.referrals = null; state.referralsState = "idle"; state.crawlers = null; state.crawlersState = "idle"; state.signals = null; state.signalsState = "idle"; state.externalMetrics = null; state.externalMetricsState = "idle"; state.externalMetricsPulling = ""; state.externalMetricsNotice = { text:"", kind:"" }; } state.selectedId = projectId || ""; if (state.selectedId) localStorage.setItem("citegeo.product.projectId", state.selectedId); else localStorage.removeItem("citegeo.product.projectId"); const next = new URL(window.location.href); if (state.selectedId) next.searchParams.set("projectId", state.selectedId); else next.searchParams.delete("projectId"); window.history.replaceState({ projectId:state.selectedId }, "", next); }
     function setDrawer(open: boolean) { document.body.classList.toggle("drawer-open", open); element("project-drawer").setAttribute("aria-hidden", String(!open)); }
     function openDrawer() { state.drawerSession += 1; setFormStatus("", ""); setDrawer(true); window.setTimeout(() => element("project-domain").focus(), 0); }
     function closeDrawer() { state.drawerSession += 1; setDrawer(false); }
@@ -365,7 +375,7 @@ export function boot(): void {
         // A start takes a moment to appear, and one missed poll used to leave
         // the page claiming nothing was running for the length of the run.
         else if (state.promptRunState === "running") state.runPollTimer = window.setTimeout(loadLiveRun, 1500);
-        else if (had) { state.answerEngineState = "idle"; state.rankPlanState = "idle"; state.actionsState = "idle"; state.outreachState = "idle"; loadAnswerEngine(); if (state.panel && state.panel.kind === "run") loadRunFeed(); }
+        else if (had) { state.answerEngineState = "idle"; state.rankPlanState = "idle"; state.actionsState = "idle"; state.outreachState = "idle"; state.uptakeState = "idle"; loadAnswerEngine(); if (state.panel && state.panel.kind === "run") loadRunFeed(); }
         render();
       } catch (error) {
         state.liveRun = null;
@@ -692,6 +702,56 @@ export function boot(): void {
       }
       render();
     }
+    // Asking for more a day does not invent more. The shortfall is named, which
+    // is the whole difference from a tool that ships a fixed number whatever is true.
+    async function loadPaste() {
+      if (!state.selectedId || state.pasteState === "loading") return;
+      state.pasteState = "loading";
+      try {
+        state.paste = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/paste-fixes?count=" + state.pasteCount);
+        state.pasteState = "ready";
+      } catch (error) {
+        state.pasteState = "error";
+      }
+      render();
+    }
+
+    function pasteCountPicker() {
+      const options = [1, 2, 3, 5, 10, 20].map((count) =>
+        '<option value="' + count + '"' + (state.pasteCount === count ? " selected" : "") + '>' + count + ' a day</option>').join("");
+      return '<label class="picker"><span class="subtle">How many</span><select data-paste-count>' + options + '</select></label>';
+    }
+
+    function pasteFixCard(fix: any) {
+      return '<div class="fix"><div class="fix-top"><strong>' + html(fix.title) + '</strong><span class="tag">' + html(fix.language) + '</span>'
+        + '<button type="button" class="card-action" data-copy-fix="' + html(fix.id) + '">Copy</button></div>'
+        + '<p class="why">' + html(fix.why) + '</p>'
+        + '<p class="evidence-note">Observed: ' + html(fix.evidence) + '</p>'
+        + '<p class="evidence-note">Goes in: ' + html(fix.where) + '</p>'
+        + '<pre class="fix-snippet" id="fix-' + html(fix.id) + '">' + html(fix.snippet) + '</pre></div>';
+    }
+
+    function renderPaste() {
+      if (state.pasteState === "idle") { loadPaste(); }
+      const head = '<section class="section-card"><div class="section-head"><div><h2>Ready to paste</h2>'
+        + '<p class="subtle">Generated from what was observed on your site, so every snippet can be checked against the evidence beside it. Asking for more a day does not invent any.</p></div>'
+        + '<div class="inline-actions">' + pasteCountPicker() + '</div></div>';
+      if (state.pasteState !== "ready" || !state.paste) {
+        return head + '<p class="subtle">' + (state.pasteState === "error" ? "Could not generate anything." : "Generating from the last site probe.") + '</p></section>';
+      }
+      const list = state.paste;
+      const fixes = (list.fixes || []).map(pasteFixCard).join("");
+      const shortfall = list.shortfall ? '<div class="warning-box">' + html(list.shortfall) + '</div>' : '';
+      const described = (list.described || []).length
+        ? '<details class="technical-details"><summary>' + list.described.length + ' that cannot be generated correctly, so they are described instead</summary>'
+          + list.described.map((row: any) => '<div class="move"><div class="move-top"><strong>' + html(row.title) + '</strong></div>'
+            + '<p class="why">' + html(row.why) + '</p><p class="evidence-note">Observed: ' + html(row.evidence) + '</p></div>').join("")
+          + '</details>'
+        : '';
+      return head + shortfall + (fixes || '<p class="subtle">Nothing outstanding can be generated from the last probe.</p>') + described
+        + (list.caveat ? '<p class="mlegend">' + html(list.caveat) + '</p>' : '') + '</section>';
+    }
+
     async function captureSignals(button: any) {
       const selected = project();
       if (!selected) return;
@@ -949,6 +1009,7 @@ export function boot(): void {
       ).join("");
       const categoryRows = core.categories.map((row: any) => '<li>' + html(row.value) + ' <span class="subtle">' + row.count + '</span></li>').join("");
       return '<section class="view"><div class="heading"><div><h1>Visibility</h1><p class="subtle">Pooled from ' + data.runsConsidered + ' run(s) and ' + core.answered + ' parsed answer(s) for ' + html(data.domain) + '.</p></div><div class="inline-actions">' + button({ label: "Recompute", on: { "data-reload-insights": true } }) + '</div></div>'
+        + renderPaste()
         + renderActionPlan()
         + '<div class="countstrip"><span class="count"><strong>' + (v.score === null ? "n/a" : Math.round(v.score * 100) + "%") + '</strong>Visibility</span><span class="count"><strong>' + v.recognized + '</strong>Recognised</span><span class="count"><strong>' + v.answered + '</strong>Answers</span><span class="count"><strong>' + core.citations.targetCitedIn + '</strong>Answers citing you</span><span class="count"><strong>' + data.citationGap.length + '</strong>Citation gaps</span></div>'
         + '<section class="section-card"><div class="section-head"><div><h2>Visibility by model</h2><p class="subtle">Answers where the model said it recognised the domain.</p></div></div>' + insightTable("mcols-vis", ["Model", "Recognised", "Visibility"], v.byModel.length ? [modelRows] : [], "No parsed answers yet.") + '</section>'
@@ -1604,15 +1665,357 @@ export function boot(): void {
       render();
     }
 
-    async function harvestPages() {
+    // Cited is not used. One engine cites twice as many pages as another and
+    // takes a fifth as much from them, so the count is not the finding.
+    async function loadUptake() {
+      if (!state.selectedId || state.uptakeState === "loading") return;
+      state.uptakeState = "loading";
+      try {
+        state.uptake = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/source-uptake");
+        state.uptakeState = "ready";
+      } catch (error) {
+        state.uptakeState = "error";
+      }
+      render();
+    }
+
+    function uptakePct(value: any) { return value === null || value === undefined ? null : Math.round(value * 100) + "%"; }
+
+    function renderUptake() {
+      if (state.uptakeState === "idle") { loadUptake(); }
+      if (state.uptakeState !== "ready" || !state.uptake) {
+        return '<p class="subtle">' + (state.uptakeState === "error" ? "Could not read what the answers took from the pages." : "Reading what the answers took from the pages.") + '</p>';
+      }
+      const report = state.uptake;
+      if (!report.measured && !report.unread) return '<p class="subtle">No answer carried a citation, so there is no page to compare one against.</p>';
+      const lead = report.mean === null
+        ? 'No cited page has been read back, so nothing can be said about what the answers took from them.'
+        : 'Across ' + report.measured + ' cited page(s) read back, the mean uptake is ' + uptakePct(report.mean) + '.'
+          + (report.citedNotUsed
+            ? ' ' + report.citedNotUsed + (report.citedNotUsed === 1 ? ' was cited by an answer that barely touches its subject.' : ' were cited by answers that barely touch their subject.')
+            : ' Every cited page shares its subject with the answer that cited it.');
+      const unread = report.unread
+        ? '<p class="subtle">' + report.unread + ' cited page(s) have not been read back, so they are left out rather than counted as unused.</p>'
+        : '';
+      const rows = report.pages.slice(0, 10).map((row: any) => '<div class="mrow mcols-uptake"><div class="mname"><strong>' + html(row.host) + '</strong>'
+        + '<span class="mono">' + html(row.url.length > 70 ? row.url.slice(0, 70) + "\u2026" : row.url) + '</span>'
+        + (row.phrases.length ? '<span class="subtle">\u201c' + html(row.phrases[0].text.slice(0, 90)) + '\u201d</span>' : '')
+        + '</div>'
+        + '<span class="mcell">#' + row.citedAt + '</span>'
+        + '<span class="mcell ' + (row.uptake === null ? "" : row.uptake >= 0.4 ? "state-ok" : row.uptake > 0 ? "state-flag" : "state-bad") + '">'
+        + (row.uptake === null ? 'Not read' : uptakePct(row.uptake)) + '</span>'
+        + '<span class="mcell">' + (row.shared === null ? '\u2014' : uptakePct(row.shared)) + '</span>'
+        + '<span class="mcell">' + (row.coverage === null ? '\u2014' : uptakePct(row.coverage)) + '</span></div>').join("");
+      return '<p>' + html(lead) + '</p>' + unread
+        + '<div class="mtable"><div class="mhead mcols-uptake"><span>Page</span><span>Cited</span><span>Uptake</span><span>Shared subject</span><span>Coverage</span></div>' + rows + '</div>'
+        + '<p class="mlegend">' + html(report.caveat) + '</p>';
+    }
+
+    // Shapes, not findings. A rewrite aimed at being cited stays factually
+    // consistent with the original, so nothing that checks facts catches one.
+    async function loadInterference() {
+      if (!state.selectedId || state.interferenceState === "loading") return;
+      state.interferenceState = "loading";
+      try {
+        state.interference = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/source-interference");
+        state.interferenceState = "ready";
+      } catch (error) {
+        state.interferenceState = "error";
+      }
+      render();
+    }
+
+    function renderInterference() {
+      if (state.interferenceState === "idle") { loadInterference(); }
+      if (state.interferenceState !== "ready" || !state.interference) {
+        return '<p class="subtle">' + (state.interferenceState === "error" ? "Could not read the shape of the sources." : "Reading how the sources arrived.") + '</p>';
+      }
+      const report = state.interference;
+      const sudden = report.arrivals.filter((row: any) => row.sudden);
+      if (report.runs < 2) {
+        return '<p class="subtle">' + report.runs + ' run(s) have cited anything. A source that arrived everywhere at once can only be told from one that was always there by comparing runs, so this needs a second one.</p>';
+      }
+      const lead = sudden.length
+        ? sudden.length + ' source(s) arrived across most of the questions in a single run rather than growing into them.'
+        : 'No source arrived across most of the questions in one run. Everything cited grew in over more than one.';
+      const shifts = report.shifts.length
+        ? '<p>' + report.shifts.length + ' cited page(s) changed materially since they were last read.</p>'
+          + '<div class="mtable"><div class="mhead mcols-shift"><span>Page</span><span>Changed</span><span>Last read</span></div>'
+          + report.shifts.slice(0, 6).map((row: any) => '<div class="mrow mcols-shift"><div class="mname"><strong>' + html(row.host) + '</strong><span class="mono">' + html(row.url.slice(0, 70)) + '</span></div>'
+            + '<span class="mcell state-flag">' + Math.round(row.changed * 100) + '%</span>'
+            + '<span class="mcell mono">' + html(row.previousAt.slice(0, 10)) + '</span></div>').join("") + '</div>'
+        : '<p class="subtle">No cited page has been read twice, so none can be seen to have changed. Re-read them to start that comparison.</p>';
+      const rows = sudden.slice(0, 6).map((row: any) => '<div class="mrow mcols-arrival"><div class="mname"><strong>' + html(row.host) + '</strong>'
+        + '<span class="subtle">first cited ' + html(row.arrivedAt.slice(0, 10)) + '</span></div>'
+        + '<span class="mcell state-flag">' + row.questionsAtArrival + ' of ' + row.questionsInRun + '</span>'
+        + '<span class="mcell">' + Math.round(row.breadth * 100) + '%</span></div>').join("");
+      return '<p>' + html(lead) + '</p>'
+        + (rows ? '<div class="mtable"><div class="mhead mcols-arrival"><span>Source</span><span>Arrived across</span><span>Breadth</span></div>' + rows + '</div>' : '')
+        + shifts
+        + '<div class="inline-actions">' + button({ label: "Re-read the cited pages", kind: "quiet", on: { "data-refresh-pages": "true" } }) + '</div>'
+        + '<p class="mlegend">' + html(report.caveat) + '</p>';
+    }
+
+    // Who supplies the answers in this category. A few domains holding most of
+    // it makes getting onto them the whole game; a long tail means a new page
+    // can still get in.
+    async function loadConcentration() {
+      if (!state.selectedId || state.concentrationState === "loading") return;
+      state.concentrationState = "loading";
+      try {
+        state.concentration = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/source-concentration");
+        state.concentrationState = "ready";
+      } catch (error) {
+        state.concentrationState = "error";
+      }
+      render();
+    }
+
+    function renderConcentration() {
+      if (state.concentrationState === "idle") { loadConcentration(); }
+      if (state.concentrationState !== "ready" || !state.concentration) {
+        return '<p class="subtle">' + (state.concentrationState === "error" ? "Could not read who supplies these answers." : "Reading who supplies these answers.") + '</p>';
+      }
+      const report = state.concentration;
+      if (!report.hosts.length) return '<p class="subtle">No answer carried a citation, so there is nobody supplying them to count.</p>';
+      const half = report.halfHeldBy === null ? '' : report.halfHeldBy + ' domain(s) supply half of every citation here.';
+      const where = report.yourRank === null
+        ? ' Your own domain is not among them.'
+        : ' Yours is ranked ' + report.yourRank + ' of ' + report.hosts.length + '.';
+      const curve = report.topShares.map((row: any) => '<span class="count"><strong>' + Math.round(row.share * 100) + '%</strong>top ' + row.rank + '</span>').join("");
+      const rows = report.hosts.slice(0, 10).map((row: any, index: number) => '<div class="mrow mcols-concentration"><div class="mname"><strong>' + html(row.host) + (row.isYours ? ' <span class="tag">yours</span>' : '') + '</strong></div>'
+        + '<span class="mcell mono">' + (index + 1) + '</span>'
+        + '<span class="mcell">' + row.answers + '</span>'
+        + '<span class="mcell">' + Math.round(row.share * 100) + '%</span></div>').join("");
+      return '<p>' + html(half + where) + '</p>'
+        + '<div class="countstrip">' + curve + '<span class="count"><strong>' + (report.gini === null ? '\u2014' : (Math.round(report.gini * 100) / 100)) + '</strong>concentration</span></div>'
+        + '<div class="mtable"><div class="mhead mcols-concentration"><span>Domain</span><span>Rank</span><span>Answers</span><span>Share</span></div>' + rows + '</div>'
+        + '<p class="mlegend">' + html(report.caveat) + '</p>';
+    }
+
+    // Presentation moves citation credit between pages making the same claim,
+    // and the gain comes out of somebody else rather than out of nowhere.
+    async function loadShape() {
+      if (!state.selectedId || state.shapeState === "loading") return;
+      state.shapeState = "loading";
+      try {
+        state.shape = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/source-shape");
+        state.shapeState = "ready";
+      } catch (error) {
+        state.shapeState = "error";
+      }
+      render();
+    }
+
+    function shapeRow(label: string, theirs: any, yours: any) {
+      const behind = theirs !== null && yours !== null && theirs > yours;
+      return '<div class="mrow mcols-shape"><div class="mname"><strong>' + html(label) + '</strong></div>'
+        + '<span class="mcell ' + (behind ? "state-flag" : "") + '">' + (theirs === null ? '\u2014' : theirs) + '</span>'
+        + '<span class="mcell">' + (yours === null ? '\u2014' : yours) + '</span></div>';
+    }
+
+    function renderShape() {
+      if (state.shapeState === "idle") { loadShape(); }
+      if (state.shapeState !== "ready" || !state.shape) {
+        return '<p class="subtle">' + (state.shapeState === "error" ? "Could not read how these pages are laid out." : "Reading how these pages are laid out.") + '</p>';
+      }
+      const report = state.shape;
+      if (!report.theirs.pages) return '<p class="subtle">No page cited on a question you lose has been read back, so there is nothing to compare a layout against.</p>';
+      const lead = report.behindOnAll === null
+        ? 'None of your own pages has been cited and read back, so there is nothing of yours to compare. The figures on the left are what is already winning here.'
+        : report.behindOnAll
+          ? 'The pages cited instead of you carry more structure than yours on every count below.'
+          : 'Your pages are not behind on every count.';
+      return '<p>' + html(lead) + '</p>'
+        + '<div class="mtable"><div class="mhead mcols-shape"><span>Per thousand words</span><span>Cited instead of you</span><span>Yours</span></div>'
+        + shapeRow("Headings", report.theirs.headingsPerThousand, report.yours.headingsPerThousand)
+        + shapeRow("List items", report.theirs.listItemsPerThousand, report.yours.listItemsPerThousand)
+        + shapeRow("Tables", report.theirs.tablesPerThousand, report.yours.tablesPerThousand)
+        + '</div>'
+        + '<p class="subtle">' + html(report.effect) + '</p>'
+        + '<p class="mlegend">' + html(report.caveat) + '</p>';
+    }
+
+    // Every figure here rests on a model classifying what another model wrote,
+    // and nothing asked a person whether it got it right until this.
+    async function loadCheck() {
+      if (!state.selectedId || state.checkState === "loading") return;
+      state.checkState = "loading";
+      try {
+        state.check = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/human-check");
+        state.checkState = "ready";
+      } catch (error) {
+        state.checkState = "error";
+      }
+      render();
+    }
+
+    async function recordVerdict(control: Element) {
+      const id = control.getAttribute("data-verdict-id") || "";
+      const field = control.getAttribute("data-verdict-field") || "";
+      const agreed = control.getAttribute("data-verdict-agreed") === "true";
+      const correction = control.getAttribute("data-verdict-correction") || "";
+      try {
+        state.check = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/human-check", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id, field, agreed, correction }),
+        });
+        state.checkState = "ready";
+      } catch (error) {
+        state.promptNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind: "error" };
+      }
+      render();
+    }
+
+    function verdictButtons(item: any) {
+      const call = (field: string, agreed: boolean, correction: string, label: string) =>
+        '<button type="button" class="card-action" data-verdict-id="' + html(item.id) + '" data-verdict-field="' + field
+        + '" data-verdict-agreed="' + String(agreed) + '" data-verdict-correction="' + html(correction) + '">' + html(label) + '</button>';
+      const others = ["positive", "negative", "mentioned", "uncertain"].filter((value) => value !== item.recommendation);
+      return '<div class="move-actions"><span class="subtle">Called it ' + html(item.recommendation) + '</span>'
+        + call("recommendation", true, "", "Right")
+        + others.map((value) => call("recommendation", false, value, "No, " + value)).join("")
+        + '</div>'
+        + '<div class="move-actions"><span class="subtle">' + (item.isTarget ? "Called it you" : "Called it somebody else") + '</span>'
+        + call("isTarget", true, "", "Right")
+        + call("isTarget", false, item.isTarget ? "false" : "true", item.isTarget ? "No, not you" : "No, that is you")
+        + '</div>';
+    }
+
+    function renderHumanCheck() {
+      if (state.checkState === "idle") { loadCheck(); }
+      if (state.checkState !== "ready" || !state.check) {
+        return '<p class="subtle">' + (state.checkState === "error" ? "Could not read the review queue." : "Drawing a sample to review.") + '</p>';
+      }
+      const report = state.check;
+      const agreement = report.agreement;
+      const rows = agreement.byField.map((row: any) => '<div class="mrow mcols-check"><div class="mname"><strong>' + html(row.field === "isTarget" ? "Is it you" : "How you were described") + '</strong>'
+        + (row.corrections.length ? '<span class="subtle">should have been ' + row.corrections.map((c: any) => html(c.value) + ' \u00d7' + c.count).join(", ") + '</span>' : '')
+        + '</div>'
+        + '<span class="mcell">' + row.checked + '</span>'
+        + '<span class="mcell ' + (row.interval.rate === null ? "" : row.interval.rate >= 0.9 ? "state-ok" : "state-flag") + '">'
+        + (row.interval.rate === null ? 'Not checked' : Math.round(row.interval.rate * 100) + '%') + '</span>'
+        + '<span class="mcell subtle">' + (row.interval.low === null ? '\u2014' : Math.round(row.interval.low * 100) + ' to ' + Math.round(row.interval.high * 100) + '%') + '</span></div>').join("");
+      const next = report.items[0];
+      const judging = next
+        ? '<div class="fix"><div class="fix-top"><strong>' + html(next.name) + '</strong><span class="tag">' + html(next.modelId) + '</span></div>'
+          + '<p class="evidence-note">Asked: ' + html(next.promptText) + '</p>'
+          + '<p class="why">\u2026' + html(next.excerpt) + '\u2026</p>'
+          + verdictButtons(next)
+          + '<p class="mlegend">' + report.remaining + ' left in this sample, drawn from ' + agreement.population + ' mention(s).</p></div>'
+        : '<p class="subtle">Nothing left in this sample. Every mention drawn has been judged.</p>';
+      return '<div class="mtable"><div class="mhead mcols-check"><span>What was classified</span><span>Checked</span><span>Agreed</span><span>Consistent with</span></div>' + rows + '</div>'
+        + judging + '<p class="mlegend">' + html(agreement.caveat) + '</p>';
+    }
+
+    // Where a page was credited against how much of the answer it accounts for.
+    // A gap is consistent with credit going somewhere other than the content.
+    async function loadCredit() {
+      if (!state.selectedId || state.creditState === "loading") return;
+      state.creditState = "loading";
+      try {
+        state.credit = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/source-credit");
+        state.creditState = "ready";
+      } catch (error) {
+        state.creditState = "error";
+      }
+      render();
+    }
+
+    function creditRows(rows: any[], kind: string) {
+      return rows.slice(0, 5).map((row: any) => '<div class="mrow mcols-credit"><div class="mname"><strong>' + html(row.host) + '</strong>'
+        + '<span class="mono">' + html(row.url.slice(0, 64)) + '</span></div>'
+        + '<span class="mcell">#' + row.citedAt + '</span>'
+        + '<span class="mcell">#' + row.usedAt + '</span>'
+        + '<span class="mcell ' + kind + '">' + (row.gap > 0 ? '+' : '') + row.gap + '</span></div>').join("");
+    }
+
+    function renderCredit() {
+      if (state.creditState === "idle") { loadCredit(); }
+      if (state.creditState !== "ready" || !state.credit) {
+        return '<p class="subtle">' + (state.creditState === "error" ? "Could not compare credit against contribution." : "Comparing where pages were cited against what the answers took from them.") + '</p>';
+      }
+      const report = state.credit;
+      if (!report.comparable) {
+        return '<p class="subtle">No answer cited two pages that could both be read back, so there is no citation list to rank within. Read the cited pages and this fills.</p>';
+      }
+      const lead = 'Across ' + report.comparable + ' answer(s) citing more than one page that could be read, a page sits ' + report.meanGap + ' place(s) from where its contribution would put it on average.';
+      const over = report.overCredited.length
+        ? '<p><strong>Cited early, barely used.</strong></p><div class="mtable"><div class="mhead mcols-credit"><span>Page</span><span>Cited</span><span>Used</span><span>Gap</span></div>' + creditRows(report.overCredited, "state-flag") + '</div>'
+        : '';
+      const under = report.underCredited.length
+        ? '<p><strong>Used heavily, cited late.</strong></p><div class="mtable"><div class="mhead mcols-credit"><span>Page</span><span>Cited</span><span>Used</span><span>Gap</span></div>' + creditRows(report.underCredited, "state-ok") + '</div>'
+        : '';
+      const none = !over && !under ? '<p class="subtle">No page sits far from where its contribution would put it.</p>' : '';
+      return '<p>' + html(lead) + '</p>' + over + under + none
+        + '<p class="subtle">' + html(report.finding) + '</p>'
+        + '<p class="mlegend">' + html(report.caveat) + '</p>';
+    }
+
+    // The ranked best-of listicle was the most cited format in published work,
+    // at about a fifth of all citations, and four in five went to a company's
+    // own site. Both are worth knowing against what wins here.
+    async function loadKinds() {
+      if (!state.selectedId || state.kindsState === "loading") return;
+      state.kindsState = "loading";
+      try {
+        state.kinds = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/source-kinds");
+        state.kindsState = "ready";
+      } catch (error) {
+        state.kindsState = "error";
+      }
+      render();
+    }
+
+    function kindWords(kind: string) {
+      const words: Record<string, string> = {
+        listicle: "Ranked best-of", comparison: "Head to head", guide: "Guide or how-to",
+        documentation: "Documentation", review: "Review", forum: "Forum or community",
+        video: "Video", reference: "Reference work", article: "Article",
+        yours: "Your own site", rival: "A tracked rival", social: "Social", community: "Community",
+        corporate: "A company's own site",
+      };
+      return words[kind] || kind;
+    }
+
+    function kindRows(rows: any[]) {
+      return rows.map((row: any) => '<div class="mrow mcols-kind"><div class="mname"><strong>' + html(kindWords(row.kind)) + '</strong></div>'
+        + '<span class="mcell">' + row.pages + '</span>'
+        + '<span class="mcell">' + Math.round(row.share * 100) + '%</span>'
+        + '<span class="mcell">' + bar(row.share) + '</span></div>').join("");
+    }
+
+    function renderKinds() {
+      if (state.kindsState === "idle") { loadKinds(); }
+      if (state.kindsState !== "ready" || !state.kinds) {
+        return '<p class="subtle">' + (state.kindsState === "error" ? "Could not read what kind of pages are cited." : "Reading what kind of pages are cited.") + '</p>';
+      }
+      const report = state.kinds;
+      if (!report.pages) return '<p class="subtle">No cited page has been read back, so there is nothing to say about what kind of page wins here.</p>';
+      const listicle = 'Ranked best-of pages are ' + Math.round((report.listicleShare || 0) * 100) + '% of what is cited here, against ' + Math.round(report.listicleBaseline * 100) + '% published.';
+      const corporate = ' A company\u2019s own site accounts for ' + Math.round((report.corporateShare || 0) * 100) + '%, against ' + Math.round(report.corporateBaseline * 100) + '%.';
+      return '<p>' + html(listicle + corporate) + '</p>'
+        + '<div class="mtable"><div class="mhead mcols-kind"><span>Format</span><span>Pages</span><span>Share</span><span></span></div>' + kindRows(report.formats) + '</div>'
+        + '<div class="mtable" style="margin-top:14px"><div class="mhead mcols-kind"><span>Belongs to</span><span>Pages</span><span>Share</span><span></span></div>' + kindRows(report.sources) + '</div>'
+        + '<p class="mlegend">' + html(report.caveat) + '</p>';
+    }
+
+    async function harvestPages(refresh?: boolean) {
       if (!state.selectedId || state.harvesting) return;
       state.harvesting = true;
       render();
       try {
-        const result = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/source-pages", { method:"POST" });
+        const where = "/api/projects/" + encodeURIComponent(state.selectedId) + "/source-pages" + (refresh ? "?refresh=true" : "");
+        const result = await request(where, { method:"POST" });
         state.outreach = result.plan;
         state.outreachState = "ready";
         state.promptNotice = { text: result.read + " page(s) read, " + result.skipped + " already read or over the cap, " + result.failed + " would not load.", kind:"success" };
+        state.uptakeState = "idle";
+        state.interferenceState = "idle";
+        state.creditState = "idle";
+        state.shapeState = "idle";
+        state.kindsState = "idle";
       } catch (error) {
         state.promptNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind:"error" };
       }
@@ -2358,6 +2761,296 @@ export function boot(): void {
         + (rest > 0 ? '<p class="mlegend">' + rest + ' more on the full report.</p>' : '') + '</section>';
     }
 
+    // Repetition holds the wording and varies the day. This holds the day and
+    // varies the wording, so the two read together and neither alone.
+    function renderPhrasing(report: any) {
+      if (!report) return '';
+      if (!report.measured) {
+        return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>How much the wording decides</h3>'
+          + '<p class="subtle">Every question here is written down one way, so nothing says whether you are visible for what was asked or for the exact words it was asked in. Add a rewording to a question and the next run compares them.</p></div></div>'
+          + '<div class="inline-actions">' + button({ label: "Open questions", kind: "quiet", on: { "data-page": "prompts" } }) + '</div></div>';
+      }
+      const lead = report.spread === null
+        ? 'No pair of wordings produced an answer to compare.'
+        : 'Across ' + report.measured + ' question(s) written more than one way, the widest gap between two wordings averages ' + sharePct(report.spread) + '.';
+      const naming = report.unstable
+        ? ' ' + report.unstable + ' question(s) named you under one wording and not another, so that figure is about the words rather than about you.'
+        : ' Every question agreed with itself whichever way it was put.';
+      const named = report.namesTheBrand
+        ? ' ' + report.namesTheBrand + ' wording(s) name you and are left out, because the model discusses a brand the question names whatever it thinks.'
+        : '';
+      const rows = report.questions.slice(0, 6).map((row: any) => '<div class="mrow mcols-phrasing"><div class="mname"><strong>' + html(row.rootText) + '</strong>'
+        + '<span class="mono">' + html(row.modelId) + ' \u00b7 ' + row.wordings.length + ' wordings</span>'
+        + row.wordings.slice(0, 4).map((wording: any) => '<span class="subtle">' + (wording.named ? '\u2713' : '\u2717') + ' ' + html(wording.text) + '</span>').join("")
+        + '</div>'
+        + '<span class="mcell ' + (row.agreed ? "state-ok" : "state-bad") + '">' + (row.agreed ? "Agreed" : row.namedIn + ' of ' + row.wordings.length) + '</span>'
+        + '<span class="mcell">' + (row.spread === null ? '\u2014' : sharePct(row.spread)) + '</span></div>').join("");
+      return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>How much the wording decides</h3>'
+        + '<p class="subtle">' + html(report.caveat) + '</p></div></div>'
+        + '<p>' + html(lead + naming + named) + '</p>'
+        + '<div class="mtable"><div class="mhead mcols-phrasing"><span>Question and its wordings</span><span>Named you</span><span>Widest gap</span></div>'
+        + rows + '</div></div>';
+    }
+
+    // The error rate every other figure here should be read against. It sits
+    // with the score rather than in a corner, because that is what it qualifies.
+    function renderDecoys(report: any) {
+      if (!report) return '';
+      if (!report.decoys.length) {
+        return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>A brand that should never appear</h3>'
+          + '<p class="subtle">Nothing here measures how often this product finds a name that is not there. Declare a brand you know is irrelevant to these questions and every run carries it, so the share it turns up in becomes the figure yours has to beat.</p></div></div>'
+          + '<div class="inline-actions">' + button({ label: "Add a decoy", kind: "quiet", on: { "data-add-decoy": "true" } }) + '</div></div>';
+      }
+      const floor = sharePct(report.noiseFloor);
+      const verdict = report.clearsFloor === null
+        ? 'Nothing answered yet, so there is nothing to compare.'
+        : report.clearsFloor
+          ? 'Your ' + sharePct(report.presenceRate) + ' clears it.'
+          : 'Your ' + sharePct(report.presenceRate) + ' does not clear it, so it has not been told apart from a name that should never have been there.';
+      const add = '<div class="inline-actions" style="margin-top:12px">'
+        + button({ label: "Add a decoy", kind: "quiet", on: { "data-add-decoy": "true" } }) + '</div>';
+      const errors = report.matcherErrors
+        ? '<div class="warning-box"><strong>' + report.matcherErrors + ' reported mention(s) of a decoy are not in the answer that was said to contain them.</strong> That is this product reading a name that is not there, not a model writing one. Every figure built on reported mentions carries that error.</div>'
+        : '';
+      const rows = report.decoys.map((row: any) => '<div class="mrow mcols-decoy"><div class="mname"><strong>' + html(row.name) + '</strong>'
+        + '<span class="subtle">' + (row.absentFromText ? row.absentFromText + ' read into an answer that does not contain it' : 'never read into an answer that does not contain it') + '</span></div>'
+        + '<span class="mcell">' + row.namedIn + ' of ' + report.considered + '</span>'
+        + '<span class="mcell ' + (row.namedIn ? "state-flag" : "state-ok") + '">' + (row.share === null ? '\u2014' : sharePct(row.share)) + '</span>'
+        + '<span class="mcell">' + (row.high === null ? '\u2014' : sharePct(row.high)) + '</span></div>').join("");
+      return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>A brand that should never appear</h3>'
+        + '<p class="subtle">' + html(report.caveat) + '</p></div></div>'
+        + '<p><strong>Anything under ' + floor + ' is not a finding.</strong> ' + html(verdict) + '</p>' + errors
+        + '<div class="mtable"><div class="mhead mcols-decoy"><span>Decoy</span><span>Named in</span><span>Share</span><span>Consistent with up to</span></div>'
+        + rows + '</div>' + add + '</div>';
+    }
+
+    // Published work decomposing what decides a recommendation put the product's
+    // own parameters at most of it and the brand at close to none. This asks
+    // the same of one project's archive rather than taking that on trust.
+    function renderVariance(report: any) {
+      if (!report || !report.answers) return '';
+      if (report.flat) {
+        return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>What decides whether you appear</h3>'
+          + '<p class="subtle">Every answer said the same thing about you, so nothing here varies and nothing can explain it. That is a finding about the brand rather than a gap in the measurement.</p></div></div></div>';
+      }
+      const measured = report.factors.filter((row: any) => row.share !== null);
+      if (!measured.length) return '';
+      const few = report.tooFew
+        ? '<div class="warning-box">' + report.answers + ' answers is too few for these to be read as anything but arithmetic.</div>'
+        : '';
+      const rows = measured.map((row: any) => '<div class="mrow mcols-variance"><div class="mname"><strong>' + html(row.label) + '</strong>'
+        + (row.best && row.worst ? '<span class="subtle">' + html(String(row.best.level).slice(0, 40)) + ' ' + Math.round(row.best.rate * 100) + '% against ' + html(String(row.worst.level).slice(0, 40)) + ' ' + Math.round(row.worst.rate * 100) + '%</span>' : '')
+        + '</div>'
+        + '<span class="mcell">' + row.levels + '</span>'
+        + '<span class="mcell ' + (row.share >= 0.4 ? "state-flag" : "") + '">' + Math.round(row.share * 100) + '%</span>'
+        + '<span class="mcell">' + bar(row.share) + '</span></div>').join("");
+      const unvaried = report.factors.filter((row: any) => row.share === null);
+      const nothing = unvaried.length
+        ? '<p class="subtle">' + unvaried.map((row: any) => html(row.label)).join(", ") + ' took one value, so nothing varied for them to explain.</p>'
+        : '';
+      return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>What decides whether you appear</h3>'
+        + '<p class="subtle">' + html(report.caveat) + '</p></div></div>' + few
+        + '<div class="mtable"><div class="mhead mcols-variance"><span>Factor</span><span>Values</span><span>Goes with</span><span></span></div>' + rows + '</div>'
+        + nothing + '</div>';
+    }
+
+    // The more volatile half of the score, and the half that had no stability
+    // figure. Published work puts framing flipping far more often than naming.
+    function renderFraming(report: any) {
+      if (!report) return '';
+      if (!report.measured) {
+        return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>How steady the framing is</h3>'
+          + '<p class="subtle">No question named you more than once under identical conditions, so nothing says whether the way you are described holds still. Published work puts framing flipping about '
+          + report.publishedRatio + ' times as often as whether you are named at all, so this is the half of the score most likely to be moving.</p></div></div></div>';
+      }
+      const lead = report.flipped
+        ? report.flipped + ' of ' + report.measured + ' question(s) described you more than one way across passes that all named you.'
+        : 'Every question that named you more than once described you the same way each time.';
+      const against = report.ratio === null
+        ? ' Whether you are named never flipped here, so there is nothing to compare the framing against.'
+        : ' Framing flipped ' + report.ratio + ' times as often as naming did, against the ' + report.publishedRatio + ' published.';
+      const rows = report.questions.slice(0, 6).map((row: any) => '<div class="mrow mcols-framing"><div class="mname"><strong>' + html(row.promptText) + '</strong>'
+        + '<span class="mono">' + html(row.modelId) + ' \u00b7 named in ' + row.named + ' passes</span></div>'
+        + '<span class="mcell ' + (row.steady ? "state-ok" : "state-bad") + '">' + (row.steady ? "Steady" : row.framings.length + ' ways') + '</span>'
+        + '<span class="mcell subtle">' + html(row.framings.join(", ")) + '</span></div>').join("");
+      return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>How steady the framing is</h3>'
+        + '<p class="subtle">' + html(report.caveat) + '</p></div></div>'
+        + '<p>' + html(lead + against) + '</p>'
+        + '<div class="mtable"><div class="mhead mcols-framing"><span>Question</span><span>Framing</span><span>Called it</span></div>' + rows + '</div></div>';
+    }
+
+    const TIERS = [["unstated", "Not said"], ["household", "Global household name"], ["mid_market", "Mid-market or regional"], ["niche", "Niche or small"]];
+
+    async function setTier(value: string) {
+      const selected = project();
+      if (!selected) return;
+      try {
+        await request("/api/projects/" + encodeURIComponent(selected.id), {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ primaryDomain: selected.primaryDomain || selected.normalizedDomain, tier: value }),
+        });
+        await refreshProjects();
+        state.answerEngineState = "idle";
+        loadAnswerEngine();
+      } catch (error) {
+        state.promptNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind: "error" };
+      }
+      render();
+    }
+
+    // A rate on its own answers nothing: the same figure is poor for a
+    // household name and ordinary for a brand nobody has heard of.
+    function renderTier(report: any) {
+      if (!report) return '';
+      const picker = '<label class="picker"><span class="subtle">This brand is</span><select data-brand-tier>'
+        + TIERS.map(([value, label]) => '<option value="' + value + '"' + (report.tier === value ? " selected" : "") + '>' + html(label) + '</option>').join("")
+        + '</select></label>';
+      if (!report.baseline) {
+        return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>Against brands like yours</h3>'
+          + '<p class="subtle">A visibility figure on its own answers nothing. The same number is poor for a household name and ordinary for a brand nobody has heard of. Say which this is and the figure gets something to be read against.</p></div>'
+          + '<div class="inline-actions">' + picker + '</div></div></div>';
+      }
+      const yours = report.presence.rate === null
+        ? 'Nothing answered yet, so there is nothing of yours to compare.'
+        : 'You are named in ' + sharePct(report.presence.rate) + ' of answers, consistent with ' + sharePct(report.presence.low) + ' to ' + sharePct(report.presence.high) + '.';
+      const verdict = report.standing === null
+        ? ''
+        : report.standing === "typical"
+          ? ' That range covers the ' + sharePct(report.baseline.rate) + ' brands of this kind tended to get, so you are doing what your kind does.'
+          : report.standing === "above"
+            ? ' That is clear of the ' + sharePct(report.baseline.rate) + ' brands of this kind tended to get.'
+            : ' That falls short of the ' + sharePct(report.baseline.rate) + ' brands of this kind tended to get.';
+      const ink = report.standing === "above" ? "state-ok" : report.standing === "below" ? "state-bad" : "state-flag";
+      return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>Against brands like yours</h3>'
+        + '<p class="subtle">' + html(report.caveat) + '</p></div><div class="inline-actions">' + picker + '</div></div>'
+        + '<div class="countstrip"><span class="count ' + ink + '"><strong>' + (report.presence.rate === null ? '\u2014' : sharePct(report.presence.rate)) + '</strong>yours</span>'
+        + '<span class="count"><strong>' + sharePct(report.baseline.rate) + '</strong>' + html(report.baseline.label) + '</span></div>'
+        + '<p>' + html(yours + verdict) + '</p></div>';
+    }
+
+    // Everything else here is an observation. This is the only thing that can
+    // say a change did something, and only because a control absorbs whatever
+    // moved for reasons that were not the change.
+    async function loadExperiments() {
+      if (!state.selectedId || state.experimentsState === "loading") return;
+      state.experimentsState = "loading";
+      try {
+        state.experiments = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/experiments");
+        state.experimentsState = "ready";
+      } catch (error) {
+        state.experimentsState = "error";
+      }
+      render();
+    }
+
+    async function startExperiment() {
+      const selected = state.promptSelection.slice();
+      if (selected.length < 2) {
+        state.promptNotice = { text: "Select at least two questions on the Prompts page first: the ones the change should move, and the ones it should not.", kind: "warning" };
+        render();
+        return;
+      }
+      const name = window.prompt("Name this experiment.");
+      if (!name || !name.trim()) return;
+      const changed = window.prompt("What did you change? Write it down now, so it can be checked later.") || "";
+      const half = Math.ceil(selected.length / 2);
+      try {
+        state.experiments = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/experiments", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: name.trim(),
+            hypothesis: "",
+            changed,
+            treatedPromptIds: selected.slice(0, half),
+            controlPromptIds: selected.slice(half),
+          }),
+        });
+        state.experimentsState = "ready";
+        state.promptNotice = { text: "Experiment started. Run the questions again and the comparison fills.", kind: "success" };
+      } catch (error) {
+        state.promptNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind: "error" };
+      }
+      render();
+    }
+
+    async function stopExperiment(id: string) {
+      try {
+        state.experiments = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/experiments/" + encodeURIComponent(id) + "/stop", { method: "POST" });
+        state.experimentsState = "ready";
+      } catch (error) {
+        state.promptNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind: "error" };
+      }
+      render();
+    }
+
+    function armCell(label: string, side: any) {
+      return '<span class="count"><strong>' + (side.rate === null ? '\u2014' : Math.round(side.rate * 100) + '%') + '</strong>' + html(label) + ' (' + side.trials + ')</span>';
+    }
+
+    function experimentCard(row: any) {
+      const result = row.result;
+      const ink = result.verdict === "moved" ? "state-ok" : result.verdict === "no_effect_shown" ? "state-flag" : "state-bad";
+      const words = result.verdict === "moved" ? "Moved" : result.verdict === "no_effect_shown" ? "Nothing shown" : result.verdict === "no_control" ? "No control" : "Too thin yet";
+      const band = result.difference === null
+        ? ''
+        : '<p><strong>' + (result.difference > 0 ? '+' : '') + Math.round(result.difference * 100) + ' points</strong> more than the control moved, consistent with '
+          + Math.round((result.low || 0) * 100) + ' to ' + Math.round((result.high || 0) * 100) + ' points.</p>';
+      return '<div class="fix"><div class="fix-top"><strong>' + html(row.name) + '</strong>'
+        + '<span class="tag ' + ink + '">' + html(words) + '</span>'
+        + (row.status === "running" ? '<button type="button" class="card-action" data-stop-experiment="' + html(row.id) + '">Stop</button>' : '<span class="subtle">stopped</span>')
+        + '</div>'
+        + (row.changed ? '<p class="evidence-note">Changed: ' + html(row.changed) + '</p>' : '')
+        + '<p class="evidence-note">Measured from ' + html(row.changedAt.slice(0, 10)) + ' \u00b7 ' + row.treatedPromptIds.length + ' treated, ' + row.controlPromptIds.length + ' control</p>'
+        + band
+        + '<div class="countstrip">' + armCell("treated before", result.treated.before) + armCell("treated after", result.treated.after)
+        + armCell("control before", result.control.before) + armCell("control after", result.control.after) + '</div>'
+        + '<p class="subtle">' + html(result.detail) + '</p></div>';
+    }
+
+    function renderExperiments() {
+      if (state.experimentsState === "idle") { loadExperiments(); }
+      const start = '<div class="inline-actions">' + button({ label: "Start one from the selected questions", kind: "quiet", on: { "data-start-experiment": "true" } }) + '</div>';
+      if (state.experimentsState !== "ready" || !state.experiments) {
+        return start + (state.experimentsState === "error" ? '<p class="subtle">Could not read the experiments.</p>' : '');
+      }
+      const rows = state.experiments.experiments || [];
+      if (!rows.length) {
+        return '<p class="subtle">Nothing is being tested. Select the questions a change should move and the ones it should not on the Prompts page, then start one here. Everything else in this product watches; this is the only part that tests.</p>' + start;
+      }
+      return rows.map(experimentCard).join("") + start
+        + '<p class="mlegend">' + html(rows[0].result.caveat) + '</p>';
+    }
+
+    // Every trend line here assumes the thing being measured held still while
+    // the brand changed. A model shipping is the confound that breaks that.
+    function renderVersions(report: any) {
+      if (!report || (!report.models.length && !report.unconfirmed.length)) return '';
+      const shifts = report.models.flatMap((row: any) => row.shifts.filter((shift: any) => shift.separated));
+      const lead = shifts.length
+        ? shifts.length + ' model version change(s) moved your presence by more than the noise on either side. Nothing you did caused those, and no trend drawn across them compares like with like.'
+        : report.models.some((row: any) => row.reported)
+          ? 'No model version change here moved your presence by more than the noise either side of it.'
+          : 'No provider here names the version it ran, so a change would be invisible rather than absent.';
+      const rows = report.models.filter((row: any) => row.reported).flatMap((row: any) => row.shifts.map((shift: any) => {
+        const ink = shift.separated ? "state-bad" : shift.separated === null ? "state-flag" : "state-ok";
+        const words = shift.change === null ? "Too thin" : (shift.change > 0 ? "+" : "") + Math.round(shift.change * 100) + " points";
+        return '<div class="mrow mcols-version"><div class="mname"><strong>' + html(shift.modelId) + '</strong>'
+          + '<span class="mono">' + html(shift.from.version) + ' \u2192 ' + html(shift.to.version) + '</span></div>'
+          + '<span class="mcell ' + ink + '">' + html(words) + '</span>'
+          + '<span class="mcell subtle">' + (shift.separated === null ? 'not readable' : shift.separated ? 'beyond the noise' : 'within the noise') + '</span></div>';
+      })).join("");
+      const blind = report.unconfirmed.length
+        ? '<p class="subtle">' + report.unconfirmed.map((id: string) => html(id)).join(", ") + ' never named a version, so a change there cannot be seen. That is unconfirmed, not steady.</p>'
+        : '';
+      return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>Was it you, or did the model ship</h3>'
+        + '<p class="subtle">' + html(report.caveat) + '</p></div></div>'
+        + '<p>' + html(lead) + '</p>'
+        + (rows ? '<div class="mtable"><div class="mhead mcols-version"><span>Change</span><span>Presence moved</span><span>Reading</span></div>' + rows + '</div>' : '')
+        + blind + '</div>';
+    }
+
     function renderAnswerEngine() {
       const selected = project();
       if (!selected) return '<section class="view"><div class="empty"><div class="empty-copy"><h2>Select a project first</h2></div></div></section>';
@@ -2411,8 +3104,14 @@ export function boot(): void {
         + identityNote + failedNote + citationNote + corroborationNote
         + '<section class="section-card"><div class="section-head"><div><h2>How the score is built</h2><p class="subtle">Presence scaled by where you appear and how you are described.</p></div></div>'
         + renderScoreBreakdown(data.overall)
+        + renderTier(data.tier)
+        + renderVersions(data.versions)
+        + renderDecoys(data.decoys)
+        + renderVariance(data.variance)
         + taskCta("too-few-answers")
         + renderStability(data.stability)
+        + renderPhrasing(data.phrasing)
+        + renderFraming(data.framing)
         + '<details class="technical-details"><summary>The formula, and the judgement in it</summary>' + objective + '<p class="subtle">score = presence × (' + weights.prominenceFloor + ' + ' + (1 - weights.prominenceFloor).toFixed(1) + ' × prominence) × (' + weights.sentimentFloor + ' + ' + (1 - weights.sentimentFloor).toFixed(1) + ' × sentiment) × 100.</p><p class="subtle">The two floors are a judgement, not a measurement: being named late and grudgingly is still better than not being named, so prominence and sentiment scale presence rather than replacing it. Every component above is reported separately so you can ignore the composite entirely.</p></details></section>'
         + '<section class="section-card"><div class="section-head"><div><h2>What would move this</h2><p class="subtle">Read off the archived answers, strongest lever first. None of it is an opinion about your marketing.</p></div></div>' + renderRankingPlan() + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>Competitors named in the answers</h2><p class="subtle">Organisations the assistants named while answering your questions. Not the assistants themselves. Ranked by how many answers named them, then by how early.</p></div></div>' + renderLeaderboard(data.leaderboard) + '</section>'
@@ -2427,6 +3126,14 @@ export function boot(): void {
         + '<section class="section-card"><div class="section-head"><div><h2>Sources</h2><p class="subtle">A domain says you are cited. A page says which one to write more of.</p></div></div>' + renderCitedPages() + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>What people search for</h2><p class="subtle">Search Console, joined to the questions you track. Not AI prompt volume, but real demand for the same subject.</p></div></div>' + renderSearchDemand() + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>Who arrived from an assistant</h2><p class="subtle">Analytics sessions by referring assistant. Being named is one claim; somebody arriving because of it is another.</p></div></div>' + renderReferrals() + '</section>'
+        + '<section class="section-card"><div class="section-head"><div><h2>Cited, or actually used</h2><p class="subtle">A citation says a page was listed. This says how much of the answer came from it. A page cited and used for nothing is the finding worth having.</p></div></div>' + renderUptake() + '</section>'
+        + '<section class="section-card"><div class="section-head"><div><h2>Who gets the credit</h2><p class="subtle">Where a page was cited against how much of the answer it actually accounts for. A page credited first that the answer took nothing from was credited for something other than its content.</p></div></div>' + renderCredit() + '</section>'
+        + '<section class="section-card"><div class="section-head"><div><h2>Check the machine</h2><p class="subtle">Every figure here rests on a model classifying what another model wrote. Judge a few yourself and the agreement rate becomes the confidence in the whole column.</p></div></div>' + renderHumanCheck() + '</section>'
+        + '<section class="section-card"><div class="section-head"><div><h2>Did your change do anything</h2><p class="subtle">Everything else here watches. This tests. Change something, leave a comparable set of questions alone, and whatever moved for both is subtracted rather than claimed.</p></div></div>' + renderExperiments() + '</section>'
+        + '<section class="section-card"><div class="section-head"><div><h2>What kind of page gets cited</h2><p class="subtle">The ranked best-of listicle was the most cited format in published work, at about a fifth of everything. What wins here is a different question, and this is the answer to it.</p></div></div>' + renderKinds() + '</section>'
+        + '<section class="section-card"><div class="section-head"><div><h2>How the pages that beat you are built</h2><p class="subtle">The same facts rendered as structure instead of prose were measured to take citation credit from the page that stayed prose. This is the one lever here with a causal test behind it.</p></div></div>' + renderShape() + '</section>'
+        + '<section class="section-card"><div class="section-head"><div><h2>Who supplies these answers</h2><p class="subtle">A category where a handful of domains account for most citations is one where getting onto those domains is the whole game. A long tail is one where a new page can still get in.</p></div></div>' + renderConcentration() + '</section>'
+        + '<section class="section-card"><div class="section-head"><div><h2>Someone else is working on this answer</h2><p class="subtle">A document rewritten to match what an engine likes to cite stays factually consistent with the original, so nothing that checks facts will catch one. What is left is shape.</p></div></div>' + renderInterference() + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>Pages the models read</h2><p class="subtle">Each cited page, fetched and read back: who is on it, in what order, and whether you are. A page cited on a question you lose, without you on it, is the most specific thing here.</p></div></div>' + renderOutreach() + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>By AI assistant</h2><p class="subtle">The models you picked in Choose models, each answering the same questions. These are who was asked, not who you compete with.</p></div></div>' + renderModelRows(data.byModel) + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>Keep it running</h2><p class="subtle">A tracker that is run by hand is a snapshot.</p></div></div>' + renderSchedule() + '</section></section>';
@@ -2437,6 +3144,62 @@ export function boot(): void {
 
     // Score and rank come from the answer engine, so a question shows whether
     // it is working rather than only that it is tracked.
+    // The comparison had no way to be fed from the product at all: it shipped
+    // with the measurement and without a door into it.
+    async function suggestWordings(control: Element) {
+      const promptId = control.getAttribute("data-reword-prompt") || "";
+      await runAction(control, { loading: "Asking\u2026", success: "Added", error: "Failed" }, async () => {
+        const result = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/prompts/suggest-wordings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ promptId, count: 3 }),
+        });
+        state.topicSet = result.set || result;
+        state.promptNotice = result.added === undefined
+          ? { text: "Wordings added.", kind: "success" }
+          : { text: result.added + " wording(s) added, " + result.skipped + " skipped as blank or already there.", kind: result.added ? "success" : "warning" };
+        render();
+      }).catch(() => {
+        state.promptNotice = { text: "Could not get rewordings. The model that writes them needs to be reachable.", kind: "error" };
+        render();
+      });
+    }
+
+    async function addWordingByHand(promptId: string, text: string) {
+      if (!text.trim()) return;
+      try {
+        const result = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/prompts/wordings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ promptId, texts: [text] }),
+        });
+        state.topicSet = result.set || result;
+        state.promptNotice = { text: result.added ? "Wording added." : "That wording is already there.", kind: result.added ? "success" : "warning" };
+      } catch (error) {
+        state.promptNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind: "error" };
+      }
+      render();
+    }
+
+    // Declared the same way a rival is, so it retires and resolves like one,
+    // and every count that means rival leaves it out.
+    async function addDecoy(name: string) {
+      try {
+        await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/competitors/decoy", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name }),
+        });
+        state.answerEngineState = "idle";
+        state.rivalsState = "idle";
+        state.promptNotice = { text: "Decoy added. The next read of the answers reports how often it turns up.", kind: "success" };
+        loadAnswerEngine();
+      } catch (error) {
+        state.promptNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind: "error" };
+      }
+      render();
+    }
+
     async function loadPriority() {
       if (!state.selectedId || state.priorityState === "loading") return;
       state.priorityState = "loading";
@@ -2627,6 +3390,9 @@ export function boot(): void {
         + (priority ? '<span class="rowtags">' + fieldBadge(priority) + demandBadge(priority) + '</span>' : '') + '</div>'
         + '<span class="mcell ' + scoreClass + '">' + (answers ? scoreText(standing.score.score) : "Not asked yet") + '</span>'
         + '<span class="mcell">' + (answers ? (standing.rank === null ? "Not named" : "#" + standing.rank) : "") + '</span>'
+        + '<span class="mcell">'
+        + (prompt.variantOf ? '<span class="subtle">a rewording</span>' : button({ label: "Reword it", kind: "link", on: { "data-reword-prompt": prompt.id, "data-reword-text": prompt.text } }))
+        + '</span>'
         + '<span class="mcell">' + (prompt.status === "active"
           ? button({ label: "Stop tracking", kind: "link", on: { "data-retire-prompt": prompt.id } })
           : button({ label: "Track it", kind: "link", on: { "data-activate-prompt": prompt.id } })) + '</span></div>';
@@ -2646,7 +3412,7 @@ export function boot(): void {
         const bulk = proposed ? button({ label: "Track all " + (proposed), kind: "quiet", on: { "data-activate-topic": topic.id } }) : '';
         const description = topic.description ? html(topic.description) + ' · ' : '';
         return '<section class="section-card"><div class="section-head"><div class="headmain"><h2>' + html(topic.name) + '</h2><p class="subtle">' + description + tracked + ' of ' + mine.length + ' shown tracked</p></div><div class="headaside">' + bulk + score + '</div></div>'
-          + '<div class="mtable"><div class="mhead mcols-promptrow"><span></span><span>Question</span><span>Score</span><span>Rank</span><span></span></div>'
+          + '<div class="mtable"><div class="mhead mcols-promptrow"><span></span><span>Question</span><span>Score</span><span>Rank</span><span>Wordings</span><span></span></div>'
           + sortedPrompts(mine, standings).map((prompt) => promptRow(prompt, standings.get(prompt.id))).join("") + '</div></section>';
       }).join("");
     }
@@ -2795,6 +3561,49 @@ export function boot(): void {
       render();
     }
 
+    // Which surfaces this browser can drive, asked before a run rather than
+    // discovered by spending one. It loads each once and asks none of them.
+    async function probeReachNow(button: any) {
+      if (!state.selectedId) return;
+      state.reachState = "loading";
+      render();
+      try {
+        state.reach = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/engine-reach");
+        state.reachState = "ready";
+      } catch (error) {
+        state.reachState = "error";
+        state.modelNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind: "error" };
+      }
+      restoreButton(button);
+      render();
+    }
+
+    function reachInk(reach: string) {
+      return reach === "drivable" ? "state-ok" : reach === "sign_in" ? "state-flag" : "state-bad";
+    }
+
+    function reachWords(reach: string) {
+      return reach === "drivable" ? "Can be driven"
+        : reach === "sign_in" ? "Asking to sign in"
+          : reach === "blocked" ? "Sent elsewhere"
+            : "Nothing to drive";
+    }
+
+    function renderReach() {
+      const action = '<div class="inline-actions">'
+        + button({ label: state.reachState === "loading" ? "Checking\u2026" : "Check what this browser can reach", kind: "quiet", disabled: state.reachState === "loading", on: { "data-probe-reach": "true" } })
+        + '</div>';
+      if (state.reachState !== "ready" || !state.reach) {
+        return action + (state.reachState === "error" ? '<p class="subtle">Could not check. The browser may not be running.</p>' : '');
+      }
+      const rows = state.reach.engines.map((row: any) => '<div class="mrow mcols-reach"><div class="mname"><strong>' + html(row.label) + '</strong>'
+        + '<span class="subtle">' + html(row.detail) + '</span></div>'
+        + '<span class="mcell ' + reachInk(row.reach) + '">' + html(reachWords(row.reach)) + '</span>'
+        + '<span class="mcell mono">' + html((row.landedOn || row.home).slice(0, 34)) + '</span></div>').join("");
+      return action + '<div class="mtable"><div class="mhead mcols-reach"><span>Surface</span><span>State</span><span>Landed on</span></div>' + rows + '</div>'
+        + '<p class="mlegend">' + html(state.reach.caveat) + '</p>';
+    }
+
     function renderEngines() {
       if (state.enginesState === "idle") { loadEngines(); }
       if (state.enginesState !== "ready" || !state.engines) {
@@ -2811,7 +3620,7 @@ export function boot(): void {
         + '<input type="checkbox" data-engine-checkbox="' + html(engine.id) + '"' + (engine.selected ? ' checked' : '') + ' aria-label="Ask ' + html(engine.label) + '">'
         + '<div class="mname"><strong>' + html(engine.label) + '</strong><span class="subtle">' + html(engine.caveat) + '</span></div>'
         + '<span class="mcell ' + (engine.selected ? 'state-ok' : '') + '">' + (engine.selected ? "Asked on every run" : "Not asked") + '</span></div>').join("");
-      return reach + '<div class="mtable"><div class="mhead mcols-engine"><span></span><span>Surface</span><span>State</span></div>' + rows + '</div>'
+      return reach + '<div class="mtable"><div class="mhead mcols-engine"><span></span><span>Surface</span><span>State</span></div>' + rows + '</div>' + renderReach()
         + '<p class="subtle">These are the only sources here that search the web by construction, so they are where citations come from. Nothing signs in on your behalf; the answer is whatever your own signed-in session shows.</p>';
     }
 
@@ -2984,6 +3793,27 @@ export function boot(): void {
         return;
       }
       if (target.closest("[data-harvest-pages]")) { harvestPages(); return; }
+      if (target.closest("[data-refresh-pages]")) { harvestPages(true); return; }
+      const reachNow = target && target.closest ? target.closest("[data-probe-reach]") : null;
+      if (reachNow) { probeReachNow(reachNow); return; }
+      if (target.closest("[data-start-experiment]")) { startExperiment(); return; }
+      const stopIt = target && target.closest ? target.closest("[data-stop-experiment]") : null;
+      if (stopIt) { stopExperiment(stopIt.getAttribute("data-stop-experiment") || ""); return; }
+      if (target.closest("[data-add-decoy]")) {
+        const name = window.prompt("Name a brand you know is irrelevant to these questions. It is never asked about, only matched against the answers, so it costs nothing to run.");
+        if (name && name.trim()) addDecoy(name.trim());
+        return;
+      }
+      const reword = target && target.closest ? target.closest("[data-reword-prompt]") : null;
+      if (reword) {
+        const typed = window.prompt("Add a wording of this question, or leave it blank to have one written for you.\n\n" + (reword.getAttribute("data-reword-text") || ""));
+        if (typed === null) return;
+        if (typed.trim()) addWordingByHand(reword.getAttribute("data-reword-prompt") || "", typed);
+        else suggestWordings(reword);
+        return;
+      }
+      const verdict = target && target.closest ? target.closest("[data-verdict-id]") : null;
+      if (verdict) { recordVerdict(verdict); return; }
       if (target.closest("[data-pull-search]")) { pullSearchDemand(); return; }
       if (target.closest("[data-pull-referrals]")) { pullReferrals(); return; }
       if (target.closest("[data-stop-run]")) { stopRun(); return; }
@@ -3120,6 +3950,12 @@ export function boot(): void {
       if (saveSettings) { await saveIntegrationSettings(saveSettings.getAttribute("data-integration-settings-save"), saveSettings); return; }
       const removeSelectedModel = target && target.closest ? target.closest("[data-remove-selected-model]") : null;
       if (removeSelectedModel) { dropSelection(removeSelectedModel.getAttribute("data-remove-selected-model") || ""); return; }
+      const copyFix = target && target.closest ? target.closest("[data-copy-fix]") : null;
+      if (copyFix) {
+        const block = element("fix-" + (copyFix.getAttribute("data-copy-fix") || ""));
+        if (block) await copyText(copyFix, block.textContent || "");
+        return;
+      }
       const probeHere = target && target.closest ? target.closest("[data-probe-signals]") : null;
       if (probeHere && state.page === "entity") { await probeForEntity(probeHere); return; }
       const runCheck = target && target.closest ? target.closest("[data-run-factcheck], [data-run-shopping]") : null;
@@ -3145,7 +3981,7 @@ export function boot(): void {
       const probeButton = target && target.closest ? target.closest("[data-probe-signals]") : null;
       if (probeButton) { await captureSignals(probeButton); state.signalsState = "idle"; loadSignals(); return; } if (!(target instanceof Element)) return; const pageButton = target.closest("[data-page]"); if (pageButton) { await setPage(pageButton.getAttribute("data-page") || "overview"); return; } const listModeButton = target.closest("[data-list-mode]"); if (listModeButton) { state.mode = listModeButton.getAttribute("data-list-mode") || "current"; await refreshProjects(); render(); return; } if (target.id === "new-project" || target.id === "empty-new-project") { openDrawer(); return; } if (target.id === "close-drawer" || target.id === "cancel-draft" || target.id === "drawer-backdrop") { closeDrawer(); return; } if (target.id === "retry-catalog") { state.catalogState = "idle"; await loadCatalog(); return; } const opened = target.closest("[data-matrix-open]"); if (opened) { const key = opened.getAttribute("data-matrix-open") || ""; const at = state.matrixOpen.indexOf(key); if (at >= 0) state.matrixOpen.splice(at, 1); else state.matrixOpen.push(key); render(); return; } const expand = target.closest("[data-expand-panel]"); if (expand && !target.closest("button:not(.panel-open),a,select,input,textarea,label")) { openPanel(expand.getAttribute("data-expand-panel") || ""); return; } if (target.closest("[data-edit-board]")) { state.editingBoard = !state.editingBoard; render(); return; } const span = target.closest("[data-panel-span]"); if (span) { const parts = (span.getAttribute("data-panel-span") || "").split(":"); setPanelSpan(parts[0] || "", Number(parts[1])); render(); return; } const hide = target.closest("[data-panel-hide]"); if (hide) { togglePanelHidden(hide.getAttribute("data-panel-hide") || ""); render(); return; } if (target.closest("[data-reset-panels]")) { resetPanelOrder(); state.editingBoard = false; render(); return; } const brand = target.closest("[data-brand-evidence]"); if (brand) { await openBrandEvidence(brand.getAttribute("data-brand-evidence") || "", brand.getAttribute("data-brand-tone") || ""); return; } const dropped = target.closest("[data-drop-selection]"); if (dropped) { dropSelection(dropped.getAttribute("data-drop-selection") || ""); return; } if (target.id === "save-models") { await saveModels((target as any)); return; } if (target.id === "save-monitoring-configuration") { await saveMonitoringConfiguration(); return; } if (target.id === "archive-project") { const selected = project(); if (selected) await projectAction("archive", selected.id, (target as any)); return; } if (target.id === "delete-project") { const selected = project(); if (selected) await projectAction("delete", selected.id, (target as any)); return; } const action = target.closest("[data-project-action]"); if (action) { const projectId = action.getAttribute("data-project-id"); const name = action.getAttribute("data-project-action"); if (projectId && name) await projectAction(name, projectId, (action as any)); } });
     document.addEventListener("change", async (event) => { const target = el(event.target) as any; if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) return; if (target.id === "project-select") { setSelectedProject(target.value); state.selectionsDirty = false; await refreshConfiguration(); loadLiveRun(); render(); return; } if (target instanceof HTMLInputElement && target.hasAttribute("data-model-checkbox")) { changeModel(target.getAttribute("data-model-checkbox") || "", target.checked); return; } if (target instanceof HTMLSelectElement && target.hasAttribute("data-model-mode")) { changeModelMode(target.getAttribute("data-model-mode") || "", target.value); return; } if (target instanceof HTMLSelectElement && target.hasAttribute("data-selected-model-mode")) { changeModelMode(target.getAttribute("data-selected-model-mode") || "", target.value); return; } });
-    document.addEventListener("change", (event) => { const target = el(event.target) as any; if (!(target instanceof HTMLSelectElement)) return; if (target.id === "model-provider-filter") { state.catalogProvider = target.value; render(); return; } if (target.id === "model-native-search-filter") { state.catalogNativeSearch = target.value; render(); return; } if (target.id === "model-catalog-sort") { state.catalogSort = target.value; render(); return; } if (target.hasAttribute("data-repetitions")) { state.repetitions = Number(target.value) || 1; savePreference("repetitions", String(state.repetitions)); render(); } });
+    document.addEventListener("change", (event) => { const target = el(event.target) as any; if (!(target instanceof HTMLSelectElement)) return; if (target.id === "model-provider-filter") { state.catalogProvider = target.value; render(); return; } if (target.id === "model-native-search-filter") { state.catalogNativeSearch = target.value; render(); return; } if (target.id === "model-catalog-sort") { state.catalogSort = target.value; render(); return; } if (target.hasAttribute("data-repetitions")) { state.repetitions = Number(target.value) || 1; savePreference("repetitions", String(state.repetitions)); render(); return; } if (target.hasAttribute("data-brand-tier")) { setTier(target.value); return; } if (target.hasAttribute("data-paste-count")) { state.pasteCount = Number(target.value) || 2; savePreference("pasteCount", String(state.pasteCount)); state.pasteState = "idle"; loadPaste(); render(); } });
     // The drawer filters in place rather than through a re-render, because a
     // re-render takes the focus out of the box you are typing in.
     const PANEL_ROWS = ".mrow, .rankrow, .panel-body li";

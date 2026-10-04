@@ -1,4 +1,4 @@
-import { readPage } from "../discovery/site-read.js";
+import { readPage, type PageShape } from "../discovery/site-read.js";
 import { statedDate, type PageAge } from "./freshness.js";
 import { namesIdentity, tokenize } from "../topics/prompt-identity.js";
 
@@ -29,8 +29,22 @@ export interface SourcePage {
   namesYou: boolean;
   /** Everyone the answers named who also appears here, in page order. */
   named: NamedOnPage[];
+  /** What the page says, capped. Kept so an answer can be compared against the
+   * page that was cited for it. Absent on a record stored before this existed. */
+  text?: string | undefined;
+  /** What it said when it was last read, and when that was. Kept only so a
+   * page that changed under a URL an answer already cites can be seen. */
+  previousText?: string | undefined;
+  previousFetchedAt?: string | undefined;
+  /** How it is laid out, which is separate from what it says. Absent on a
+   * record stored before the markup was counted. */
+  shape?: PageShape | undefined;
   detail: string | null;
 }
+
+/** Enough of a page to find what an answer took from it, without turning the
+ * store into a copy of somebody else's site. */
+export const TEXT_KEPT = 24000;
 
 /** Identifies the tool and where to complain about it. Reading somebody
  * else's page is a request to their server, made under a name they can see. */
@@ -134,7 +148,7 @@ export async function readSourcePage(input: {
   if ("detail" in fetched) return { ...shell, title: null, detail: fetched.detail };
 
   const html = fetched.html;
-  const page = readPage(input.url, html);
+  const page = readPage(input.url, html, TEXT_KEPT);
   const dated = statedDate(html);
   const text = page.text;
   const named: NamedOnPage[] = [];
@@ -159,6 +173,8 @@ export async function readSourcePage(input: {
     dateSource: dated.source,
     namesYou,
     named,
+    text: text.slice(0, TEXT_KEPT),
+    shape: page.shape,
     detail: null,
   };
 }
