@@ -156,6 +156,33 @@ test("no effect shown is never reported as no effect", () => {
   assert.ok(result.detail.includes("not the same as showing it did nothing"));
 });
 
+test("a rate of nought or one does not become certainty", () => {
+  // p times one minus p is nought at both ends, which collapsed the band to a
+  // single point and reported an experiment as certain from 40 answers a cell.
+  const result = analyseExperiment({
+    answers: [...arm("t", 0, 40, BEFORE), ...arm("t", 40, 40, AFTER), ...arm("c", 0, 40, BEFORE), ...arm("c", 0, 40, AFTER)],
+    treatedPromptIds: ["t"], controlPromptIds: ["c"], changedAt: CHANGED,
+  });
+  assert.equal(result.difference, 1);
+  assert.ok((result.high || 0) > (result.low || 0), "a band of no width is a claim of certainty");
+  assert.ok((result.low || 0) < 1, `the bottom of the band should sit below the point, got ${result.low}`);
+});
+
+test("the band narrows as the answers pile up", () => {
+  const width = (n: number): number => {
+    const r = analyseExperiment({
+      answers: [
+        ...arm("t", Math.round(n * 0.2), n, BEFORE), ...arm("t", Math.round(n * 0.4), n, AFTER),
+        ...arm("c", Math.round(n * 0.2), n, BEFORE), ...arm("c", Math.round(n * 0.2), n, AFTER),
+      ],
+      treatedPromptIds: ["t"], controlPromptIds: ["c"], changedAt: CHANGED,
+    });
+    return (r.high || 0) - (r.low || 0);
+  };
+  assert.ok(width(200) < width(50));
+  assert.ok(width(50) < width(10));
+});
+
 test("the caveat refuses the word proof and names what it cannot remove", () => {
   assert.ok(EXPERIMENT_CAVEAT.includes("evidence for the change rather than proof of it"));
   assert.ok(EXPERIMENT_CAVEAT.includes("only as good as the control being comparable"));

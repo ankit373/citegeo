@@ -45,9 +45,14 @@ export interface ExperimentResult {
   caveat: string;
 }
 
+/** Taken from the Wilson interval rather than from p times one minus p. At a
+ * rate of nought or one that product is nought, which collapses the band and
+ * declares certainty from a handful of answers. Wilson never collapses. */
 function variance(interval: ProportionInterval): number | null {
   if (interval.rate === null || interval.trials <= 0) return null;
-  return (interval.rate * (1 - interval.rate)) / interval.trials;
+  if (interval.low === null || interval.high === null) return null;
+  const error = (interval.high - interval.low) / (2 * INTERVAL_Z);
+  return error * error;
 }
 
 function arm(answers: PromptAnswer[], promptIds: Set<string>, changedAt: number): ArmResult {
