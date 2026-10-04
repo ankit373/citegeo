@@ -60,6 +60,7 @@ import { EngineService } from "./engines/engine-service.js";
 import { ActionLogService, ActionLogStore } from "./topics/action-log.js";
 import { SourcePageService } from "./citations/source-service.js";
 import { HumanCheckService } from "./topics/human-check-service.js";
+import { ExperimentService } from "./experiments/experiment-service.js";
 import { SearchConsoleService } from "./search-console/search-console-service.js";
 import { PersonaService } from "./topics/persona.js";
 import { LocationService } from "./topics/location.js";
@@ -153,6 +154,7 @@ export interface ProductServices {
   actions: ActionLogService;
   sourcePages: SourcePageService;
   humanCheck: HumanCheckService;
+  experiments: ExperimentService;
   searchConsole: SearchConsoleService;
   externalMetrics: ExternalMetricProviderPullService;
   personas: PersonaService;
@@ -195,6 +197,7 @@ export function createProductServices(dependencies: ProductServerDependencies = 
   const executor = dependencies.recognitionExecutor || new OpenRouterRecognitionAnswerExecutor();
   const profiles = new BrandProfileService(new BrandProfileFileStore(projectStore), projects);
   const humanCheck = new HumanCheckService(projectStore);
+  const experiments = new ExperimentService(projectStore);
   const icons = new SiteIconService(new SiteIconStore(projectStore));
   const topics = new TopicService(new TopicFileStore(projectStore), projects, insights, profiles);
   const ask = createStructuredAsk({ baselines, executor });
@@ -248,7 +251,7 @@ export function createProductServices(dependencies: ProductServerDependencies = 
   return {
     projects, catalog, selections, baselines, recognition, reports, insights,
     signals, crawlerLog, watchSets, measurements, stats, schedules,
-    topics, promptRuns, promptSchedule, demand, explorations, profiles, agents, shopping, factcheck, icons, competitors, segments, ask, engines, actions, sourcePages, humanCheck, searchConsole, externalMetrics, personas, locations,
+    topics, promptRuns, promptSchedule, demand, explorations, profiles, agents, shopping, factcheck, icons, competitors, segments, ask, engines, actions, sourcePages, humanCheck, experiments, searchConsole, externalMetrics, personas, locations,
     storageSettings, dataDir: productDataDir(),
     credentials,
     auth: authConfig(),
