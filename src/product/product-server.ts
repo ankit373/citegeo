@@ -154,6 +154,14 @@ async function handle(req: IncomingMessage, res: ServerResponse, services: Produ
     send: json,
     redirect: (status, location, headers) => { res.writeHead(status, { Location: location, ...SAFETY_HEADERS, ...(headers || {}) }); res.end(); },
   })) return;
+  // A citation is an address until the page is read, and four panels are taken
+  // over read pages, so the task list has to be able to say which.
+  const countCitedPages = async (id: string): Promise<{ cited: number; read: number }> => {
+    const [answers, pages] = await Promise.all([promptRuns.listAnswers(id), services.sourcePages.list(id)]);
+    const cited = new Set(answers.flatMap((answer) => answer.citationUrls));
+    const read = new Set(pages.filter((page) => !page.detail).map((page) => page.url));
+    return { cited: cited.size, read: [...cited].filter((url) => read.has(url)).length };
+  };
   if (await handleSiteIconApi({ method, route, send: json, service: services.icons, readJson: body })) return;
   if (await handleExplorationApi({ method, route, send: json, store: services.explorations })) return;
   if (await handleLocationApi({ method, route, send: json, service: services.locations, readJson: body })) return;
@@ -163,7 +171,7 @@ async function handle(req: IncomingMessage, res: ServerResponse, services: Produ
   })) return;
   if (await handleAimApi({
     method, route, send: json, history: (id) => signals.history(id),
-    insights: (id) => projectInsights({ projectId: id, topics, runs: promptRuns, competitors: services.competitors, personas: services.personas, locations: services.locations }),
+    insights: (id) => projectInsights({ projectId: id, topics, runs: promptRuns, competitors: services.competitors, personas: services.personas, locations: services.locations, citedPages: countCitedPages }),
   })) return;
   if (await handleAgentApi({ method, route, send: json, service: services.agents, ask: services.ask, readJson: body })) return;
   if (await handleShoppingApi({ method, route, send: json, service: services.shopping, ask: services.ask, readJson: body })) return;
@@ -189,7 +197,7 @@ async function handle(req: IncomingMessage, res: ServerResponse, services: Produ
     } })) return;
   if (await handleSearchConsoleApi({ method, route, send: json, searchConsole: services.searchConsole, externalMetrics: services.externalMetrics, readJson: body,
     prompts: async (id) => (await topics.get(id)).prompts.filter((prompt) => prompt.status === "active"),
-    insights: (id) => projectInsights({ projectId: id, topics, runs: promptRuns, competitors: services.competitors, personas: services.personas, locations: services.locations }) })) return;
+    insights: (id) => projectInsights({ projectId: id, topics, runs: promptRuns, competitors: services.competitors, personas: services.personas, locations: services.locations, citedPages: countCitedPages }) })) return;
   if (await handleExperimentApi({ method, route, send: json, service: services.experiments,
     answers: (id) => promptRuns.listAnswers(id), readJson: body })) return;
   if (await handleHumanCheckApi({ method, route, send: json, service: services.humanCheck,
@@ -208,8 +216,9 @@ async function handle(req: IncomingMessage, res: ServerResponse, services: Produ
         .map((row) => String(row.domain))))];
       return { domain: project?.normalizedDomain, rivalDomains };
     } })) return;
+
   if (await handleRankingActionApi({ method, route, send: json, actions: services.actions, readJson: body,
-    insights: (id) => projectInsights({ projectId: id, topics, runs: promptRuns, competitors: services.competitors, personas: services.personas, locations: services.locations }) })) return;
+    insights: (id) => projectInsights({ projectId: id, topics, runs: promptRuns, competitors: services.competitors, personas: services.personas, locations: services.locations, citedPages: countCitedPages }) })) return;
   if (await handleEngineApi({ method, route, send: json, engines: services.engines, readJson: body })) return;
   if (await handleTopicApi({ method, route, url, send: json, topics, runs: promptRuns, schedule: promptSchedule, demand, profiles, models: async (id) => (await selections.list(id)).length, competitors: services.competitors, segments: services.segments, personas: services.personas, tier: async (id) => (await services.projects.get(id))?.tier || "unstated",
     ask: services.ask, readJson: body })) return;

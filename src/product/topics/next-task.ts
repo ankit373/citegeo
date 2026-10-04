@@ -33,6 +33,9 @@ export interface TaskInput {
   citationsUnavailable: boolean;
   /** Questions answered where the brand was never named. */
   absentFrom: number;
+  /** Cited pages, and how many have been read back. Absent where nobody has
+   * looked, which is not the same as nothing having been cited. */
+  citedPages?: { cited: number; read: number } | undefined;
   /** Why the failed answers failed, largest group first. The product knows,
    * so telling somebody to go and find out would be withholding it. */
   failureReasons?: Array<{ code: string; count: number }> | undefined;
@@ -159,6 +162,22 @@ export function nextTasks(input: TaskInput): MeasurementTask[] {
         : `${askedOnce} of ${askedOnce + measured} questions were asked once, so most of what is below is a single draw.`,
       page: "prompts",
       action: "Run them again",
+    });
+  }
+
+  // A citation is a URL until the page behind it is read. Four panels are
+  // taken over read pages and every one of them sits empty until somebody does.
+  const cited = input.citedPages;
+  if (cited && cited.cited > 0 && cited.read < cited.cited) {
+    const unread = cited.cited - cited.read;
+    tasks.push({
+      id: "sources-unread",
+      urgency: "limiting",
+      title: `Read the ${unread} cited ${plural(unread, "page", "pages")} nobody has opened`,
+      why: "Whether a cited page was used or only listed, who gets the credit, how the pages that beat you are built and what kind of page wins are all taken over the pages themselves. A citation on its own is an address.",
+      evidence: `${cited.read} of ${cited.cited} cited ${plural(cited.cited, "page has", "pages have")} been read back.`,
+      page: "answer-engine",
+      action: "Read the pages",
     });
   }
 
