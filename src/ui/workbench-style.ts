@@ -2,6 +2,12 @@ export const WORKBENCH_CSS = String.raw`
 :root {
   color-scheme: dark;
 
+  /* The three families, from src/ui/theme.ts. Written out rather than
+     imported because this file is a raw string, and checked by a test. */
+  --font-display: "Wix Madefor Display","Wix Madefor Text",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-ui: "Wix Madefor Text",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono: "IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+
   /* Surfaces. Warm charcoal derived from one base hue, not a cool gray scale. */
   --bg: #14120F;
   --bg-elevated: #1C1914;
@@ -61,12 +67,12 @@ body {
   min-height: 100vh;
   background: var(--bg);
   color: var(--text);
-  font-family: "General Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font-ui);
   font-variant-numeric: tabular-nums;
   letter-spacing: 0;
 }
 
-h1, h2, h3, h4 { font-family: "Cabinet Grotesk", ui-sans-serif, system-ui, sans-serif; font-weight: 700; letter-spacing: -0.01em; }
+h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.01em; }
 
 button, input, select, textarea { font: inherit; letter-spacing: 0; }
 button, a, select, summary { -webkit-tap-highlight-color: transparent; }
@@ -488,7 +494,7 @@ tr:last-child td { border-bottom: 0; }
 tbody tr:hover td { background: var(--panel-hover); }
 td strong { color: var(--text); }
 .row-link { color: var(--accent); font-weight: 700; }
-.mono { font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-variant-numeric: tabular-nums; }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 
 .status {
   display: inline-flex;

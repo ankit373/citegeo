@@ -29,8 +29,11 @@
   --color-skeleton-sheen: rgba(255,255,255,.70);
   /* Behind a drawer or a panel, so the page reads as out of reach. */
   --color-scrim: rgba(10,14,20,.40);
-  --font-display: "IBM Plex Sans Condensed","IBM Plex Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
-  --font-ui: "IBM Plex Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  /* Wix Madefor was drawn for interface text: a tall x-height that holds at
+     11px in a table, and a display cut for headings. Figures stay on IBM Plex
+     Mono, which has the tabular widths a column of numbers needs. */
+  --font-display: "Wix Madefor Display","Wix Madefor Text",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-ui: "Wix Madefor Text",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
   --font-mono: "IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
   --figures: tabular-nums;
   --text-micro: 10px;
