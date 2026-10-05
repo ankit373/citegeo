@@ -307,6 +307,9 @@ export function renderProductPhase2AppHtml(): string {
     /* The head rides the top of whichever box scrolls, one surface step above
        the rows so they visibly pass behind it rather than through it. */
     .mhead { position:sticky; top:0; z-index:2; background:var(--raised); font-size:var(--type-sm); font-weight:500; color:var(--muted); }
+    /* The range a figure is consistent with, under the figure rather than
+       running into it. */
+    .mcell small { display:block; font-size:var(--type-xs); font-weight:400; color:var(--muted); }
     .mrow:last-child { border-bottom:0; }
     .mrow:hover,.mrow:focus-within { background:var(--raised); border-radius:var(--radius-sm); }
     .mname strong { display:block; font-size:13px; line-height:1.4; font-weight:550; color:var(--text); }

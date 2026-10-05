@@ -125,6 +125,8 @@ export interface DashboardData {
   measurable: number;
   absent: number;
   assistants: number;
+  /** Models saved or seen, which is not the same as models that answered. */
+  assistantsConfigured?: number;
   assistantsNaming: number;
   moves: Move[];
   citationsUnavailable: boolean;
@@ -193,7 +195,10 @@ export function summaryTiles(data: DashboardData): string {
     {
       label: "Assistants asked",
       value: String(data.assistants),
-      note: `${data.assistantsNaming} named you at least once`,
+      note: `${data.assistantsNaming} named you at least once`
+        + (data.assistantsConfigured && data.assistantsConfigured > data.assistants
+          ? `. ${data.assistantsConfigured - data.assistants} more never answered`
+          : ""),
       fraction: data.assistants ? data.assistantsNaming / data.assistants : null,
     },
     {
