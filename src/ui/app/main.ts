@@ -3091,7 +3091,12 @@ export function boot(): void {
         ? '<p class="subtle"><strong>What it is built to maximise.</strong> ' + html(weights.objective) + '</p>'
           + '<p class="subtle"><strong>What it cannot be used for.</strong> ' + html(weights.limits || "") + '</p>'
         : '';
-      const failedNote = data.answersFailed ? '<div class="warning-box">' + data.answersFailed + ' answer(s) failed and are excluded. They are not counted as answers that did not name you.' + taskCta("answers-failed") + '</div>' : '';
+      // Asking everything again is the wrong price for a retry, so the button
+      // asks only the combinations that failed, where they failed.
+      const retryButton = state.lastRun && state.lastRun.answersFailed && !state.liveRun
+        ? '<div class="inline-actions">' + button({ label: (state.promptRunState === "running" ? "Asking\u2026" : "Ask the " + state.lastRun.answersFailed + " that failed again"), kind: "quiet", disabled: state.promptRunState === "running", on: { "data-retry-run": state.lastRun.id } }) + '</div>'
+        : '';
+      const failedNote = data.answersFailed ? '<div class="warning-box">' + data.answersFailed + ' answer(s) failed and are excluded. They are not counted as answers that did not name you.' + taskCta("answers-failed") + retryButton + '</div>' : '';
       const identityNote = data.identityCaveat ? '<div class="warning-box"><strong>Your name is a word in your own category.</strong> ' + html(data.identityCaveat) + '</div>' : '';
       const corr = data.corroboration;
       // Absent on an archive answered before the check existed, so nothing is
@@ -3740,6 +3745,8 @@ export function boot(): void {
       const clicked = el(event.target) as any;
       if (!clicked || !clicked.closest) return;
       if (clicked.closest("[data-generate-prompts]")) { await postPrompts("/topics/generate", {}, "generating", "A set has been proposed. Read it, then track the questions worth tracking."); return; }
+      const retrying = clicked.closest("[data-retry-run]");
+      if (retrying) { loadLiveRun(); await postPrompts("/prompt-runs", { retryOf: retrying.getAttribute("data-retry-run") }, "running", "Asked again. Every answer is archived."); loadLiveRun(); return; }
       if (clicked.closest("[data-run-prompts]")) { loadLiveRun(); await postPrompts("/prompt-runs", { repetitions: state.repetitions, languageIds: [state.runLanguageId] }, "running", "The run finished. Every answer is archived."); loadLiveRun(); return; }
       const activate = clicked.closest("[data-activate-prompt]");
       if (activate) { await postPrompts("/prompts/activate", { promptIds:[activate.getAttribute("data-activate-prompt")] }, "saving", "Now tracked."); return; }
