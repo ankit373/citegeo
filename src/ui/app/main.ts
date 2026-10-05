@@ -927,12 +927,30 @@ export function boot(): void {
     }
     /** One shell for every marketer page, so each one loads the same way and
      * an empty one says what is absent rather than showing nothing. */
+    // These five lost their rail entries when it collapsed to six destinations,
+    // and a page nothing links to is a page nobody can open.
+    const ACT_PAGES = [
+      ["marketer", "What to do"],
+      ["drafts", "Drafts"],
+      ["claims", "Claims"],
+      ["buying", "Buying"],
+      ["conversations", "Conversations"],
+      ["entity", "Entity"],
+    ];
+
+    function actTabs(): string {
+      return '<div class="toolbar">' + ACT_PAGES.map(([page, label]) =>
+        '<button type="button" class="filter ' + (state.page === page ? "active" : "")
+        + '" data-page="' + html(page) + '"' + (state.page === page ? ' aria-current="page"' : '')
+        + '>' + html(label) + '</button>').join("") + '</div>';
+    }
+
     function marketerPage(title: string, blurb: string, body: () => string) {
       if (state.marketerState === "idle") { loadMarketer(); }
       const inner = state.marketerState === "error"
         ? '<p class="subtle">Could not read this project.</p>'
         : state.marketerState !== "ready" ? '<p class="subtle">Reading what has been measured…</p>' : body();
-      return '<section class="view"><div class="heading"><div><h1>' + html(title) + '</h1><p class="subtle">' + html(blurb) + '</p></div></div>' + inner + '</section>';
+      return '<section class="view"><div class="heading"><div><h1>' + html(title) + '</h1><p class="subtle">' + html(blurb) + '</p></div></div>' + actTabs() + inner + '</section>';
     }
 
     function renderMarketer() {
