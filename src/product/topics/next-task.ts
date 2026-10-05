@@ -57,6 +57,8 @@ const FAILURE_WORDS: Record<string, string> = {
   upstream_unavailable: "the provider being down",
   invalid_response: "the provider refusing the request",
   analysis_failed: "an answer that arrived and could not be read",
+  truncated_payload: "a model cut off before it finished writing",
+  no_structured_output: "a model that answered in prose where a listing was asked for",
 };
 
 /** Where a failure of that kind is actually cleared. Sending somebody to the
@@ -72,6 +74,7 @@ const FAILURE_FIX: Record<string, { page: string; action: string }> = {
   authentication: { page: "setup", action: "Check the keys" },
   timeout: { page: "models", action: "Choose models" },
   upstream_unavailable: { page: "models", action: "Choose models" },
+  truncated_payload: { page: "models", action: "Choose models" },
 };
 
 const URGENCY_ORDER: Record<TaskUrgency, number> = { blocking: 0, limiting: 1, work: 2 };

@@ -65,6 +65,13 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
+/** A payload cut off mid-way is not prose, and handing it to a reader would
+ * have the reader read JSON as if it were the answer. */
+function looksStructured(text: string): boolean {
+  const trimmed = text.trim();
+  return trimmed.startsWith("{") || trimmed.startsWith("[");
+}
+
 /** One unit of work in a run: a question put to a model for one audience. */
 function workKey(row: { promptId: string; modelId: string; regionId: string; languageId: string; personaId?: string | undefined }): string {
   return [row.promptId, row.modelId, row.regionId, row.languageId, row.personaId || "anyone"].join("|");
@@ -552,7 +559,13 @@ export class PromptRunService {
       });
 
       if (grounded) return await this.readGrounded(base, input, result);
+      // A model that wrote a good answer and ignored the schema has still
+      // answered. Reading it back is what the grounded path and every browser
+      // surface already do, and discarding it loses a measurement that happened.
       if (!result.structuredOutput) {
+        if (result.text.trim() && !looksStructured(result.text) && this.read) {
+          return await this.readGrounded(base, input, result);
+        }
         return {
           ...base,
           status: "analysis_failed",
@@ -560,21 +573,29 @@ export class PromptRunService {
           mentions: [],
           citationUrls: [],
           errorCode: "no_structured_output",
-          errorMessage: "The provider returned no structured payload, so nothing could be counted from it.",
+          errorMessage: "The provider returned no structured payload and wrote nothing to read instead.",
           latencyMs: result.latencyMs,
         };
       }
 
       const parsed = parsePromptAnswerOutput(readStructuredValue(result.structuredOutput.value));
       if (parsed.analysisStatus !== "completed") {
+        // The usual cause is a payload cut off mid-way, which leaves the answer
+        // itself written and only the listing of what it named unfinished.
+        const written = parsed.answer || result.text || "";
+        if (written.trim() && !looksStructured(written) && this.read) {
+          return await this.readGrounded(base, input, { ...result, text: written });
+        }
         return {
           ...base,
           status: "analysis_failed",
-          text: parsed.answer || result.text || "",
+          text: written,
           mentions: [],
           citationUrls: [],
-          errorCode: "unreadable_answer",
-          errorMessage: "The answer could not be read as a completed observation, so it counts as nothing rather than as an absence of mentions.",
+          errorCode: looksStructured(written) ? "truncated_payload" : "unreadable_answer",
+          errorMessage: looksStructured(written)
+            ? "The structured payload was cut off before it finished, so the answer it was carrying is incomplete. This model needs a larger output budget for this question."
+            : "The answer could not be read as a completed observation, so it counts as nothing rather than as an absence of mentions.",
           latencyMs: result.latencyMs,
         };
       }
