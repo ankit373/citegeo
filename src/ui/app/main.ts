@@ -2898,8 +2898,10 @@ export function boot(): void {
       }
       const measured = report.factors.filter((row: any) => row.share !== null);
       if (!measured.length) return '';
+      // The rarer outcome is what every share is taken over, and saying the
+      // answer count here would point at the larger, reassuring number.
       const few = report.tooFew
-        ? '<div class="warning-box">' + report.answers + ' answers is too few for these to be read as anything but arithmetic.</div>'
+        ? '<div class="warning-box">' + (report.events === undefined ? report.answers + ' answers' : report.events + ' of ' + report.answers + ' answers are the outcome these shares are taken over, which') + ' is too few for them to be read as anything but a direction. ' + html(report.caveat) + '</div>'
         : '';
       const rows = measured.map((row: any) => '<div class="mrow mcols-variance"><div class="mname"><strong>' + html(row.label) + '</strong>'
         + (row.best && row.worst ? '<span class="subtle">' + html(String(row.best.level).slice(0, 40)) + ' ' + Math.round(row.best.rate * 100) + '% against ' + html(String(row.worst.level).slice(0, 40)) + ' ' + Math.round(row.worst.rate * 100) + '%</span>' : '')
