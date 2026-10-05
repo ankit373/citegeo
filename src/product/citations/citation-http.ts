@@ -84,7 +84,7 @@ export async function handleCitationApi(input: {
 
   if (method === "GET" && tail[0] === "source-kinds") {
     try {
-      send(200, await pages.kinds(projectId, await input.scope(projectId)));
+      send(200, await pages.kinds(projectId, await input.scope(projectId), await input.answers(projectId)));
     } catch (error) {
       send(404, { error: message(error) });
     }

@@ -71,6 +71,7 @@ export class SourcePageService {
           answerText: answer.text,
           page: page || { url: cited.raw, host: cited.host, detail: "This page has not been read back yet." },
           citedAt: place,
+          answer: { id: answer.id, promptText: answer.promptText, modelId: answer.modelId },
         }));
       }
     }
@@ -113,6 +114,7 @@ export class SourcePageService {
           answerText: answer.text,
           page: page || { url: cited.raw, host: cited.host, detail: "This page has not been read back yet." },
           citedAt: place,
+          answer: { id: answer.id, promptText: answer.promptText, modelId: answer.modelId },
         }));
       }
       if (rows.length) perAnswer.push(rows);
@@ -120,9 +122,23 @@ export class SourcePageService {
     return creditGaps(perAnswer);
   }
 
-  /** What kind of page gets cited here, and who it belongs to. */
-  async kinds(projectId: string, scope: { domain?: string | undefined; rivalDomains?: string[] | undefined } = {}): Promise<PageKindReport> {
-    return buildPageKinds({ pages: await this.list(projectId), domain: scope.domain, rivalDomains: scope.rivalDomains });
+  /** What kind of page gets cited here, and who it belongs to. The answers
+   * come in so the report can say what share of the cited pages it read. */
+  async kinds(projectId: string, scope: { domain?: string | undefined; rivalDomains?: string[] | undefined } = {}, answers: PromptAnswer[] = []): Promise<PageKindReport> {
+    const cited = new Set<string>();
+    for (const answer of answers) {
+      if (answer.status !== "completed") continue;
+      for (const raw of answer.citationUrls) {
+        const page = canonicalUrl(raw);
+        if (page) cited.add(page.key);
+      }
+    }
+    return buildPageKinds({
+      pages: await this.list(projectId),
+      domain: scope.domain,
+      rivalDomains: scope.rivalDomains,
+      ...(cited.size ? { cited: cited.size } : {}),
+    });
   }
 
   /** Shapes that a source was pushed into the answers rather than grew there. */
