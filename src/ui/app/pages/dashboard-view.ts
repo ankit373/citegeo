@@ -256,7 +256,15 @@ export interface RivalSeries {
   domain?: string | null;
   icon?: string | null;
   isTarget: boolean;
-  points: Array<{ at: string; share: number }>;
+  /** A share off a run of one answer is nought or one for every brand, so the
+   * answer count travels with it and a run too thin to read is not drawn. */
+  points: Array<{ at: string; share: number; answers?: number; readable?: boolean }>;
+}
+
+/** Runs a share can be read off. A run is kept where nothing said otherwise,
+ * so a caller that does not carry the flag still gets every point. */
+function readableRuns(series: RivalSeries[]): RivalSeries[] {
+  return series.map((row) => ({ ...row, points: row.points.filter((point) => point.readable !== false) }));
 }
 
 /** One rule for a line's colour, so the list beside the chart can key to it. */
@@ -304,12 +312,21 @@ export interface ChartOptions {
 
 export function rivalChart(series: RivalSeries[], domain: string, options: ChartOptions = {}): string {
   const named = options.labels !== false;
-  const runs = series[0] ? series[0].points.length : 0;
-  if (runs < 2) return '<p class="subtle">One run so far. Run again to see movement.</p>';
+  // A run of one answer gives every brand a share of nought or one, and a line
+  // through those draws how big the runs were rather than who is being named.
+  const asked = series[0] ? series[0].points.length : 0;
+  const readable = readableRuns(series);
+  const runs = readable[0] ? readable[0].points.length : 0;
+  const dropped = asked - runs;
+  if (runs < 2) {
+    return '<p class="subtle">' + (dropped
+      ? `${runs} of ${asked} run(s) asked enough answers for a share to mean anything. Run the set again to see movement.`
+      : "One run so far. Run again to see movement.") + "</p>";
+  }
 
-  const first = series[0];
+  const first = readable[0];
   if (!first) return '<p class="subtle">Nothing has been named yet.</p>';
-  const drawn = withTarget(series, domain);
+  const drawn = withTarget(readable, domain);
 
   const width = 760;
   const height = 230;
@@ -385,6 +402,9 @@ export function rivalChart(series: RivalSeries[], domain: string, options: Chart
     "</svg>",
     '<div class="ch-tip" hidden></div>',
     "</div>",
+    dropped
+      ? `<p class="subtle">Drawn over the ${runs} run(s) that asked enough answers for a share to mean anything. ${dropped} more asked too few, and are in the figures below.</p>`
+      : "",
   ]);
 }
 
@@ -475,17 +495,25 @@ export function rivalRuns(series: RivalSeries[], domain: string): string {
   if (!first || first.points.length < 2) return "";
   const ordered = rivalStandings(drawn);
   const columns = `grid-template-columns:minmax(0,1.5fr) repeat(${first.points.length},minmax(58px,1fr))`;
-  const heads = first.points.map((point) => `<span>${html(runLabel(point.at) || "Run")}</span>`).join("");
+  // Every run is in the table, including the ones the chart left out, with the
+  // answer count that decides whether its column says anything.
+  const heads = first.points.map((point) => {
+    const size = point.answers === undefined ? "" : `<small>${point.answers}</small>`;
+    return `<span${point.readable === false ? ' class="thin-run"' : ""}>${html(runLabel(point.at) || "Run")}${size}</span>`;
+  }).join("");
   const body = ordered.map((entry) => {
     const line = drawn.find((row) => row.name === entry.name);
-    const cells = (line ? line.points : []).map((point) => `<span class="mcell">${percent(point.share)}</span>`).join("");
+    const cells = (line ? line.points : []).map((point) =>
+      `<span class="mcell${point.readable === false ? " subtle" : ""}">${percent(point.share)}</span>`).join("");
     return `<div class="mrow" style="${columns}">`
       + `<div class="mname"><strong>${html(entry.name)}</strong>${entry.isTarget ? " " + pill("You", "good") : ""}</div>`
       + `${cells}</div>`;
   }).join("");
+  const thin = first.points.filter((point) => point.readable === false).length;
   return join([
     '<h3 class="panel-section">Every run, in figures</h3>',
     `<div class="mtable"><div class="mhead" style="${columns}"><span>Brand</span>${heads}</div>${body}</div>`,
+    thin ? `<p class="mlegend">The figure under each date is how many answers that run produced. ${thin} of them asked too few for a share to mean anything, and are greyed.</p>` : "",
   ]);
 }
 
