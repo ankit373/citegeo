@@ -76,6 +76,34 @@ test("passes that always agree are stable whether or not you appear", () => {
   assert.equal(always.namingUnstable, 0);
 });
 
+test("never naming you and always naming you are both agreement, and only one is a reading", () => {
+  const never = buildStabilityReport([answer({ repetition: 1 }), answer({ repetition: 2 })]);
+  assert.equal(never.questions[0]?.naming, "never");
+  assert.equal(never.neverNamed, 1);
+  assert.equal(never.alwaysNamed, 0);
+  const always = buildStabilityReport([
+    answer({ repetition: 1, mentions: [TARGET] }),
+    answer({ repetition: 2, mentions: [TARGET] }),
+  ]);
+  assert.equal(always.questions[0]?.naming, "always");
+  assert.equal(always.neverNamed, 0);
+  assert.equal(always.alwaysNamed, 1);
+});
+
+test("the overlap is counted over the questions that cited anything", () => {
+  // Two questions asked twice: one cites, one never does. The mean belongs to
+  // the one, and printing it against both claims a reading of the other.
+  const report = buildStabilityReport([
+    answer({ repetition: 1, citationUrls: ["https://a.example/x"] }),
+    answer({ repetition: 2, citationUrls: ["https://a.example/x"] }),
+    answer({ promptId: "prompt-2", repetition: 1 }),
+    answer({ promptId: "prompt-2", repetition: 2 }),
+  ]);
+  assert.equal(report.measured, 2);
+  assert.equal(report.withSources, 1);
+  assert.equal(report.sourceOverlap, 1);
+});
+
 test("a different model is a different question, not another pass of the same one", () => {
   const report = buildStabilityReport([
     answer({ modelId: "sonar", citationUrls: ["https://a.test/x"] }),

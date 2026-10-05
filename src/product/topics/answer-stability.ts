@@ -38,7 +38,12 @@ export interface QuestionStability {
   passes: number;
   /** How many of them named the brand. */
   named: number;
-  /** True where every pass agreed, either always naming it or never. */
+  /** Which of the three a question is. Agreement on never naming the brand is
+   * the brand's absence, and a boolean that cannot tell it from agreement on
+   * always naming it reports the absence as a reassurance. */
+  naming: "always" | "never" | "split";
+  /** True where every pass agreed, either always naming it or never. Kept
+   * because the sort and the published shape both read it. */
   namingAgreed: boolean;
   /** Mean overlap of the cited source sets over every pair of passes. Null
    * where no pair had a source between them. */
@@ -58,8 +63,17 @@ export interface StabilityReport {
   askedOnce: number;
   /** Mean source overlap across every measured question. Null with none. */
   sourceOverlap: number | null;
+  /** Measured questions where a pair of passes had a source between them, so
+   * an overlap could be taken. The mean above is over these, not over
+   * everything measured, and printing it against the larger number claims a
+   * reading of questions that cited nothing. */
+  withSources: number;
   /** Questions where the passes disagreed about whether the brand appears. */
   namingUnstable: number;
+  /** Measured questions no pass named the brand in, and ones every pass did.
+   * The first is an absence and the second is a presence; both are agreement. */
+  neverNamed: number;
+  alwaysNamed: number;
   questions: QuestionStability[];
   caveat: string;
 }
@@ -96,13 +110,15 @@ export function buildStabilityReport(answers: PromptAnswer[]): StabilityReport {
     const spanHours = times.length === rows.length
       ? Math.round(((Math.max(...times) - Math.min(...times)) / 3600000) * 10) / 10
       : null;
+    const naming = named === 0 ? "never" : named === rows.length ? "always" : "split";
     questions.push({
       promptId: first.promptId,
       promptText: first.promptText,
       modelId: first.modelId,
       passes: rows.length,
       named,
-      namingAgreed: named === 0 || named === rows.length,
+      naming,
+      namingAgreed: naming !== "split",
       sourceOverlap: mean(pairs),
       sourcesAlways: always,
       sourcesEver: ever.size,
@@ -117,7 +133,10 @@ export function buildStabilityReport(answers: PromptAnswer[]): StabilityReport {
     measured: questions.length,
     askedOnce,
     sourceOverlap: mean(overlaps),
-    namingUnstable: questions.filter((row) => !row.namingAgreed).length,
+    withSources: overlaps.length,
+    namingUnstable: questions.filter((row) => row.naming === "split").length,
+    neverNamed: questions.filter((row) => row.naming === "never").length,
+    alwaysNamed: questions.filter((row) => row.naming === "always").length,
     questions,
     caveat: STABILITY_CAVEAT,
   };

@@ -2747,16 +2747,28 @@ export function boot(): void {
         return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>How much the answer moves</h3>'
           + '<p class="subtle">Every question here was asked once, so nothing can be said about how much of an answer is the question and how much is the day.</p></div></div>' + taskCta("asked-once") + '</div>';
       }
+      // The overlap is a mean over the questions that cited anything, and most
+      // of these cited nothing. Printing it against the larger number claims a
+      // reading of questions there was nothing to read.
       const overall = report.sourceOverlap === null
         ? 'No pair of passes cited a source between them, so there is no overlap to take.'
-        : 'Across ' + report.measured + ' question(s) asked more than once, ' + sharePct(report.sourceOverlap) + ' of the cited sources survived from one pass to the next.';
+        : 'Across the ' + report.withSources + ' of ' + report.measured + ' question(s) asked more than once that cited anything, '
+          + sharePct(report.sourceOverlap) + ' of the cited sources survived from one pass to the next.';
+      // Never naming you and always naming you are both agreement. Only one of
+      // them is good news, and reporting them as one printed your absence as
+      // a reassurance about the measurement.
       const naming = report.namingUnstable
         ? report.namingUnstable + ' question(s) named you on one pass and not on another, which means a single pass would have reported either answer.'
-        : 'Every question agreed with itself about whether you appear.';
+        : report.alwaysNamed === 0
+          ? 'No pass of any of them named you, so they agree on an absence rather than on a reading.'
+          : report.neverNamed === 0
+            ? 'Every pass of every question named you.'
+            : report.alwaysNamed + ' question(s) named you on every pass and ' + report.neverNamed + ' named you on none. Each agrees with itself.';
       const rows = report.questions.slice(0, 8).map((row: any) =>
         '<div class="mrow mcols-stability"><div class="mname"><strong>' + html(row.promptText) + '</strong>'
         + '<span class="mono">' + html(row.modelId) + ' · ' + row.passes + ' passes</span></div>'
-        + '<span class="mcell ' + (row.namingAgreed ? "state-ok" : "state-bad") + '">' + (row.namingAgreed ? "Agreed" : row.named + ' of ' + row.passes) + '</span>'
+        + '<span class="mcell ' + (row.naming === "always" ? "state-ok" : row.naming === "split" ? "state-bad" : "subtle") + '">'
+        + (row.naming === "always" ? "Every pass" : row.naming === "split" ? row.named + ' of ' + row.passes : "No pass") + '</span>'
         + '<span class="mcell">' + row.sourcesAlways + ' of ' + row.sourcesEver + '</span>'
         + '<span class="mcell">' + (row.sourceOverlap === null ? 'No sources' : sharePct(row.sourceOverlap)) + '</span>'
         + '<span class="mcell subtle">' + (row.spanHours === null ? 'Unknown span' : row.spanHours < 1 ? 'Minutes apart' : row.spanHours < 48 ? Math.round(row.spanHours) + 'h apart' : Math.round(row.spanHours / 24) + 'd apart') + '</span></div>').join("");
@@ -2838,7 +2850,11 @@ export function boot(): void {
         : 'Across ' + report.measured + ' question(s) written more than one way, the widest gap between two wordings averages ' + sharePct(report.spread) + '.';
       const naming = report.unstable
         ? ' ' + report.unstable + ' question(s) named you under one wording and not another, so that figure is about the words rather than about you.'
-        : ' Every question agreed with itself whichever way it was put.';
+        : report.alwaysNamed === 0
+          ? ' No wording of any of them named you, so they agree on an absence rather than on a reading.'
+          : report.neverNamed === 0
+            ? ' Every wording of every question named you.'
+            : ' ' + report.alwaysNamed + ' question(s) named you under every wording and ' + report.neverNamed + ' under none.';
       const named = report.namesTheBrand
         ? ' ' + report.namesTheBrand + ' wording(s) name you and are left out, because the model discusses a brand the question names whatever it thinks.'
         : '';
@@ -2846,8 +2862,9 @@ export function boot(): void {
         + '<span class="mono">' + html(row.modelId) + ' \u00b7 ' + row.wordings.length + ' wordings</span>'
         + row.wordings.slice(0, 4).map((wording: any) => '<span class="subtle">' + (wording.named ? '\u2713' : '\u2717') + ' ' + html(wording.text) + '</span>').join("")
         + '</div>'
-        + '<span class="mcell ' + (row.agreed ? "state-ok" : "state-bad") + '">' + (row.agreed ? "Agreed" : row.namedIn + ' of ' + row.wordings.length) + '</span>'
-        + '<span class="mcell">' + (row.spread === null ? '\u2014' : sharePct(row.spread)) + '</span></div>').join("");
+        + '<span class="mcell ' + (row.naming === "always" ? "state-ok" : row.naming === "split" ? "state-bad" : "subtle") + '">'
+        + (row.naming === "always" ? "Every wording" : row.naming === "split" ? row.namedIn + ' of ' + row.wordings.length : "No wording") + '</span>'
+        + '<span class="mcell">' + (row.spread === null ? "Not measurable" : sharePct(row.spread)) + '</span></div>').join("");
       return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>How much the wording decides</h3>'
         + '<p class="subtle">' + html(report.caveat) + '</p></div></div>'
         + '<p>' + html(lead + naming + named) + '</p>'
