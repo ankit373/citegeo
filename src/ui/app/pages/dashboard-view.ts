@@ -125,6 +125,8 @@ export interface DashboardData {
   measurable: number;
   absent: number;
   assistants: number;
+  /** Models saved or seen, which is not the same as models that answered. */
+  assistantsConfigured?: number;
   assistantsNaming: number;
   moves: Move[];
   citationsUnavailable: boolean;
@@ -193,7 +195,10 @@ export function summaryTiles(data: DashboardData): string {
     {
       label: "Assistants asked",
       value: String(data.assistants),
-      note: `${data.assistantsNaming} named you at least once`,
+      note: `${data.assistantsNaming} named you at least once`
+        + (data.assistantsConfigured && data.assistantsConfigured > data.assistants
+          ? `. ${data.assistantsConfigured - data.assistants} more never answered`
+          : ""),
       fraction: data.assistants ? data.assistantsNaming / data.assistants : null,
     },
     {
@@ -426,16 +431,22 @@ export interface RivalStanding {
 export function rivalStandings(series: RivalSeries[]): RivalStanding[] {
   const scored = series
     .map((line, index) => {
+      // The share is the latest run's, readable or not: it is what that run
+      // said. The movement is a difference between two runs, and a run of one
+      // answer can only report nought or one, so the chart leaves those out
+      // and the standings beside it cannot quietly keep them.
       const points = line.points;
       const last = points[points.length - 1];
-      const prior = points.length > 1 ? points[points.length - 2] : undefined;
+      const readable = points.filter((point) => point.readable !== false);
+      const recent = readable[readable.length - 1];
+      const prior = readable.length > 1 ? readable[readable.length - 2] : undefined;
       return {
         name: line.name,
         domain: line.domain ?? null,
         icon: line.icon ?? null,
         isTarget: line.isTarget,
         share: last ? last.share : 0,
-        moved: last && prior ? last.share - prior.share : null,
+        moved: recent && prior ? recent.share - prior.share : null,
         ink: seriesInk(line.isTarget, index),
       };
     })
