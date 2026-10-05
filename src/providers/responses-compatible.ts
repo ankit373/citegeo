@@ -68,6 +68,19 @@ function extractFunctionArguments(raw: unknown, name: string): string {
   return "";
 }
 
+/** A model that reasons spends the output budget before it writes anything, and
+ * the provider says so rather than leaving it to be guessed from an empty answer. */
+function ranOutOfBudget(raw: unknown): boolean {
+  const root = asObject(raw);
+  if (!root || root.status !== "incomplete") return false;
+  const why = asObject(root.incomplete_details);
+  return typeof why?.reason === "string" && why.reason === "max_output_tokens";
+}
+
+/** Reasoning tokens come out of the same budget as the answer, so a cap that
+ * suits a model which does not reason starves one that does. */
+export const BUDGET_GROWTH = 4;
+
 function extractModelVersion(raw: unknown, fallback: string): string {
   const root = asObject(raw);
   return typeof root?.model === "string" ? root.model : fallback;
@@ -151,6 +164,16 @@ export class ResponsesCompatibleProvider implements AnswerProvider {
       error = asObject(asObject(response.data)?.error);
     }
 
+    // Asked again once with a larger budget rather than reported as empty: the
+    // first answer was paid for and the provider named the reason it stopped.
+    let grewBudget = 0;
+    if (!error && response.ok && ranOutOfBudget(response.data)) {
+      grewBudget = input.maxTokens * BUDGET_GROWTH;
+      body.max_output_tokens = grewBudget;
+      response = await post();
+      error = asObject(asObject(response.data)?.error);
+    }
+
     const raw = response.data;
     if (!response.ok || error) {
       const message = typeof error?.message === "string" ? error.message : `Provider ${this.definition.id} failed with HTTP ${response.status}`;
@@ -161,6 +184,12 @@ export class ResponsesCompatibleProvider implements AnswerProvider {
       ? extractFunctionArguments(raw, input.structuredOutputTool.name)
       : "";
     const text = toolArguments || extractText(raw);
+    if (!text && ranOutOfBudget(raw)) {
+      throw new ProviderRequestError({
+        code: "empty_answer",
+        message: `Provider ${this.definition.id} spent its whole output budget reasoning and wrote no answer, at ${grewBudget || input.maxTokens} tokens. This model needs a larger one.`,
+      });
+    }
     if (!text) throw new ProviderRequestError({ code: "empty_answer", message: `Provider ${this.definition.id} returned an empty answer.` });
     const structuredOutput = toolArguments
       ? { transport: "function_tool" as const, value: toolArguments }
@@ -187,9 +216,11 @@ export class ResponsesCompatibleProvider implements AnswerProvider {
       providerName: this.definition.label,
       sourceType: this.definition.sourceType,
       sourceLabel: `Source: ${this.definition.label} API`,
-      resultCaveat: dropped.length
-        ? `${this.definition.resultCaveat} This model refused ${dropped.join(" and ")}, so the answer was taken at its own default instead of the one asked for.`
-        : this.definition.resultCaveat,
+      resultCaveat: [
+        this.definition.resultCaveat,
+        dropped.length ? `This model refused ${dropped.join(" and ")}, so the answer was taken at its own default instead of the one asked for.` : "",
+        grewBudget ? `This model reasons, and spent the output budget before answering, so it was asked again with ${grewBudget} tokens.` : "",
+      ].filter(Boolean).join(" "),
       model: input.model,
       modelVersion: extractModelVersion(raw, input.model),
       text,
