@@ -50,9 +50,16 @@ Everything below needs something this project cannot provide for itself.
 
 | # | Feature | Taken from | Blocked on |
 | :-- | :--- | :--- | :--- |
-| 1 | **Fix as a pull request**: generate the schema, `llms.txt` and robots patch and open a PR against the site repo | Action loop | Write access to the site's own repository |
-| 2 | **Search Console integration**: real query and impression data, alongside the open-corpus demand figures | Demand data | Google OAuth credentials |
-| 3 | **Engines with no API**: Google AI Overviews, AI Mode, Copilot through a driven browser | Engine coverage | Browser automation and the maintenance it carries |
+| 1 | **Demand corpus from the portal**: index an openly licensed conversation corpus without the command line | Demand data | A long-running import the server does not yet own |
+
+The three that used to sit here are built. They stayed on this list after they
+shipped, which is its own kind of wrong number:
+
+| Feature | Where it lives now |
+| :--- | :--- |
+| **Fix as a pull request** | `src/product/integrations/fix-pull-request.ts` and `github-client.ts`. It still needs write access to the site's repository, which is a credential the operator supplies, not a thing to build. |
+| **Search Console integration** | `src/product/search-console`. OAuth, service accounts, queries, pages and assistant referrals. |
+| **Engines with no API** | `src/product/engines`. Google AI Overviews, Perplexity, ChatGPT and Copilot through a browser this product finds rather than scans for, with a reach probe that says which of them it can actually drive today. |
 
 ## Built, waiting on data rather than code
 
