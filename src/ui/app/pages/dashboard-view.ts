@@ -29,6 +29,11 @@ export interface Standing {
   sentiment: number | null;
   answers: number;
   appearances: number;
+  /** Answers that named the brand, which prominence and framing are means
+   * over. Absent on a figure built before this was carried. */
+  namedIn?: number | undefined;
+  /** True where there are too few of those to read either as a rate. */
+  tooFewAppearances?: boolean | undefined;
 }
 
 export interface NamedEntity {
@@ -148,12 +153,24 @@ export function heroStats(standing: Standing, position?: PositionReport | undefi
         String(position.averagePosition),
         `best ${position.best}, worst ${position.worst}, over ${position.ranked} questions`,
       );
+  // Prominence and framing are means over the answers that named the brand. On
+  // a handful of those, 100% beside "Not named" is two true figures reading as
+  // a contradiction, and the big one reads as a win.
+  const named = standing.namedIn === undefined ? standing.appearances : standing.namedIn;
+  const thin = standing.tooFewAppearances === true;
+  const over = (value: number | null, note: string): [string, string] => {
+    if (!named) return [percent(null), "nothing named, so nothing judged"];
+    if (thin) return ["Too few", `${named} appearance(s) cannot be read as a rate`];
+    return [percent(value), note];
+  };
+  const prominence = over(standing.prominence, "how early you appear");
+  const sentiment = over(standing.sentiment, "recommended or listed");
   return join([
     '<div class="hero-stats">',
     stat("Presence", percent(standing.presenceRate), `${standing.appearances} of ${standing.answers} named you`),
     place,
-    stat("Prominence", percent(standing.prominence), "how early you appear"),
-    stat("Sentiment", percent(standing.sentiment), "recommended or listed"),
+    stat("Prominence", prominence[0], prominence[1]),
+    stat("Sentiment", sentiment[0], sentiment[1]),
     "</div>",
   ]);
 }

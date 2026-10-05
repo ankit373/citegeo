@@ -12,7 +12,7 @@ import type { VisibilityScore } from "../src/product/topics/visibility-score.js"
 const WEIGHTS = SCORE_WEIGHTS;
 
 function score(overrides: Partial<VisibilityScore> = {}): VisibilityScore {
-  return { answers: 10, appearances: 2, presenceInterval: wilsonInterval(0, 0), tooFewAnswers: false, presenceRate: 0.2, prominence: 0.5, sentiment: 0.5, score: 20, weights: WEIGHTS, ...overrides };
+  return { answers: 10, appearances: 2, presenceInterval: wilsonInterval(0, 0), tooFewAnswers: false, namedIn: 0, tooFewAppearances: true, presenceRate: 0.2, prominence: 0.5, sentiment: 0.5, score: 20, weights: WEIGHTS, ...overrides };
 }
 
 function insights(overrides: Partial<TopicInsights> = {}): TopicInsights {

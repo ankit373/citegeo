@@ -1147,6 +1147,23 @@ export function boot(): void {
       return '<div class="stat"><span>' + html(label) + '</span><strong>' + value + '</strong><small>' + html(note) + '</small>' + bar(fraction) + '</div>';
     }
 
+    // Prominence and framing are means over the answers that named the brand,
+    // which on a handful of them cannot be told from a coin. The counts are the
+    // finding there, and a percentage beside "Not named" is the old bug.
+    function overAppearances(score: any, value: any, words: string) {
+      if (!score || score.tooFewAppearances) {
+        const named = score ? score.namedIn || score.appearances || 0 : 0;
+        return {
+          value: named ? 'Too few' : pct(null),
+          note: named
+            ? named + ' appearance(s) cannot be read as a rate. ' + words
+            : 'Nothing named, so nothing judged.',
+          fraction: null,
+        };
+      }
+      return { value: pct(value), note: words, fraction: value };
+    }
+
     function renderScoreBreakdown(score: any) {
       if (!score || score.answers === 0) return '<p class="subtle">Nothing has been answered yet, so there is nothing to score. This is not a zero.</p>';
       const band = score.presenceInterval;
@@ -1160,10 +1177,12 @@ export function boot(): void {
           + score.answers + ' answer(s) leave the presence rate anywhere from ' + pct(band.low) + ' to ' + pct(band.high)
           + ', which decides nothing. Track more questions, or more models, before acting on the number. ' + html(band.caveat) + '</div>'
         : '';
+      const prom = overAppearances(score, score.prominence, 'Full marks means always named first.');
+      const sent = overAppearances(score, score.sentiment, 'Full marks means always recommended.');
       return '<div class="statgrid" style="--tile-columns:3">'
         + stat("Presence", pct(score.presenceRate), presenceNote, score.presenceRate)
-        + stat("Prominence", pct(score.prominence), score.prominence === null ? 'No answer gave a readable order' : 'Full marks means always named first', score.prominence)
-        + stat("Sentiment", pct(score.sentiment), score.sentiment === null ? 'Nothing named, so nothing judged' : 'Full marks means always recommended', score.sentiment)
+        + stat("Prominence", prom.value, score.prominence === null && !score.namedIn ? 'No answer gave a readable order' : prom.note, prom.fraction)
+        + stat("Sentiment", sent.value, sent.note, sent.fraction)
         + '</div>' + width;
     }
 
@@ -1269,6 +1288,8 @@ export function boot(): void {
 
     function renderHero(data: any) {
       const rank = data.rank === null ? "Not named" : "#" + data.rank + " of " + data.leaderboard.length;
+      const heroProm = overAppearances(data.overall, data.overall.prominence, 'how early you appear');
+      const heroSent = overAppearances(data.overall, data.overall.sentiment, 'recommended or listed');
       const leader = data.leaderboard.find((row: any) => !row.isTarget);
       return '<div class="hero">'
         + '<div class="hero-figure"><span class="scorebig">' + scoreText(data.overall.score) + '</span>'
@@ -1276,8 +1297,8 @@ export function boot(): void {
         + '<span class="hero-spark">' + sparkline(data.trend.points, 150, 26) + '</span></div>'
         + '<div class="hero-stats">'
         + '<div class="hero-stat"><span>Presence</span><strong>' + pct(data.overall.presenceRate) + '</strong><small>' + data.overall.appearances + ' of ' + data.overall.answers + ' answers</small></div>'
-        + '<div class="hero-stat"><span>Prominence</span><strong>' + pct(data.overall.prominence) + '</strong><small>how early you appear</small></div>'
-        + '<div class="hero-stat"><span>Sentiment</span><strong>' + pct(data.overall.sentiment) + '</strong><small>recommended or listed</small></div>'
+        + '<div class="hero-stat"><span>Prominence</span><strong>' + heroProm.value + '</strong><small>' + html(heroProm.note) + '</small></div>'
+        + '<div class="hero-stat"><span>Sentiment</span><strong>' + heroSent.value + '</strong><small>' + html(heroSent.note) + '</small></div>'
         + '<div class="hero-stat"><span>Ahead of you</span><strong>' + (leader ? html(leader.name) : "—") + '</strong><small>' + (leader ? leader.appearances + ' answers' : 'nobody named') + '</small></div>'
         + '</div></div>';
     }
@@ -2414,7 +2435,7 @@ export function boot(): void {
         score: home.score ?? null,
         change: home.change ?? null,
         rank: home.rank ?? null,
-        overall: data ? data.overall : { score: null, presenceRate: null, prominence: null, sentiment: null, answers: 0, appearances: 0 },
+        overall: data ? data.overall : { score: null, presenceRate: null, prominence: null, sentiment: null, answers: 0, appearances: 0, namedIn: 0, tooFewAppearances: true },
         leaderboard: data ? (data.leaderboard as any[]).map((row: any) => ({
           name: row.name,
           domain: row.domain ?? null,
