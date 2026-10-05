@@ -488,7 +488,7 @@ tr:last-child td { border-bottom: 0; }
 tbody tr:hover td { background: var(--panel-hover); }
 td strong { color: var(--text); }
 .row-link { color: var(--accent); font-weight: 700; }
-.mono { font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-variant-numeric: tabular-nums; }
+.mono { font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-variant-numeric: tabular-nums; }
 
 .status {
   display: inline-flex;

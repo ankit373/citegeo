@@ -3,35 +3,35 @@
 /* The design tokens are the Tailwind scale. Declaring them here means a token
    and its utility cannot drift, because they are the same declaration. */
 @theme {
-  --color-paper: #F7F6F3;
+  --color-paper: #F4F6F8;
   --color-surface: #FFFFFF;
-  --color-raised: #F2F0EA;
-  --color-sunken: #EDEBE4;
-  --color-line: #E4E1D8;
-  --color-line-strong: #D2CEC2;
-  --color-text: #1A1916;
-  --color-muted: #6D6A62;
-  --color-weak: #959187;
-  --color-accent: #C15F3C;
-  --color-accent-hover: #A94F30;
+  --color-raised: #EDF0F4;
+  --color-sunken: #E7EBF0;
+  --color-line: #DDE2E9;
+  --color-line-strong: #C9D1DB;
+  --color-text: #11151C;
+  --color-muted: #657182;
+  --color-weak: #8E99A8;
+  --color-accent: #0F6E7A;
+  --color-accent-hover: #0B545E;
   --color-accent-ink: #FFFFFF;
-  --color-accent-wash: rgba(193,95,60,.09);
-  --color-confirmed: #3F7D58;
-  --color-confirmed-text: #356B4B;
-  --color-confirmed-wash: rgba(63,125,88,.10);
-  --color-unknown: #9A6B18;
-  --color-unknown-text: #8A5F15;
-  --color-unknown-wash: rgba(154,107,24,.10);
-  --color-failed: #A8402F;
-  --color-failed-text: #96392A;
-  --color-failed-wash: rgba(168,64,47,.10);
-  --color-skeleton: #ECE9E1;
+  --color-accent-wash: rgba(15,110,122,.10);
+  --color-confirmed: #1C7C4A;
+  --color-confirmed-text: #176840;
+  --color-confirmed-wash: rgba(28,124,74,.11);
+  --color-unknown: #8A6100;
+  --color-unknown-text: #7A5600;
+  --color-unknown-wash: rgba(138,97,0,.11);
+  --color-failed: #A32C32;
+  --color-failed-text: #90272C;
+  --color-failed-wash: rgba(163,44,50,.10);
+  --color-skeleton: #E7EBF0;
   --color-skeleton-sheen: rgba(255,255,255,.70);
   /* Behind a drawer or a panel, so the page reads as out of reach. */
-  --color-scrim: rgba(20,18,14,.34);
-  --font-display: "Newsreader",ui-serif,Georgia,"Times New Roman",serif;
-  --font-ui: "Instrument Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
-  --font-mono: "JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --color-scrim: rgba(10,14,20,.40);
+  --font-display: "IBM Plex Sans Condensed","IBM Plex Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-ui: "IBM Plex Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono: "IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
   --figures: tabular-nums;
   --text-micro: 10px;
   --text-xs: 11px;
@@ -62,11 +62,11 @@
   --gutter: clamp(20px,3.6vw,56px);
   --hairline: 1px solid var(--line);
   --hairline-strong: 1px solid var(--line-strong);
-  --shadow-sm: 0 1px 2px rgba(26,25,22,.04);
+  --shadow-sm: 0 1px 2px rgba(13,17,23,.05);
   /* A drawer sits above everything, so it casts rather than borrows. On paper
      that is a shadow; on ink a shadow is invisible and a light rim reads. */
-  --color-shadow-panel: -12px 0 40px rgba(20,18,14,.16);
-  --shadow: 0 1px 3px rgba(26,25,22,.05),0 1px 1px rgba(26,25,22,.03);
+  --color-shadow-panel: -12px 0 40px rgba(10,14,20,.20);
+  --shadow: 0 1px 3px rgba(13,17,23,.06),0 1px 1px rgba(13,17,23,.04);
   --motion-fast: 140ms;
   --motion-normal: 260ms;
   --motion-shimmer: 1500ms;
@@ -125,53 +125,53 @@
    by an inline script before first paint. */
 @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --color-paper: #1E1D1B;
-      --paper: #1E1D1B;
-      --color-surface: #262523;
-      --surface: #262523;
-      --color-raised: #2E2D2A;
-      --raised: #2E2D2A;
-      --color-sunken: #1A1917;
-      --sunken: #1A1917;
-      --color-line: #38362F;
-      --line: #38362F;
-      --color-line-strong: #4A4740;
-      --line-strong: #4A4740;
+      --color-paper: #0D1117;
+      --paper: #0D1117;
+      --color-surface: #151B23;
+      --surface: #151B23;
+      --color-raised: #1C232D;
+      --raised: #1C232D;
+      --color-sunken: #090D12;
+      --sunken: #090D12;
+      --color-line: #242D38;
+      --line: #242D38;
+      --color-line-strong: #323D4A;
+      --line-strong: #323D4A;
 
-      --color-text: #F4F2EC;
-      --text: #F4F2EC;
-      --color-muted: #A8A49B;
-      --muted: #A8A49B;
-      --color-weak: #77736B;
-      --weak: #77736B;
+      --color-text: #E8EDF4;
+      --text: #E8EDF4;
+      --color-muted: #8B97A6;
+      --muted: #8B97A6;
+      --color-weak: #6B7785;
+      --weak: #6B7785;
 
-      --color-accent: #D97757;
-      --accent: #D97757;
-      --color-accent-hover: #E08D70;
-      --accent-hover: #E08D70;
-      --color-accent-ink: #1A1108;
-      --accent-ink: #1A1108;
-      --color-accent-wash: rgba(217,119,87,.14);
-      --accent-wash: rgba(217,119,87,.14);
+      --color-accent: #4FC2CF;
+      --accent: #4FC2CF;
+      --color-accent-hover: #7FD8E2;
+      --accent-hover: #7FD8E2;
+      --color-accent-ink: #06262B;
+      --accent-ink: #06262B;
+      --color-accent-wash: rgba(79,194,207,.16);
+      --accent-wash: rgba(79,194,207,.16);
 
-      --color-confirmed: #6FBF8F;
-      --confirmed: #6FBF8F;
-      --color-confirmed-text: #7FCE9E;
-      --confirmed-text: #7FCE9E;
-      --color-confirmed-wash: rgba(111,191,143,.13);
-      --confirmed-wash: rgba(111,191,143,.13);
-      --color-unknown: #D9A94E;
-      --unknown: #D9A94E;
-      --color-unknown-text: #E2B865;
-      --unknown-text: #E2B865;
-      --color-unknown-wash: rgba(217,169,78,.13);
-      --unknown-wash: rgba(217,169,78,.13);
-      --color-failed: #DE8271;
-      --failed: #DE8271;
-      --color-failed-text: #E89583;
-      --failed-text: #E89583;
-      --color-failed-wash: rgba(222,130,113,.13);
-      --failed-wash: rgba(222,130,113,.13);
+      --color-confirmed: #5CC48A;
+      --confirmed: #5CC48A;
+      --color-confirmed-text: #79D5A2;
+      --confirmed-text: #79D5A2;
+      --color-confirmed-wash: rgba(92,196,138,.14);
+      --confirmed-wash: rgba(92,196,138,.14);
+      --color-unknown: #D5A443;
+      --unknown: #D5A443;
+      --color-unknown-text: #E0B860;
+      --unknown-text: #E0B860;
+      --color-unknown-wash: rgba(213,164,67,.14);
+      --unknown-wash: rgba(213,164,67,.14);
+      --color-failed: #E4747B;
+      --failed: #E4747B;
+      --color-failed-text: #EC8D93;
+      --failed-text: #EC8D93;
+      --color-failed-wash: rgba(228,116,123,.14);
+      --failed-wash: rgba(228,116,123,.14);
 
       --color-skeleton: #2C2B28;
       --skeleton: #2C2B28;
@@ -190,20 +190,20 @@
   }
 
   :root[data-theme="dark"] {
-    --color-paper: #1E1D1B; --surface:#262523; --raised:#2E2D2A; --sunken:#1A1917;
-    --paper: #1E1D1B; --surface:#262523; --raised:#2E2D2A; --sunken:#1A1917;
-    --color-line: #38362F; --line-strong:#4A4740;
-    --line: #38362F; --line-strong:#4A4740;
-    --color-text: #F4F2EC; --muted:#A8A49B; --weak:#77736B;
-    --text: #F4F2EC; --muted:#A8A49B; --weak:#77736B;
-    --color-accent: #D97757; --accent-hover:#E08D70; --accent-ink:#1A1108; --accent-wash:rgba(217,119,87,.14);
-    --accent: #D97757; --accent-hover:#E08D70; --accent-ink:#1A1108; --accent-wash:rgba(217,119,87,.14);
-    --color-confirmed: #6FBF8F; --confirmed-text:#7FCE9E; --confirmed-wash:rgba(111,191,143,.13);
-    --confirmed: #6FBF8F; --confirmed-text:#7FCE9E; --confirmed-wash:rgba(111,191,143,.13);
-    --color-unknown: #D9A94E; --unknown-text:#E2B865; --unknown-wash:rgba(217,169,78,.13);
-    --unknown: #D9A94E; --unknown-text:#E2B865; --unknown-wash:rgba(217,169,78,.13);
-    --color-failed: #DE8271; --failed-text:#E89583; --failed-wash:rgba(222,130,113,.13);
-    --failed: #DE8271; --failed-text:#E89583; --failed-wash:rgba(222,130,113,.13);
+    --color-paper: #0D1117; --surface:#151B23; --raised:#1C232D; --sunken:#090D12;
+    --paper: #0D1117; --surface:#151B23; --raised:#1C232D; --sunken:#090D12;
+    --color-line: #242D38; --line-strong:#323D4A;
+    --line: #242D38; --line-strong:#323D4A;
+    --color-text: #E8EDF4; --muted:#8B97A6; --weak:#6B7785;
+    --text: #E8EDF4; --muted:#8B97A6; --weak:#6B7785;
+    --color-accent: #4FC2CF; --accent-hover:#7FD8E2; --accent-ink:#06262B; --accent-wash:rgba(79,194,207,.16);
+    --accent: #4FC2CF; --accent-hover:#7FD8E2; --accent-ink:#06262B; --accent-wash:rgba(79,194,207,.16);
+    --color-confirmed: #5CC48A; --confirmed-text:#79D5A2; --confirmed-wash:rgba(92,196,138,.14);
+    --confirmed: #5CC48A; --confirmed-text:#79D5A2; --confirmed-wash:rgba(92,196,138,.14);
+    --color-unknown: #D5A443; --unknown-text:#E0B860; --unknown-wash:rgba(213,164,67,.14);
+    --unknown: #D5A443; --unknown-text:#E0B860; --unknown-wash:rgba(213,164,67,.14);
+    --color-failed: #E4747B; --failed-text:#EC8D93; --failed-wash:rgba(228,116,123,.14);
+    --failed: #E4747B; --failed-text:#EC8D93; --failed-wash:rgba(228,116,123,.14);
     --color-skeleton: #2C2B28; --skeleton-sheen:rgba(255,255,255,.06);
     --skeleton: #2C2B28; --skeleton-sheen:rgba(255,255,255,.06);
     --color-scrim: rgba(0,0,0,.52); --scrim: rgba(0,0,0,.52);
