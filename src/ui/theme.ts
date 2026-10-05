@@ -4,45 +4,45 @@
 /** Loaded once in the document head. Google Fonts is the only stylesheet host allowed here. */
 export const THEME_FONT_LINKS = `<link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400..700&family=JetBrains+Mono:wght@400;500&family=Newsreader:opsz,wght@6..72,400..600&display=swap">`;
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&display=swap">`;
 
 /** Light by default; dark follows the system unless data-theme overrides it. */
 export const THEME_TOKENS = `
   :root {
     color-scheme: light dark;
 
-    --paper:#F7F6F3;
+    --paper:#F4F6F8;
     --surface:#FFFFFF;
-    --raised:#F2F0EA;
-    --sunken:#EDEBE4;
-    --line:#E4E1D8;
-    --line-strong:#D2CEC2;
+    --raised:#EDF0F4;
+    --sunken:#E7EBF0;
+    --line:#DDE2E9;
+    --line-strong:#C9D1DB;
 
-    --text:#1A1916;
-    --muted:#6D6A62;
-    --weak:#959187;
+    --text:#11151C;
+    --muted:#657182;
+    --weak:#8E99A8;
 
-    --accent:#C15F3C;
-    --accent-hover:#A94F30;
+    --accent:#0F6E7A;
+    --accent-hover:#0B545E;
     --accent-ink:#FFFFFF;
-    --accent-wash:rgba(193,95,60,.09);
+    --accent-wash:rgba(15,110,122,.10);
 
-    --confirmed:#3F7D58;
-    --confirmed-text:#356B4B;
-    --confirmed-wash:rgba(63,125,88,.10);
-    --unknown:#9A6B18;
-    --unknown-text:#8A5F15;
-    --unknown-wash:rgba(154,107,24,.10);
-    --failed:#A8402F;
-    --failed-text:#96392A;
-    --failed-wash:rgba(168,64,47,.10);
+    --confirmed:#1C7C4A;
+    --confirmed-text:#176840;
+    --confirmed-wash:rgba(28,124,74,.11);
+    --unknown:#8A6100;
+    --unknown-text:#7A5600;
+    --unknown-wash:rgba(138,97,0,.11);
+    --failed:#A32C32;
+    --failed-text:#90272C;
+    --failed-wash:rgba(163,44,50,.10);
 
-    --skeleton:#ECE9E1;
+    --skeleton:#E7EBF0;
     --skeleton-sheen:rgba(255,255,255,.70);
 
-    --font-display:"Newsreader",ui-serif,Georgia,"Times New Roman",serif;
-    --font-ui:"Instrument Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
-    --font-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+    --font-display:"IBM Plex Sans Condensed","IBM Plex Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+    --font-ui:"IBM Plex Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+    --font-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
 
     --figures:tabular-nums;
     --type-micro:10px;
@@ -76,8 +76,8 @@ export const THEME_TOKENS = `
     --gutter:clamp(20px,3.6vw,56px);
     --hairline:1px solid var(--line);
     --hairline-strong:1px solid var(--line-strong);
-    --shadow-sm:0 1px 2px rgba(26,25,22,.04);
-    --shadow:0 1px 3px rgba(26,25,22,.05),0 1px 1px rgba(26,25,22,.03);
+    --shadow-sm:0 1px 2px rgba(13,17,23,.05);
+    --shadow:0 1px 3px rgba(13,17,23,.06),0 1px 1px rgba(13,17,23,.04);
 
     --motion-fast:140ms;
     --motion-normal:260ms;
@@ -88,31 +88,31 @@ export const THEME_TOKENS = `
 
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --paper:#1E1D1B;
-      --surface:#262523;
-      --raised:#2E2D2A;
-      --sunken:#1A1917;
-      --line:#38362F;
-      --line-strong:#4A4740;
+      --paper:#0D1117;
+      --surface:#151B23;
+      --raised:#1C232D;
+      --sunken:#090D12;
+      --line:#242D38;
+      --line-strong:#323D4A;
 
-      --text:#F4F2EC;
-      --muted:#A8A49B;
-      --weak:#77736B;
+      --text:#E8EDF4;
+      --muted:#8B97A6;
+      --weak:#6B7785;
 
-      --accent:#D97757;
-      --accent-hover:#E08D70;
-      --accent-ink:#1A1108;
-      --accent-wash:rgba(217,119,87,.14);
+      --accent:#4FC2CF;
+      --accent-hover:#7FD8E2;
+      --accent-ink:#06262B;
+      --accent-wash:rgba(79,194,207,.16);
 
-      --confirmed:#6FBF8F;
-      --confirmed-text:#7FCE9E;
-      --confirmed-wash:rgba(111,191,143,.13);
-      --unknown:#D9A94E;
-      --unknown-text:#E2B865;
-      --unknown-wash:rgba(217,169,78,.13);
-      --failed:#DE8271;
-      --failed-text:#E89583;
-      --failed-wash:rgba(222,130,113,.13);
+      --confirmed:#5CC48A;
+      --confirmed-text:#79D5A2;
+      --confirmed-wash:rgba(92,196,138,.14);
+      --unknown:#D5A443;
+      --unknown-text:#E0B860;
+      --unknown-wash:rgba(213,164,67,.14);
+      --failed:#E4747B;
+      --failed-text:#EC8D93;
+      --failed-wash:rgba(228,116,123,.14);
 
       --skeleton:#2C2B28;
       --skeleton-sheen:rgba(255,255,255,.06);
@@ -123,13 +123,13 @@ export const THEME_TOKENS = `
   }
 
   :root[data-theme="dark"] {
-    --paper:#1E1D1B; --surface:#262523; --raised:#2E2D2A; --sunken:#1A1917;
-    --line:#38362F; --line-strong:#4A4740;
-    --text:#F4F2EC; --muted:#A8A49B; --weak:#77736B;
-    --accent:#D97757; --accent-hover:#E08D70; --accent-ink:#1A1108; --accent-wash:rgba(217,119,87,.14);
-    --confirmed:#6FBF8F; --confirmed-text:#7FCE9E; --confirmed-wash:rgba(111,191,143,.13);
-    --unknown:#D9A94E; --unknown-text:#E2B865; --unknown-wash:rgba(217,169,78,.13);
-    --failed:#DE8271; --failed-text:#E89583; --failed-wash:rgba(222,130,113,.13);
+    --paper:#0D1117; --surface:#151B23; --raised:#1C232D; --sunken:#090D12;
+    --line:#242D38; --line-strong:#323D4A;
+    --text:#E8EDF4; --muted:#8B97A6; --weak:#6B7785;
+    --accent:#4FC2CF; --accent-hover:#7FD8E2; --accent-ink:#06262B; --accent-wash:rgba(79,194,207,.16);
+    --confirmed:#5CC48A; --confirmed-text:#79D5A2; --confirmed-wash:rgba(92,196,138,.14);
+    --unknown:#D5A443; --unknown-text:#E0B860; --unknown-wash:rgba(213,164,67,.14);
+    --failed:#E4747B; --failed-text:#EC8D93; --failed-wash:rgba(228,116,123,.14);
     --skeleton:#2C2B28; --skeleton-sheen:rgba(255,255,255,.06);
     --shadow-sm:0 1px 2px rgba(0,0,0,.28);
     --shadow:0 1px 3px rgba(0,0,0,.32),0 1px 1px rgba(0,0,0,.22);

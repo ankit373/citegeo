@@ -17,13 +17,13 @@ export function renderProductProjectAppHtml(): string {
   <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f%5B%5D=cabinet-grotesk@800,700&f%5B%5D=general-sans@400,500,600&display=swap">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&display=swap">
   <style>
     :root { --bg:#14120F; --sidebar:#0E0C0A; --panel:#1C1914; --panel-hover:#24201A; --line:#332C22; --line-strong:#4A4030; --text:#F2EEE4; --muted:#A89C87; --weak:#6E6455; --confirmed:#7FA06E; --confirmed-text:#9DBC8E; --unknown:#C9973E; --unknown-text:#DBB05F; --failed:#B2503B; --failed-text:#CC7157; }
     * { box-sizing:border-box; }
     body { margin:0; min-height:100vh; background:var(--bg); color:var(--text); font-family:"General Sans", ui-sans-serif, system-ui, -apple-system, sans-serif; }
     h1, h2, h3 { font-family:"Cabinet Grotesk", ui-sans-serif, system-ui, sans-serif; letter-spacing:-0.01em; }
-    .domain, .mono { font-family:"JetBrains Mono", ui-monospace, monospace; font-variant-numeric:tabular-nums; }
+    .domain, .mono { font-family:"IBM Plex Mono", ui-monospace, monospace; font-variant-numeric:tabular-nums; }
     button, input, select { font:inherit; }
     button { color:inherit; cursor:pointer; }
     button:disabled { cursor:not-allowed; opacity:.56; }
