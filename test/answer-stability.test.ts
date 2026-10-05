@@ -179,3 +179,20 @@ test("passes from separate runs are still passes of the same question", () => {
   assert.equal(report.measured, 1, "the conditions matched, so asking again later is another pass");
   assert.equal(report.questions[0]?.sourceOverlap, 0);
 });
+
+test("a question asked by ten models is one question, not ten", () => {
+  // measured and askedOnce count condition groups, which is what stability is
+  // measured within. Reported as questions they multiplied this project's 28
+  // into 134, and the figure somebody acts on is which questions to re-run.
+  const report = buildStabilityReport([
+    answer({ modelId: "a", repetition: 1 }),
+    answer({ modelId: "b", repetition: 1 }),
+    answer({ modelId: "c", repetition: 1 }),
+    answer({ promptId: "prompt-2", modelId: "a", repetition: 1 }),
+    answer({ promptId: "prompt-2", modelId: "a", repetition: 2 }),
+  ]);
+  assert.equal(report.askedOnce, 3, "three groups of one");
+  assert.equal(report.measured, 1, "one group of two");
+  assert.equal(report.distinctQuestions, 2);
+  assert.equal(report.questionsRepeated, 1, "only prompt-2 has been asked twice under one set of conditions");
+});

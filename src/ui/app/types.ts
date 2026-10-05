@@ -90,6 +90,10 @@ export interface StabilityShape {
   sourceOverlap: number | null;
   /** The questions the overlap was taken over, which is not every measured one. */
   withSources: number;
+  /** Distinct questions behind the condition groups, and how many have been
+   * asked twice. measured and askedOnce count groups, not questions. */
+  distinctQuestions: number;
+  questionsRepeated: number;
   namingUnstable: number;
   neverNamed: number;
   alwaysNamed: number;

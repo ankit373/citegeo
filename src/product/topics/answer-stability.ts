@@ -57,10 +57,18 @@ export interface QuestionStability {
 }
 
 export interface StabilityReport {
-  /** Questions asked at least twice under identical conditions. */
+  /** Condition groups asked at least twice: one question, one model, one
+   * market, one language, one persona. Not questions. A question asked by ten
+   * models is ten groups, and counting them as questions multiplied this
+   * project's twenty eight into a hundred and thirty four. */
   measured: number;
-  /** Questions asked once, which say nothing about stability. */
+  /** Condition groups asked once, which say nothing about stability. */
   askedOnce: number;
+  /** Distinct questions behind those groups, and how many of them have been
+   * asked twice under some condition. This is the figure somebody acts on:
+   * which of my questions still need running again. */
+  distinctQuestions: number;
+  questionsRepeated: number;
   /** Mean source overlap across every measured question. Null with none. */
   sourceOverlap: number | null;
   /** Measured questions where a pair of passes had a source between them, so
@@ -89,9 +97,14 @@ export function buildStabilityReport(answers: PromptAnswer[]): StabilityReport {
   }
 
   const questions: QuestionStability[] = [];
+  const everyQuestion = new Set<string>();
+  const repeatedQuestions = new Set<string>();
   let askedOnce = 0;
   for (const rows of groups.values()) {
+    const prompt = (rows[0] as PromptAnswer).promptId;
+    everyQuestion.add(prompt);
     if (rows.length < 2) { askedOnce += 1; continue; }
+    repeatedQuestions.add(prompt);
     const sets = rows.map((row) => new Set(row.citationUrls.map(canonicalKey).filter((key): key is string => Boolean(key))));
     const pairs: number[] = [];
     for (let left = 0; left < sets.length; left += 1) {
@@ -132,6 +145,8 @@ export function buildStabilityReport(answers: PromptAnswer[]): StabilityReport {
   return {
     measured: questions.length,
     askedOnce,
+    distinctQuestions: everyQuestion.size,
+    questionsRepeated: repeatedQuestions.size,
     sourceOverlap: mean(overlaps),
     withSources: overlaps.length,
     namingUnstable: questions.filter((row) => row.naming === "split").length,
