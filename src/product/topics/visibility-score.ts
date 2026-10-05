@@ -6,6 +6,11 @@ import type { AnswerMention, PromptAnswer } from "./prompt-run-schema.js";
 export const PROMINENCE_FLOOR = 0.6;
 export const SENTIMENT_FLOOR = 0.5;
 
+/** Prominence and framing are means over the answers that named the brand, not
+ * over the answers. Three of three is consistent with 44% to 100%, so printing
+ * it as a rate claims a precision three observations do not have. */
+export const MIN_APPEARANCES_FOR_RATE = 5;
+
 /** What the composite is built to maximise. Weights only defend themselves
  * against a stated objective, and this one was never written down. */
 export const SCORE_OBJECTIVE = "How often a buyer asking the tracked questions is shown this brand, discounted for being named late in an answer and for being named without a recommendation.";
@@ -44,6 +49,13 @@ export interface VisibilityScore {
   prominence: number | null;
   /** 1 when always recommended, 0 when always rejected. */
   sentiment: number | null;
+  /** Observations behind both of those. They are means over the answers that
+   * named the brand, which is a different and usually much smaller population
+   * than the answers the presence rate is taken over. */
+  namedIn: number;
+  /** True where there are too few appearances to read either as a rate. The
+   * figures are still carried, because the counts behind them are the finding. */
+  tooFewAppearances: boolean;
   /** 0 to 100. Null when nothing could be measured. */
   score: number | null;
   weights: ScoreWeights;
@@ -65,6 +77,8 @@ export function emptyScore(): VisibilityScore {
     tooFewAnswers: false,
     prominence: null,
     sentiment: null,
+    namedIn: 0,
+    tooFewAppearances: true,
     score: null,
     weights: SCORE_WEIGHTS,
   };
@@ -116,7 +130,8 @@ export function scoreAnswers(answers: PromptAnswer[]): VisibilityScore {
   if (!naming.length) {
     return {
       answers: completed.length, appearances: 0, presenceRate: 0, presenceInterval: interval,
-      tooFewAnswers: tooWideToRead(interval), prominence: null, sentiment: null, score: 0, weights: SCORE_WEIGHTS,
+      tooFewAnswers: tooWideToRead(interval), prominence: null, sentiment: null,
+      namedIn: 0, tooFewAppearances: true, score: 0, weights: SCORE_WEIGHTS,
     };
   }
 
@@ -131,6 +146,8 @@ export function scoreAnswers(answers: PromptAnswer[]): VisibilityScore {
     tooFewAnswers: tooWideToRead(interval),
     prominence,
     sentiment,
+    namedIn: naming.length,
+    tooFewAppearances: naming.length < MIN_APPEARANCES_FOR_RATE,
     score: Math.round(presenceRate * prominenceFactor * sentimentFactor * 1000) / 10,
     weights: SCORE_WEIGHTS,
   };

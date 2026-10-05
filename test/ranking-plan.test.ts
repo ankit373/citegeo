@@ -13,7 +13,7 @@ import type { VisibilityScore } from "../src/product/topics/visibility-score.js"
 const WEIGHTS = SCORE_WEIGHTS;
 
 function score(overrides: Partial<VisibilityScore> = {}): VisibilityScore {
-  return { answers: 10, appearances: 0, presenceInterval: wilsonInterval(0, 0), tooFewAnswers: false, presenceRate: 0, prominence: null, sentiment: null, score: 0, weights: WEIGHTS, ...overrides };
+  return { answers: 10, appearances: 0, presenceInterval: wilsonInterval(0, 0), tooFewAnswers: false, namedIn: 0, tooFewAppearances: true, presenceRate: 0, prominence: null, sentiment: null, score: 0, weights: WEIGHTS, ...overrides };
 }
 
 function entity(name: string, overrides: Partial<EntityStanding> = {}): EntityStanding {
@@ -104,7 +104,7 @@ test("a model that never names you is only a finding when another one does", () 
   assert.equal(ids(blindOnly).includes("blind-models"), false, "every model blind is the overall score, not a per-model gap");
 
   const mixed = buildRankingPlan({
-    insights: insights({ byModel: [model("a"), model("b", { appearances: 4, presenceInterval: wilsonInterval(0, 0), tooFewAnswers: false, presenceRate: 0.4 })] }),
+    insights: insights({ byModel: [model("a"), model("b", { appearances: 4, presenceInterval: wilsonInterval(0, 0), tooFewAnswers: false, namedIn: 0, tooFewAppearances: true, presenceRate: 0.4 })] }),
     set: set([prompt("a")]),
   });
   assert.ok(ids(mixed).includes("blind-models"));

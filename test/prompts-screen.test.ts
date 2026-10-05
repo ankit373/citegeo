@@ -17,7 +17,7 @@ const EMPTY_SET: TopicSet = {
 };
 
 const SCORE: VisibilityScore = {
-  answers: 0, appearances: 0, presenceInterval: wilsonInterval(0, 0), tooFewAnswers: false, presenceRate: null, prominence: null, sentiment: null, score: null,
+  answers: 0, appearances: 0, presenceInterval: wilsonInterval(0, 0), tooFewAnswers: false, namedIn: 0, tooFewAppearances: true, presenceRate: null, prominence: null, sentiment: null, score: null,
   weights: SCORE_WEIGHTS,
 };
 
