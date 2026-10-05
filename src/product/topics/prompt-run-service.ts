@@ -65,6 +65,11 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
+/** One unit of work in a run: a question put to a model for one audience. */
+function workKey(row: { promptId: string; modelId: string; regionId: string; languageId: string; personaId?: string | undefined }): string {
+  return [row.promptId, row.modelId, row.regionId, row.languageId, row.personaId || "anyone"].join("|");
+}
+
 export interface StartPromptRunInput {
   projectId: string;
   /** How many times to ask each question of each model. One when omitted, so
@@ -72,6 +77,12 @@ export interface StartPromptRunInput {
   repetitions?: number | undefined;
   /** Limits the run to these prompts. Every active prompt when omitted. */
   promptIds?: string[] | undefined;
+  /** Limits the run to these saved models. All of them when omitted, so a
+   * subset can be asked without changing the configuration for everybody. */
+  modelIds?: string[] | undefined;
+  /** Re-asks only what failed in that run, in the same market, language and
+   * persona it failed in. A whole run again is the wrong price for a retry. */
+  retryOf?: string | undefined;
   /** Markets to ask in. The global region alone when omitted. */
   regionIds?: string[] | undefined;
   /** Languages to ask in. English alone when omitted. */
@@ -206,8 +217,11 @@ export class PromptRunService {
 
 
     const repetitions = repetitionsFrom(input.repetitions);
+    // A whole run again is the wrong price for a retry, so a retry asks only
+    // the exact combinations that failed, where they failed.
+    const retry = input.retryOf ? await this.failedWork(input.projectId, input.retryOf) : null;
     const set = await this.topics.get(input.projectId);
-    const wanted = input.promptIds ? new Set(input.promptIds) : null;
+    const wanted = retry ? retry.promptIds : input.promptIds ? new Set(input.promptIds) : null;
     const prompts = activePrompts(set).filter((prompt) => !wanted || wanted.has(prompt.id));
     if (!prompts.length) {
       throw new PromptRunUnavailableError(
@@ -220,7 +234,12 @@ export class PromptRunService {
     if (!baseline.modelSnapshots.length && !chosenEngines.length) {
       throw new PromptRunUnavailableError("No models are saved for this project. Choose models and save a configuration first.");
     }
-    const { run: models, skipped } = await this.usable(baseline.modelSnapshots);
+    const chosenModels = retry
+      ? baseline.modelSnapshots.filter((model) => retry.modelIds.has(model.modelId))
+      : input.modelIds && input.modelIds.length
+        ? baseline.modelSnapshots.filter((model) => (input.modelIds as string[]).includes(model.modelId))
+        : baseline.modelSnapshots;
+    const { run: models, skipped } = await this.usable(chosenModels);
     if (!models.length && !chosenEngines.length) {
       throw new PromptRunUnavailableError(
         `Every saved model is unusable: ${skipped.map((row) => `${row.modelId} (${row.reason})`).join("; ")}`,
@@ -234,7 +253,8 @@ export class PromptRunService {
     // A location this project defined is a market as far as the run is
     // concerned, so both are resolved here and nothing downstream has to care.
     const locationSet = this.locations ? await this.locations.get(input.projectId) : null;
-    const regions: Region[] = (input.regionIds && input.regionIds.length ? input.regionIds : [GLOBAL_REGION.id]).map((id) => {
+    const wantedRegions = retry ? retry.regionIds : input.regionIds;
+    const regions: Region[] = (wantedRegions && wantedRegions.length ? wantedRegions : [GLOBAL_REGION.id]).map((id) => {
       const found = region(id);
       if (found) return found;
       const place = trackedLocationFrom(locationSet, id);
@@ -242,7 +262,8 @@ export class PromptRunService {
       throw new PromptRunUnavailableError(`Unknown market "${id}".`);
     });
 
-    const languages: AnswerLanguage[] = (input.languageIds && input.languageIds.length ? input.languageIds : [DEFAULT_LANGUAGE.id]).map((id) => {
+    const wantedLanguages = retry ? retry.languageIds : input.languageIds;
+    const languages: AnswerLanguage[] = (wantedLanguages && wantedLanguages.length ? wantedLanguages : [DEFAULT_LANGUAGE.id]).map((id) => {
       const found = language(id);
       if (!found) throw new PromptRunUnavailableError(`Unknown language "${id}".`);
       return found;
@@ -255,7 +276,9 @@ export class PromptRunService {
     // tracked, which is what adding one is for, plus the arm that states
     // nobody so the figures stay comparable with every run before personas.
     const personaSet = this.personas ? await this.personas.get(input.projectId) : null;
-    const wantedPersonas = input.personaIds && input.personaIds.length
+    const wantedPersonas = retry && retry.personaIds.length
+      ? retry.personaIds
+      : input.personaIds && input.personaIds.length
       ? input.personaIds
       : [NO_PERSONA.id, ...(personaSet ? trackedPersonas(personaSet).map((row) => row.id) : [])];
     const personas: Persona[] = [...new Set(wantedPersonas)].map((id) => {
@@ -294,6 +317,7 @@ export class PromptRunService {
           for (const tongue of languages) {
             for (const who of personas) {
               for (let pass = 1; pass <= repetitions; pass += 1) {
+                if (retry && !retry.tuples.has(workKey({ promptId: prompt.id, modelId: model.modelId, regionId: market.id, languageId: tongue.id, personaId: who.id }))) continue;
                 const queue = queues.get(model.providerId) || [];
                 queue.push(async () => {
                   // Written before the call so the interface can name what is in
@@ -331,6 +355,7 @@ export class PromptRunService {
         if (stopped) break;
         for (let pass = 1; pass <= repetitions; pass += 1) {
           if (this.cancelled.has(run.id)) { stopped = true; break; }
+          if (retry && !retry.tuples.has(workKey({ promptId: prompt.id, modelId: engine.id, regionId: regions[0]?.id || GLOBAL_REGION.id, languageId: languages[0]?.id || DEFAULT_LANGUAGE.id, personaId: personas[0]?.id }))) continue;
           run.currentPromptText = prompt.text;
           run.currentModelId = engine.id;
           await this.store.saveRun(run);
@@ -377,6 +402,32 @@ export class PromptRunService {
     const current = currentBaseline(await this.baselines.list(projectId));
     if (!current) throw new PromptRunUnavailableError("This project has no saved configuration to run against.");
     return current;
+  }
+
+  /** The exact combinations a run failed on. A surface that answered nothing
+   * is not one of them: it was reached and had nothing to say. */
+  private async failedWork(projectId: string, runId: string): Promise<{
+    promptIds: Set<string>;
+    modelIds: Set<string>;
+    regionIds: string[];
+    languageIds: string[];
+    personaIds: string[];
+    tuples: Set<string>;
+  }> {
+    const runs = await this.store.listRuns(projectId);
+    const previous = runs.find((row) => row.id === runId);
+    if (!previous) throw new PromptRunUnavailableError(`Run ${runId} does not exist.`);
+    const answers = (await this.store.listAnswers(projectId)).filter((answer) => answer.runId === runId);
+    const failed = answers.filter((answer) => !countsTowardProgress(answer));
+    if (!failed.length) throw new PromptRunUnavailableError("Nothing failed in that run, so there is nothing to ask again.");
+    return {
+      promptIds: new Set(failed.map((answer) => answer.promptId)),
+      modelIds: new Set(failed.map((answer) => answer.modelId)),
+      regionIds: previous.regionIds,
+      languageIds: previous.languageIds,
+      personaIds: previous.personaIds || [],
+      tuples: new Set(failed.map((answer) => workKey(answer))),
+    };
   }
 
   /** A grounded answer and its sources come back as prose, so the mentions are
