@@ -65,6 +65,12 @@ export interface TopicSet {
   prompts: Prompt[];
   /** When a model last proposed a set for this project. Null when authored by hand. */
   generatedAt: string | null;
+  /** True where the set was proposed with no description of the business and
+   * no category: the model had the domain name and the brand name and nothing
+   * else, and guessed. A set built that way looks identical to one built from
+   * a read of the site, which is how a stock screener came to be tracking
+   * questions about AI visibility tooling. */
+  generatedWithoutFacts?: boolean;
   updatedAt: string;
 }
 

@@ -136,3 +136,23 @@ test("a proposal with nothing usable is unknown, never an empty success", () => 
   const parsed = parsePromptSetProposal({ analysisStatus: "completed", topics: [], unknowns: [] });
   assert.equal(parsed.analysisStatus, "unknown");
 });
+
+test("a set proposed with nothing established about the business says so", async () => {
+  // ninethirty.ai had no stored profile, so the generator was told "Not
+  // established. Do not guess at it." and the model guessed from the domain:
+  // a stock screener got three topics about AI visibility tooling, which were
+  // then run. A set written off a domain name has to be readable as one.
+  const { service, projectId, cleanup } = await harness();
+  try {
+    const set = await service.generate(projectId, async () => PROPOSAL);
+    assert.equal(set.generatedWithoutFacts, true, "no description and no category were supplied");
+
+    const told = await service.generate(projectId, async () => PROPOSAL, {
+      businessDescription: "A stock screener for US swing traders.",
+      productCategory: "stock screener",
+    });
+    assert.equal(told.generatedWithoutFacts, undefined, "told what the company does, so it was not guessing");
+  } finally {
+    await cleanup();
+  }
+});
