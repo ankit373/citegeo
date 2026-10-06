@@ -1,8 +1,15 @@
+import { isReadable } from "../topics/prompt-trend.js";
 import type { TopicInsights } from "../topics/topic-insights.js";
 
 // What is worth telling someone without being asked. A rule only fires on a
 // comparison where both sides were measurable: null to zero is a measurement
 // starting, not a fall.
+//
+// Measurable is not the same as present. A run of two answers carries a score
+// and decides nothing, and a brand named in two per cent of answers is missing
+// from a pair of them nineteen times in twenty. Comparing two such runs fired
+// a critical alert on the likeliest outcome there is, so both sides of every
+// run to run rule have to be a reading rather than merely a number.
 
 export type AlertKind =
   | "score_dropped"
@@ -47,11 +54,14 @@ export function evaluateAlerts(
   context: AlertContext = {},
 ): Alert[] {
   const alerts: Alert[] = [];
-  const points = insights.trend.points;
-  const latest = points[points.length - 1];
-  const previous = points[points.length - 2];
+  // The last two runs a figure can be read off, which are not always the last
+  // two runs: a handful of answers between two real passes is not a week where
+  // visibility collapsed and came back.
+  const readable = insights.trend.points.filter(isReadable);
+  const latest = readable[readable.length - 1];
+  const previous = readable[readable.length - 2];
 
-  if (latest && previous && latest.score.score !== null && previous.score.score !== null) {
+  if (latest && previous) {
     const change = latest.score.score - previous.score.score;
     if (change <= -thresholds.scoreDrop) {
       alerts.push({
@@ -75,7 +85,7 @@ export function evaluateAlerts(
         kind: "topic_lost",
         severity: "critical",
         headline: "No answer named you in the latest run",
-        detail: `The previous run named you in ${previous.score.appearances} of ${previous.score.answers} answers.`,
+        detail: `The previous run named you in ${previous.score.appearances} of ${previous.score.answers} answers, and the latest asked ${latest.score.answers}.`,
       });
     }
   }
