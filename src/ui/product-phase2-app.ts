@@ -252,6 +252,9 @@ export function renderProductPhase2AppHtml(): string {
     .trend { width:100%; height:auto; display:block; }
     .chart-line { fill:none; stroke:var(--text); stroke-width:2; stroke-linejoin:round; stroke-linecap:round; }
     .trend circle { fill:var(--text); }
+    /* A run too thin to read: plotted where it fell, hollow, so the eye does
+       not join it to the readings either side. */
+    .trend circle.chart-thin { fill:var(--surface); stroke:var(--muted); stroke-width:1.5; }
     .chart-grid { stroke:var(--line); stroke-width:1; }
     .chart-axis { fill:var(--weak); font-size:10px; font-family:var(--font-mono); }
     .credential-control { display:flex; gap:8px; align-items:center; }
@@ -307,6 +310,9 @@ export function renderProductPhase2AppHtml(): string {
     /* The head rides the top of whichever box scrolls, one surface step above
        the rows so they visibly pass behind it rather than through it. */
     .mhead { position:sticky; top:0; z-index:2; background:var(--raised); font-size:var(--type-sm); font-weight:500; color:var(--muted); }
+    /* The answer count under a run's date, and the runs too thin to read. */
+    .mhead span small { display:block; font-size:var(--type-xs); font-weight:400; opacity:.75; }
+    .mhead span.thin-run { opacity:.55; }
     .mrow:last-child { border-bottom:0; }
     .mrow:hover,.mrow:focus-within { background:var(--raised); border-radius:var(--radius-sm); }
     .mname strong { display:block; font-size:13px; line-height:1.4; font-weight:550; color:var(--text); }
