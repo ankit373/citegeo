@@ -829,7 +829,11 @@ export function topicMatrix(data: MatrixData, open: string[] = []): string {
     return '<p class="subtle">No answer has been scored against a topic yet.</p>';
   }
   const shown = new Set(open);
-  const columns = `grid-template-columns:minmax(150px,1.4fr) 92px repeat(${data.columns.length},minmax(52px,1fr))`;
+  // The topic name is what the row is about and it was losing to eight share
+  // columns: at the width this panel renders, 1.4fr of 9.4 left it 164px and
+  // "Screener vs spreadsheets" came out as "Screener vs spr…". A percentage
+  // needs far less room than a sentence does.
+  const columns = `grid-template-columns:minmax(190px,2.4fr) 92px repeat(${data.columns.length},minmax(46px,1fr))`;
   const heads = data.columns.map((column) =>
     `<span class="mxhead ${column.isTarget ? "is-you" : ""}" title="${html(column.name)}">${brandIcon(column.name, column.icon)}<b>${html(column.name.length > 11 ? column.name.slice(0, 10) + "…" : column.name)}</b></span>`).join("");
   const visible = data.rows.filter((row) => !row.parent || shown.has(row.parent));
