@@ -49,6 +49,25 @@ export function send(res: ServerResponse, status: number, body: unknown, content
   res.end(contentType === "application/json" ? JSON.stringify(body, null, 2) : String(body));
 }
 
+/** Bytes of an uploaded file this will take in one request. An access log can
+ * be larger than any server wants in memory, and the right answer to that is to
+ * say so rather than to fall over. */
+export const UPLOAD_LIMIT = 8 * 1024 * 1024;
+
+/** The body as text, for an upload that is not JSON. Stops at the limit rather
+ * than reading a log of any size into memory. */
+export async function readText(req: IncomingMessage, limit = UPLOAD_LIMIT): Promise<string> {
+  const chunks: Buffer[] = [];
+  let size = 0;
+  for await (const chunk of req) {
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    size += buffer.length;
+    if (size > limit) throw new Error(`That file is larger than ${Math.round(limit / 1048576)}MB. Upload a slice of the log instead.`);
+    chunks.push(buffer);
+  }
+  return Buffer.concat(chunks).toString("utf8");
+}
+
 export async function readJson(req: IncomingMessage): Promise<Record<string, unknown>> {
   const chunks: Buffer[] = [];
   for await (const chunk of req) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
