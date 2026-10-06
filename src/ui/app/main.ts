@@ -850,16 +850,21 @@ export function boot(): void {
         ? left + (width - left) / 2
         : left + index * (width - left - 8) / (points.length - 1);
       const y = (value: any) => 10 + (max - value) * (height - bottom - 10) / (max || 1);
+      // The line joins readings. A point off a handful of answers is plotted
+      // where it fell and the line is broken through it, because joining two of
+      // them draws a move that the answer count invented.
       let path = "";
       let open = false;
       points.forEach((point, index) => {
-        if (point.value === null) { open = false; return; }
+        if (point.value === null || point.thin) { open = false; return; }
         path += (open ? " L " : " M ") + x(index).toFixed(1) + " " + y(point.value).toFixed(1);
         open = true;
       });
       const dots = points.map((point, index) => point.value === null
         ? ''
-        : '<circle cx="' + x(index).toFixed(1) + '" cy="' + y(point.value).toFixed(1) + '" r="3.5"><title>' + html(point.at.slice(0, 10)) + ': ' + html(point.display) + '</title></circle>').join("");
+        : '<circle cx="' + x(index).toFixed(1) + '" cy="' + y(point.value).toFixed(1) + '" r="3.5"'
+          + (point.thin ? ' class="chart-thin"' : '') + '><title>' + html(point.at.slice(0, 10)) + ': ' + html(point.display)
+          + (point.thin && point.note ? ' (' + html(point.note) + ')' : '') + '</title></circle>').join("");
       const gridY = [0, max / 2, max];
       const grid = gridY.map((value) => '<line x1="' + left + '" x2="' + width + '" y1="' + y(value).toFixed(1) + '" y2="' + y(value).toFixed(1) + '" class="chart-grid"/><text x="0" y="' + (y(value) + 4).toFixed(1) + '" class="chart-axis">' + html(points[0].format(value)) + '</text>').join("");
       return '<svg class="trend" viewBox="0 0 ' + width + ' ' + height + '" role="img" aria-label="' + html(label) + ' over time">' + grid + '<path d="' + path + '" class="chart-line"/>' + dots + '</svg>';
@@ -1227,14 +1232,23 @@ export function boot(): void {
       const points = trend.points.map((point: any) => ({
         at: point.at,
         value: point.score.score,
+        thin: point.score.tooFewAnswers,
+        note: point.score.answers + (point.score.answers === 1 ? " answer" : " answers"),
         display: point.score.score === null ? "Not measurable" : point.score.score + " / 100",
         format: (value: any) => Math.round(value) + "",
         axisMax: 100,
       }));
       const change = trend.change === null
-        ? '<span class="subtle">Not comparable yet</span>'
+        ? '<span class="subtle">' + (trend.readablePoints < 2
+            ? 'Not comparable yet: ' + trend.readablePoints + ' of ' + trend.points.length + ' run(s) asked enough to read a figure off'
+            : 'Not comparable yet') + '</span>'
         : '<span class="' + (trend.change > 0 ? "state-ok" : trend.change < 0 ? "state-bad" : "") + '">' + (trend.change > 0 ? "+" : "") + trend.change + ' since ' + html(trend.since.slice(0, 10)) + '</span>';
-      return '<div class="trend-head">' + change + '</div>' + trendChart(points, "answer engine score");
+      // Named rather than only drawn faintly, because a chart whose shape comes
+      // from run size reads as a finding to anybody who does not hover a dot.
+      const thin = trend.thinPoints
+        ? '<p class="subtle">' + trend.thinPoints + ' of ' + trend.points.length + ' run(s) asked too few answers to read a score off. They are plotted where they fell, and the line is not drawn through them.</p>'
+        : '';
+      return '<div class="trend-head">' + change + '</div>' + trendChart(points, "answer engine score") + thin;
     }
 
     function renderRegionRows(rows: any[], caveat: string) {
@@ -1265,8 +1279,11 @@ export function boot(): void {
     }
 
     // A trend read at a glance: no axes, no grid, just the shape.
+    // A spark has no room to say which points it dropped, so it draws only the
+    // runs that asked enough to read a figure off. A line through a one-answer
+    // run is a picture of how big the run was.
     function sparkline(points: any[], width?: number, height?: number) {
-      const usable = points.filter((point) => point.score.score !== null);
+      const usable = points.filter((point) => point.score.score !== null && !point.score.tooFewAnswers);
       if (usable.length < 2) return '<span class="subtle">Run again to see movement</span>';
       const values = usable.map((point) => point.score.score);
       const max = Math.max(100, ...values);
@@ -2506,7 +2523,7 @@ export function boot(): void {
           name: row.name, isTarget: row.isTarget,
           domain: ((data.leaderboard as any[]) || []).find((entry: any) => entry.name === row.name)?.domain ?? null,
           icon: state.brandIcons[((data.leaderboard as any[]) || []).find((entry: any) => entry.name === row.name)?.domain || ""] ?? null,
-          points: (row.points as any[]).map((point: any) => ({ at: point.at, share: point.share })),
+          points: (row.points as any[]).map((point: any) => ({ at: point.at, share: point.share, answers: point.answers, readable: point.readable })),
         })) : [],
         alerts: (home.alerts as any[]).length,
       };
