@@ -13,6 +13,10 @@ import type { SourcePage } from "./source-page.js";
 
 export const SHAPE_EFFECT = "Measured causally rather than by correlation: the same facts rendered as structure instead of prose took about half a citation more per answer, within a 95% interval of roughly a fifth to four fifths, and the total number of citations did not rise. The gain came out of another page. Ordering the same documents differently moved far less.";
 
+/** Pages a side needs before its shape is that side's shape rather than one
+ * page's. A verdict off a single page of yours is a verdict about that page. */
+export const MIN_PAGES_TO_COMPARE = 3;
+
 export const SHAPE_CAVEAT = "Counted from the markup of pages these answers cited, so it describes what is already winning here rather than what works everywhere. A page can be structured and say nothing worth citing.";
 
 export interface ShapeSummary {
@@ -35,6 +39,9 @@ export interface ShapeComparison {
    * yours on every count that could be compared. Null where either side is
    * too thin to compare, which is unknown rather than no gap. */
   behindOnAll: boolean | null;
+  /** Pages a side needs before the comparison is read, so a null verdict can
+   * say which side was short rather than only that there is none. */
+  minimum: number;
   effect: string;
   caveat: string;
 }
@@ -81,12 +88,16 @@ export function compareShapes(input: { pages: SourcePage[]; domain?: string | un
     [left.tablesPerThousand, right.tablesPerThousand],
   ];
   const comparable = counts.filter(([a, b]) => a !== null && b !== null);
+  // One page is a page, not a side. The field has always promised null where
+  // either side is too thin, and the only thinness it tested was zero.
+  const enough = left.pages >= MIN_PAGES_TO_COMPARE && right.pages >= MIN_PAGES_TO_COMPARE;
   return {
     theirs: left,
     yours: right,
-    behindOnAll: !left.pages || !right.pages || !comparable.length
+    behindOnAll: !enough || !comparable.length
       ? null
       : comparable.every(([a, b]) => (a as number) > (b as number)),
+    minimum: MIN_PAGES_TO_COMPARE,
     effect: SHAPE_EFFECT,
     caveat: SHAPE_CAVEAT,
   };

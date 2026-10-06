@@ -8,7 +8,7 @@ import type { SourcePage } from "../src/product/citations/source-page.js";
 function page(over: Partial<SourcePage> = {}): SourcePage {
   return {
     url: "https://them.test/x", host: "them.test", fetchedAt: "", title: "A page", description: "",
-    headings: [], words: 1000, namesYou: false, named: [], detail: null,
+    headings: [], words: 1000, namesYou: false, named: [], detail: null, text: "the body of the page",
     shape: { headings: 8, listItems: 4, tables: 0, paragraphs: 30 }, ...over,
   };
 }
@@ -113,4 +113,18 @@ test("the baselines travel and the caveat refuses to call the split a census", (
   assert.ok(KIND_CAVEAT.includes("a reading rather than a census"));
   assert.ok(KIND_CAVEAT.includes("reads as a publisher here"));
   assert.equal(report.caveat, KIND_CAVEAT);
+});
+
+test("a page that loaded and gave back no body is not an article either", () => {
+  // It would be classified from its address alone and land on the default, so
+  // an empty read would read as evidence that articles get cited here.
+  const report = buildPageKinds({ pages: [page(), page({ url: "https://b.test/x", text: "", words: 0, shape: undefined })] });
+  assert.equal(report.pages, 1, "a page with no body says nothing about what gets cited");
+});
+
+test("a share is set beside a published one only once enough pages are read", () => {
+  const few = buildPageKinds({ pages: [page(), page({ url: "https://b.test/x" })], cited: 176 });
+  assert.equal(few.tooFewToCompare, true, "two pages cannot settle a comparison with a published share");
+  assert.equal(few.cited, 176, "the share says what part of the category it speaks for");
+  assert.equal(few.listicleInterval.trials, 2);
 });
