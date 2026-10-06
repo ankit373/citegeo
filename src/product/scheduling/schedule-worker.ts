@@ -45,7 +45,12 @@ export function siteSignalProbeService(): SiteSignalProbeService {
 }
 
 export function crawlerLogIngestService(): CrawlerLogIngestService {
-  return new CrawlerLogIngestService(new CrawlerLogStateStore(productDataDir()));
+  return new CrawlerLogIngestService(new CrawlerLogStateStore(new ProductProjectFileStore(productDataDir())));
+}
+
+/** The projects a configured log is counted for. */
+async function projectsForCrawlers(): Promise<Array<{ id: string }>> {
+  return new ProductProjectService(new ProductProjectFileStore(productDataDir())).list();
 }
 
 export interface DigestDependencies {
@@ -155,9 +160,13 @@ export async function runProductScheduleWorker(pollSeconds = 60): Promise<void> 
       console.error(JSON.stringify({ type: "prompt_schedule_worker_failed", detail: error instanceof Error ? error.message : String(error) }));
     }
     try {
-      const ingested = await crawlerLog.ingest();
-      if (ingested.state === "ingested" && ingested.linesParsed) {
-        console.log(JSON.stringify({ type: "crawler_log_ingested", lines: ingested.linesParsed, bytes: ingested.bytesRead, restarted: ingested.restarted }));
+      // One state per project now, so the configured log is counted for each
+      // of them. A project counting a log it uploaded is left alone.
+      for (const project of await projectsForCrawlers()) {
+        const ingested = await crawlerLog.ingest(project.id);
+        if (ingested.state === "ingested" && ingested.linesParsed) {
+          console.log(JSON.stringify({ type: "crawler_log_ingested", projectId: project.id, lines: ingested.linesParsed, bytes: ingested.bytesRead, restarted: ingested.restarted }));
+        }
       }
     } catch (error) {
       console.error(JSON.stringify({ type: "crawler_log_ingest_failed", detail: error instanceof Error ? error.message : String(error) }));

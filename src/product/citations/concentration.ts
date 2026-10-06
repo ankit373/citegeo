@@ -12,6 +12,10 @@ import type { PromptAnswer } from "../topics/prompt-run-schema.js";
 /** Shares at these points, which is enough to see a curve without drawing one. */
 export const AT_RANKS = [1, 3, 5, 10];
 
+/** Half the citations held by this share of the domains or fewer is a category
+ * a few sites own. A judgement, so it is named rather than buried in a test. */
+export const CONCENTRATED_AT = 0.2;
+
 export const CONCENTRATION_CAVEAT = "Counted over the citations these questions produced, so it describes the sources behind your category as these models answered it, not the web. A domain cited once by every answer and one cited ten times by a single answer are different things, so a domain counts once per answer.";
 
 export interface CitedHost {
@@ -19,7 +23,13 @@ export interface CitedHost {
   /** Answers citing this host at least once. Counted once per answer, so a
    * page cited ten times in one answer is one observation. */
   answers: number;
+  /** This host's observations over all of them. A share of the citations, not
+   * of the answers, which is why it sits far below answers / answersWithCitations. */
   share: number;
+  /** Answers citing it over answers citing anything. The other reading of the
+   * same row, carried because printing only one of them beside a raw count
+   * leaves a reader working out a figure the row never meant. */
+  shareOfAnswers: number;
   /** True where the brand's own domain. */
   isYours: boolean;
 }
@@ -32,6 +42,9 @@ export interface ConcentrationReport {
   topShares: Array<{ rank: number; share: number }>;
   /** Domains holding half of all citations. Lower is more concentrated. */
   halfHeldBy: number | null;
+  /** Whether a few domains own the category or the tail is long enough for a
+   * new page to get in. The panel offered the reader both and said neither. */
+  verdict: "concentrated" | "spread" | null;
   /** Gini, 0 where every domain is cited equally and approaching 1 where one
    * domain holds everything. Null with nothing cited. */
   gini: number | null;
@@ -75,6 +88,7 @@ export function buildConcentrationReport(input: { answers: PromptAnswer[]; domai
       host,
       answers,
       share: total ? answers / total : 0,
+      shareOfAnswers: answersWithCitations ? answers / answersWithCitations : 0,
       isYours: Boolean(yours) && (host === yours || host.endsWith("." + yours)),
     }))
     .sort((left, right) => right.answers - left.answers || left.host.localeCompare(right.host));
@@ -92,11 +106,17 @@ export function buildConcentrationReport(input: { answers: PromptAnswer[]; domai
   }
 
   const yourIndex = hosts.findIndex((row) => row.isYours);
+  // Half the citations held by under a fifth of the domains is a category a
+  // handful of sites own. Anything looser is a tail a new page can get into.
+  const verdict = halfHeldBy === null || !hosts.length
+    ? null
+    : halfHeldBy / hosts.length <= CONCENTRATED_AT ? "concentrated" : "spread";
   return {
     answersWithCitations,
     hosts,
     topShares,
     halfHeldBy: total ? halfHeldBy : null,
+    verdict,
     gini: giniOf(hosts.map((row) => row.answers)),
     yourRank: yourIndex < 0 ? null : yourIndex + 1,
     caveat: CONCENTRATION_CAVEAT,

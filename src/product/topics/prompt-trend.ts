@@ -22,16 +22,25 @@ export interface RivalSeries {
   name: string;
   isTarget: boolean;
   /** Null at a run where the brand was not named, which is a zero share and
-   * not a gap, so the line is drawn through it. */
-  points: Array<{ runId: string; at: string; share: number }>;
+   * not a gap, so the line is drawn through it. The answer count travels with
+   * each share because a run of one answer can only report nought or one, and
+   * a line drawn through those is a picture of run size. */
+  points: Array<{ runId: string; at: string; share: number; answers: number; readable: boolean }>;
 }
 
 export interface PromptTrend {
   points: TrendPoint[];
-  /** Score now minus score at the first comparable point. Null with fewer than two. */
+  /** Score at the latest readable point less the score at the earliest, where
+   * there are two. Null where there are not: a run of one answer is not a
+   * reading, and the difference between two of them is not a change. */
   change: number | null;
   /** The run the change is measured from. */
   since: string | null;
+  /** Points too thin to read, so a chart can mark them rather than drawing a
+   * line through them. */
+  thinPoints: number;
+  /** Points a figure can be read off. The change rests on these. */
+  readablePoints: number;
   /** The brands named most often overall, each across every run. Absent
    * when the caller did not ask for them. */
   rivals?: RivalSeries[];
@@ -66,15 +75,30 @@ export function buildPromptTrend(input: {
     });
   }
 
-  const first = points[0];
-  const last = points[points.length - 1];
-  const comparable = points.length > 1 && first && last && first.score.score !== null && last.score.score !== null;
+  // A point whose interval is too wide to read is not an endpoint a change can
+  // be measured from. Taking the first and last readable ones rather than the
+  // first and last of all reports a real move where there is one, instead of
+  // the difference between two runs that each said nothing.
+  const readable = points.filter(isReadable);
+  const first = readable[0];
+  const last = readable[readable.length - 1];
+  const comparable = readable.length > 1 && first && last;
   return {
     points,
     change: comparable ? Math.round(((last.score.score as number) - (first.score.score as number)) * 10) / 10 : null,
     since: comparable ? first.at : null,
+    thinPoints: points.length - readable.length,
+    readablePoints: readable.length,
     rivals: input.sharesOf ? rivalSeries(points, byRun, input.sharesOf) : [],
   };
+}
+
+/** A point carrying a score off enough answers to mean something. */
+export type ReadablePoint = TrendPoint & { score: VisibilityScore & { score: number } };
+
+/** The flag is the score's own, so this never invents a second threshold. */
+export function isReadable(point: TrendPoint): point is ReadablePoint {
+  return point.score.score !== null && !point.score.tooFewAnswers;
 }
 
 /** The brands worth drawing, and their share at every run. Chosen by total
@@ -100,7 +124,13 @@ function rivalSeries(
     isTarget: entry.isTarget,
     points: points.map((point) => {
       const row = sharesOf(byRun.get(point.runId) || []).find((item) => item.name === entry.name);
-      return { runId: point.runId, at: point.at, share: row ? row.shareOfAnswers || 0 : 0 };
+      return {
+        runId: point.runId,
+        at: point.at,
+        share: row ? row.shareOfAnswers || 0 : 0,
+        answers: point.score.answers,
+        readable: isReadable(point),
+      };
     }),
   }));
 }
