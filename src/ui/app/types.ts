@@ -88,8 +88,16 @@ export interface StabilityShape {
   measured: number;
   askedOnce: number;
   sourceOverlap: number | null;
+  /** The questions the overlap was taken over, which is not every measured one. */
+  withSources: number;
+  /** Distinct questions behind the condition groups, and how many have been
+   * asked twice. measured and askedOnce count groups, not questions. */
+  distinctQuestions: number;
+  questionsRepeated: number;
   namingUnstable: number;
-  questions: Array<{ promptId: string; promptText: string; modelId: string; passes: number; named: number; namingAgreed: boolean; sourceOverlap: number | null; sourcesAlways: number; sourcesEver: number }>;
+  neverNamed: number;
+  alwaysNamed: number;
+  questions: Array<{ promptId: string; promptText: string; modelId: string; passes: number; named: number; naming: "always" | "never" | "split"; namingAgreed: boolean; sourceOverlap: number | null; sourcesAlways: number; sourcesEver: number }>;
   caveat: string;
 }
 
@@ -98,9 +106,11 @@ export interface PhrasingShape {
   namesTheBrand: number;
   oneWording: number;
   unstable: number;
+  neverNamed: number;
+  alwaysNamed: number;
   spread: number | null;
   questions: Array<{
-    rootId: string; rootText: string; modelId: string; namedIn: number; agreed: boolean; spread: number | null;
+    rootId: string; rootText: string; modelId: string; namedIn: number; naming: "always" | "never" | "split"; agreed: boolean; spread: number | null;
     wordings: Array<{ promptId: string; text: string; answers: number; named: number }>;
   }>;
   caveat: string;

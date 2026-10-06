@@ -34,6 +34,9 @@ export interface QuestionPhrasing {
   wordings: WordingResult[];
   /** Wordings where the brand was named at least once. */
   namedIn: number;
+  /** Which of the three this question is. Agreeing on never naming the brand
+   * is the brand's absence, not a steady reading of it. */
+  naming: "always" | "never" | "split";
   /** True where every wording agreed, either always naming it or never. */
   agreed: boolean;
   /** Widest gap in naming rate between two wordings. Null where a wording
@@ -51,6 +54,9 @@ export interface PhrasingReport {
   oneWording: number;
   /** Questions where the wordings disagreed about whether the brand appears. */
   unstable: number;
+  /** Questions no wording named the brand in, and ones every wording did. */
+  neverNamed: number;
+  alwaysNamed: number;
   /** Mean widest gap across the measured questions. Null with none. */
   spread: number | null;
   questions: QuestionPhrasing[];
@@ -118,6 +124,7 @@ export function buildPhrasingReport(answers: PromptAnswer[], set: TopicSet): Phr
       modelId: root.modelId,
       wordings: wordings.sort((left, right) => right.named / right.answers - left.named / left.answers),
       namedIn,
+      naming: namedIn === 0 ? "never" : namedIn === wordings.length ? "always" : "split",
       agreed: namedIn === 0 || namedIn === wordings.length,
       spread,
     });
@@ -129,7 +136,9 @@ export function buildPhrasingReport(answers: PromptAnswer[], set: TopicSet): Phr
     measured: questions.length,
     namesTheBrand: excluded.size,
     oneWording,
-    unstable: questions.filter((row) => !row.agreed).length,
+    unstable: questions.filter((row) => row.naming === "split").length,
+    neverNamed: questions.filter((row) => row.naming === "never").length,
+    alwaysNamed: questions.filter((row) => row.naming === "always").length,
     spread: mean(spreads),
     questions,
     caveat: PHRASING_CAVEAT,
