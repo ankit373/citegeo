@@ -103,7 +103,7 @@ test("a run that mostly failed is reported, and every answer failing is critical
 test("the worst news is first", () => {
   const alerts = evaluateAlerts(insights({
     answers: 6, answersFailed: 4, answersRetired: 0, citationsUnavailable: true,
-    trend: { points: [point("2026-01-01", 40, 2, 4), point("2026-01-08", 0, null, 0)], change: -40, since: "2026-01-01" },
+    trend: trend([point("2026-01-01", 40, 2, 4), point("2026-01-08", 0, null, 0)], -40, "2026-01-01"),
   }));
   assert.equal(alerts[0]?.severity, "critical");
   assert.equal(alerts[alerts.length - 1]?.severity, "info");
