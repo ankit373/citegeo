@@ -4,7 +4,15 @@
 /** Loaded once in the document head. Google Fonts is the only stylesheet host allowed here. */
 export const THEME_FONT_LINKS = `<link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&display=swap">`;
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Wix+Madefor+Display:wght@500;600;700&family=Wix+Madefor+Text:wght@400;500;600&display=swap">`;
+
+/** The three families, on their own, for a surface that carries its own
+ * palette and still has to name a typeface. Nothing anywhere should write a
+ * family out by hand: a stylesheet this file does not load silently falls back
+ * to the system face, and nobody sees it until a screenshot. */
+export const THEME_FONT_TOKENS = `--font-display:"Wix Madefor Display","Wix Madefor Text",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+    --font-ui:"Wix Madefor Text",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+    --font-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;`;
 
 /** Light by default; dark follows the system unless data-theme overrides it. */
 export const THEME_TOKENS = `
@@ -40,8 +48,8 @@ export const THEME_TOKENS = `
     --skeleton:#E7EBF0;
     --skeleton-sheen:rgba(255,255,255,.70);
 
-    --font-display:"IBM Plex Sans Condensed","IBM Plex Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
-    --font-ui:"IBM Plex Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+    --font-display:"Wix Madefor Display","Wix Madefor Text",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+    --font-ui:"Wix Madefor Text",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
     --font-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
 
     --figures:tabular-nums;

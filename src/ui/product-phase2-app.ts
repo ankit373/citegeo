@@ -252,8 +252,11 @@ export function renderProductPhase2AppHtml(): string {
     .trend { width:100%; height:auto; display:block; }
     .chart-line { fill:none; stroke:var(--text); stroke-width:2; stroke-linejoin:round; stroke-linecap:round; }
     .trend circle { fill:var(--text); }
+    /* A run too thin to read: plotted where it fell, hollow, so the eye does
+       not join it to the readings either side. */
+    .trend circle.chart-thin { fill:var(--surface); stroke:var(--muted); stroke-width:1.5; }
     .chart-grid { stroke:var(--line); stroke-width:1; }
-    .chart-axis { fill:var(--weak); font-size:10px; font-family:"IBM Plex Mono",ui-monospace,monospace; }
+    .chart-axis { fill:var(--weak); font-size:10px; font-family:var(--font-mono); }
     .credential-control { display:flex; gap:8px; align-items:center; }
     .credential-control input { flex:1; min-width:0; }
     .step.plan-step { grid-template-columns:66px minmax(0,1fr); align-items:start; }
@@ -307,6 +310,9 @@ export function renderProductPhase2AppHtml(): string {
     /* The head rides the top of whichever box scrolls, one surface step above
        the rows so they visibly pass behind it rather than through it. */
     .mhead { position:sticky; top:0; z-index:2; background:var(--raised); font-size:var(--type-sm); font-weight:500; color:var(--muted); }
+    /* The range a figure is consistent with, under the figure rather than
+       running into it. */
+    .mcell small { display:block; font-size:var(--type-xs); font-weight:400; color:var(--muted); }
     .mrow:last-child { border-bottom:0; }
     .mrow:hover,.mrow:focus-within { background:var(--raised); border-radius:var(--radius-sm); }
     .mname strong { display:block; font-size:13px; line-height:1.4; font-weight:550; color:var(--text); }
@@ -326,7 +332,7 @@ export function renderProductPhase2AppHtml(): string {
     .mlegend { font-size:12px; color:var(--weak); margin:10px 2px 0; }
     .countstrip { display:flex; flex-wrap:wrap; gap:8px 26px; margin-top:14px; }
     .countstrip .count { display:grid; gap:1px; font-size:12px; color:var(--muted); }
-    .countstrip .count strong { font-size:19px; font-family:"IBM Plex Mono",ui-monospace,monospace; color:var(--text); }
+    .countstrip .count strong { font-size:19px; font-family:var(--font-mono); color:var(--text); }
     .countstrip .is-zero,.countstrip .is-zero strong { color:var(--weak); }
     .bulk { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
     .model-name { min-width:0; display:grid; gap:4px; }
@@ -380,7 +386,7 @@ export function renderProductPhase2AppHtml(): string {
     .fix { border:1px solid var(--line); border-radius:9px; padding:16px 18px; margin-top:14px; min-width:0; }
     .fix-top { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:8px; }
     .fix-top strong { flex:1 1 auto; }
-    .fix-snippet { margin:12px 0 0; padding:14px 16px; background:var(--panel); border:1px solid var(--line); border-radius:7px; max-width:100%; overflow-x:auto; font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:12px; line-height:1.7; white-space:pre-wrap; overflow-wrap:anywhere; }
+    .fix-snippet { margin:12px 0 0; padding:14px 16px; background:var(--panel); border:1px solid var(--line); border-radius:7px; max-width:100%; overflow-x:auto; font-family:var(--font-mono); font-size:12px; line-height:1.7; white-space:pre-wrap; overflow-wrap:anywhere; }
     .picker { display:inline-flex; align-items:center; gap:8px; }
     .step.task-step { grid-template-columns:76px minmax(0,1fr) auto; align-items:start; gap:14px; }
     .task-step .step-index { font-size:10px; letter-spacing:.07em; text-transform:uppercase; padding-top:3px; }

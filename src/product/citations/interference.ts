@@ -46,6 +46,9 @@ export interface PageShift {
 export interface InterferenceReport {
   /** Runs with a citation in them, which is what an arrival is measured against. */
   runs: number;
+  /** Hosts cited in exactly one run. They did not grow in over several; they
+   * turned up once, which is a different thing from either of the shapes here. */
+  arrivedOnce: number;
   arrivals: SourceArrival[];
   shifts: PageShift[];
   caveat: string;
@@ -129,7 +132,9 @@ export function buildInterferenceReport(input: {
       sudden: index !== firstWithCitations && breadth >= BROAD_ARRIVAL && total > 1,
     });
   }
-  arrivals.sort((left, right) => Number(right.sudden) - Number(left.sudden) || right.breadth - left.breadth);
+  // The host breaks ties, so two arrivals alike do not swap places between two
+  // requests for the same data.
+  arrivals.sort((left, right) => Number(right.sudden) - Number(left.sudden) || right.breadth - left.breadth || left.host.localeCompare(right.host));
 
   const shifts: PageShift[] = [];
   for (const page of input.pages) {
@@ -147,5 +152,15 @@ export function buildInterferenceReport(input: {
   }
   shifts.sort((left, right) => right.changed - left.changed);
 
-  return { runs: withCitations.length, arrivals, shifts, caveat: INTERFERENCE_CAVEAT };
+  const runsPerHost = new Map<string, Set<number>>();
+  for (const [index, run] of perRun) {
+    for (const host of run.byHost.keys()) {
+      const seen = runsPerHost.get(host) || new Set<number>();
+      seen.add(index);
+      runsPerHost.set(host, seen);
+    }
+  }
+  const arrivedOnce = [...runsPerHost.values()].filter((runs) => runs.size === 1).length;
+
+  return { runs: withCitations.length, arrivedOnce, arrivals, shifts, caveat: INTERFERENCE_CAVEAT };
 }
