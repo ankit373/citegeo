@@ -1,3 +1,4 @@
+import { THEME_FONT_LINKS } from "./theme.js";
 import { PRODUCT_NAME, PRODUCT_TITLE, renderCiteGeoLockup } from "./brand.js";
 import { WORKBENCH_CSS } from "./workbench-style.js";
 import { renderWorkbenchScript } from "./workbench-script.js";
@@ -19,11 +20,7 @@ export function renderAppHtml(): string {
   <meta name="color-scheme" content="dark">
   <link rel="icon" type="image/svg+xml" href="/assets/brand/citegeo-emblem.svg"><link rel="apple-touch-icon" href="/assets/brand/citegeo-emblem.svg">
   <title>${PRODUCT_TITLE}</title>
-  <link rel="preconnect" href="https://api.fontshare.com">
-  <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f%5B%5D=cabinet-grotesk@800,700&f%5B%5D=general-sans@400,500,600&display=swap">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&display=swap">
+  ${THEME_FONT_LINKS}
   <style>${WORKBENCH_CSS}</style>
 </head>
 <body>

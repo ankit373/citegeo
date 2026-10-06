@@ -850,16 +850,21 @@ export function boot(): void {
         ? left + (width - left) / 2
         : left + index * (width - left - 8) / (points.length - 1);
       const y = (value: any) => 10 + (max - value) * (height - bottom - 10) / (max || 1);
+      // The line joins readings. A point off a handful of answers is plotted
+      // where it fell and the line is broken through it, because joining two of
+      // them draws a move that the answer count invented.
       let path = "";
       let open = false;
       points.forEach((point, index) => {
-        if (point.value === null) { open = false; return; }
+        if (point.value === null || point.thin) { open = false; return; }
         path += (open ? " L " : " M ") + x(index).toFixed(1) + " " + y(point.value).toFixed(1);
         open = true;
       });
       const dots = points.map((point, index) => point.value === null
         ? ''
-        : '<circle cx="' + x(index).toFixed(1) + '" cy="' + y(point.value).toFixed(1) + '" r="3.5"><title>' + html(point.at.slice(0, 10)) + ': ' + html(point.display) + '</title></circle>').join("");
+        : '<circle cx="' + x(index).toFixed(1) + '" cy="' + y(point.value).toFixed(1) + '" r="3.5"'
+          + (point.thin ? ' class="chart-thin"' : '') + '><title>' + html(point.at.slice(0, 10)) + ': ' + html(point.display)
+          + (point.thin && point.note ? ' (' + html(point.note) + ')' : '') + '</title></circle>').join("");
       const gridY = [0, max / 2, max];
       const grid = gridY.map((value) => '<line x1="' + left + '" x2="' + width + '" y1="' + y(value).toFixed(1) + '" y2="' + y(value).toFixed(1) + '" class="chart-grid"/><text x="0" y="' + (y(value) + 4).toFixed(1) + '" class="chart-axis">' + html(points[0].format(value)) + '</text>').join("");
       return '<svg class="trend" viewBox="0 0 ' + width + ' ' + height + '" role="img" aria-label="' + html(label) + ' over time">' + grid + '<path d="' + path + '" class="chart-line"/>' + dots + '</svg>';
@@ -1236,14 +1241,23 @@ export function boot(): void {
       const points = trend.points.map((point: any) => ({
         at: point.at,
         value: point.score.score,
+        thin: point.score.tooFewAnswers,
+        note: point.score.answers + (point.score.answers === 1 ? " answer" : " answers"),
         display: point.score.score === null ? "Not measurable" : point.score.score + " / 100",
         format: (value: any) => Math.round(value) + "",
         axisMax: 100,
       }));
       const change = trend.change === null
-        ? '<span class="subtle">Not comparable yet</span>'
+        ? '<span class="subtle">' + (trend.readablePoints < 2
+            ? 'Not comparable yet: ' + trend.readablePoints + ' of ' + trend.points.length + ' run(s) asked enough to read a figure off'
+            : 'Not comparable yet') + '</span>'
         : '<span class="' + (trend.change > 0 ? "state-ok" : trend.change < 0 ? "state-bad" : "") + '">' + (trend.change > 0 ? "+" : "") + trend.change + ' since ' + html(trend.since.slice(0, 10)) + '</span>';
-      return '<div class="trend-head">' + change + '</div>' + trendChart(points, "answer engine score");
+      // Named rather than only drawn faintly, because a chart whose shape comes
+      // from run size reads as a finding to anybody who does not hover a dot.
+      const thin = trend.thinPoints
+        ? '<p class="subtle">' + trend.thinPoints + ' of ' + trend.points.length + ' run(s) asked too few answers to read a score off. They are plotted where they fell, and the line is not drawn through them.</p>'
+        : '';
+      return '<div class="trend-head">' + change + '</div>' + trendChart(points, "answer engine score") + thin;
     }
 
     function renderRegionRows(rows: any[], caveat: string) {
@@ -1274,8 +1288,11 @@ export function boot(): void {
     }
 
     // A trend read at a glance: no axes, no grid, just the shape.
+    // A spark has no room to say which points it dropped, so it draws only the
+    // runs that asked enough to read a figure off. A line through a one-answer
+    // run is a picture of how big the run was.
     function sparkline(points: any[], width?: number, height?: number) {
-      const usable = points.filter((point) => point.score.score !== null);
+      const usable = points.filter((point) => point.score.score !== null && !point.score.tooFewAnswers);
       if (usable.length < 2) return '<span class="subtle">Run again to see movement</span>';
       const values = usable.map((point) => point.score.score);
       const max = Math.max(100, ...values);
@@ -1751,26 +1768,31 @@ export function boot(): void {
       // The button that clears this sits on the outreach panel, so the task
       // is shown where the figure is missing rather than only in the list.
       const unreadCta = report.unread ? taskCta("sources-unread") : '';
+      // A reading is one page against one answer. The same page cited by five
+      // answers gives five readings and five figures, and calling them pages
+      // printed one page disagreeing with itself.
       const lead = report.mean === null
         ? 'No cited page has been read back, so nothing can be said about what the answers took from them.'
-        : 'Across ' + report.measured + ' cited page(s) read back, the mean uptake is ' + uptakePct(report.mean) + '.'
+        : 'Across ' + report.measured + ' reading(s) of ' + report.pagesRead + ' cited page(s) read back, the mean uptake is ' + uptakePct(report.mean) + '.'
           + (report.citedNotUsed
-            ? ' ' + report.citedNotUsed + (report.citedNotUsed === 1 ? ' was cited by an answer that barely touches its subject.' : ' were cited by answers that barely touch their subject.')
+            ? ' ' + report.citedNotUsed + (report.citedNotUsed === 1 ? ' reading is of a page whose subject the answer barely touches.' : ' readings are of pages whose subject the answer barely touches.')
             : ' Every cited page shares its subject with the answer that cited it.');
       const unread = report.unread
-        ? '<p class="subtle">' + report.unread + ' cited page(s) have not been read back, so they are left out rather than counted as unused.</p>'
+        ? '<p class="subtle">' + report.pagesUnread + ' of the ' + (report.pagesRead + report.pagesUnread)
+          + ' cited page(s) have not been read back, so they are left out rather than counted as unused.</p>'
         : '';
       const rows = report.pages.slice(0, 10).map((row: any) => '<div class="mrow mcols-uptake"><div class="mname"><strong>' + html(row.host) + '</strong>'
         + '<span class="mono">' + html(row.url.length > 70 ? row.url.slice(0, 70) + "\u2026" : row.url) + '</span>'
+        + '<span class="subtle">' + html(row.promptText.length > 70 ? row.promptText.slice(0, 70) + "\u2026" : row.promptText) + ' \u00b7 ' + html(row.modelId) + '</span>'
         + (row.phrases.length ? '<span class="subtle">\u201c' + html(row.phrases[0].text.slice(0, 90)) + '\u201d</span>' : '')
         + '</div>'
         + '<span class="mcell">#' + row.citedAt + '</span>'
         + '<span class="mcell ' + (row.uptake === null ? "" : row.uptake >= 0.4 ? "state-ok" : row.uptake > 0 ? "state-flag" : "state-bad") + '">'
         + (row.uptake === null ? 'Not read' : uptakePct(row.uptake)) + '</span>'
-        + '<span class="mcell">' + (row.shared === null ? '\u2014' : uptakePct(row.shared)) + '</span>'
-        + '<span class="mcell">' + (row.coverage === null ? '\u2014' : uptakePct(row.coverage)) + '</span></div>').join("");
+        + '<span class="mcell">' + (row.shared === null ? "Not measurable" : uptakePct(row.shared)) + '</span>'
+        + '<span class="mcell">' + (row.coverage === null ? "Not measurable" : uptakePct(row.coverage)) + '</span></div>').join("");
       return '<p>' + html(lead) + '</p>' + unread + unreadCta
-        + '<div class="mtable"><div class="mhead mcols-uptake"><span>Page</span><span>Cited</span><span>Uptake</span><span>Shared subject</span><span>Coverage</span></div>' + rows + '</div>'
+        + '<div class="mtable"><div class="mhead mcols-uptake"><span>Page, and the answer that cited it</span><span>Cited</span><span>Uptake</span><span>Shared subject</span><span>Coverage</span></div>' + rows + '</div>'
         + '<p class="mlegend">' + html(report.caveat) + '</p>';
     }
 
@@ -1798,9 +1820,12 @@ export function boot(): void {
       if (report.runs < 2) {
         return '<p class="subtle">' + report.runs + ' run(s) have cited anything. A source that arrived everywhere at once can only be told from one that was always there by comparing runs, so this needs a second one.</p>';
       }
+      // "Everything grew in over more than one run" was false for 107 of this
+      // project's 122 hosts, which were cited in exactly one run and never again.
       const lead = sudden.length
         ? sudden.length + ' source(s) arrived across most of the questions in a single run rather than growing into them.'
-        : 'No source arrived across most of the questions in one run. Everything cited grew in over more than one.';
+        : 'No source arrived across most of the questions in a run that was not the first.'
+          + (report.arrivedOnce ? ' ' + report.arrivedOnce + ' of the ' + report.arrivals.length + ' host(s) cited here appear in one run only, which is neither shape.' : '');
       const shifts = report.shifts.length
         ? '<p>' + report.shifts.length + ' cited page(s) changed materially since they were last read.</p>'
           + '<div class="mtable"><div class="mhead mcols-shift"><span>Page</span><span>Changed</span><span>Last read</span></div>'
@@ -1841,18 +1866,27 @@ export function boot(): void {
       }
       const report = state.concentration;
       if (!report.hosts.length) return '<p class="subtle">No answer carried a citation, so there is nobody supplying them to count.</p>';
-      const half = report.halfHeldBy === null ? '' : report.halfHeldBy + ' domain(s) supply half of every citation here.';
+      const half = report.halfHeldBy === null ? '' : report.halfHeldBy + ' of ' + report.hosts.length + ' domain(s) supply half of every citation here.';
+      // The header offers the reader two worlds and the figures decide which
+      // one this is, so the panel says it rather than leaving it as homework.
+      const which = report.verdict === "concentrated"
+        ? ' A handful of them own the category, so getting onto those is the game.'
+        : report.verdict === "spread"
+          ? ' The tail is long enough that a new page can still get in.'
+          : '';
       const where = report.yourRank === null
         ? ' Your own domain is not among them.'
         : ' Yours is ranked ' + report.yourRank + ' of ' + report.hosts.length + '.';
       const curve = report.topShares.map((row: any) => '<span class="count"><strong>' + Math.round(row.share * 100) + '%</strong>top ' + row.rank + '</span>').join("");
+      // Both readings of the row. One count beside one share left a reader
+      // dividing the count by the answers and getting a third number.
       const rows = report.hosts.slice(0, 10).map((row: any, index: number) => '<div class="mrow mcols-concentration"><div class="mname"><strong>' + html(row.host) + (row.isYours ? ' <span class="tag">yours</span>' : '') + '</strong></div>'
         + '<span class="mcell mono">' + (index + 1) + '</span>'
-        + '<span class="mcell">' + row.answers + '</span>'
+        + '<span class="mcell">' + row.answers + ' of ' + report.answersWithCitations + '</span>'
         + '<span class="mcell">' + Math.round(row.share * 100) + '%</span></div>').join("");
-      return '<p>' + html(half + where) + '</p>'
-        + '<div class="countstrip">' + curve + '<span class="count"><strong>' + (report.gini === null ? '\u2014' : (Math.round(report.gini * 100) / 100)) + '</strong>concentration</span></div>'
-        + '<div class="mtable"><div class="mhead mcols-concentration"><span>Domain</span><span>Rank</span><span>Answers</span><span>Share</span></div>' + rows + '</div>'
+      return '<p>' + html(half + which + where) + '</p>'
+        + '<div class="countstrip">' + curve + '<span class="count"><strong>' + (report.gini === null ? "Not measurable" : (Math.round(report.gini * 100) / 100)) + '</strong>concentration</span></div>'
+        + '<div class="mtable"><div class="mhead mcols-concentration"><span>Domain</span><span>Rank</span><span>Cited in</span><span>Share of citations</span></div>' + rows + '</div>'
         + '<p class="mlegend">' + html(report.caveat) + '</p>';
     }
 
@@ -1884,11 +1918,17 @@ export function boot(): void {
       }
       const report = state.shape;
       if (!report.theirs.pages) return '<p class="subtle">No page cited on a question you lose has been read back, so there is nothing to compare a layout against.</p>';
-      const lead = report.behindOnAll === null
-        ? 'None of your own pages has been cited and read back, so there is nothing of yours to compare. The figures on the left are what is already winning here.'
-        : report.behindOnAll
+      // A verdict off one page of yours is a verdict about that page. The side
+      // that is short is named, because "nothing to compare" and "three pages
+      // short of a comparison" are different things to do something about.
+      const lead = report.behindOnAll !== null
+        ? report.behindOnAll
           ? 'The pages cited instead of you carry more structure than yours on every count below.'
-          : 'Your pages are not behind on every count.';
+          : 'Your pages are not behind on every count.'
+        : !report.yours.pages
+          ? 'None of your own pages has been cited and read back, so there is nothing of yours to compare. The figures on the left are what is already winning here.'
+          : 'Each side needs ' + report.minimum + ' pages read back before this is a comparison between two kinds of page rather than between two pages. '
+            + report.yours.pages + ' of yours and ' + report.theirs.pages + ' of theirs have been read, so the figures stand and the verdict does not.';
       return '<p>' + html(lead) + '</p>'
         + '<div class="mtable"><div class="mhead mcols-shape"><span>Per thousand words</span><span>Cited instead of you</span><span>Yours</span></div>'
         + shapeRow("Headings", report.theirs.headingsPerThousand, report.yours.headingsPerThousand)
@@ -1993,9 +2033,11 @@ export function boot(): void {
     }
 
     function creditRows(rows: any[], kind: string) {
+      // Ranked against the pages that could be read, with the place it really
+      // held in the citation list beside it where the two differ.
       return rows.slice(0, 5).map((row: any) => '<div class="mrow mcols-credit"><div class="mname"><strong>' + html(row.host) + '</strong>'
         + '<span class="mono">' + html(row.url.slice(0, 64)) + '</span></div>'
-        + '<span class="mcell">#' + row.citedAt + '</span>'
+        + '<span class="mcell">#' + row.creditedAt + (row.citedAt !== row.creditedAt ? '<small> of ' + row.citedAt + ' cited</small>' : '') + '</span>'
         + '<span class="mcell">#' + row.usedAt + '</span>'
         + '<span class="mcell ' + kind + '">' + (row.gap > 0 ? '+' : '') + row.gap + '</span></div>').join("");
     }
@@ -2009,7 +2051,8 @@ export function boot(): void {
       if (!report.comparable) {
         return '<p class="subtle">No answer cited two pages that could both be read back, so there is no citation list to rank within. Read the cited pages and this fills.</p>';
       }
-      const lead = 'Across ' + report.comparable + ' answer(s) citing more than one page that could be read, a page sits ' + report.meanGap + ' place(s) from where its contribution would put it on average.';
+      const lead = 'Across ' + report.comparable + ' answer(s) citing more than one page that could be read, a page sits ' + report.meanGap + ' place(s) from where its contribution would put it on average, over ' + report.rows + ' page(s) ranked.'
+        + (report.tooFewRead ? ' ' + report.tooFewRead + ' more answer(s) cited something, with fewer than two of their pages read back, so nothing could be ranked inside them.' : '');
       const over = report.overCredited.length
         ? '<p><strong>Cited early, barely used.</strong></p><div class="mtable"><div class="mhead mcols-credit"><span>Page</span><span>Cited</span><span>Used</span><span>Gap</span></div>' + creditRows(report.overCredited, "state-flag") + '</div>'
         : '';
@@ -2062,8 +2105,20 @@ export function boot(): void {
       }
       const report = state.kinds;
       if (!report.pages) return '<p class="subtle">No cited page has been read back, so there is nothing to say about what kind of page wins here.</p>';
-      const listicle = 'Ranked best-of pages are ' + Math.round((report.listicleShare || 0) * 100) + '% of what is cited here, against ' + Math.round(report.listicleBaseline * 100) + '% published.';
-      const corporate = ' A site belonging to a company in this category accounts for ' + Math.round((report.corporateShare || 0) * 100) + '%, against ' + Math.round(report.corporateBaseline * 100) + '%.';
+      // A share off thirteen pages has a range wider than its distance from the
+      // published figure, so the range travels with it and the comparison is
+      // withheld rather than printed as a finding.
+      const over = report.pages + ' of the ' + report.cited + ' page(s) these answers cited have been read back. ';
+      const span = (interval: any) => interval && interval.low !== null
+        ? ' (' + Math.round(interval.low * 100) + ' to ' + Math.round(interval.high * 100) + '%)'
+        : '';
+      const listicle = 'Ranked best-of pages are ' + Math.round((report.listicleShare || 0) * 100) + '%' + span(report.listicleInterval)
+        + ' of what has been read here, against ' + Math.round(report.listicleBaseline * 100) + '% published.';
+      const corporate = ' A site belonging to a company in this category accounts for ' + Math.round((report.corporateShare || 0) * 100) + '%'
+        + span(report.corporateInterval) + ', against ' + Math.round(report.corporateBaseline * 100) + '%.';
+      const thin = report.tooFewToCompare
+        ? '<p class="subtle">' + html(over + 'That is too few for either share to be set against a published one: the range each is consistent with is wider than its distance from the baseline. Read the rest of the cited pages to close it.') + '</p>'
+        : '';
       // Being absent from your own citations is what usually happens, so the
       // figure is given with the band rather than as nought out of ten.
       const ownedPercent = Math.round((report.ownedShare || 0) * 100);
@@ -2071,7 +2126,7 @@ export function boot(): void {
       const owned = report.ownedShare === null ? '' : report.ownedShare >= report.ownedBaselineLow
         ? 'Your own pages are ' + ownedPercent + '% of what was cited, inside the ' + band + ' a brand\u2019s own domain usually gets.'
         : 'Your own pages are ' + ownedPercent + '% of what was cited. Published work puts a brand\u2019s own domain at ' + band + ' of its citations, so the work is on the pages you do not own.';
-      return '<p>' + html(listicle + corporate) + '</p>'
+      return '<p>' + html(listicle + corporate) + '</p>' + thin
         + (owned ? '<p>' + html(owned) + '</p>' : '')
         + '<div class="mtable"><div class="mhead mcols-kind"><span>Format</span><span>Pages</span><span>Share</span><span></span></div>' + kindRows(report.formats) + '</div>'
         + '<div class="mtable" style="margin-top:14px"><div class="mhead mcols-kind"><span>Belongs to</span><span>Pages</span><span>Share</span><span></span></div>' + kindRows(report.sources) + '</div>'
@@ -2136,7 +2191,7 @@ export function boot(): void {
       const freshLine = aged || age.undated
         ? '<p class="subtle">Of the pages read back, ' + age.fresh + ' fresh, ' + age.ageing + ' ageing and ' + age.stale + ' stale'
           + (age.undated ? ', and ' + age.undated + ' state no date at all' : '')
-          + (age.medianAgeDays === null ? '. None of them gave a date to take a median of.' : '. Median age ' + age.medianAgeDays + ' days.')
+          + (age.medianAgeDays === null ? '. None of them gave a date to take a median of.' : '. Median age ' + age.medianAgeDays + ' days, over the ' + age.datedPages + ' that state one.')
           + ' ' + html(age.caveat) + '</p>'
         : '';
       return '<p class="subtle">' + plan.cited + ' page(s) cited across ' + plan.answersWithCitations + ' of ' + plan.answersConsidered + ' answer(s). ' + plan.read + ' read back.</p>'
@@ -2526,7 +2581,7 @@ export function boot(): void {
           name: row.name, isTarget: row.isTarget,
           domain: ((data.leaderboard as any[]) || []).find((entry: any) => entry.name === row.name)?.domain ?? null,
           icon: state.brandIcons[((data.leaderboard as any[]) || []).find((entry: any) => entry.name === row.name)?.domain || ""] ?? null,
-          points: (row.points as any[]).map((point: any) => ({ at: point.at, share: point.share })),
+          points: (row.points as any[]).map((point: any) => ({ at: point.at, share: point.share, answers: point.answers, readable: point.readable })),
         })) : [],
         alerts: (home.alerts as any[]).length,
       };
@@ -2767,16 +2822,28 @@ export function boot(): void {
         return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>How much the answer moves</h3>'
           + '<p class="subtle">Every question here was asked once, so nothing can be said about how much of an answer is the question and how much is the day.</p></div></div>' + taskCta("asked-once") + '</div>';
       }
+      // The overlap is a mean over the questions that cited anything, and most
+      // of these cited nothing. Printing it against the larger number claims a
+      // reading of questions there was nothing to read.
       const overall = report.sourceOverlap === null
         ? 'No pair of passes cited a source between them, so there is no overlap to take.'
-        : 'Across ' + report.measured + ' question(s) asked more than once, ' + sharePct(report.sourceOverlap) + ' of the cited sources survived from one pass to the next.';
+        : 'Across the ' + report.withSources + ' of ' + report.measured + ' question(s) asked more than once that cited anything, '
+          + sharePct(report.sourceOverlap) + ' of the cited sources survived from one pass to the next.';
+      // Never naming you and always naming you are both agreement. Only one of
+      // them is good news, and reporting them as one printed your absence as
+      // a reassurance about the measurement.
       const naming = report.namingUnstable
         ? report.namingUnstable + ' question(s) named you on one pass and not on another, which means a single pass would have reported either answer.'
-        : 'Every question agreed with itself about whether you appear.';
+        : report.alwaysNamed === 0
+          ? 'No pass of any of them named you, so they agree on an absence rather than on a reading.'
+          : report.neverNamed === 0
+            ? 'Every pass of every question named you.'
+            : report.alwaysNamed + ' question(s) named you on every pass and ' + report.neverNamed + ' named you on none. Each agrees with itself.';
       const rows = report.questions.slice(0, 8).map((row: any) =>
         '<div class="mrow mcols-stability"><div class="mname"><strong>' + html(row.promptText) + '</strong>'
         + '<span class="mono">' + html(row.modelId) + ' · ' + row.passes + ' passes</span></div>'
-        + '<span class="mcell ' + (row.namingAgreed ? "state-ok" : "state-bad") + '">' + (row.namingAgreed ? "Agreed" : row.named + ' of ' + row.passes) + '</span>'
+        + '<span class="mcell ' + (row.naming === "always" ? "state-ok" : row.naming === "split" ? "state-bad" : "subtle") + '">'
+        + (row.naming === "always" ? "Every pass" : row.naming === "split" ? row.named + ' of ' + row.passes : "No pass") + '</span>'
         + '<span class="mcell">' + row.sourcesAlways + ' of ' + row.sourcesEver + '</span>'
         + '<span class="mcell">' + (row.sourceOverlap === null ? 'No sources' : sharePct(row.sourceOverlap)) + '</span>'
         + '<span class="mcell subtle">' + (row.spanHours === null ? 'Unknown span' : row.spanHours < 1 ? 'Minutes apart' : row.spanHours < 48 ? Math.round(row.spanHours) + 'h apart' : Math.round(row.spanHours / 24) + 'd apart') + '</span></div>').join("");
@@ -2858,7 +2925,11 @@ export function boot(): void {
         : 'Across ' + report.measured + ' question(s) written more than one way, the widest gap between two wordings averages ' + sharePct(report.spread) + '.';
       const naming = report.unstable
         ? ' ' + report.unstable + ' question(s) named you under one wording and not another, so that figure is about the words rather than about you.'
-        : ' Every question agreed with itself whichever way it was put.';
+        : report.alwaysNamed === 0
+          ? ' No wording of any of them named you, so they agree on an absence rather than on a reading.'
+          : report.neverNamed === 0
+            ? ' Every wording of every question named you.'
+            : ' ' + report.alwaysNamed + ' question(s) named you under every wording and ' + report.neverNamed + ' under none.';
       const named = report.namesTheBrand
         ? ' ' + report.namesTheBrand + ' wording(s) name you and are left out, because the model discusses a brand the question names whatever it thinks.'
         : '';
@@ -2866,8 +2937,9 @@ export function boot(): void {
         + '<span class="mono">' + html(row.modelId) + ' \u00b7 ' + row.wordings.length + ' wordings</span>'
         + row.wordings.slice(0, 4).map((wording: any) => '<span class="subtle">' + (wording.named ? '\u2713' : '\u2717') + ' ' + html(wording.text) + '</span>').join("")
         + '</div>'
-        + '<span class="mcell ' + (row.agreed ? "state-ok" : "state-bad") + '">' + (row.agreed ? "Agreed" : row.namedIn + ' of ' + row.wordings.length) + '</span>'
-        + '<span class="mcell">' + (row.spread === null ? '\u2014' : sharePct(row.spread)) + '</span></div>').join("");
+        + '<span class="mcell ' + (row.naming === "always" ? "state-ok" : row.naming === "split" ? "state-bad" : "subtle") + '">'
+        + (row.naming === "always" ? "Every wording" : row.naming === "split" ? row.namedIn + ' of ' + row.wordings.length : "No wording") + '</span>'
+        + '<span class="mcell">' + (row.spread === null ? "Not measurable" : sharePct(row.spread)) + '</span></div>').join("");
       return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>How much the wording decides</h3>'
         + '<p class="subtle">' + html(report.caveat) + '</p></div></div>'
         + '<p>' + html(lead + naming + named) + '</p>'
