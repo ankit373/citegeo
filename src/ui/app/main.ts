@@ -3282,6 +3282,12 @@ export function boot(): void {
         ? '<div class="inline-actions">' + button({ label: (state.promptRunState === "running" ? "Asking\u2026" : "Ask the " + state.lastRun.answersFailed + " that failed again"), kind: "quiet", disabled: state.promptRunState === "running", on: { "data-retry-run": state.lastRun.id } }) + '</div>'
         : '';
       const failedNote = data.answersFailed ? '<div class="warning-box">' + data.answersFailed + ' answer(s) failed and are excluded. They are not counted as answers that did not name you.' + taskCta("answers-failed") + retryButton + '</div>' : '';
+      // A question you retired is one you said is not your business. Its old
+      // answers stay archived and stop supplying the figures, and the reader
+      // is told rather than left wondering where the count went.
+      const retiredNote = data.answersRetired
+        ? '<div class="warning-box">' + data.answersRetired + ' archived answer(s) belong to questions since retired, and are left out of every figure here. They are still in the archive. A retired question is not this brand\u2019s category, so it does not get to say who the rivals are.</div>'
+        : '';
       const identityNote = data.identityCaveat ? '<div class="warning-box"><strong>Your name is a word in your own category.</strong> ' + html(data.identityCaveat) + '</div>' : '';
       const corr = data.corroboration;
       // Absent on an archive answered before the check existed, so nothing is
@@ -3311,7 +3317,7 @@ export function boot(): void {
       return '<section class="view"><div class="heading"><div><h1>' + html(title) + '</h1>'
         + '<p class="subtle">' + html(subtitle) + '</p></div>' + runActionButton("Ask the questions") + '</div>'
         + renderLiveRun()
-        + identityNote + failedNote + citationNote + corroborationNote
+        + identityNote + failedNote + retiredNote + citationNote + corroborationNote
         + body(data, { objective, weights })
         + '</section>';
     }
@@ -3509,6 +3515,11 @@ export function boot(): void {
     }
 
     function livePrompts(set: TopicSetShape) { return set.prompts.filter((prompt) => prompt.status !== "retired"); }
+    /** Every tile on this row counts live prompts, and the topic tile counted
+     * every topic ever generated, so a project regenerated against the right
+     * category read as having eight groups of questions and twenty five
+     * questions in five of them. */
+    function liveTopics(set: TopicSetShape) { return set.topics.filter((topic: any) => topic.status !== "retired"); }
 
     function filteredPrompts(set: TopicSetShape, standings: any) {
       const filters = state.promptFilters;
@@ -3562,7 +3573,10 @@ export function boot(): void {
       return '<div class="statgrid" style="--tile-columns:6">'
         + stat("Tracked", String(tracked.length), tracked.length ? "asked on every run" : "nothing is being asked", live.length ? tracked.length / live.length : null)
         + stat("Needs review", String(proposed), proposed ? "proposed, never asked until tracked" : "nothing waiting on you", null)
-        + stat("Topics", String(set.topics.length), set.topics.length + " group(s) of questions", null)
+        + stat("Topics", String(liveTopics(set).length),
+            (set.topics.length - liveTopics(set).length)
+              ? (set.topics.length - liveTopics(set).length) + " more retired, and left out of every figure"
+              : liveTopics(set).length + " group(s) of questions", null)
         + stat("Answers per run", forecast.value, forecast.note, null)
         + stat("Measures visibility", measuring + " of " + tracked.length, "the rest name you, so presence is not earned", tracked.length ? measuring / tracked.length : null)
         + stat("Has an answer", answered + " of " + tracked.length, answered ? "tracked question(s) with archived answers" : "no tracked question has been answered yet", tracked.length ? answered / tracked.length : null)
@@ -3712,9 +3726,15 @@ export function boot(): void {
       const review = proposed
         ? '<div class="warning-box"><strong>' + proposed + ' question(s) are proposed and not tracked.</strong> A proposed question is never asked. Read them and track the ones buyers actually type. ' + button({ label: "Show only those", kind: "link", on: { "data-prompt-review": true } }) + '</div>'
         : '';
+      // A set proposed with nothing established about the business was written
+      // off the domain name. Read it that way or it reads like a finding.
+      const blind = set.generatedWithoutFacts
+        ? '<div class="warning-box"><strong>These were proposed without anything established about the business.</strong> The site read returned no description and no category, so the model had the brand name and the domain and guessed from them. Read every one before tracking it, and say what the company does on Setup to propose a better set.</div>'
+        : '';
       return head
         + renderPromptStats(set, standings)
         + renderPromptCoverage(set)
+        + blind
         + review
         + promptToolbar(set, rows.length)
         + '<div class="prompt-bulk">' + promptBulkInner() + '</div>'

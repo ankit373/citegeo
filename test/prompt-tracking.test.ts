@@ -229,3 +229,33 @@ test("a failing run is recorded on the schedule rather than thrown away", async 
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+test("a retired question's answers stop deciding who your rivals are", () => {
+  // ninethirty.ai was generated once against the wrong category, run, and then
+  // regenerated against the right one. The first set was retired and its twelve
+  // answers went on supplying the whole leaderboard, so a stock screener's
+  // rivals read as Profound, Peec AI and Otterly.AI.
+  const set: TopicSet = {
+    projectId: "p", generatedAt: null, updatedAt: "",
+    topics: [
+      { id: "t-old", projectId: "p", name: "Wrong category", description: "", source: "generated", status: "retired", createdAt: "" },
+      { id: "t-new", projectId: "p", name: "Right category", description: "", source: "generated", status: "active", createdAt: "" },
+    ],
+    prompts: [
+      { id: "p-old", projectId: "p", topicId: "t-old", text: "wrong question", normalizedText: "wrong question", intent: "discovery", source: "generated", measuresVisibility: true, visibilityExclusionReason: null, status: "retired", createdAt: "", activatedAt: null },
+      { id: "p-new", projectId: "p", topicId: "t-new", text: "right question", normalizedText: "right question", intent: "discovery", source: "generated", measuresVisibility: true, visibilityExclusionReason: null, status: "active", createdAt: "", activatedAt: null },
+    ],
+  };
+  const insights = buildTopicInsights({
+    projectId: "p",
+    set,
+    answers: [
+      answer({ promptId: "p-old", mentions: [mention({ name: "Somebody Else" })] }),
+      answer({ promptId: "p-old", mentions: [mention({ name: "Somebody Else" })] }),
+      answer({ promptId: "p-new", mentions: [mention({ name: "A Real Rival" })] }),
+    ],
+  });
+  assert.equal(insights.answers, 1, "only the question still tracked");
+  assert.equal(insights.answersRetired, 2, "the other two are set aside, not deleted");
+  assert.deepEqual(insights.leaderboard.map((row) => row.name), ["A Real Rival"]);
+});

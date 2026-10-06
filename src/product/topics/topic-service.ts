@@ -237,7 +237,13 @@ export class TopicService {
       }
     }
 
-    const set: TopicSet = { ...emptyTopicSet(projectId), topics, prompts, generatedAt: now() };
+    // The protocol tells the model not to invent facts and nothing checked
+    // whether it had any. A set proposed from a domain name is recorded as one.
+    const blind = !subject.businessDescription && !subject.productCategory;
+    const set: TopicSet = {
+      ...emptyTopicSet(projectId), topics, prompts, generatedAt: now(),
+      ...(blind ? { generatedWithoutFacts: true } : {}),
+    };
     await this.store.save(set);
     return this.store.load(projectId);
   }

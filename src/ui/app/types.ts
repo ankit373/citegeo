@@ -51,7 +51,13 @@ export interface PromptRow {
 }
 
 export interface TopicRow { id: string; name: string; description: string }
-export interface TopicSetShape { topics: TopicRow[]; prompts: PromptRow[] }
+export interface TopicSetShape {
+  topics: TopicRow[];
+  prompts: PromptRow[];
+  /** True where the set was proposed with no description and no category, so
+   * the model had the brand name and the domain and nothing else. */
+  generatedWithoutFacts?: boolean;
+}
 
 export interface PromptStandingRow {
   promptId: string;
@@ -220,6 +226,8 @@ export interface InsightsShape {
   position?: PositionShape | undefined;
   answers: number;
   answersFailed: number;
+  /** Answers to questions since retired, left out of every figure here. */
+  answersRetired: number;
   overall: ScoreShape;
   rank: number | null;
   /** The objective and limits are absent on an archive scored before they were

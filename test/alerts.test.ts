@@ -17,7 +17,7 @@ function score(overrides: Partial<VisibilityScore> = {}): VisibilityScore {
 
 function insights(overrides: Partial<TopicInsights> = {}): TopicInsights {
   return {
-    projectId: "p", domain: "example.com", answers: 10, answersFailed: 0,
+    projectId: "p", domain: "example.com", answers: 10, answersFailed: 0, answersRetired: 0,
     overall: score(), rank: 1, weights: SCORE_WEIGHTS,
     leaderboard: [], topics: [], byModel: [], absentFrom: [],
     citationsUnavailable: false,
@@ -96,13 +96,13 @@ test("a rival is only worth naming when it is named often", () => {
 test("a run that mostly failed is reported, and every answer failing is critical", () => {
   const some = evaluateAlerts(insights({ answers: 6, answersFailed: 4 }));
   assert.equal(some.find((alert) => alert.kind === "answers_failing")?.severity, "warning");
-  const none = evaluateAlerts(insights({ answers: 0, answersFailed: 8, overall: score({ answers: 0, score: null }) }));
+  const none = evaluateAlerts(insights({ answers: 0, answersFailed: 8, answersRetired: 0, overall: score({ answers: 0, score: null }) }));
   assert.equal(none.find((alert) => alert.kind === "answers_failing")?.severity, "critical");
 });
 
 test("the worst news is first", () => {
   const alerts = evaluateAlerts(insights({
-    answers: 6, answersFailed: 4, citationsUnavailable: true,
+    answers: 6, answersFailed: 4, answersRetired: 0, citationsUnavailable: true,
     trend: trend([point("2026-01-01", 40, 2, 4), point("2026-01-08", 0, null, 0)], -40, "2026-01-01"),
   }));
   assert.equal(alerts[0]?.severity, "critical");
