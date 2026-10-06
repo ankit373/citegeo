@@ -136,3 +136,14 @@ test("the caveat says why the sample is random", () => {
   assert.ok(CHECK_CAVEAT.includes("not from the ones the classifier found hard"));
   assert.equal(buildAgreement({ items: [], verdicts: [] }).caveat, CHECK_CAVEAT);
 });
+
+test("a mention the answer never spells is flagged, not quietly re-centred", () => {
+  // The window falls back to the opening of the answer. A reviewer shown that
+  // without being told is judging a different question.
+  const items = reviewable([answer("a1", "There are several good screeners for Indian markets worth comparing.", [mention("Tickertape")])]);
+  assert.equal(items[0]?.excerptHasName, false);
+  assert.ok(items[0]?.excerpt.startsWith("There are several"));
+
+  const found = reviewable([answer("a2", "Tickertape is a reasonable starting point for most people.", [mention("Tickertape")])]);
+  assert.equal(found[0]?.excerptHasName, true);
+});

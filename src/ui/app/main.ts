@@ -1218,13 +1218,22 @@ export function boot(): void {
 
     function renderModelRows(rows: any[]) {
       if (!rows || !rows.length) return '<p class="subtle">No model has answered yet.</p>';
+      // A model is a proportion like any other here. One appearance in twenty
+      // four answers reads as 4% and is consistent with anything from under one
+      // per cent to twenty, so the range goes beside it rather than nowhere.
+      const asked = rows.filter((row) => row.score.answers > 0);
+      const silent = rows.length - asked.length;
+      const band = (score: any) => score.presenceInterval && score.presenceInterval.low !== null
+        ? '<small>' + Math.round(score.presenceInterval.low * 100) + ' to ' + Math.round(score.presenceInterval.high * 100) + '%</small>'
+        : '';
       return '<div class="mtable"><div class="mhead mcols-aemodel"><span>AI assistant</span><span>Score</span><span>Presence</span><span>Answers</span></div>'
-        + rows.map((row) => '<div class="mrow mcols-aemodel">'
+        + asked.map((row) => '<div class="mrow mcols-aemodel">'
           + '<div class="mname"><strong>' + html(row.displayName) + '</strong><span class="mono">' + html(row.providerId) + ' · ' + html(row.modelId) + '</span></div>'
           + '<span class="mcell">' + scoreText(row.score.score) + '</span>'
-          + '<span class="mcell">' + pct(row.score.presenceRate) + '</span>'
+          + '<span class="mcell">' + pct(row.score.presenceRate) + band(row.score) + '</span>'
           + '<span class="mcell">' + row.score.answers + '</span></div>').join("")
-        + '</div>';
+        + '</div>'
+        + (silent ? '<p class="subtle">' + silent + ' more model(s) are saved or have been seen and have never produced an answer, so there is nothing to read for them.</p>' : '');
     }
 
     function renderPromptTrend(trend: any) {
@@ -1990,11 +1999,17 @@ export function boot(): void {
         + '<span class="mcell">' + row.checked + '</span>'
         + '<span class="mcell ' + (row.interval.rate === null ? "" : row.interval.rate >= 0.9 ? "state-ok" : "state-flag") + '">'
         + (row.interval.rate === null ? 'Not checked' : Math.round(row.interval.rate * 100) + '%') + '</span>'
-        + '<span class="mcell subtle">' + (row.interval.low === null ? '\u2014' : Math.round(row.interval.low * 100) + ' to ' + Math.round(row.interval.high * 100) + '%') + '</span></div>').join("");
+        + '<span class="mcell subtle">' + (row.interval.low === null ? "Not measurable" : Math.round(row.interval.low * 100) + ' to ' + Math.round(row.interval.high * 100) + '%') + '</span></div>').join("");
       const next = report.items[0];
       const judging = next
         ? '<div class="fix"><div class="fix-top"><strong>' + html(next.name) + '</strong><span class="tag">' + html(next.modelId) + '</span></div>'
           + '<p class="evidence-note">Asked: ' + html(next.promptText) + '</p>'
+          // The window centres on the name. Where the answer never spells it,
+          // this is the opening of the answer instead, which is a different
+          // thing to be judging and the reviewer is told so.
+          + (next.excerptHasName === false
+            ? '<p class="warning-box">The answer does not contain this name anywhere, so what follows is its opening rather than the place being judged. The model reported a mention its own answer does not carry.</p>'
+            : '')
           + '<p class="why">\u2026' + html(next.excerpt) + '\u2026</p>'
           + verdictButtons(next)
           + '<p class="mlegend">' + report.remaining + ' left in this sample, drawn from ' + agreement.population + ' mention(s).</p></div>'
@@ -2526,7 +2541,12 @@ export function boot(): void {
         questions,
         measurable,
         absent: data ? data.absentFrom.length : 0,
-        assistants: data ? data.byModel.length : 0,
+        // The models that actually answered. byModel carries every model the
+        // archive has ever seen, and fourteen of this project's twenty four
+        // have never produced an answer, so "3 of 24" was over a denominator
+        // more than twice the number that were asked.
+        assistants: data ? data.byModel.filter((row: any) => row.score.answers > 0).length : 0,
+        assistantsConfigured: data ? data.byModel.length : 0,
         assistantsNaming: data ? data.byModel.filter((row: any) => row.score.appearances > 0).length : 0,
         moves: plan ? (plan.moves as any[]).filter((m: any) => m.effect === "raises_visibility") : [],
         citationsUnavailable: data ? data.citationsUnavailable : false,
