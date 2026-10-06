@@ -17,30 +17,36 @@ function score(overrides: Partial<VisibilityScore> = {}): VisibilityScore {
 
 function insights(overrides: Partial<TopicInsights> = {}): TopicInsights {
   return {
-    projectId: "p", domain: "example.com", answers: 10, answersFailed: 0,
+    projectId: "p", domain: "example.com", answers: 10, answersFailed: 0, answersRetired: 0,
     overall: score(), rank: 1, weights: SCORE_WEIGHTS,
     leaderboard: [], topics: [], byModel: [], absentFrom: [],
     citationsUnavailable: false,
-    trend: { points: [], change: null, since: null },
+    trend: trend([], null, null),
     byRegion: [], byLanguage: [], regionCaveat: "", identityCaveat: null,
     ...overrides,
   } as TopicInsights;
 }
 
-function point(at: string, value: number | null, rank: number | null, appearances = 5) {
-  return { runId: at, at, score: score({ score: value, appearances }), rank, regionIds: ["global"] };
+function point(at: string, value: number | null, rank: number | null, appearances = 5, answers = 10) {
+  return { runId: at, at, score: score({ score: value, appearances, answers }), rank, regionIds: ["global"] };
+}
+
+/** Fills the counts a trend carries, so a case states only what it is about. */
+function trend(points: ReturnType<typeof point>[], change: number | null, since: string | null) {
+  const readable = points.filter((row) => row.score.score !== null && !row.score.tooFewAnswers).length;
+  return { points, change, since, thinPoints: points.length - readable, readablePoints: readable };
 }
 
 test("a fall smaller than the threshold is noise, not news", () => {
   const alerts = evaluateAlerts(insights({
-    trend: { points: [point("2026-01-01", 50, 1), point("2026-01-08", 47, 1)], change: -3, since: "2026-01-01" },
+    trend: trend([point("2026-01-01", 50, 1), point("2026-01-08", 47, 1)], -3, "2026-01-01"),
   }));
   assert.equal(alerts.some((alert) => alert.kind === "score_dropped"), false);
 });
 
 test("a real fall is reported with both figures and both dates", () => {
   const alerts = evaluateAlerts(insights({
-    trend: { points: [point("2026-01-01", 50, 1), point("2026-01-08", 30, 1)], change: -20, since: "2026-01-01" },
+    trend: trend([point("2026-01-01", 50, 1), point("2026-01-08", 30, 1)], -20, "2026-01-01"),
   }));
   const dropped = alerts.find((alert) => alert.kind === "score_dropped");
   assert.ok(dropped);
@@ -51,14 +57,14 @@ test("a real fall is reported with both figures and both dates", () => {
 test("a measurement starting is not a fall", () => {
   // null to a number is the first readable run, not a collapse.
   const alerts = evaluateAlerts(insights({
-    trend: { points: [point("2026-01-01", null, null), point("2026-01-08", 10, 3)], change: null, since: null },
+    trend: trend([point("2026-01-01", null, null), point("2026-01-08", 10, 3)], null, null),
   }));
   assert.deepEqual(alerts.filter((alert) => alert.kind === "score_dropped"), []);
 });
 
 test("being named and then not being named is critical", () => {
   const alerts = evaluateAlerts(insights({
-    trend: { points: [point("2026-01-01", 40, 2, 4), point("2026-01-08", 0, null, 0)], change: -40, since: "2026-01-01" },
+    trend: trend([point("2026-01-01", 40, 2, 4), point("2026-01-08", 0, null, 0)], -40, "2026-01-01"),
   }));
   const lost = alerts.find((alert) => alert.kind === "topic_lost");
   assert.equal(lost?.severity, "critical");
@@ -67,7 +73,7 @@ test("being named and then not being named is critical", () => {
 
 test("losing places is reported separately from losing score", () => {
   const alerts = evaluateAlerts(insights({
-    trend: { points: [point("2026-01-01", 50, 2), point("2026-01-08", 49, 6)], change: -1, since: "2026-01-01" },
+    trend: trend([point("2026-01-01", 50, 2), point("2026-01-08", 49, 6)], -1, "2026-01-01"),
   }));
   assert.equal(alerts.some((alert) => alert.kind === "score_dropped"), false);
   assert.ok(alerts.find((alert) => alert.kind === "rank_lost")?.headline.includes("#2 to #6"));
@@ -90,14 +96,14 @@ test("a rival is only worth naming when it is named often", () => {
 test("a run that mostly failed is reported, and every answer failing is critical", () => {
   const some = evaluateAlerts(insights({ answers: 6, answersFailed: 4 }));
   assert.equal(some.find((alert) => alert.kind === "answers_failing")?.severity, "warning");
-  const none = evaluateAlerts(insights({ answers: 0, answersFailed: 8, overall: score({ answers: 0, score: null }) }));
+  const none = evaluateAlerts(insights({ answers: 0, answersFailed: 8, answersRetired: 0, overall: score({ answers: 0, score: null }) }));
   assert.equal(none.find((alert) => alert.kind === "answers_failing")?.severity, "critical");
 });
 
 test("the worst news is first", () => {
   const alerts = evaluateAlerts(insights({
-    answers: 6, answersFailed: 4, citationsUnavailable: true,
-    trend: { points: [point("2026-01-01", 40, 2, 4), point("2026-01-08", 0, null, 0)], change: -40, since: "2026-01-01" },
+    answers: 6, answersFailed: 4, answersRetired: 0, citationsUnavailable: true,
+    trend: trend([point("2026-01-01", 40, 2, 4), point("2026-01-08", 0, null, 0)], -40, "2026-01-01"),
   }));
   assert.equal(alerts[0]?.severity, "critical");
   assert.equal(alerts[alerts.length - 1]?.severity, "info");

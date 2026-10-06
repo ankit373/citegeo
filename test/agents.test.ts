@@ -15,9 +15,9 @@ function entity(name: string, appearances: number, isTarget = false): any {
 
 function insights(over: Partial<TopicInsights> = {}): TopicInsights {
   return {
-    projectId: "p", answers: 0, answersFailed: 0, overall: SCORE as any, rank: null,
+    projectId: "p", answers: 0, answersFailed: 0, answersRetired: 0, overall: SCORE as any, rank: null,
     weights: SCORE_WEIGHTS, leaderboard: [], topics: [], byModel: [],
-    absentFrom: [], citationsUnavailable: false, trend: { points: [], change: null, since: null } as any,
+    absentFrom: [], citationsUnavailable: false, trend: { points: [], change: null, since: null, thinPoints: 0, readablePoints: 0 } as any,
     byRegion: [], byLanguage: [], byPersona: [], regionCaveat: "", identityCaveat: null, trackedRivals: [],
     ...over,
   } as TopicInsights;

@@ -49,7 +49,39 @@ test("a trend is one point per run, oldest first", () => {
   assert.deepEqual(trend.points.map((point) => point.runId), ["r1", "r2"]);
   assert.equal(trend.points[0]?.score.score, 0);
   assert.equal(trend.points[1]?.score.score, 100);
+});
+
+test("nought to a hundred between two runs of one answer is not a change", () => {
+  // One answer either side is two coin flips. The scores are real and the
+  // difference between them is not, so the points stand and the change does not.
+  const trend = buildPromptTrend({
+    runs: [run("r1", "2026-09-01T00:00:00.000Z"), run("r2", "2026-09-08T00:00:00.000Z")],
+    answers: [
+      answer({ runId: "r1", mentions: [mention({ name: "Rival" })] }),
+      answer({ runId: "r2", mentions: [mention({ name: "Us", isTarget: true, recommendation: "positive", firstMentionOffset: 1 })] }),
+    ],
+    rankOf: () => null,
+  });
+  assert.equal(trend.change, null);
+  assert.equal(trend.since, null);
+  assert.equal(trend.thinPoints, 2);
+  assert.equal(trend.readablePoints, 0);
+});
+
+test("a change is reported between two runs that asked enough to read one", () => {
+  const absent = (runId: string) => Array.from({ length: 8 }, (_unused, index) =>
+    answer({ id: `${runId}-${index}`, runId, mentions: [mention({ name: "Rival" })] }));
+  const present = (runId: string) => Array.from({ length: 8 }, (_unused, index) =>
+    answer({ id: `${runId}-${index}`, runId, mentions: [mention({ name: "Us", isTarget: true, recommendation: "positive", firstMentionOffset: 1 })] }));
+  const trend = buildPromptTrend({
+    runs: [run("r1", "2026-09-01T00:00:00.000Z"), run("r2", "2026-09-08T00:00:00.000Z")],
+    answers: [...absent("r1"), ...present("r2")],
+    rankOf: () => null,
+  });
+  assert.equal(trend.thinPoints, 0);
+  assert.equal(trend.readablePoints, 2);
   assert.equal(trend.change, 100);
+  assert.equal(trend.since, "2026-09-01T00:00:00.000Z");
 });
 
 test("a run where every answer failed is left out, not plotted as a drop to zero", () => {
@@ -196,4 +228,34 @@ test("a failing run is recorded on the schedule rather than thrown away", async 
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
+});
+
+test("a retired question's answers stop deciding who your rivals are", () => {
+  // ninethirty.ai was generated once against the wrong category, run, and then
+  // regenerated against the right one. The first set was retired and its twelve
+  // answers went on supplying the whole leaderboard, so a stock screener's
+  // rivals read as Profound, Peec AI and Otterly.AI.
+  const set: TopicSet = {
+    projectId: "p", generatedAt: null, updatedAt: "",
+    topics: [
+      { id: "t-old", projectId: "p", name: "Wrong category", description: "", source: "generated", status: "retired", createdAt: "" },
+      { id: "t-new", projectId: "p", name: "Right category", description: "", source: "generated", status: "active", createdAt: "" },
+    ],
+    prompts: [
+      { id: "p-old", projectId: "p", topicId: "t-old", text: "wrong question", normalizedText: "wrong question", intent: "discovery", source: "generated", measuresVisibility: true, visibilityExclusionReason: null, status: "retired", createdAt: "", activatedAt: null },
+      { id: "p-new", projectId: "p", topicId: "t-new", text: "right question", normalizedText: "right question", intent: "discovery", source: "generated", measuresVisibility: true, visibilityExclusionReason: null, status: "active", createdAt: "", activatedAt: null },
+    ],
+  };
+  const insights = buildTopicInsights({
+    projectId: "p",
+    set,
+    answers: [
+      answer({ promptId: "p-old", mentions: [mention({ name: "Somebody Else" })] }),
+      answer({ promptId: "p-old", mentions: [mention({ name: "Somebody Else" })] }),
+      answer({ promptId: "p-new", mentions: [mention({ name: "A Real Rival" })] }),
+    ],
+  });
+  assert.equal(insights.answers, 1, "only the question still tracked");
+  assert.equal(insights.answersRetired, 2, "the other two are set aside, not deleted");
+  assert.deepEqual(insights.leaderboard.map((row) => row.name), ["A Real Rival"]);
 });

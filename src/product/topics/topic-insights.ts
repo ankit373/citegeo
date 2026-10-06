@@ -114,6 +114,10 @@ export interface TopicInsights {
   /** Completed answers behind everything below. */
   answers: number;
   answersFailed: number;
+  /** Archived answers to questions since retired, left out of every figure
+   * above. They are still in the archive; they are not this brand's category
+   * any more, so they do not get to say who its rivals are. */
+  answersRetired: number;
   overall: VisibilityScore;
   rank: number | null;
   weights: ScoreWeights;
@@ -430,7 +434,15 @@ export function buildTopicInsights(input: {
    * which panels are empty for want of a read rather than for want of data. */
   citedPages?: { cited: number; read: number } | undefined;
 }): TopicInsights {
-  const { projectId, set, answers } = input;
+  const { projectId, set } = input;
+  // A retired question is one somebody said is not this brand's business. Its
+  // archived answers stay in the archive, and they stop driving the figures:
+  // a project whose questions were regenerated against the right category was
+  // still reporting the wrong category's rivals as its leaderboard, because
+  // retiring a question only stopped it being asked again.
+  const retired = new Set(set.prompts.filter((prompt) => prompt.status === "retired").map((prompt) => prompt.id));
+  const answers = input.answers.filter((answer) => !retired.has(answer.promptId));
+  const setAside = input.answers.length - answers.length;
   const completed = answers.filter((answer) => answer.status === "completed");
   const leaderboard = standings(answers);
 
@@ -511,6 +523,7 @@ export function buildTopicInsights(input: {
     projectId,
     answers: completed.length,
     answersFailed: answers.length - completed.length,
+    answersRetired: setAside,
     overall,
     rank: rankOfTarget(leaderboard),
     weights: SCORE_WEIGHTS,

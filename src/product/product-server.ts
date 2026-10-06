@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { SAFETY_HEADERS, formOrJsonBody, httpsRequest, readJson, send, sendAsset } from "./http-io.js";
+import { SAFETY_HEADERS, formOrJsonBody, httpsRequest, readJson, readText, send, sendAsset } from "./http-io.js";
 import { checkAttempt, recordFailure, recordSuccess } from "./auth/login-throttle.js";
 import { createServer } from "node:http";
 import { Lifecycle } from "../runtime/lifecycle.js";
@@ -179,7 +179,8 @@ async function handle(req: IncomingMessage, res: ServerResponse, services: Produ
   if (await handleInsightsApi({ method, route, send: json, service: insights })) return;
   if (await handleCrawlerApi({ method, route, send: json, crawlerLog, insights,
     answers: (id) => promptRuns.listAnswers(id),
-    domain: async (id) => (await services.projects.get(id))?.normalizedDomain || "" })) return;
+    domain: async (id) => (await services.projects.get(id))?.normalizedDomain || "",
+    readText: () => readText(req) })) return;
   if (await handleActionApi({ method, route, send: json, signals, insights,
     wanted: url.searchParams.has("count") ? Number(url.searchParams.get("count")) : undefined,
     profile: async (id) => {

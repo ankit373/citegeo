@@ -1,3 +1,4 @@
+import { wilsonInterval, tooWideToRead, type ProportionInterval } from "../topics/proportion-interval.js";
 import type { SourcePage } from "./source-page.js";
 
 // A page is cited for what it is as much as for what it says. Across a study of
@@ -25,6 +26,11 @@ export const CORPORATE_BASELINE = 0.78;
  * A band rather than a figure, because the studies disagree inside it. */
 export const OWNED_BASELINE_LOW = 0.05;
 export const OWNED_BASELINE_HIGH = 0.1;
+
+/** Cited pages read back before a share is worth setting beside a published
+ * one. Below it the range the share is consistent with is wider than the gap
+ * to the baseline, so the comparison decides nothing. */
+export const MIN_PAGES_FOR_SHARE = 20;
 
 export const KIND_CAVEAT = "Read off the pages these answers cited, from the address, the title and the shape of the markup. A page can be a comparison and a listicle at once and only its strongest signal is kept, so the split is a reading rather than a census. A site counts as a company's only where an answer named a brand at that domain, so a company nobody named reads as a publisher here. The baselines come from published studies, on their prompts and their engines.";
 
@@ -94,19 +100,32 @@ export interface KindShare<T extends string> {
 export interface PageKindReport {
   /** Cited pages read back, which is what every share is taken over. */
   pages: number;
+  /** Distinct pages these answers cited, read or not. Every share below is
+   * taken over the pages read, and the gap between the two numbers is how
+   * much of the category the share speaks for. */
+  cited: number;
+  /** True where too few pages have been read back to set a share beside a
+   * published one. The shares are still carried, because the counts behind
+   * them are the finding; what they cannot do is settle a comparison. */
+  tooFewToCompare: boolean;
   formats: Array<KindShare<PageFormat>>;
   sources: Array<KindShare<SourceKind>>;
   /** This project's listicle share against the published one. Null with
    * nothing read back. */
   listicleShare: number | null;
+  /** What this many pages is consistent with, at about 95 per cent. A share
+   * off thirteen pages has a range wider than the gap to the baseline. */
+  listicleInterval: ProportionInterval;
   listicleBaseline: number;
   /** Pages on a site belonging to a company in this category, yours included.
    * A publisher writing about the category is not one. */
   corporateShare: number | null;
+  corporateInterval: ProportionInterval;
   corporateBaseline: number;
   /** Pages on your own domain, which published work puts at a twentieth to a
    * tenth, so being absent here is usual rather than a finding. */
   ownedShare: number | null;
+  ownedInterval: ProportionInterval;
   ownedBaselineLow: number;
   ownedBaselineHigh: number;
   caveat: string;
@@ -125,24 +144,39 @@ export function buildPageKinds(input: {
   pages: SourcePage[];
   domain?: string | undefined;
   rivalDomains?: string[] | undefined;
+  /** Distinct pages these answers cited. Without it the report cannot say
+   * what share of the category the pages it read stand for. */
+  cited?: number | undefined;
 }): PageKindReport {
   // A page that would not load says nothing about what kind of page gets
-  // cited, so it is left out rather than counted as an article.
-  const readable = input.pages.filter((page) => !page.detail && page.title !== null);
+  // cited, so it is left out rather than counted as an article. A page that
+  // loaded and gave back no body is the same case: its format would be read
+  // off the address alone and land on article, the default.
+  const readable = input.pages.filter((page) => !page.detail && page.title !== null && Boolean(page.text) && page.words > 0);
   const formats = readable.map((page) => formatOf(page));
   const sources = readable.map((page) => sourceOf(page, { domain: input.domain, rivalDomains: input.rivalDomains }));
   const total = readable.length;
   const corporate = sources.filter((kind) => kind === "yours" || kind === "rival").length;
   const owned = sources.filter((kind) => kind === "yours").length;
+  const listicles = formats.filter((kind) => kind === "listicle").length;
+  const listicleInterval = wilsonInterval(listicles, total);
+  const corporateInterval = wilsonInterval(corporate, total);
+  const ownedInterval = wilsonInterval(owned, total);
   return {
     pages: total,
+    cited: input.cited ?? total,
+    // Either too few pages, or a range so wide the comparison decides nothing.
+    tooFewToCompare: total < MIN_PAGES_FOR_SHARE || tooWideToRead(listicleInterval),
     formats: tally(formats),
     sources: tally(sources),
-    listicleShare: total ? formats.filter((kind) => kind === "listicle").length / total : null,
+    listicleShare: total ? listicles / total : null,
+    listicleInterval,
     listicleBaseline: LISTICLE_BASELINE,
     corporateShare: total ? corporate / total : null,
+    corporateInterval,
     corporateBaseline: CORPORATE_BASELINE,
     ownedShare: total ? owned / total : null,
+    ownedInterval,
     ownedBaselineLow: OWNED_BASELINE_LOW,
     ownedBaselineHigh: OWNED_BASELINE_HIGH,
     caveat: KIND_CAVEAT,

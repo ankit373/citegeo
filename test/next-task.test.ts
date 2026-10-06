@@ -66,18 +66,20 @@ test("models that searched and cited nothing is neither of those", () => {
 });
 
 test("asking once is a limit on reading the figure, not a blocker", () => {
-  const tasks = nextTasks(sound({ stability: { ...buildStabilityReport([]), measured: 0, askedOnce: 12 } }));
+  const tasks = nextTasks(sound({ stability: { ...buildStabilityReport([]), measured: 0, askedOnce: 12, distinctQuestions: 4, questionsRepeated: 0 } }));
   const asked = tasks.find((task) => task.id === "asked-once");
   assert.equal(asked?.urgency, "limiting");
-  assert.ok(asked?.evidence.includes("12 questions were asked once and none more than once"));
+  assert.ok(asked?.evidence.includes("12 passes are a single draw"));
 });
 
-test("most questions asked once still counts, even where some were asked twice", () => {
-  const majority = nextTasks(sound({ stability: { ...buildStabilityReport([]), measured: 5, askedOnce: 6 } }));
+test("the task names questions, not the condition groups stability counts", () => {
+  // Four questions across twelve groups is four questions to run again, and
+  // saying twelve sent the reader looking for eight that do not exist.
+  const majority = nextTasks(sound({ stability: { ...buildStabilityReport([]), measured: 5, askedOnce: 6, distinctQuestions: 4, questionsRepeated: 1 } }));
   const asked = majority.find((task) => task.id === "asked-once");
-  assert.ok(asked, "six single draws beside five measured questions is still mostly single draws");
-  assert.ok(asked?.evidence.includes("6 of 11 questions were asked once"));
-  const few = nextTasks(sound({ stability: { ...buildStabilityReport([]), measured: 15, askedOnce: 1 } }));
+  assert.ok(asked, "six single draws beside five measured groups is still mostly single draws");
+  assert.ok(asked?.evidence.includes("3 of 4 questions have never been asked twice"), asked?.evidence);
+  const few = nextTasks(sound({ stability: { ...buildStabilityReport([]), measured: 15, askedOnce: 1, distinctQuestions: 10, questionsRepeated: 9 } }));
   assert.ok(!few.some((task) => task.id === "asked-once"), "one question of sixteen is not worth a task");
 });
 
