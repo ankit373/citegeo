@@ -168,16 +168,20 @@ export function nextTasks(input: TaskInput): MeasurementTask[] {
 
   // Fires on the majority, not only on all of them: a project where six
   // questions were asked once and five twice has six single draws in it.
-  const { askedOnce, measured, namingUnstable, sourceOverlap } = input.stability;
+  const { askedOnce, measured, namingUnstable, sourceOverlap, distinctQuestions, questionsRepeated } = input.stability;
   if (askedOnce > measured) {
+    // The groups are question by model by market by language by persona, so
+    // counting them as questions turned this project's twenty eight into a
+    // hundred and thirty four. The reader acts on the questions.
+    const waiting = distinctQuestions - questionsRepeated;
     tasks.push({
       id: "asked-once",
       urgency: "limiting",
       title: "Ask each question more than once",
       why: "One pass cannot tell a finding from the day it was taken. Published work puts the day to day overlap of cited sources near a third, which makes a single pass close to a coin.",
       evidence: measured === 0
-        ? `${askedOnce} ${plural(askedOnce, "question was", "questions were")} asked once and none more than once, so nothing here says how much of the answer is the question.`
-        : `${askedOnce} of ${askedOnce + measured} questions were asked once, so most of what is below is a single draw.`,
+        ? `No question has been asked twice under the same conditions, so nothing here says how much of the answer is the question. ${askedOnce} ${plural(askedOnce, "pass is", "passes are")} a single draw.`
+        : `${waiting} of ${distinctQuestions} ${plural(distinctQuestions, "question has", "questions have")} never been asked twice under one set of conditions, so most of what is below is a single draw.`,
       page: "prompts",
       action: "Run them again",
     });

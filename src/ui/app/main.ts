@@ -850,16 +850,21 @@ export function boot(): void {
         ? left + (width - left) / 2
         : left + index * (width - left - 8) / (points.length - 1);
       const y = (value: any) => 10 + (max - value) * (height - bottom - 10) / (max || 1);
+      // The line joins readings. A point off a handful of answers is plotted
+      // where it fell and the line is broken through it, because joining two of
+      // them draws a move that the answer count invented.
       let path = "";
       let open = false;
       points.forEach((point, index) => {
-        if (point.value === null) { open = false; return; }
+        if (point.value === null || point.thin) { open = false; return; }
         path += (open ? " L " : " M ") + x(index).toFixed(1) + " " + y(point.value).toFixed(1);
         open = true;
       });
       const dots = points.map((point, index) => point.value === null
         ? ''
-        : '<circle cx="' + x(index).toFixed(1) + '" cy="' + y(point.value).toFixed(1) + '" r="3.5"><title>' + html(point.at.slice(0, 10)) + ': ' + html(point.display) + '</title></circle>').join("");
+        : '<circle cx="' + x(index).toFixed(1) + '" cy="' + y(point.value).toFixed(1) + '" r="3.5"'
+          + (point.thin ? ' class="chart-thin"' : '') + '><title>' + html(point.at.slice(0, 10)) + ': ' + html(point.display)
+          + (point.thin && point.note ? ' (' + html(point.note) + ')' : '') + '</title></circle>').join("");
       const gridY = [0, max / 2, max];
       const grid = gridY.map((value) => '<line x1="' + left + '" x2="' + width + '" y1="' + y(value).toFixed(1) + '" y2="' + y(value).toFixed(1) + '" class="chart-grid"/><text x="0" y="' + (y(value) + 4).toFixed(1) + '" class="chart-axis">' + html(points[0].format(value)) + '</text>').join("");
       return '<svg class="trend" viewBox="0 0 ' + width + ' ' + height + '" role="img" aria-label="' + html(label) + ' over time">' + grid + '<path d="' + path + '" class="chart-line"/>' + dots + '</svg>';
@@ -1227,14 +1232,23 @@ export function boot(): void {
       const points = trend.points.map((point: any) => ({
         at: point.at,
         value: point.score.score,
+        thin: point.score.tooFewAnswers,
+        note: point.score.answers + (point.score.answers === 1 ? " answer" : " answers"),
         display: point.score.score === null ? "Not measurable" : point.score.score + " / 100",
         format: (value: any) => Math.round(value) + "",
         axisMax: 100,
       }));
       const change = trend.change === null
-        ? '<span class="subtle">Not comparable yet</span>'
+        ? '<span class="subtle">' + (trend.readablePoints < 2
+            ? 'Not comparable yet: ' + trend.readablePoints + ' of ' + trend.points.length + ' run(s) asked enough to read a figure off'
+            : 'Not comparable yet') + '</span>'
         : '<span class="' + (trend.change > 0 ? "state-ok" : trend.change < 0 ? "state-bad" : "") + '">' + (trend.change > 0 ? "+" : "") + trend.change + ' since ' + html(trend.since.slice(0, 10)) + '</span>';
-      return '<div class="trend-head">' + change + '</div>' + trendChart(points, "answer engine score");
+      // Named rather than only drawn faintly, because a chart whose shape comes
+      // from run size reads as a finding to anybody who does not hover a dot.
+      const thin = trend.thinPoints
+        ? '<p class="subtle">' + trend.thinPoints + ' of ' + trend.points.length + ' run(s) asked too few answers to read a score off. They are plotted where they fell, and the line is not drawn through them.</p>'
+        : '';
+      return '<div class="trend-head">' + change + '</div>' + trendChart(points, "answer engine score") + thin;
     }
 
     function renderRegionRows(rows: any[], caveat: string) {
@@ -1265,8 +1279,11 @@ export function boot(): void {
     }
 
     // A trend read at a glance: no axes, no grid, just the shape.
+    // A spark has no room to say which points it dropped, so it draws only the
+    // runs that asked enough to read a figure off. A line through a one-answer
+    // run is a picture of how big the run was.
     function sparkline(points: any[], width?: number, height?: number) {
-      const usable = points.filter((point) => point.score.score !== null);
+      const usable = points.filter((point) => point.score.score !== null && !point.score.tooFewAnswers);
       if (usable.length < 2) return '<span class="subtle">Run again to see movement</span>';
       const values = usable.map((point) => point.score.score);
       const max = Math.max(100, ...values);
@@ -2544,7 +2561,7 @@ export function boot(): void {
           name: row.name, isTarget: row.isTarget,
           domain: ((data.leaderboard as any[]) || []).find((entry: any) => entry.name === row.name)?.domain ?? null,
           icon: state.brandIcons[((data.leaderboard as any[]) || []).find((entry: any) => entry.name === row.name)?.domain || ""] ?? null,
-          points: (row.points as any[]).map((point: any) => ({ at: point.at, share: point.share })),
+          points: (row.points as any[]).map((point: any) => ({ at: point.at, share: point.share, answers: point.answers, readable: point.readable })),
         })) : [],
         alerts: (home.alerts as any[]).length,
       };
@@ -2785,16 +2802,28 @@ export function boot(): void {
         return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>How much the answer moves</h3>'
           + '<p class="subtle">Every question here was asked once, so nothing can be said about how much of an answer is the question and how much is the day.</p></div></div>' + taskCta("asked-once") + '</div>';
       }
+      // The overlap is a mean over the questions that cited anything, and most
+      // of these cited nothing. Printing it against the larger number claims a
+      // reading of questions there was nothing to read.
       const overall = report.sourceOverlap === null
         ? 'No pair of passes cited a source between them, so there is no overlap to take.'
-        : 'Across ' + report.measured + ' question(s) asked more than once, ' + sharePct(report.sourceOverlap) + ' of the cited sources survived from one pass to the next.';
+        : 'Across the ' + report.withSources + ' of ' + report.measured + ' question(s) asked more than once that cited anything, '
+          + sharePct(report.sourceOverlap) + ' of the cited sources survived from one pass to the next.';
+      // Never naming you and always naming you are both agreement. Only one of
+      // them is good news, and reporting them as one printed your absence as
+      // a reassurance about the measurement.
       const naming = report.namingUnstable
         ? report.namingUnstable + ' question(s) named you on one pass and not on another, which means a single pass would have reported either answer.'
-        : 'Every question agreed with itself about whether you appear.';
+        : report.alwaysNamed === 0
+          ? 'No pass of any of them named you, so they agree on an absence rather than on a reading.'
+          : report.neverNamed === 0
+            ? 'Every pass of every question named you.'
+            : report.alwaysNamed + ' question(s) named you on every pass and ' + report.neverNamed + ' named you on none. Each agrees with itself.';
       const rows = report.questions.slice(0, 8).map((row: any) =>
         '<div class="mrow mcols-stability"><div class="mname"><strong>' + html(row.promptText) + '</strong>'
         + '<span class="mono">' + html(row.modelId) + ' · ' + row.passes + ' passes</span></div>'
-        + '<span class="mcell ' + (row.namingAgreed ? "state-ok" : "state-bad") + '">' + (row.namingAgreed ? "Agreed" : row.named + ' of ' + row.passes) + '</span>'
+        + '<span class="mcell ' + (row.naming === "always" ? "state-ok" : row.naming === "split" ? "state-bad" : "subtle") + '">'
+        + (row.naming === "always" ? "Every pass" : row.naming === "split" ? row.named + ' of ' + row.passes : "No pass") + '</span>'
         + '<span class="mcell">' + row.sourcesAlways + ' of ' + row.sourcesEver + '</span>'
         + '<span class="mcell">' + (row.sourceOverlap === null ? 'No sources' : sharePct(row.sourceOverlap)) + '</span>'
         + '<span class="mcell subtle">' + (row.spanHours === null ? 'Unknown span' : row.spanHours < 1 ? 'Minutes apart' : row.spanHours < 48 ? Math.round(row.spanHours) + 'h apart' : Math.round(row.spanHours / 24) + 'd apart') + '</span></div>').join("");
@@ -2876,7 +2905,11 @@ export function boot(): void {
         : 'Across ' + report.measured + ' question(s) written more than one way, the widest gap between two wordings averages ' + sharePct(report.spread) + '.';
       const naming = report.unstable
         ? ' ' + report.unstable + ' question(s) named you under one wording and not another, so that figure is about the words rather than about you.'
-        : ' Every question agreed with itself whichever way it was put.';
+        : report.alwaysNamed === 0
+          ? ' No wording of any of them named you, so they agree on an absence rather than on a reading.'
+          : report.neverNamed === 0
+            ? ' Every wording of every question named you.'
+            : ' ' + report.alwaysNamed + ' question(s) named you under every wording and ' + report.neverNamed + ' under none.';
       const named = report.namesTheBrand
         ? ' ' + report.namesTheBrand + ' wording(s) name you and are left out, because the model discusses a brand the question names whatever it thinks.'
         : '';
@@ -2884,8 +2917,9 @@ export function boot(): void {
         + '<span class="mono">' + html(row.modelId) + ' \u00b7 ' + row.wordings.length + ' wordings</span>'
         + row.wordings.slice(0, 4).map((wording: any) => '<span class="subtle">' + (wording.named ? '\u2713' : '\u2717') + ' ' + html(wording.text) + '</span>').join("")
         + '</div>'
-        + '<span class="mcell ' + (row.agreed ? "state-ok" : "state-bad") + '">' + (row.agreed ? "Agreed" : row.namedIn + ' of ' + row.wordings.length) + '</span>'
-        + '<span class="mcell">' + (row.spread === null ? '\u2014' : sharePct(row.spread)) + '</span></div>').join("");
+        + '<span class="mcell ' + (row.naming === "always" ? "state-ok" : row.naming === "split" ? "state-bad" : "subtle") + '">'
+        + (row.naming === "always" ? "Every wording" : row.naming === "split" ? row.namedIn + ' of ' + row.wordings.length : "No wording") + '</span>'
+        + '<span class="mcell">' + (row.spread === null ? "Not measurable" : sharePct(row.spread)) + '</span></div>').join("");
       return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>How much the wording decides</h3>'
         + '<p class="subtle">' + html(report.caveat) + '</p></div></div>'
         + '<p>' + html(lead + naming + named) + '</p>'
