@@ -200,7 +200,10 @@ export function createProductServices(dependencies: ProductServerDependencies = 
   const humanCheck = new HumanCheckService(projectStore);
   const experiments = new ExperimentService(projectStore);
   const icons = new SiteIconService(new SiteIconStore(projectStore));
-  const topics = new TopicService(new TopicFileStore(projectStore), projects, insights, profiles);
+  // Reached only when a set is proposed, which is long after the graph is
+  // built, so the later binding is safe and saves reordering the whole file.
+  const topics = new TopicService(new TopicFileStore(projectStore), projects, insights, profiles,
+    (id) => searchConsole.observedRows(id));
   const ask = createStructuredAsk({ baselines, executor });
   const personas = new PersonaService(projectStore);
   const locations = new LocationService(projectStore);

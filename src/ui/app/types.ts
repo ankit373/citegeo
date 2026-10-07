@@ -57,6 +57,9 @@ export interface TopicSetShape {
   /** True where the set was proposed with no description and no category, so
    * the model had the brand name and the domain and nothing else. */
   generatedWithoutFacts?: boolean;
+  /** What anyone was observed to ask when this set was proposed. Absent on a
+   * set proposed before demand could ground one. */
+  groundedIn?: { searchQueries: number; corpusQuestions: number; observed: number };
 }
 
 export interface PromptStandingRow {

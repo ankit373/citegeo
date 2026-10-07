@@ -105,6 +105,13 @@ export class SearchConsoleService {
     return getJson<SearchDemandReport>(this.projects.objects, this.key(projectId));
   }
 
+  /** The queries kept from the last pull. Empty where none was ever made, or
+   * where the report predates them being kept, which is not no demand. */
+  async observedRows(projectId: string): Promise<SearchRow[]> {
+    const saved = await this.saved(projectId).catch(() => null);
+    return saved?.observed || [];
+  }
+
   async status(projectId: string): Promise<SearchConsoleStatus> {
     const raw = await this.secret();
     const site = this.siteUrl();
