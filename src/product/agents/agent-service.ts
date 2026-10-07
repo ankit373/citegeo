@@ -12,7 +12,7 @@ import {
   agentPrompt,
   agentResponseSchema,
 } from "./agent-protocol.js";
-import { parseDraft, type AgentDraft, type DraftReview } from "./agent-schema.js";
+import { parseDraft, type AgentDraft, type DraftPublication, type DraftReview } from "./agent-schema.js";
 import { AGENT_TEMPLATES, briefFor, briefsFor, templateById, type TemplateId } from "./agent-templates.js";
 import type { TemplateBrief } from "./agent-templates.js";
 import type { AgentDraftFileStore } from "./agent-store.js";
@@ -149,6 +149,8 @@ export class ProductAgentService {
       createdAt: new Date().toISOString(),
       reviewedAt: null,
       reviewNote: null,
+      publishedUrl: null,
+      publishedAt: null,
     };
     await this.store.save(draft);
     return draft;
@@ -205,6 +207,24 @@ export class ProductAgentService {
     };
     await this.store.save(reviewed);
     return reviewed;
+  }
+
+  /** The one thing this product never knew: that the page went live, and when.
+   * Without that date no later run can be read as before or after the change,
+   * so an approved draft was the end of the line. */
+  async publish(projectId: string, draftId: string, publication: DraftPublication): Promise<AgentDraft> {
+    await this.projects.get(projectId);
+    const draft = await this.store.read(projectId, draftId);
+    if (!draft) throw new AgentUnavailableError("That draft does not exist.");
+    if (draft.status !== "approved") {
+      throw new AgentUnavailableError("Only an approved draft can be recorded as published, because nothing else was agreed to go live.");
+    }
+    if (draft.publishedAt) {
+      throw new AgentUnavailableError(`That draft was already recorded as live at ${draft.publishedUrl}.`);
+    }
+    const published: AgentDraft = { ...draft, publishedUrl: publication.url, publishedAt: publication.at };
+    await this.store.save(published);
+    return published;
   }
 
   static readonly schemaHash = AGENT_SCHEMA_HASH;
