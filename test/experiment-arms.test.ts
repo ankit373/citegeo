@@ -46,7 +46,7 @@ const SOME: ControlArm = { promptIds: ["q2"], withheld: [], everAnswered: 1 };
 test("a rival named on the draft is evidence, never a question to measure", () => {
   const only = treatedFor(draft({ sources: [{ kind: "entity", reference: "rival.com", detail: "named" }] }));
   assert.deepEqual(only, [], "an entity is not a question anything can be measured on");
-  assert.equal(armsBlocked(only, SOME, CHANGED), "That draft names no tracked question, so there is nothing to measure the change against.");
+  assert.ok(armsBlocked(only, SOME, CHANGED)?.includes("No tracked question is named"));
 });
 
 test("the control is everything else that already had a baseline", () => {

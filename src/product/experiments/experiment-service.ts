@@ -28,6 +28,7 @@ export class ExperimentService {
       .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
       .map((experiment) => ({
         ...experiment,
+        draftId: experiment.draftId || null,
         result: analyseExperiment({
           answers,
           treatedPromptIds: experiment.treatedPromptIds,
@@ -63,7 +64,11 @@ export class ExperimentService {
     changedAt?: string | undefined;
     draftId?: string | null | undefined;
   }, answers: PromptAnswer[]): Promise<Experiment> {
-    const changedAt = input.changedAt || new Date().toISOString();
+    // Before the arms, not after. A junk date reads as nobody having a
+    // baseline, which would blame the control for a bad input.
+    const asked = input.changedAt ? new Date(input.changedAt) : new Date();
+    if (!Number.isFinite(asked.getTime())) throw new ExperimentInputError("The date the change was made has to be a date.");
+    const changedAt = asked.toISOString();
     const treatedPromptIds = [...new Set(input.treatedPromptIds.filter(Boolean))];
     const file = await this.load(projectId);
     const excluded = file.experiments

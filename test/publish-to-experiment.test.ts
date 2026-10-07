@@ -105,6 +105,33 @@ test("a live draft starts the experiment that measures it, against the question 
   }
 });
 
+test("a date that is not a date is refused before the control is blamed for it", async () => {
+  const kit = await build();
+  try {
+    const live = draft({ publishedUrl: "https://tradomate.one/answer", publishedAt: "whenever" });
+    await assert.rejects(
+      () => kit.experiments.startFromDraft("p", live, [answer("q2", BEFORE)]),
+      (error: Error) => error.message.includes("has to be a date"),
+    );
+  } finally {
+    await kit.cleanup();
+  }
+});
+
+test("an experiment stored before drafts could start one reads as started by hand, not as undefined", async () => {
+  const kit = await build();
+  try {
+    await kit.experiments.start("p", {
+      name: "By hand", hypothesis: "", changed: "edited the homepage",
+      treatedPromptIds: ["q1"], controlPromptIds: ["q2"],
+    });
+    const [stored] = await kit.experiments.list("p", []);
+    assert.equal(stored?.draftId, null);
+  } finally {
+    await kit.cleanup();
+  }
+});
+
 test("a draft nobody has said went live is not an experiment yet", async () => {
   const kit = await build();
   try {

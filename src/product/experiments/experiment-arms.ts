@@ -29,8 +29,8 @@ export interface ControlArm {
   promptIds: string[];
   /** Had a baseline, but another running change already treats them. */
   withheld: string[];
-  /** Answered at some point, before the change or after it. Tells a control
-   * nobody tracks apart from one tracked only since the change. */
+  /** Answered at some point, either side of the change. Separates tracking
+   * nothing else from tracking things only since the change. */
   everAnswered: number;
 }
 
@@ -61,7 +61,7 @@ export function controlFor(input: ControlInput): ControlArm {
 /** Null when the arms can be built. An empty control has three different
  * causes and saying the wrong one sends somebody to fix the wrong thing. */
 export function armsBlocked(treated: string[], control: ControlArm, changedAt: string): string | null {
-  if (!treated.length) return "That draft names no tracked question, so there is nothing to measure the change against.";
+  if (!treated.length) return "No tracked question is named as the one this change was aimed at, so there is nothing to measure it against.";
   if (control.promptIds.length) return null;
   if (control.withheld.length) {
     return "Every other question with a baseline is already treated by a running change, so none of them can stand for nothing having happened. Stop one of those experiments, or track a question this change was not aimed at.";
