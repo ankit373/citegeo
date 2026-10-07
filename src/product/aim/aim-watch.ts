@@ -1,4 +1,5 @@
 import type { TopicInsights } from "../topics/topic-insights.js";
+import { isReadable } from "../topics/prompt-trend.js";
 import type { SignalChange } from "../actions/signal-diff.js";
 import type { TemplateId } from "../agents/agent-templates.js";
 
@@ -45,25 +46,31 @@ export interface AimMemo {
   writtenAt: string;
 }
 
-/** Below this a change is noise between two runs of the same thing rather than
- * something worth writing a memo about. */
-export const MATERIAL_CHANGE = 0.05;
+/** Points on the hundred point score below which a change is noise between two
+ * runs of the same thing. A judgement, like the two floors in the score. */
+export const MATERIAL_CHANGE = 2;
 
+/** The score is an index out of a hundred, not a proportion. Multiplying it by
+ * a hundred reported a reading of 1.4 as 140%. */
 function points(value: number): string {
-  return `${(value * 100).toFixed(1)}%`;
+  return value.toFixed(1);
 }
 
 function scoreMovement(insights: TopicInsights): Movement | null {
   const change = insights.trend.change;
   if (change === null || Math.abs(change) < MATERIAL_CHANGE) return null;
-  const now = insights.overall.score;
-  if (now === null) return null;
-  const before = now - change;
+  // Read off the endpoints the change was taken between. Subtracting it from
+  // the overall score mixed two different figures and produced scores below
+  // nought, which no reading can be.
+  const readable = insights.trend.points.filter(isReadable);
+  const first = readable[0];
+  const last = readable[readable.length - 1];
+  if (!first || !last) return null;
   return {
     field: "visibility",
     direction: change > 0 ? "up" : "down",
-    before: points(before),
-    after: points(now),
+    before: points(first.score.score),
+    after: points(last.score.score),
     size: Math.abs(change),
   };
 }
@@ -146,7 +153,7 @@ export function writeMemo(input: {
   const tasks = tasksFor(input.insights, input.signals);
 
   const headline = movement
-    ? `Visibility moved ${movement.direction} from ${movement.before} to ${movement.after}.`
+    ? `Visibility moved ${movement.direction} from ${movement.before} to ${movement.after} out of 100.`
     : input.insights.trend.change === null
       ? "Not enough runs to compare, so nothing can be said to have moved."
       : "Visibility held steady since the last comparable run.";
@@ -154,7 +161,7 @@ export function writeMemo(input: {
   // A movement nothing in the evidence explains is reported as unexplained.
   // Naming a wrong cause sends the work to the wrong place.
   const unexplained = movement && !causes.length
-    ? `Visibility moved ${movement.direction} by ${points(movement.size)} and nothing recorded here explains it. Probe the site and run again before acting.`
+    ? `Visibility moved ${movement.direction} by ${points(movement.size)} point(s) and nothing recorded here explains it. Probe the site and run again before acting.`
     : null;
 
   return {

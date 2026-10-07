@@ -19,7 +19,7 @@ function absent(text: string, answers: number): any {
 
 function insights(over: Partial<TopicInsights> = {}): TopicInsights {
   return {
-    projectId: "p", answers: 0, answersFailed: 0, answersRetired: 0, overall: { ...SCORE, score: 0.4 } as any, rank: null,
+    projectId: "p", answers: 0, answersFailed: 0, answersRetired: 0, overall: { ...SCORE, score: 40 } as any, rank: null,
     weights: SCORE_WEIGHTS, leaderboard: [], topics: [], byModel: [],
     absentFrom: [], citationsUnavailable: false, trend: { points: [], change: null, since: null, thinPoints: 0, readablePoints: 0 } as any,
     byRegion: [], byLanguage: [], byPersona: [], regionCaveat: "", identityCaveat: null, trackedRivals: [],
@@ -27,12 +27,23 @@ function insights(over: Partial<TopicInsights> = {}): TopicInsights {
   } as TopicInsights;
 }
 
+/** A run a figure can be read off: a score and enough answers to carry it. */
+function point(runId: string, score: number): any {
+  return { runId, at: `2026-0${runId.slice(-1)}-01T00:00:00.000Z`, rank: 1, regionIds: ["global"],
+    score: { ...SCORE, answers: 20, appearances: 10, score, tooFewAnswers: false } };
+}
+
+function trend(scores: number[], change: number | null): any {
+  const points = scores.map((score, at) => point(`r${at + 1}`, score));
+  return { points, change, since: points[0]?.runId || null, thinPoints: 0, readablePoints: points.length };
+}
+
 function regressed(field: string): SignalChange {
   return { field, direction: "regressed", before: "allowed", after: "blocked", detail: "It stopped being reachable." };
 }
 
 test("a change smaller than the threshold is not a movement worth a memo", () => {
-  const memo = writeMemo({ projectId: "p", insights: insights({ trend: { points: [], change: MATERIAL_CHANGE / 2, since: "r1" } as any }), signals: [] });
+  const memo = writeMemo({ projectId: "p", insights: insights({ trend: trend([40, 41], MATERIAL_CHANGE / 2) }), signals: [] });
   assert.equal(memo.movement, null);
   assert.ok(memo.headline.includes("held steady"));
 });
@@ -47,19 +58,50 @@ test("with fewer than two runs nothing is said to have moved", () => {
 test("a real drop is reported with where it came from and went to", () => {
   const memo = writeMemo({
     projectId: "p",
-    insights: insights({ overall: { ...SCORE, score: 0.3 } as any, trend: { points: [], change: -0.2, since: "r1" } as any }),
+    insights: insights({ overall: { ...SCORE, score: 30 } as any, trend: trend([50, 30], -20) }),
     signals: [],
   });
   assert.equal(memo.movement?.direction, "down");
-  assert.equal(memo.movement?.after, "30.0%");
-  assert.equal(memo.movement?.before, "50.0%");
+  assert.equal(memo.movement?.before, "50.0");
+  assert.equal(memo.movement?.after, "30.0");
   assert.ok(memo.movement && memo.movement.size > 0, "size is always positive");
+  assert.ok(memo.headline.includes("out of 100"), "the scale travels with the number");
+});
+
+test("the score is an index out of a hundred, never a proportion", () => {
+  // Reported live: a reading of 1.4 that had risen from 0 came out as
+  // "moved up from -70.0% to 140.0%", one of which no score can be.
+  const memo = writeMemo({
+    projectId: "p",
+    insights: insights({ overall: { ...SCORE, score: 1.4 } as any, trend: trend([0, 0, 2.1], 2.1) }),
+    signals: [],
+  });
+  assert.equal(memo.movement?.before, "0.0");
+  assert.equal(memo.movement?.after, "2.1");
+});
+
+test("the endpoints come from the runs the change was taken between, not from the overall score", () => {
+  // The overall score is taken across every answer and the change between two
+  // runs. Subtracting one from the other mixes two different figures.
+  const memo = writeMemo({
+    projectId: "p",
+    insights: insights({ overall: { ...SCORE, score: 11 } as any, trend: trend([20, 60], 40) }),
+    signals: [],
+  });
+  assert.equal(memo.movement?.before, "20.0");
+  assert.equal(memo.movement?.after, "60.0");
+});
+
+test("a change with no readable run behind it is not a movement", () => {
+  const thin = { points: [point("r1", 10)], change: 30, since: "r1", thinPoints: 2, readablePoints: 1 } as any;
+  thin.points[0].score.tooFewAnswers = true;
+  assert.equal(writeMemo({ projectId: "p", insights: insights({ trend: thin }), signals: [] }).movement, null);
 });
 
 test("a movement nothing explains is called unexplained, not given a cause", () => {
   const memo = writeMemo({
     projectId: "p",
-    insights: insights({ trend: { points: [], change: -0.2, since: "r1" } as any }),
+    insights: insights({ trend: trend([50, 30], -20) }),
     signals: [],
   });
   assert.deepEqual(memo.causes, []);
@@ -69,7 +111,7 @@ test("a movement nothing explains is called unexplained, not given a cause", () 
 test("a movement with a cause in the evidence is not called unexplained", () => {
   const memo = writeMemo({
     projectId: "p",
-    insights: insights({ trend: { points: [], change: -0.2, since: "r1" } as any }),
+    insights: insights({ trend: trend([50, 30], -20) }),
     signals: [regressed("GPTBot access")],
   });
   assert.equal(memo.unexplained, null);
