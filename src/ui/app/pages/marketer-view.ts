@@ -116,6 +116,19 @@ export function marketerView(memo: AimMemo | null): string {
   ]);
 }
 
+/** What a draft was built from, laid out so a reader can disagree with the
+ * draft and still check the observation under it. */
+function draftSources(draft: DraftRow): string {
+  if (!draft.sources.length) return '<span class="subtle">No evidence was recorded for this draft.</span>';
+  const rows = draft.sources.map((source) => {
+    const what = source.kind === "citation"
+      ? `<a href="${html(source.reference)}" target="_blank" rel="noreferrer">${html(source.reference)}</a>`
+      : html(source.reference);
+    return `<li><span class="state-flag">${html(source.kind)}</span>${what} <span class="subtle">${html(source.detail)}</span></li>`;
+  });
+  return `<details class="sources"><summary>What this was built from</summary><ul class="sourcelist">${rows.join("")}</ul></details>`;
+}
+
 /** Approved is not the end of it. Until somebody says where a draft went live
  * and when, no later run can be read as before or after it. */
 function draftState(draft: DraftRow): string {
@@ -165,13 +178,15 @@ export function draftsView(input: { offers: TemplateOffer[]; drafts: DraftRow[] 
 
   const drafts = table({
     layout: "mcols-draft",
-    columns: ["Draft", "From", "State"],
+    columns: ["Draft", "Built from", "State"],
     empty: "Nothing drafted yet. Every draft waits for a decision before it is anything.",
     rows: input.drafts.map((draft) => row("mcols-draft", [
-      nameCell(html(draft.title), html(draft.rationale)),
+      // The evidence sits beside the name rather than inside it: every child of
+      // a name cell is laid out as a block, which put each source on three lines.
+      `<div class="draftcell">${nameCell(html(draft.title), html(draft.rationale))}${draftSources(draft)}</div>`,
       cell(`<span class="subtle">${html(String(draft.sources.length))} source(s)</span>`),
       cell(join([draftState(draft), button({ label: "Copy", kind: "quiet", on: { "data-copy-draft": draft.id } })])),
-    ], { clickable: true, attrs: `data-open-draft="${html(draft.id)}"` })),
+    ])),
   });
 
   return join([

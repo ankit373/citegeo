@@ -1,5 +1,46 @@
-import type { TopicInsights } from "../topics/topic-insights.js";
+import type { PromptStanding, TopicInsights } from "../topics/topic-insights.js";
 import type { DraftSource } from "./agent-schema.js";
+
+/** A page an answer cited, as far as it has been read back. Null title means
+ * the page is known to have been cited and has not been read. */
+export interface CitedPage {
+  url: string;
+  host: string;
+  title: string | null;
+  headings: string[];
+  namesYou: boolean;
+}
+
+/** Null for a page nothing has read, which is reported rather than guessed at. */
+export type PageLookup = (url: string) => CitedPage | null;
+
+const NO_PAGES: PageLookup = () => null;
+
+/** What the pages that won a question cover. Ground to answer, never fact to
+ * copy: the brand's own pages stay the only source for a claim about it. */
+function groundFrom(prompt: PromptStanding, page: PageLookup): { lines: string[]; sources: DraftSource[] } {
+  const lines: string[] = [];
+  const sources: DraftSource[] = [];
+  let unread = 0;
+  for (const cited of prompt.cited.slice(0, 8)) {
+    const read = page(cited.url);
+    if (!read) {
+      unread += 1;
+      continue;
+    }
+    const covers = read.headings.slice(0, 6).join(" / ");
+    lines.push(`- ${read.host}${read.title ? `, "${read.title}"` : ""}${covers ? `: ${covers}` : ""}`);
+    sources.push({
+      kind: "citation",
+      reference: cited.url,
+      detail: `cited by ${cited.answers} answer(s) to this question${read.namesYou ? ", and names the brand" : ""}`,
+    });
+  }
+  if (unread) {
+    lines.push(`- ${unread} more page(s) were cited and have not been read, so what they cover is not known here.`);
+  }
+  return { lines, sources };
+}
 
 export type TemplateId = "missing_answer" | "faq" | "competitor_brief" | "refresh";
 
@@ -55,7 +96,7 @@ function namedInstead(ahead: TopicInsights["leaderboard"]): string {
   return names.length ? names.join(", ") : "nobody";
 }
 
-function missingAnswer(insights: TopicInsights): TemplateBrief {
+function missingAnswer(insights: TopicInsights, page: PageLookup): TemplateBrief {
   const prompt = insights.absentFrom.find((row) => row.measuresVisibility && row.score.answers > 0);
   if (!prompt) {
     return {
@@ -66,10 +107,17 @@ function missingAnswer(insights: TopicInsights): TemplateBrief {
     };
   }
   const rivals = namedInstead(prompt.ahead);
+  const ground = groundFrom(prompt, page);
   return {
     instruction: [
       `Write a page that answers this question directly: "${prompt.text}"`,
       `Across ${prompt.score.answers} answer(s) to it, the brand was never named. Named instead: ${rivals}.`,
+      ...(ground.lines.length
+        ? [
+          "These pages were cited in those answers. Cover the ground they cover, so the question is answered as fully. Take no fact from them: they are what was asked for, not a source.",
+          ...ground.lines,
+        ]
+        : []),
       "Answer the question first and completely, before mentioning the brand at all.",
       "Only claim what the brand's own pages support. Leave out anything they do not.",
     ].join("\n"),
@@ -81,6 +129,7 @@ function missingAnswer(insights: TopicInsights): TemplateBrief {
         reference: row.domain || row.name,
         detail: `named in ${row.appearances} answer(s) on this question`,
       })),
+      ...ground.sources,
     ],
     rationale: `${prompt.score.answers} answer(s) to this question named ${rivals} and never the brand.`,
   };
@@ -162,13 +211,13 @@ function refresh(insights: TopicInsights): TemplateBrief {
 /** Every brief a template can build right now, not only the first. Each one is
  * built by narrowing the insights to one gap and reusing the single-gap
  * builder, so a batch and a single draft cannot disagree about a brief. */
-export function briefsFor(templateId: TemplateId, insights: TopicInsights, limit: number): TemplateBrief[] {
+export function briefsFor(templateId: TemplateId, insights: TopicInsights, limit: number, page: PageLookup = NO_PAGES): TemplateBrief[] {
   const take = Math.max(1, Math.min(limit, 50));
   if (templateId === "missing_answer") {
     return insights.absentFrom
       .filter((row) => row.measuresVisibility && row.score.answers > 0)
       .slice(0, take)
-      .map((row) => missingAnswer({ ...insights, absentFrom: [row] }));
+      .map((row) => missingAnswer({ ...insights, absentFrom: [row] }, page));
   }
   if (templateId === "faq") {
     return insights.topics
@@ -187,8 +236,8 @@ export function briefsFor(templateId: TemplateId, insights: TopicInsights, limit
   return only.instruction ? [only] : [];
 }
 
-export function briefFor(templateId: TemplateId, insights: TopicInsights): TemplateBrief {
-  if (templateId === "missing_answer") return missingAnswer(insights);
+export function briefFor(templateId: TemplateId, insights: TopicInsights, page: PageLookup = NO_PAGES): TemplateBrief {
+  if (templateId === "missing_answer") return missingAnswer(insights, page);
   if (templateId === "faq") return faq(insights);
   if (templateId === "competitor_brief") return competitorBrief(insights);
   return refresh(insights);
