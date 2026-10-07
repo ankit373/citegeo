@@ -39,7 +39,14 @@ export interface SearchDemandReport {
   queries: number;
   totalImpressions: number;
   prompts: PromptSearchDemand[];
+  /** The strongest queries, kept rather than discarded once they have been
+   * matched. Observed demand can only ground a question set if it survives
+   * the run that collected it. Absent on a report stored before this. */
+  observed?: SearchRow[] | undefined;
 }
+
+/** Enough to ground a proposal without storing the whole account. */
+export const OBSERVED_ROWS_KEPT = 300;
 
 /** Two thirds of the prompt's words, the same shape the corpus matcher uses,
  * so "related" means the same thing in both places. */
@@ -101,5 +108,8 @@ export function buildSearchDemand(input: {
     queries: input.rows.length,
     totalImpressions: input.rows.reduce((total, row) => total + row.impressions, 0),
     prompts: prompts.sort((left, right) => right.impressions - left.impressions),
+    observed: [...input.rows]
+      .sort((left, right) => right.impressions - left.impressions || left.query.localeCompare(right.query))
+      .slice(0, OBSERVED_ROWS_KEPT),
   };
 }

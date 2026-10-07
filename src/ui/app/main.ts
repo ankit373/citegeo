@@ -3809,12 +3809,31 @@ export function boot(): void {
         + renderPromptStats(set, standings)
         + renderPromptCoverage(set)
         + blind
+        + grounding(set)
         + review
         + promptToolbar(set, rows.length)
         + '<div class="prompt-bulk">' + promptBulkInner() + '</div>'
         + '<div class="prompt-results">' + renderPromptGroups(set, rows, standings, (topicStandings() as any)) + '</div>'
         + promptAddForms(set)
         + '</section>';
+    }
+
+    // What a proposal was grounded in decides how much of it is observation
+    // and how much is supposition, which does not show on the questions.
+    function grounding(set: any) {
+      if (!set || !set.generatedAt) return '';
+      const held = set.groundedIn;
+      if (!held) {
+        return '<div class="warning-box"><strong>This set was proposed before observed demand could ground one.</strong> What anyone really asks was not read when these were written, so they are the model\'s supposition about what buyers type. Propose again to ground the next set in what has been observed.</div>';
+      }
+      if (!held.observed) {
+        return '<div class="warning-box"><strong>Nothing observed grounded these questions.</strong> No search queries and no conversations were available when they were proposed, so every one is the model\'s supposition about what buyers type. Connect Search Console on Setup and propose again.</div>';
+      }
+      const parts = [];
+      if (held.searchQueries) parts.push(held.searchQueries + ' search quer(ies)');
+      if (held.corpusQuestions) parts.push(held.corpusQuestions + ' past conversation(s)');
+      return '<div class="success-box"><strong>Grounded in ' + held.observed + ' question(s) people really asked</strong>, drawn from ' + parts.join(' and ')
+        + '. Those are search and conversation records, not a measure of how often anyone asks an assistant, and a subject missing from them is not a subject nobody asks about.</div>';
     }
 
     function resultsSwitch(active: any) {

@@ -21,6 +21,8 @@ import {
   type TopicSet,
 } from "./topic-schema.js";
 import type { TopicFileStore } from "./topic-store.js";
+import { emptyDemand, fromSearchRows, type ObservedDemand } from "./observed-demand.js";
+import type { SearchRow } from "../search-console/search-console-client.js";
 
 /** What the service needs from a model. Injected so generation is testable without one. */
 export interface StructuredAsk {
@@ -74,6 +76,9 @@ export class TopicService {
     private readonly projects: ProductProjectService,
     private readonly insights?: ProductInsightsService | undefined,
     private readonly profiles?: BrandProfileService | undefined,
+    /** Queries kept from the last Search Console pull. Absent where nothing
+     * is connected, which is reported rather than treated as no demand. */
+    private readonly searchRows?: ((projectId: string) => Promise<SearchRow[]>) | undefined,
   ) {}
 
   /** Read where it exists and left absent where it does not, never filled in:
@@ -159,10 +164,21 @@ export class TopicService {
 
   /** Stored as proposed, never active: what buyers ask is not something this
    * tool can observe, so a person approves it first. */
+  /** What anyone was observed to ask in this market. Search queries that name
+   * the brand are navigational and are counted out rather than fed back in. */
+  private async observed(projectId: string, brandName: string, domain: string): Promise<ObservedDemand> {
+    if (!this.searchRows) return emptyDemand();
+    const rows = await this.searchRows(projectId);
+    return fromSearchRows(rows, [brandName, domain]);
+  }
+
   async generate(projectId: string, ask: StructuredAsk, options: GenerateOptions = {}): Promise<TopicSet> {
     const project = await this.projects.get(projectId);
     if (!project) throw new TopicSetUnavailableError(`Project ${projectId} does not exist.`);
     const existing = await this.store.load(projectId);
+    // Demand that cannot be read must not stop a proposal. The prompt then
+    // says nothing was observed, which is true, and the set records it.
+    const observed = await this.observed(projectId, project.brandName, project.normalizedDomain).catch(emptyDemand);
     let facts = await this.brandFacts(projectId);
     if (!facts.businessDescription && !options.businessDescription && this.profiles) {
       // Nothing known and nothing supplied, so go and find out.
@@ -178,6 +194,7 @@ export class TopicService {
       competitors: options.competitors?.length ? options.competitors : facts.competitors,
       topicCount: options.topicCount || 5,
       promptsPerTopic: options.promptsPerTopic || 6,
+      observed,
     };
     const raw = await ask({
       projectId,
@@ -243,6 +260,11 @@ export class TopicService {
     const set: TopicSet = {
       ...emptyTopicSet(projectId), topics, prompts, generatedAt: now(),
       ...(blind ? { generatedWithoutFacts: true } : {}),
+      groundedIn: {
+        searchQueries: observed.searchQueries,
+        corpusQuestions: observed.corpusQuestions,
+        observed: observed.questions.length,
+      },
     };
     await this.store.save(set);
     return this.store.load(projectId);

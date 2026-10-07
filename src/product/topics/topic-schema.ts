@@ -71,6 +71,10 @@ export interface TopicSet {
    * a read of the site, which is how a stock screener came to be tracking
    * questions about AI visibility tooling. */
   generatedWithoutFacts?: boolean;
+  /** What anyone was observed to ask, at the moment this set was proposed.
+   * Absent on a set proposed before demand could ground one, which is not the
+   * same as a set proposed with no demand to ground it. */
+  groundedIn?: { searchQueries: number; corpusQuestions: number; observed: number } | undefined;
   updatedAt: string;
 }
 
