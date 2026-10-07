@@ -966,6 +966,12 @@ select[data-filter].is-set {
   .mxhead { display: flex; align-items: center; justify-content: flex-end; gap: 5px; min-width: 0; }
   .mxhead b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: inherit; }
   .ranklist { display: grid; margin: 0; padding: 0; list-style: none; }
+  .sources { margin-top: var(--space-xs); }
+  .sources summary { cursor: pointer; color: var(--weak); font-size: var(--type-sm); }
+  .sourcelist { display: grid; gap: 5px; margin: var(--space-xs) 0 0; padding: 0; list-style: none; font-size: var(--type-sm); }
+  .sourcelist li { overflow-wrap: anywhere; line-height: 1.5; }
+  .sourcelist .state-flag { margin-right: 6px; }
+  .draftcell { min-width: 0; }
   .rankrow { display: grid; grid-template-columns: 18px 18px minmax(0, 1fr) auto 54px; align-items: center; gap: 9px; min-height: 34px; border-bottom: 1px solid var(--line); font-size: var(--type-md); }
   .rankrow:last-child { border-bottom: 0; }
   .rankrow.is-you { font-weight: 600; }

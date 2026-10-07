@@ -14,7 +14,9 @@ import {
 } from "./agent-protocol.js";
 import { parseDraft, type AgentDraft, type DraftPublication, type DraftReview } from "./agent-schema.js";
 import { AGENT_TEMPLATES, briefFor, briefsFor, templateById, type TemplateId } from "./agent-templates.js";
-import type { TemplateBrief } from "./agent-templates.js";
+import type { CitedPage, PageLookup, TemplateBrief } from "./agent-templates.js";
+import { canonicalUrl } from "../citations/canonical-url.js";
+import type { SourcePage } from "../citations/source-page.js";
 import type { AgentDraftFileStore } from "./agent-store.js";
 
 export class AgentUnavailableError extends Error {}
@@ -34,6 +36,21 @@ export type InsightsSource = (projectId: string) => Promise<TopicInsights>;
 /** The brand's pages as text, or why they could not be read. Injectable so the
  * drafting path can be tested without a network read deciding the result. */
 export type PagesSource = (domain: string) => Promise<{ digest: string; detail: string | null }>;
+
+/** Pages already read back from citations. A page nothing read is reported as
+ * unread rather than left out, so the brief is not quietly shorter. */
+export type CitedPagesSource = (projectId: string) => Promise<SourcePage[]>;
+
+function lookupOver(pages: SourcePage[]): PageLookup {
+  const byKey = new Map<string, CitedPage>();
+  for (const page of pages) {
+    const key = canonicalUrl(page.url)?.key;
+    // A page read before its title was kept is still the page that was cited.
+    if (!key || (byKey.has(key) && !page.title)) continue;
+    byKey.set(key, { url: page.url, host: page.host, title: page.title, headings: page.headings, namesYou: page.namesYou });
+  }
+  return (url: string) => byKey.get(canonicalUrl(url)?.key || url) || null;
+}
 
 async function readPages(domain: string): Promise<{ digest: string; detail: string | null }> {
   const site = await readSite(domain);
@@ -57,15 +74,22 @@ export class ProductAgentService {
     private readonly insights: InsightsSource,
     private readonly store: AgentDraftFileStore,
     private readonly pages: PagesSource = readPages,
+    private readonly cited: CitedPagesSource = async () => [],
   ) {}
+
+  private async lookup(projectId: string): Promise<PageLookup> {
+    // A failed read must not stop a draft. The brief then says the pages were
+    // not read, which is true, rather than failing the whole workflow.
+    return lookupOver(await this.cited(projectId).catch(() => []));
+  }
 
   /** What each template would do against the evidence that exists right now,
    * so a blocked one says why instead of failing when it is asked for. */
   async offers(projectId: string): Promise<TemplateOffer[]> {
     await this.projects.get(projectId);
-    const insights = await this.insights(projectId);
+    const [insights, page] = await Promise.all([this.insights(projectId), this.lookup(projectId)]);
     return AGENT_TEMPLATES.map((template) => {
-      const brief = briefFor(template.id, insights);
+      const brief = briefFor(template.id, insights, page);
       return {
         id: template.id,
         label: template.label,
@@ -88,8 +112,8 @@ export class ProductAgentService {
     const template = templateById(templateId);
     if (!template) throw new AgentUnavailableError(`No workflow called ${templateId}.`);
 
-    const insights = await this.insights(projectId);
-    const brief = briefFor(template.id, insights);
+    const [insights, page] = await Promise.all([this.insights(projectId), this.lookup(projectId)]);
+    const brief = briefFor(template.id, insights, page);
     if (!brief.instruction) {
       throw new AgentUnavailableError(brief.blocked || "There is no evidence to draft from yet.");
     }
@@ -164,10 +188,10 @@ export class ProductAgentService {
     const template = templateById(templateId);
     if (!template) throw new AgentUnavailableError(`No workflow called ${templateId}.`);
 
-    const insights = await this.insights(projectId);
-    const briefs = briefsFor(template.id, insights, limit).filter((brief) => brief.instruction);
+    const [insights, page] = await Promise.all([this.insights(projectId), this.lookup(projectId)]);
+    const briefs = briefsFor(template.id, insights, limit, page).filter((brief) => brief.instruction);
     if (!briefs.length) {
-      throw new AgentUnavailableError(briefFor(template.id, insights).blocked || "There is no evidence to draft from yet.");
+      throw new AgentUnavailableError(briefFor(template.id, insights, page).blocked || "There is no evidence to draft from yet.");
     }
 
     const site = await this.pages(project.normalizedDomain);

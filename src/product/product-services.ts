@@ -216,9 +216,10 @@ export function createProductServices(dependencies: ProductServerDependencies = 
     ask: (input) => engines.askOne(input),
   }, personas, locations, () => providerStatuses(catalog), ask);
   const promptSchedule = new PromptScheduleService(new PromptScheduleFileStore(projectStore), promptRuns);
+  const sourcePages = new SourcePageService(projectStore);
   const agents = new ProductAgentService(projects,
     (id) => projectInsights({ projectId: id, topics, runs: promptRuns, competitors, personas, locations }),
-    new AgentDraftFileStore(projectStore));
+    new AgentDraftFileStore(projectStore), undefined, (id) => sourcePages.list(id));
   const shopping = new ProductShoppingService(projects, promptRuns, new ShoppingFileStore(projectStore));
   const factcheck = new ProductFactCheckService(projects, promptRuns, new FactCheckFileStore(projectStore));
   const demand = new DemandReportFileStore(projectStore);
@@ -226,7 +227,6 @@ export function createProductServices(dependencies: ProductServerDependencies = 
   const competitors = new CompetitorService(new CompetitorFileStore(projectStore));
   const segments = new SegmentService(new SegmentFileStore(projectStore));
   const actions = new ActionLogService(new ActionLogStore(projectStore));
-  const sourcePages = new SourcePageService(projectStore);
   const credentials = new CredentialService(new CredentialFileStore(productDataDir()));
   // The environment owns a credential when it sets one, the same rule every
   // other integration here follows.

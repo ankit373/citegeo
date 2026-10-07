@@ -10,6 +10,7 @@ import { buildVersionReport, type VersionReport } from "./model-version.js";
 import { nextTasks, type MeasurementTask } from "./next-task.js";
 import { asDomain, domainLabel, tokenize } from "./prompt-identity.js";
 import { buildPromptTrend, type PromptTrend } from "./prompt-trend.js";
+import { canonicalUrl } from "../citations/canonical-url.js";
 import { region, REGION_CAVEAT } from "./region.js";
 import { language } from "./language.js";
 import { matchesCompetitor, type Competitor } from "./competitor-set.js";
@@ -66,6 +67,14 @@ export interface PromptStanding {
   ahead: EntityStanding[];
   /** Everyone named on this prompt, strongest first, the brand included. */
   standing: EntityStanding[];
+  /** The pages answers to this question cited, most cited first. What won it. */
+  cited: CitedSource[];
+}
+
+export interface CitedSource {
+  url: string;
+  /** Answers to this question that cited it. */
+  answers: number;
 }
 
 export interface SubtopicStanding {
@@ -416,6 +425,25 @@ function hasCorroboration(mention: AnswerMention): mention is CorroboratedMentio
   return mention.corroboration !== undefined;
 }
 
+/** One row per page, counted once per answer. The same page cited twice in one
+ * answer is one answer that used it, not two. */
+function citedFor(answers: PromptAnswer[]): CitedSource[] {
+  const counts = new Map<string, number>();
+  for (const answer of answers) {
+    if (answer.status !== "completed") continue;
+    const seen = new Set<string>();
+    for (const raw of answer.citationUrls) {
+      const key = canonicalUrl(raw)?.key;
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+  }
+  return [...counts.entries()]
+    .map(([url, count]) => ({ url, answers: count }))
+    .sort((left, right) => right.answers - left.answers || left.url.localeCompare(right.url));
+}
+
 export function buildTopicInsights(input: {
   projectId: string;
   set: TopicSet;
@@ -466,6 +494,7 @@ export function buildTopicInsights(input: {
       // Everyone the model reached for before it reached for this brand.
       ahead: rank === null ? local.slice(0, 5) : local.slice(0, rank - 1),
       standing: local,
+      cited: citedFor(mine),
     });
   }
 
