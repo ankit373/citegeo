@@ -1,4 +1,5 @@
 import type { SourcePageService } from "./source-service.js";
+import { buildCitationHistory } from "./citation-history.js";
 import type { BrandIdentity } from "../topics/brand-identity.js";
 import type { PromptAnswer, PromptRun } from "../topics/prompt-run-schema.js";
 
@@ -30,6 +31,18 @@ export async function handleCitationApi(input: {
   const projectId = route[2];
   const tail = route.slice(3);
   if (!projectId || tail.length !== 1) return false;
+
+  // Which pages held their citation and which stopped, which is a different
+  // question from what any one answer took from them.
+  if (method === "GET" && tail[0] === "source-history") {
+    try {
+      const scope = await input.scope(projectId);
+      send(200, { ...buildCitationHistory(await input.answers(projectId)), domain: scope.domain || null });
+    } catch (error) {
+      send(404, { error: message(error) });
+    }
+    return true;
+  }
 
   // What each answer took from the pages cited for it, which is a different
   // question from which pages were cited and lives on its own route.

@@ -77,9 +77,37 @@ test("a brief only counts a rival named in more answers than the brand", () => {
 test("refresh reports what it would need rather than drafting from one run", () => {
   const brief = briefFor("refresh", insights({ citationsUnavailable: false }));
   assert.equal(brief.instruction, null);
-  assert.ok(brief.blocked?.includes("over time"));
+  assert.ok(brief.blocked?.includes("stopped"), "nothing of yours dropped, so there is nothing to refresh");
   const noCitations = briefFor("refresh", insights({ citationsUnavailable: true }));
   assert.ok(noCitations.blocked?.includes("carried a citation"), "with no citation at all it says that instead");
+});
+
+test("a page of yours that stopped being cited becomes a brief naming what it won", () => {
+  const dropped = {
+    key: "tradomate.one/learn/screener", url: "https://tradomate.one/learn/screener", host: "tradomate.one",
+    runs: [], answers: 9, firstCitedAt: "2026-05-01T00:00:00.000Z", lastCitedAt: "2026-07-01T00:00:00.000Z",
+    runsSince: 3, runsCited: 4, promptIds: ["q1"], verdict: "dropped" as const,
+  };
+  const brief = briefFor("refresh", insights({ citationsUnavailable: false }), {
+    dropped: [dropped],
+    questionText: (id) => (id === "q1" ? "best stock screener" : null),
+  });
+  assert.ok(brief.instruction?.includes("https://tradomate.one/learn/screener"));
+  assert.ok(brief.instruction?.includes("2026-07-01"), "the date it was last cited is the fact a reader checks");
+  assert.ok(brief.instruction?.includes("- best stock screener"), "the question it was cited on, in words");
+  assert.ok(brief.instruction?.includes("Do not rewrite the page"));
+  assert.equal(brief.sources[0]?.kind, "citation");
+  assert.equal(brief.sources[1]?.kind, "prompt");
+});
+
+test("a dropped page whose questions are no longer tracked says so instead of naming an id", () => {
+  const dropped = {
+    key: "k", url: "https://tradomate.one/old", host: "tradomate.one", runs: [], answers: 2,
+    firstCitedAt: null, lastCitedAt: null, runsSince: 4, runsCited: 2, promptIds: ["gone"], verdict: "dropped" as const,
+  };
+  const brief = briefFor("refresh", insights({ citationsUnavailable: false }), { dropped: [dropped] });
+  assert.ok(brief.instruction?.includes("no longer tracked"));
+  assert.equal(brief.sources[1]?.detail, "no longer tracked");
 });
 
 test("a draft without a title or a body is not saved as a draft", () => {
@@ -255,11 +283,11 @@ test("a brief the pages only partly cover is still written, with the gaps named"
 test("the pages that won a question tell the draft what ground to cover", () => {
   const prompt = absent("best stock screener", 7, [entity("Screener", 6)]);
   prompt.cited = [{ url: "https://invezz.com/best", answers: 5 }, { url: "https://unread.example/x", answers: 2 }];
-  const brief = briefFor("missing_answer", insights({ absentFrom: [prompt] }), (url) => (
+  const brief = briefFor("missing_answer", insights({ absentFrom: [prompt] }), { page: (url: string) => (
     url === "https://invezz.com/best"
       ? { url, host: "invezz.com", title: "Best screeners", headings: ["What to look for", "Pricing"], namesYou: false }
       : null
-  ));
+  ) });
   assert.ok(brief.instruction?.includes("invezz.com"));
   assert.ok(brief.instruction?.includes("What to look for / Pricing"), "the headings are the ground to cover");
   assert.ok(brief.instruction?.includes("Take no fact from them"), "a cited page is what was asked for, not a source");
@@ -272,7 +300,7 @@ test("the pages that won a question tell the draft what ground to cover", () => 
 test("a cited page nobody has read is counted, not quietly dropped", () => {
   const prompt = absent("best stock screener", 7, [entity("Screener", 6)]);
   prompt.cited = [{ url: "https://a.example/x", answers: 3 }, { url: "https://b.example/y", answers: 1 }];
-  const brief = briefFor("missing_answer", insights({ absentFrom: [prompt] }), () => null);
+  const brief = briefFor("missing_answer", insights({ absentFrom: [prompt] }), { page: () => null });
   assert.ok(brief.instruction?.includes("2 more page(s) were cited and have not been read"));
   assert.equal(brief.sources.filter((row) => row.kind === "citation").length, 0);
 });

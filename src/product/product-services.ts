@@ -219,7 +219,8 @@ export function createProductServices(dependencies: ProductServerDependencies = 
   const sourcePages = new SourcePageService(projectStore);
   const agents = new ProductAgentService(projects,
     (id) => projectInsights({ projectId: id, topics, runs: promptRuns, competitors, personas, locations }),
-    new AgentDraftFileStore(projectStore), undefined, (id) => sourcePages.list(id));
+    new AgentDraftFileStore(projectStore), undefined,
+    (id) => sourcePages.list(id), (id) => promptRuns.listAnswers(id));
   const shopping = new ProductShoppingService(projects, promptRuns, new ShoppingFileStore(projectStore));
   const factcheck = new ProductFactCheckService(projects, promptRuns, new FactCheckFileStore(projectStore));
   const demand = new DemandReportFileStore(projectStore);

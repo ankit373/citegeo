@@ -14,7 +14,9 @@ import {
 } from "./agent-protocol.js";
 import { parseDraft, type AgentDraft, type DraftPublication, type DraftReview } from "./agent-schema.js";
 import { AGENT_TEMPLATES, briefFor, briefsFor, templateById, type TemplateId } from "./agent-templates.js";
-import type { CitedPage, PageLookup, TemplateBrief } from "./agent-templates.js";
+import type { BriefContext, CitedPage, PageLookup, TemplateBrief } from "./agent-templates.js";
+import { buildCitationHistory, droppedOn } from "../citations/citation-history.js";
+import type { PromptAnswer } from "../topics/prompt-run-schema.js";
 import { canonicalUrl } from "../citations/canonical-url.js";
 import type { SourcePage } from "../citations/source-page.js";
 import type { AgentDraftFileStore } from "./agent-store.js";
@@ -40,6 +42,9 @@ export type PagesSource = (domain: string) => Promise<{ digest: string; detail: 
 /** Pages already read back from citations. A page nothing read is reported as
  * unread rather than left out, so the brief is not quietly shorter. */
 export type CitedPagesSource = (projectId: string) => Promise<SourcePage[]>;
+
+/** Every archived answer, which is where per-page citation history comes from. */
+export type AnswersSource = (projectId: string) => Promise<PromptAnswer[]>;
 
 function lookupOver(pages: SourcePage[]): PageLookup {
   const byKey = new Map<string, CitedPage>();
@@ -75,21 +80,33 @@ export class ProductAgentService {
     private readonly store: AgentDraftFileStore,
     private readonly pages: PagesSource = readPages,
     private readonly cited: CitedPagesSource = async () => [],
+    private readonly answers: AnswersSource = async () => [],
   ) {}
 
-  private async lookup(projectId: string): Promise<PageLookup> {
-    // A failed read must not stop a draft. The brief then says the pages were
-    // not read, which is true, rather than failing the whole workflow.
-    return lookupOver(await this.cited(projectId).catch(() => []));
+  /** A failed read must not stop a draft. The brief then says what it could
+   * not see, which is true, rather than failing the whole workflow. */
+  private async context(projectId: string, domain: string, insights: TopicInsights): Promise<BriefContext> {
+    const [pages, answers] = await Promise.all([
+      this.cited(projectId).catch(() => []),
+      this.answers(projectId).catch((): PromptAnswer[] => []),
+    ]);
+    const asked = new Map(insights.absentFrom.map((row) => [row.promptId, row.text]));
+    for (const topic of insights.topics) for (const row of topic.prompts) asked.set(row.promptId, row.text);
+    return {
+      page: lookupOver(pages),
+      dropped: droppedOn(buildCitationHistory(answers), domain),
+      questionText: (promptId: string) => asked.get(promptId) || null,
+    };
   }
 
   /** What each template would do against the evidence that exists right now,
    * so a blocked one says why instead of failing when it is asked for. */
   async offers(projectId: string): Promise<TemplateOffer[]> {
-    await this.projects.get(projectId);
-    const [insights, page] = await Promise.all([this.insights(projectId), this.lookup(projectId)]);
+    const project = await this.projects.get(projectId);
+    const insights = await this.insights(projectId);
+    const context = await this.context(projectId, project?.normalizedDomain || "", insights);
     return AGENT_TEMPLATES.map((template) => {
-      const brief = briefFor(template.id, insights, page);
+      const brief = briefFor(template.id, insights, context);
       return {
         id: template.id,
         label: template.label,
@@ -112,8 +129,9 @@ export class ProductAgentService {
     const template = templateById(templateId);
     if (!template) throw new AgentUnavailableError(`No workflow called ${templateId}.`);
 
-    const [insights, page] = await Promise.all([this.insights(projectId), this.lookup(projectId)]);
-    const brief = briefFor(template.id, insights, page);
+    const insights = await this.insights(projectId);
+    const context = await this.context(projectId, project.normalizedDomain, insights);
+    const brief = briefFor(template.id, insights, context);
     if (!brief.instruction) {
       throw new AgentUnavailableError(brief.blocked || "There is no evidence to draft from yet.");
     }
@@ -188,10 +206,11 @@ export class ProductAgentService {
     const template = templateById(templateId);
     if (!template) throw new AgentUnavailableError(`No workflow called ${templateId}.`);
 
-    const [insights, page] = await Promise.all([this.insights(projectId), this.lookup(projectId)]);
-    const briefs = briefsFor(template.id, insights, limit, page).filter((brief) => brief.instruction);
+    const insights = await this.insights(projectId);
+    const context = await this.context(projectId, project.normalizedDomain, insights);
+    const briefs = briefsFor(template.id, insights, limit, context).filter((brief) => brief.instruction);
     if (!briefs.length) {
-      throw new AgentUnavailableError(briefFor(template.id, insights, page).blocked || "There is no evidence to draft from yet.");
+      throw new AgentUnavailableError(briefFor(template.id, insights, context).blocked || "There is no evidence to draft from yet.");
     }
 
     const site = await this.pages(project.normalizedDomain);
