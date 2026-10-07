@@ -25,6 +25,7 @@ import { TopicService } from "./topics/topic-service.js";
 import { createStructuredAsk } from "./topics/structured-ask.js";
 import { PromptScheduleFileStore, PromptScheduleService } from "./topics/prompt-schedule.js";
 import { DemandReportFileStore } from "./demand/demand-store.js";
+import { ObservedDemandFileStore } from "./demand/observed-store.js";
 import { ExplorationFileStore } from "./demand/exploration-store.js";
 import { BrandProfileFileStore, BrandProfileService } from "./discovery/brand-profile-service.js";
 import { projectInsights } from "./topics/project-insights.js";
@@ -202,8 +203,9 @@ export function createProductServices(dependencies: ProductServerDependencies = 
   const icons = new SiteIconService(new SiteIconStore(projectStore));
   // Reached only when a set is proposed, which is long after the graph is
   // built, so the later binding is safe and saves reordering the whole file.
+  const observedDemand = new ObservedDemandFileStore(projectStore);
   const topics = new TopicService(new TopicFileStore(projectStore), projects, insights, profiles,
-    (id) => searchConsole.observedRows(id));
+    (id) => searchConsole.observedRows(id), (id) => observedDemand.load(id));
   const ask = createStructuredAsk({ baselines, executor });
   const personas = new PersonaService(projectStore);
   const locations = new LocationService(projectStore);

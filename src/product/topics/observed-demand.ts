@@ -9,9 +9,7 @@ import type { SearchRow } from "../search-console/search-console-client.js";
  * and the subjects, not so many that the brief becomes the corpus. */
 export const OBSERVED_KEPT = 40;
 
-/** Only one source reaches a proposal today. Past conversations are indexed by
- * a command and never loaded by the server, so they cannot ground one yet. */
-export type DemandSource = "search_console";
+export type DemandSource = "search_console" | "conversations";
 
 export interface ObservedQuestion {
   text: string;
@@ -60,11 +58,34 @@ export function fromSearchRows(rows: SearchRow[], identities: string[], keep = O
   return demand;
 }
 
+/** Two sources, kept apart. Impressions and conversation counts are different
+ * units, so they interleave by rank rather than merge into one ordering. */
+export function mergeDemand(left: ObservedDemand, right: ObservedDemand, keep = OBSERVED_KEPT): ObservedDemand {
+  const questions: ObservedQuestion[] = [];
+  const seen = new Set<string>();
+  for (let at = 0; at < Math.max(left.questions.length, right.questions.length); at += 1) {
+    for (const row of [left.questions[at], right.questions[at]]) {
+      if (!row) continue;
+      const key = row.text.toLocaleLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      questions.push(row);
+    }
+  }
+  return {
+    questions: questions.slice(0, Math.max(0, keep)),
+    searchQueries: left.searchQueries + right.searchQueries,
+    corpusQuestions: left.corpusQuestions + right.corpusQuestions,
+    navigational: left.navigational + right.navigational,
+  };
+}
+
 /** The lines a proposal is grounded in, or null when nothing was observed. A
  * proposal with no grounding is a guess and has to be labelled as one. */
 export function demandLines(demand: ObservedDemand): string[] | null {
   if (!demand.questions.length) return null;
   return demand.questions.map((row) => {
-    return `- ${row.text} (${row.weight} search impressions)`;
+    const unit = row.source === "search_console" ? "search impressions" : "people asked it";
+    return `- ${row.text} (${row.weight} ${unit})`;
   });
 }

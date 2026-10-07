@@ -21,7 +21,7 @@ import {
   type TopicSet,
 } from "./topic-schema.js";
 import type { TopicFileStore } from "./topic-store.js";
-import { emptyDemand, fromSearchRows, type ObservedDemand } from "./observed-demand.js";
+import { emptyDemand, fromSearchRows, mergeDemand, type ObservedDemand } from "./observed-demand.js";
 import type { SearchRow } from "../search-console/search-console-client.js";
 
 /** What the service needs from a model. Injected so generation is testable without one. */
@@ -79,6 +79,8 @@ export class TopicService {
     /** Queries kept from the last Search Console pull. Absent where nothing
      * is connected, which is reported rather than treated as no demand. */
     private readonly searchRows?: ((projectId: string) => Promise<SearchRow[]>) | undefined,
+    /** The corpus digest a command wrote for this project, where one was. */
+    private readonly conversations?: ((projectId: string) => Promise<ObservedDemand | null>) | undefined,
   ) {}
 
   /** Read where it exists and left absent where it does not, never filled in:
@@ -167,9 +169,10 @@ export class TopicService {
   /** What anyone was observed to ask in this market. Search queries that name
    * the brand are navigational and are counted out rather than fed back in. */
   private async observed(projectId: string, brandName: string, domain: string): Promise<ObservedDemand> {
-    if (!this.searchRows) return emptyDemand();
-    const rows = await this.searchRows(projectId);
-    return fromSearchRows(rows, [brandName, domain]);
+    const rows = this.searchRows ? await this.searchRows(projectId) : [];
+    const search = fromSearchRows(rows, [brandName, domain]);
+    const corpus = this.conversations ? await this.conversations(projectId) : null;
+    return corpus ? mergeDemand(search, corpus) : search;
   }
 
   async generate(projectId: string, ask: StructuredAsk, options: GenerateOptions = {}): Promise<TopicSet> {
