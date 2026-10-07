@@ -84,6 +84,7 @@ export function boot(): void {
     shape: Unshaped; shapeState: LoadState;
     kinds: Unshaped; kindsState: LoadState;
     experiments: Unshaped; experimentsState: LoadState;
+    history: Unshaped; historyState: LoadState;
     marketerNotice: { text: string; kind: string };
     check: Unshaped; checkState: LoadState;
     credit: Unshaped; creditState: LoadState;
@@ -106,7 +107,7 @@ export function boot(): void {
     matrixHidden: string[];
   }
 
-    const state: State = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", crawlerUploading:false, crawlerNotice:{ text:"", kind:"" }, plan:null, planState:"idle", marketer:null, drafts:null, claims:null, buying:null, conversations:null, entity:null, marketerState:"idle", marketerNotice:{ text:"", kind:"" }, signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, integrations:[], integrationsState:"idle", externalMetrics:null, externalMetricsState:"idle", externalMetricsPulling:"", externalMetricsNotice:{text:"",kind:""}, digest:null, digestState:"idle", demand:null, demandState:"idle", repetitions:Number(savedPreference("repetitions", "1")) || 1, runLanguageId:savedPreference("runLanguage", "en"), dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", promptFilters:{ query:"", topicId:"", intent:"", status:"" }, promptSelection:[], answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", rivals:null, rivalsState:"idle", segments:null, segmentsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, lastRun:null, runPollTimer:0, runFeed:[], runFeedState:"idle", runFeedTimer:0, rankPlan:null, rankPlanState:"idle", brief:null, briefState:"idle", outreach:null, outreachState:"idle", harvesting:false, paste:null, pasteState:"idle", pasteCount:Number(savedPreference("pasteCount", "2")) || 2, uptake:null, uptakeState:"idle", interference:null, interferenceState:"idle", concentration:null, concentrationState:"idle", shape:null, shapeState:"idle", kinds:null, kindsState:"idle", experiments:null, experimentsState:"idle", check:null, checkState:"idle", credit:null, creditState:"idle", reach:null, reachState:"idle", searchDemand:null, searchDemandState:"idle", pulling:false, personas:null, personasState:"idle", priority:null, priorityState:"idle", promptSort:"topic", referrals:null, referralsState:"idle", pullingReferrals:false, engines:null, enginesState:"idle", actions:[], actionsState:"idle", matrixOpen:[], editingBoard:false, brandIcons:{}, panelViews:savedJson("panelViews"), matrixHidden:savedList("matrixHidden") };
+    const state: State = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", crawlerUploading:false, crawlerNotice:{ text:"", kind:"" }, plan:null, planState:"idle", marketer:null, drafts:null, claims:null, buying:null, conversations:null, entity:null, marketerState:"idle", marketerNotice:{ text:"", kind:"" }, signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, integrations:[], integrationsState:"idle", externalMetrics:null, externalMetricsState:"idle", externalMetricsPulling:"", externalMetricsNotice:{text:"",kind:""}, digest:null, digestState:"idle", demand:null, demandState:"idle", repetitions:Number(savedPreference("repetitions", "1")) || 1, runLanguageId:savedPreference("runLanguage", "en"), dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", promptFilters:{ query:"", topicId:"", intent:"", status:"" }, promptSelection:[], answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", history:null, historyState:"idle", rivals:null, rivalsState:"idle", segments:null, segmentsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, lastRun:null, runPollTimer:0, runFeed:[], runFeedState:"idle", runFeedTimer:0, rankPlan:null, rankPlanState:"idle", brief:null, briefState:"idle", outreach:null, outreachState:"idle", harvesting:false, paste:null, pasteState:"idle", pasteCount:Number(savedPreference("pasteCount", "2")) || 2, uptake:null, uptakeState:"idle", interference:null, interferenceState:"idle", concentration:null, concentrationState:"idle", shape:null, shapeState:"idle", kinds:null, kindsState:"idle", experiments:null, experimentsState:"idle", check:null, checkState:"idle", credit:null, creditState:"idle", reach:null, reachState:"idle", searchDemand:null, searchDemandState:"idle", pulling:false, personas:null, personasState:"idle", priority:null, priorityState:"idle", promptSort:"topic", referrals:null, referralsState:"idle", pullingReferrals:false, engines:null, enginesState:"idle", actions:[], actionsState:"idle", matrixOpen:[], editingBoard:false, brandIcons:{}, panelViews:savedJson("panelViews"), matrixHidden:savedList("matrixHidden") };
     const app = document.getElementById("app") as HTMLElement;
     let renderOverride: (() => void) | null = null;
     // render() was a hoisted declaration that a later line reassigned. A
@@ -2826,6 +2827,49 @@ export function boot(): void {
       return found ? found.id : "";
     }
 
+    async function loadHistory() {
+      if (!state.selectedId || state.historyState === "loading") return;
+      state.historyState = "loading";
+      try {
+        state.history = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/source-history");
+        state.historyState = "ready";
+      } catch (error) {
+        state.historyState = "error";
+      }
+      render();
+    }
+
+    function historyWord(verdict: string | null) {
+      if (verdict === "cited") return '<span class="state-ok">still cited</span>';
+      if (verdict === "slipping") return '<span class="state-flag">missed one run</span>';
+      if (verdict === "dropped") return '<span class="state-bad">stopped</span>';
+      if (verdict === "cited_once") return '<span class="state-flag">cited once, never again</span>';
+      return '<span class="state-flag">one run only</span>';
+    }
+
+    // Pages that stopped being cited, which is a claim no single run can make.
+    function renderCitationHistory() {
+      if (state.historyState === "idle") { loadHistory(); }
+      if (state.historyState !== "ready" || !state.history) return '<p class="subtle">Reading what each page did over time.</p>';
+      const data = state.history as any;
+      if (data.measurableRuns < 2) {
+        return '<p class="subtle">' + data.measurableRuns + ' run(s) carried a citation. Two are needed before a page can be shown to have changed either way.</p>';
+      }
+      const worth = ["dropped", "slipping", "cited_once"];
+      const rows = (data.pages || []).filter((row: any) => worth.indexOf(row.verdict) >= 0).slice(0, 12);
+      const table = rows.length
+        ? '<div class="mtable"><div class="mhead mcols-aemodel"><span>Page</span><span>Answers</span><span>Last cited</span><span>State</span></div>'
+          + rows.map((row: any) => '<div class="mrow mcols-aemodel">'
+            + '<div class="mname"><strong>' + html(row.host) + '</strong><span class="mono">' + html(row.url) + '</span></div>'
+            + '<span class="mcell">' + row.answers + '</span>'
+            + '<span class="mcell mono">' + html(row.lastCitedAt ? row.lastCitedAt.slice(0, 10) : "never") + '</span>'
+            + '<span class="mcell">' + historyWord(row.verdict) + '</span></div>').join("") + '</div>'
+        : '<p class="subtle">Every page cited before is still being cited.</p>';
+      return '<p class="subtle">Across ' + data.measurableRuns + ' run(s) that cited something'
+        + (data.silentRuns ? ', ignoring ' + data.silentRuns + ' that cited nothing at all' : '') + '.</p>'
+        + table + '<p class="subtle">' + html(data.caveat) + '</p>';
+    }
+
     function renderCitedPages() {
       if (state.citedState === "idle") { loadCited(); }
       if (state.citedState !== "ready" || !state.cited) return '<p class="subtle">Reading the archived sources.</p>';
@@ -2859,7 +2903,8 @@ export function boot(): void {
         + renderDecomposition(data.decomposition)
         + '<h3 style="margin-top:16px">Pages of yours the models reached for</h3>' + own
         + '<h3 style="margin-top:20px">Every domain cited</h3>' + rivals
-        + '<h3 style="margin-top:20px">Pages that won a question you are absent from</h3>' + openings;
+        + '<h3 style="margin-top:20px">Pages that won a question you are absent from</h3>' + openings
+        + '<h3 style="margin-top:20px">Pages that stopped being cited</h3>' + renderCitationHistory();
     }
 
     function sharePct(value: any) { return value === null || value === undefined ? null : (Math.round(value * 1000) / 10) + "%"; }
