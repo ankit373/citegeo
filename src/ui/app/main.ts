@@ -84,6 +84,7 @@ export function boot(): void {
     shape: Unshaped; shapeState: LoadState;
     kinds: Unshaped; kindsState: LoadState;
     experiments: Unshaped; experimentsState: LoadState;
+    marketerNotice: { text: string; kind: string };
     check: Unshaped; checkState: LoadState;
     credit: Unshaped; creditState: LoadState;
     reach: Unshaped; reachState: LoadState;
@@ -105,7 +106,7 @@ export function boot(): void {
     matrixHidden: string[];
   }
 
-    const state: State = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", crawlerUploading:false, crawlerNotice:{ text:"", kind:"" }, plan:null, planState:"idle", marketer:null, drafts:null, claims:null, buying:null, conversations:null, entity:null, marketerState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, integrations:[], integrationsState:"idle", externalMetrics:null, externalMetricsState:"idle", externalMetricsPulling:"", externalMetricsNotice:{text:"",kind:""}, digest:null, digestState:"idle", demand:null, demandState:"idle", repetitions:Number(savedPreference("repetitions", "1")) || 1, runLanguageId:savedPreference("runLanguage", "en"), dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", promptFilters:{ query:"", topicId:"", intent:"", status:"" }, promptSelection:[], answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", rivals:null, rivalsState:"idle", segments:null, segmentsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, lastRun:null, runPollTimer:0, runFeed:[], runFeedState:"idle", runFeedTimer:0, rankPlan:null, rankPlanState:"idle", brief:null, briefState:"idle", outreach:null, outreachState:"idle", harvesting:false, paste:null, pasteState:"idle", pasteCount:Number(savedPreference("pasteCount", "2")) || 2, uptake:null, uptakeState:"idle", interference:null, interferenceState:"idle", concentration:null, concentrationState:"idle", shape:null, shapeState:"idle", kinds:null, kindsState:"idle", experiments:null, experimentsState:"idle", check:null, checkState:"idle", credit:null, creditState:"idle", reach:null, reachState:"idle", searchDemand:null, searchDemandState:"idle", pulling:false, personas:null, personasState:"idle", priority:null, priorityState:"idle", promptSort:"topic", referrals:null, referralsState:"idle", pullingReferrals:false, engines:null, enginesState:"idle", actions:[], actionsState:"idle", matrixOpen:[], editingBoard:false, brandIcons:{}, panelViews:savedJson("panelViews"), matrixHidden:savedList("matrixHidden") };
+    const state: State = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", crawlerUploading:false, crawlerNotice:{ text:"", kind:"" }, plan:null, planState:"idle", marketer:null, drafts:null, claims:null, buying:null, conversations:null, entity:null, marketerState:"idle", marketerNotice:{ text:"", kind:"" }, signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, integrations:[], integrationsState:"idle", externalMetrics:null, externalMetricsState:"idle", externalMetricsPulling:"", externalMetricsNotice:{text:"",kind:""}, digest:null, digestState:"idle", demand:null, demandState:"idle", repetitions:Number(savedPreference("repetitions", "1")) || 1, runLanguageId:savedPreference("runLanguage", "en"), dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", promptFilters:{ query:"", topicId:"", intent:"", status:"" }, promptSelection:[], answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", rivals:null, rivalsState:"idle", segments:null, segmentsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, lastRun:null, runPollTimer:0, runFeed:[], runFeedState:"idle", runFeedTimer:0, rankPlan:null, rankPlanState:"idle", brief:null, briefState:"idle", outreach:null, outreachState:"idle", harvesting:false, paste:null, pasteState:"idle", pasteCount:Number(savedPreference("pasteCount", "2")) || 2, uptake:null, uptakeState:"idle", interference:null, interferenceState:"idle", concentration:null, concentrationState:"idle", shape:null, shapeState:"idle", kinds:null, kindsState:"idle", experiments:null, experimentsState:"idle", check:null, checkState:"idle", credit:null, creditState:"idle", reach:null, reachState:"idle", searchDemand:null, searchDemandState:"idle", pulling:false, personas:null, personasState:"idle", priority:null, priorityState:"idle", promptSort:"topic", referrals:null, referralsState:"idle", pullingReferrals:false, engines:null, enginesState:"idle", actions:[], actionsState:"idle", matrixOpen:[], editingBoard:false, brandIcons:{}, panelViews:savedJson("panelViews"), matrixHidden:savedList("matrixHidden") };
     const app = document.getElementById("app") as HTMLElement;
     let renderOverride: (() => void) | null = null;
     // render() was a hoisted declaration that a later line reassigned. A
@@ -713,6 +714,30 @@ export function boot(): void {
       }
     }
 
+    async function publishDraft(control: Element, draftId: string) {
+      const selected = project();
+      if (!selected || !draftId) return;
+      const where = window.prompt("Where did it go live? Paste the address of the published page.");
+      if (!where || !where.trim()) return;
+      const when = window.prompt("When did it go live? Leave this as it is unless it was earlier.", new Date().toISOString().slice(0, 10)) || "";
+      (control as HTMLButtonElement).disabled = true;
+      try {
+        const result: any = await request("/api/projects/" + selected.id + "/agents/" + draftId + "/publish", {
+          method: "POST",
+          body: JSON.stringify({ url: where.trim(), at: when.trim() || undefined }),
+        });
+        state.marketerNotice = result && result.measuring
+          ? { text: 'Recorded as live, and "' + result.measuring.name + '" is now measuring it against the questions it was written for.', kind: "success" }
+          : { text: "Recorded as live. " + ((result && result.notMeasured) || "Nothing is measuring it yet."), kind: "warning" };
+        state.marketerState = "idle";
+        state.experimentsState = "idle";
+        loadMarketer();
+      } catch (error) {
+        shortReason(control, error);
+        (control as HTMLButtonElement).disabled = false;
+      }
+    }
+
     async function loadMarketer() {
       if (state.marketerState === "loading") return;
       const selected = project();
@@ -1004,7 +1029,10 @@ export function boot(): void {
       const inner = state.marketerState === "error"
         ? '<p class="subtle">Could not read this project.</p>'
         : state.marketerState !== "ready" ? '<p class="subtle">Reading what has been measured…</p>' : body();
-      return '<section class="view"><div class="heading"><div><h1>' + html(title) + '</h1><p class="subtle">' + html(blurb) + '</p></div></div>' + actTabs() + inner + '</section>';
+      const notice = state.marketerNotice.text
+        ? '<div class="' + (state.marketerNotice.kind === "success" ? "success-box" : "warning-box") + '">' + html(state.marketerNotice.text) + '</div>'
+        : '';
+      return '<section class="view"><div class="heading"><div><h1>' + html(title) + '</h1><p class="subtle">' + html(blurb) + '</p></div></div>' + actTabs() + notice + inner + '</section>';
     }
 
     function renderMarketer() {
@@ -3152,15 +3180,14 @@ export function boot(): void {
 
     async function startExperiment() {
       const selected = state.promptSelection.slice();
-      if (selected.length < 2) {
-        state.promptNotice = { text: "Select at least two questions on the Prompts page first: the ones the change should move, and the ones it should not.", kind: "warning" };
+      if (!selected.length) {
+        state.promptNotice = { text: "Select the questions the change is expected to move on the Prompts page first. Everything else already being asked becomes the control.", kind: "warning" };
         render();
         return;
       }
       const name = window.prompt("Name this experiment.");
       if (!name || !name.trim()) return;
       const changed = window.prompt("What did you change? Write it down now, so it can be checked later.") || "";
-      const half = Math.ceil(selected.length / 2);
       try {
         state.experiments = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/experiments", {
           method: "POST",
@@ -3169,8 +3196,9 @@ export function boot(): void {
             name: name.trim(),
             hypothesis: "",
             changed,
-            treatedPromptIds: selected.slice(0, half),
-            controlPromptIds: selected.slice(half),
+            // Only what the change was aimed at. The control is derived from
+            // everything else with a baseline, not from where this list splits.
+            treatedPromptIds: selected,
           }),
         });
         state.experimentsState = "ready";
@@ -3208,6 +3236,7 @@ export function boot(): void {
         + (row.status === "running" ? '<button type="button" class="card-action" data-stop-experiment="' + html(row.id) + '">Stop</button>' : '<span class="subtle">stopped</span>')
         + '</div>'
         + (row.changed ? '<p class="evidence-note">Changed: ' + html(row.changed) + '</p>' : '')
+        + (row.draftId ? '<p class="evidence-note">Started from a draft, against the questions it was written for.</p>' : '')
         + '<p class="evidence-note">Measured from ' + html(row.changedAt.slice(0, 10)) + ' \u00b7 ' + row.treatedPromptIds.length + ' treated, ' + row.controlPromptIds.length + ' control</p>'
         + band
         + '<div class="countstrip">' + armCell("treated before", result.treated.before) + armCell("treated after", result.treated.after)
@@ -3217,7 +3246,7 @@ export function boot(): void {
 
     function renderExperiments() {
       if (state.experimentsState === "idle") { loadExperiments(); }
-      const start = '<div class="inline-actions">' + button({ label: "Start one from the selected questions", kind: "quiet", on: { "data-start-experiment": "true" } }) + '</div>';
+      const start = '<div class="inline-actions">' + button({ label: "Start one against the selected questions", kind: "quiet", on: { "data-start-experiment": "true" } }) + '</div>';
       if (state.experimentsState !== "ready" || !state.experiments) {
         return start + (state.experimentsState === "error" ? '<p class="subtle">Could not read the experiments.</p>' : '');
       }
@@ -4236,6 +4265,8 @@ export function boot(): void {
       if (draftEvery) { await runDraft(draftEvery, draftEvery.getAttribute("data-draft-batch") || "", true); return; }
       const reviewButton = target && target.closest ? target.closest("[data-review]") : null;
       if (reviewButton) { await reviewDraft(reviewButton, reviewButton.getAttribute("data-review") || ""); return; }
+      const publishButton = target && target.closest ? target.closest("[data-publish-draft]") : null;
+      if (publishButton) { await publishDraft(publishButton, publishButton.getAttribute("data-publish-draft") || ""); return; }
       const probeButton = target && target.closest ? target.closest("[data-probe-signals]") : null;
       if (probeButton) { await captureSignals(probeButton); state.signalsState = "idle"; loadSignals(); return; } if (!(target instanceof Element)) return; const pageButton = target.closest("[data-page]"); if (pageButton) { await setPage(pageButton.getAttribute("data-page") || "overview"); return; } const listModeButton = target.closest("[data-list-mode]"); if (listModeButton) { state.mode = listModeButton.getAttribute("data-list-mode") || "current"; await refreshProjects(); render(); return; } if (target.id === "new-project" || target.id === "empty-new-project") { openDrawer(); return; } if (target.id === "close-drawer" || target.id === "cancel-draft" || target.id === "drawer-backdrop") { closeDrawer(); return; } if (target.id === "retry-catalog") { state.catalogState = "idle"; await loadCatalog(); return; } const opened = target.closest("[data-matrix-open]"); if (opened) { const key = opened.getAttribute("data-matrix-open") || ""; const at = state.matrixOpen.indexOf(key); if (at >= 0) state.matrixOpen.splice(at, 1); else state.matrixOpen.push(key); render(); return; } const expand = target.closest("[data-expand-panel]"); if (expand && !target.closest("button:not(.panel-open),a,select,input,textarea,label")) { openPanel(expand.getAttribute("data-expand-panel") || ""); return; } if (target.closest("[data-edit-board]")) { state.editingBoard = !state.editingBoard; render(); return; } const span = target.closest("[data-panel-span]"); if (span) { const parts = (span.getAttribute("data-panel-span") || "").split(":"); setPanelSpan(parts[0] || "", Number(parts[1])); render(); return; } const hide = target.closest("[data-panel-hide]"); if (hide) { togglePanelHidden(hide.getAttribute("data-panel-hide") || ""); render(); return; } if (target.closest("[data-reset-panels]")) { resetPanelOrder(); state.editingBoard = false; render(); return; } const brand = target.closest("[data-brand-evidence]"); if (brand) { await openBrandEvidence(brand.getAttribute("data-brand-evidence") || "", brand.getAttribute("data-brand-tone") || ""); return; } const dropped = target.closest("[data-drop-selection]"); if (dropped) { dropSelection(dropped.getAttribute("data-drop-selection") || ""); return; } if (target.id === "save-models") { await saveModels((target as any)); return; } if (target.id === "save-monitoring-configuration") { await saveMonitoringConfiguration(); return; } if (target.id === "archive-project") { const selected = project(); if (selected) await projectAction("archive", selected.id, (target as any)); return; } if (target.id === "delete-project") { const selected = project(); if (selected) await projectAction("delete", selected.id, (target as any)); return; } const action = target.closest("[data-project-action]"); if (action) { const projectId = action.getAttribute("data-project-id"); const name = action.getAttribute("data-project-action"); if (projectId && name) await projectAction(name, projectId, (action as any)); } });
     document.addEventListener("change", async (event) => { const target = el(event.target) as any; if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) return; if (target.id === "project-select") { setSelectedProject(target.value); state.selectionsDirty = false; await refreshConfiguration(); loadLiveRun(); render(); return; } if (target instanceof HTMLInputElement && target.hasAttribute("data-model-checkbox")) { changeModel(target.getAttribute("data-model-checkbox") || "", target.checked); return; } if (target instanceof HTMLSelectElement && target.hasAttribute("data-model-mode")) { changeModelMode(target.getAttribute("data-model-mode") || "", target.value); return; } if (target instanceof HTMLSelectElement && target.hasAttribute("data-selected-model-mode")) { changeModelMode(target.getAttribute("data-selected-model-mode") || "", target.value); return; } });

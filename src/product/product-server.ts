@@ -173,7 +173,11 @@ async function handle(req: IncomingMessage, res: ServerResponse, services: Produ
     method, route, send: json, history: (id) => signals.history(id),
     insights: (id) => projectInsights({ projectId: id, topics, runs: promptRuns, competitors: services.competitors, personas: services.personas, locations: services.locations, citedPages: countCitedPages }),
   })) return;
-  if (await handleAgentApi({ method, route, send: json, service: services.agents, ask: services.ask, readJson: body })) return;
+  if (await handleAgentApi({ method, route, send: json, service: services.agents, ask: services.ask, readJson: body,
+    onPublished: async (id, draft) => {
+      const started = await services.experiments.startFromDraft(id, draft, await promptRuns.listAnswers(id));
+      return { id: started.id, name: started.name };
+    } })) return;
   if (await handleShoppingApi({ method, route, send: json, service: services.shopping, ask: services.ask, readJson: body })) return;
   if (await handleFactCheckApi({ method, route, send: json, service: services.factcheck, ask: services.ask, readJson: body })) return;
   if (await handleInsightsApi({ method, route, send: json, service: insights })) return;

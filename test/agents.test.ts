@@ -108,7 +108,15 @@ test("drafts are counted by the state they are actually in", () => {
   const rows = [
     { status: "awaiting_review" }, { status: "awaiting_review" }, { status: "approved" },
   ] as AgentDraft[];
-  assert.deepEqual(countDrafts(rows), { awaiting_review: 2, approved: 1, rejected: 0 });
+  assert.deepEqual(countDrafts(rows), { awaiting_review: 2, approved: 1, rejected: 0, published: 0 });
+});
+
+test("approved and live are different states, because only a live page can be measured", () => {
+  const rows = [
+    { status: "approved" },
+    { status: "approved", publishedUrl: "https://example.com/a", publishedAt: "2026-06-01T00:00:00.000Z" },
+  ] as AgentDraft[];
+  assert.deepEqual(countDrafts(rows), { awaiting_review: 0, approved: 2, rejected: 0, published: 1 });
 });
 
 test("an unknown workflow is not silently treated as a known one", () => {

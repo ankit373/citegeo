@@ -22,6 +22,7 @@ export interface DraftRow {
   status: "awaiting_review" | "approved" | "rejected";
   sources: Array<{ kind: string; reference: string; detail: string }>;
   createdAt: string; reviewNote: string | null;
+  publishedUrl: string | null; publishedAt: string | null;
 }
 
 export interface ClaimGroup { claim: string; models: string[]; occurrences: Array<{ quote: string; sourceQuote: string | null; detail: string }> }
@@ -115,6 +116,32 @@ export function marketerView(memo: AimMemo | null): string {
   ]);
 }
 
+/** Approved is not the end of it. Until somebody says where a draft went live
+ * and when, no later run can be read as before or after it. */
+function draftState(draft: DraftRow): string {
+  if (draft.status === "awaiting_review") {
+    return join([
+      button({ label: "Approve", on: { "data-review": `${draft.id}:approved` } }),
+      button({ label: "Reject", kind: "quiet", tone: "danger", on: { "data-review": `${draft.id}:rejected` } }),
+    ]);
+  }
+  if (draft.status === "rejected") return '<span class="state-flag">rejected</span>';
+  if (!draft.publishedUrl) {
+    return join([
+      '<span class="state-ok">approved</span>',
+      button({ label: "Mark it live", on: { "data-publish-draft": draft.id } }),
+    ]);
+  }
+  // The path, not the whole address. A tracked question's URL is long enough
+  // to wrap the column and push everything beside it out of line.
+  let where = draft.publishedUrl;
+  try {
+    const parsed = new URL(draft.publishedUrl);
+    where = parsed.pathname === "/" ? parsed.host : parsed.pathname;
+  } catch { /* keep it as it was stored */ }
+  return `<span class="state-ok">live</span> <a class="subtle" href="${html(draft.publishedUrl)}" title="${html(draft.publishedUrl)}" target="_blank" rel="noreferrer">${html(where)}</a>`;
+}
+
 /** Workflows, and the drafts they produced, each awaiting a decision. */
 export function draftsView(input: { offers: TemplateOffer[]; drafts: DraftRow[] } | null): string {
   if (!input) return section({ title: "Drafts", body: empty("Loading.") });
@@ -143,21 +170,13 @@ export function draftsView(input: { offers: TemplateOffer[]; drafts: DraftRow[] 
     rows: input.drafts.map((draft) => row("mcols-draft", [
       nameCell(html(draft.title), html(draft.rationale)),
       cell(`<span class="subtle">${html(String(draft.sources.length))} source(s)</span>`),
-      cell(join([
-        draft.status === "awaiting_review"
-          ? join([
-            button({ label: "Approve", on: { "data-review": `${draft.id}:approved` } }),
-            button({ label: "Reject", kind: "quiet", tone: "danger", on: { "data-review": `${draft.id}:rejected` } }),
-          ])
-          : `<span class="${draft.status === "approved" ? "state-ok" : "state-flag"}">${html(draft.status)}</span>`,
-        button({ label: "Copy", kind: "quiet", on: { "data-copy-draft": draft.id } }),
-      ])),
+      cell(join([draftState(draft), button({ label: "Copy", kind: "quiet", on: { "data-copy-draft": draft.id } })])),
     ], { clickable: true, attrs: `data-open-draft="${html(draft.id)}"` })),
   });
 
   return join([
     section({ title: "Workflows", blurb: "Each one drafts from a gap that was measured, never from an idea about what to say.", body: offers, wide: true }),
-    section({ title: "Drafts", blurb: "Nothing here is published. A draft is written, and a person decides what happens to it.", body: drafts, wide: true }),
+    section({ title: "Drafts", blurb: "Nothing here is published. A draft is written, a person decides, and marking one live records the date everything after it is measured against.", body: drafts, wide: true }),
   ]);
 }
 
