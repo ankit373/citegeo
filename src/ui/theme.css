@@ -291,7 +291,17 @@
 }
 
 @utility mname {
-  @apply min-w-0;
+  @apply min-w-0 overflow-hidden;
+}
+
+/* A grid wider than its panel scrolls as one piece, so the head and every row
+   stay on the same columns. Without the inner block each row scrolls alone. */
+@utility mscroll {
+  @apply overflow-x-auto;
+}
+
+@utility mscroll-in {
+  @apply min-w-max;
 }
 
 @utility empty {

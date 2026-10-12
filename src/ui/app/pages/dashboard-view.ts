@@ -505,7 +505,9 @@ export function rivalRuns(series: RivalSeries[], domain: string): string {
   const first = drawn[0];
   if (!first || first.points.length < 2) return "";
   const ordered = rivalStandings(drawn);
-  const columns = `grid-template-columns:minmax(0,1.5fr) repeat(${first.points.length},minmax(58px,1fr))`;
+  // A floor, not 0: past ten runs the shares claim every pixel, 1.5fr of
+  // nothing is a zero-wide track, and the names paint over the first column.
+  const columns = `grid-template-columns:minmax(150px,1.5fr) repeat(${first.points.length},minmax(58px,1fr))`;
   // Every run is in the table, including the ones the chart left out, with the
   // answer count that decides whether its column says anything.
   const heads = first.points.map((point) => {
@@ -523,7 +525,7 @@ export function rivalRuns(series: RivalSeries[], domain: string): string {
   const thin = first.points.filter((point) => point.readable === false).length;
   return join([
     '<h3 class="panel-section">Every run, in figures</h3>',
-    `<div class="mtable"><div class="mhead" style="${columns}"><span>Brand</span>${heads}</div>${body}</div>`,
+    `<div class="mtable mscroll"><div class="mscroll-in"><div class="mhead" style="${columns}"><span>Brand</span>${heads}</div>${body}</div></div>`,
     thin ? `<p class="mlegend">The figure under each date is how many answers that run produced. ${thin} of them asked too few for a share to mean anything, and are greyed.</p>` : "",
   ]);
 }
