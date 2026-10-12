@@ -32,6 +32,10 @@ export interface ReviewItem {
   isTarget: boolean;
   /** The answer around the mention, so the verdict is about evidence. */
   excerpt: string;
+  /** False where the answer does not contain the name at all, so the excerpt
+   * is the head of the answer rather than the place being judged. A reviewer
+   * told that is judging a different question from one who is not. */
+  excerptHasName: boolean;
 }
 
 export interface Verdict {
@@ -72,6 +76,14 @@ export function excerptAround(text: string, name: string): string {
   return text.slice(from, at + EXCERPT_CHARS);
 }
 
+/** Whether the answer contains the name the excerpt was meant to centre on.
+ * A model reports naming something its answer never spells, and the window
+ * then falls back to the opening of the answer without saying so. */
+export function answerNames(text: string, name: string): boolean {
+  const wanted = name.trim().toLocaleLowerCase();
+  return Boolean(text && wanted) && text.toLocaleLowerCase().includes(wanted);
+}
+
 export function mentionId(answerId: string, name: string): string {
   return sha256(answerId + "\u0000" + name).slice(0, 24);
 }
@@ -91,6 +103,7 @@ export function reviewable(answers: PromptAnswer[]): ReviewItem[] {
         recommendation: mention.recommendation,
         isTarget: mention.isTarget,
         excerpt: excerptAround(answer.text, mention.name),
+        excerptHasName: answerNames(answer.text, mention.name),
       });
     }
   }

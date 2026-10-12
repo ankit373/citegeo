@@ -1,5 +1,6 @@
 import { sha256 } from "../../utils/hash.js";
 import { isPromptIntent, PROMPT_INTENTS, type PromptIntent } from "./topic-schema.js";
+import { demandLines, type ObservedDemand } from "./observed-demand.js";
 
 type Schema = Record<string, unknown>;
 
@@ -51,8 +52,18 @@ const PROMPT_TEMPLATE = [
   "Return only the requested JSON schema.",
 ].join("\n");
 
+const GROUNDED = [
+  "Below are questions people really typed, with how often. Ground the proposal in them.",
+  "Prefer the wording people actually used over a tidier version of it.",
+  "Cover the subjects they actually asked about before any subject they did not.",
+  "These are search queries and past assistant conversations. They are not a measure of how often anyone asks an assistant, and a subject missing from them is not a subject nobody asks about.",
+  "Where you propose a question no observed line supports, that is allowed, and say which ones in unknowns.",
+].join("\n");
+
+const UNGROUNDED = "Nothing has been observed about what anyone asks in this market, so every question you propose is your own supposition. Say so as the first entry in unknowns.";
+
 export const PROMPT_GENERATION_PROMPT_HASH = sha256(PROMPT_TEMPLATE);
-export const PROMPT_GENERATION_PROTOCOL_ID = "prompt-generation/v1";
+export const PROMPT_GENERATION_PROTOCOL_ID = "prompt-generation/v2";
 
 export interface PromptGenerationSubject {
   brandName: string;
@@ -62,12 +73,16 @@ export interface PromptGenerationSubject {
   competitors: Array<{ name: string; domain: string | null }>;
   topicCount: number;
   promptsPerTopic: number;
+  /** What anyone was observed to ask. Absent until something was collected,
+   * which the prompt states rather than passing over in silence. */
+  observed?: ObservedDemand | undefined;
 }
 
 export function promptGenerationPrompt(subject: PromptGenerationSubject): string {
   const competitors = subject.competitors.length
     ? subject.competitors.map((item) => (item.domain ? `${item.name} (${item.domain})` : item.name)).join(", ")
     : "None have been identified yet, so do not name any.";
+  const lines = subject.observed ? demandLines(subject.observed) : null;
   return [
     PROMPT_TEMPLATE,
     `Company: ${subject.brandName}`,
@@ -75,6 +90,8 @@ export function promptGenerationPrompt(subject: PromptGenerationSubject): string
     `What it does: ${subject.businessDescription || "Not established. Do not guess at it."}`,
     `Category: ${subject.productCategory || "Not established. Do not guess at it."}`,
     `Known competitors: ${competitors}`,
+    "",
+    ...(lines ? [GROUNDED, "", "Observed questions:", ...lines, ""] : [UNGROUNDED, ""]),
     `Propose ${subject.topicCount} topics with about ${subject.promptsPerTopic} prompts each.`,
     `Protocol: ${PROMPT_GENERATION_PROTOCOL_ID}`,
     "Use English for all string values.",

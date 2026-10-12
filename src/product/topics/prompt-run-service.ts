@@ -1,4 +1,15 @@
 import { randomUUID } from "node:crypto";
+import { providerFailureCode } from "../../providers/provider-error.js";
+import type { AnswerResult } from "../../core/types.js";
+import type { StructuredAsk } from "./topic-service.js";
+import {
+  engineAnalysisPrompt,
+  engineAnalysisResponseSchema,
+  parseEngineAnalysisOutput,
+  ENGINE_ANALYSIS_SCHEMA_NAME,
+  ENGINE_ANALYSIS_TOOL_DESCRIPTION,
+} from "../engines/engine-answer-protocol.js";
+import { modelsBlockedByAccount, type ProviderStatus } from "../configuration/provider-status.js";
 import type { ProductBaseline, ProductModelSnapshot } from "../configuration/baseline-schema.js";
 import type { ProductBaselineService } from "../configuration/baseline-service.js";
 import type { ProductModelCatalog } from "../configuration/model-selection-schema.js";
@@ -8,6 +19,7 @@ import { corroborateMentions } from "./mention-corroboration.js";
 import { answerNamesBrand, type BrandIdentity } from "./brand-identity.js";
 import {
   parsePromptAnswerOutput,
+  plainAnswerPrompt,
   promptAnswerPrompt,
   promptAnswerResponseSchema,
   PROMPT_ANSWER_SCHEMA_HASH,
@@ -20,12 +32,12 @@ import { readStructuredValue } from "./structured-value.js";
 import { activePrompts, type PromptIntent } from "./topic-schema.js";
 import { audienceInstruction, GLOBAL_REGION, region, type Region } from "./region.js";
 import { asRegion, trackedLocationFrom, type LocationService } from "./location.js";
-import { DEFAULT_LANGUAGE, language, languageInstruction, type AnswerLanguage } from "./language.js";
+import { DEFAULT_LANGUAGE, language, languageInstruction, plainLanguageInstruction, type AnswerLanguage } from "./language.js";
 import { currentBaseline } from "../configuration/current-baseline.js";
 import type { TopicService } from "./topic-service.js";
 import type { BrowserEngine } from "../engines/browser-engine.js";
 import type { Prompt } from "./topic-schema.js";
-import { NO_PERSONA, personaFrom, personaInstruction, type Persona, type PersonaService } from "./persona.js";
+import { NO_PERSONA, personaFrom, personaInstruction, trackedPersonas, type Persona, type PersonaService } from "./persona.js";
 
 /** Enough of the provider's own queries to see what it went looking for,
  * without turning every answer record into a search log. */
@@ -53,6 +65,18 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
+/** A payload cut off mid-way is not prose, and handing it to a reader would
+ * have the reader read JSON as if it were the answer. */
+function looksStructured(text: string): boolean {
+  const trimmed = text.trim();
+  return trimmed.startsWith("{") || trimmed.startsWith("[");
+}
+
+/** One unit of work in a run: a question put to a model for one audience. */
+function workKey(row: { promptId: string; modelId: string; regionId: string; languageId: string; personaId?: string | undefined }): string {
+  return [row.promptId, row.modelId, row.regionId, row.languageId, row.personaId || "anyone"].join("|");
+}
+
 export interface StartPromptRunInput {
   projectId: string;
   /** How many times to ask each question of each model. One when omitted, so
@@ -60,6 +84,12 @@ export interface StartPromptRunInput {
   repetitions?: number | undefined;
   /** Limits the run to these prompts. Every active prompt when omitted. */
   promptIds?: string[] | undefined;
+  /** Limits the run to these saved models. All of them when omitted, so a
+   * subset can be asked without changing the configuration for everybody. */
+  modelIds?: string[] | undefined;
+  /** Re-asks only what failed in that run, in the same market, language and
+   * persona it failed in. A whole run again is the wrong price for a retry. */
+  retryOf?: string | undefined;
   /** Markets to ask in. The global region alone when omitted. */
   regionIds?: string[] | undefined;
   /** Languages to ask in. English alone when omitted. */
@@ -93,26 +123,53 @@ export class PromptRunService {
     private readonly engines?: EnginePlan | undefined,
     private readonly personas?: PersonaService | undefined,
     private readonly locations?: LocationService | undefined,
+    /** What each provider can run right now. Absent in a test, which blocks
+     * nothing, because an unknown account is not an empty one. */
+    private readonly providerStatus?: (() => Promise<ProviderStatus[]>) | undefined,
+    /** Reads a grounded answer back into mentions. Absent leaves the grounded
+     * path on one call, which measures the JSON instead of the answer. */
+    private readonly read?: StructuredAsk | undefined,
   ) {}
 
   /** Splits the saved models into the ones the catalogue still says can answer
    * and the ones it does not. A catalogue that cannot be read blocks nothing. */
   private async usable(models: ProductModelSnapshot[]): Promise<{ run: ProductModelSnapshot[]; skipped: Array<{ modelId: string; reason: string }> }> {
-    if (!this.catalog) return { run: models, skipped: [] };
-    let current;
-    try {
-      current = await this.catalog.list();
-    } catch {
-      return { run: models, skipped: [] };
-    }
-    const run: ProductModelSnapshot[] = [];
     const skipped: Array<{ modelId: string; reason: string }> = [];
-    for (const model of models) {
-      const row = current.find((item) => item.providerId === model.providerId && item.modelId === model.modelId);
-      if (row && !row.available) skipped.push({ modelId: model.modelId, reason: row.unavailableReason || "The catalogue reports it as unavailable." });
-      else run.push(model);
+    let kept = models;
+    if (this.catalog) {
+      let current;
+      try {
+        current = await this.catalog.list();
+      } catch {
+        current = null;
+      }
+      if (current) {
+        const listed = current;
+        kept = [];
+        for (const model of models) {
+          const row = listed.find((item) => item.providerId === model.providerId && item.modelId === model.modelId);
+          if (row && !row.available) skipped.push({ modelId: model.modelId, reason: row.unavailableReason || "The catalogue reports it as unavailable." });
+          else kept.push(model);
+        }
+      }
     }
-    return { run, skipped };
+    // The catalogue says what exists. The account says what can be paid for,
+    // and asking a model the account cannot pay for files one error a question.
+    if (this.providerStatus) {
+      try {
+        const statuses = await this.providerStatus();
+        const blocked = modelsBlockedByAccount(kept.map((model) => ({ providerId: model.providerId, modelId: model.modelId })), statuses);
+        if (blocked.length) {
+          const ids = new Set(blocked.map((row) => row.modelId));
+          skipped.push(...blocked);
+          kept = kept.filter((model) => !ids.has(model.modelId));
+        }
+      } catch {
+        // An account that cannot be read blocks nothing, the same rule the
+        // catalogue follows, because unknown is not empty.
+      }
+    }
+    return { run: kept, skipped };
   }
 
   /** Ids asked to stop. In memory, because a cancel only means anything to the
@@ -167,8 +224,11 @@ export class PromptRunService {
 
 
     const repetitions = repetitionsFrom(input.repetitions);
+    // A whole run again is the wrong price for a retry, so a retry asks only
+    // the exact combinations that failed, where they failed.
+    const retry = input.retryOf ? await this.failedWork(input.projectId, input.retryOf) : null;
     const set = await this.topics.get(input.projectId);
-    const wanted = input.promptIds ? new Set(input.promptIds) : null;
+    const wanted = retry ? retry.promptIds : input.promptIds ? new Set(input.promptIds) : null;
     const prompts = activePrompts(set).filter((prompt) => !wanted || wanted.has(prompt.id));
     if (!prompts.length) {
       throw new PromptRunUnavailableError(
@@ -181,7 +241,12 @@ export class PromptRunService {
     if (!baseline.modelSnapshots.length && !chosenEngines.length) {
       throw new PromptRunUnavailableError("No models are saved for this project. Choose models and save a configuration first.");
     }
-    const { run: models, skipped } = await this.usable(baseline.modelSnapshots);
+    const chosenModels = retry
+      ? baseline.modelSnapshots.filter((model) => retry.modelIds.has(model.modelId))
+      : input.modelIds && input.modelIds.length
+        ? baseline.modelSnapshots.filter((model) => (input.modelIds as string[]).includes(model.modelId))
+        : baseline.modelSnapshots;
+    const { run: models, skipped } = await this.usable(chosenModels);
     if (!models.length && !chosenEngines.length) {
       throw new PromptRunUnavailableError(
         `Every saved model is unusable: ${skipped.map((row) => `${row.modelId} (${row.reason})`).join("; ")}`,
@@ -195,7 +260,8 @@ export class PromptRunService {
     // A location this project defined is a market as far as the run is
     // concerned, so both are resolved here and nothing downstream has to care.
     const locationSet = this.locations ? await this.locations.get(input.projectId) : null;
-    const regions: Region[] = (input.regionIds && input.regionIds.length ? input.regionIds : [GLOBAL_REGION.id]).map((id) => {
+    const wantedRegions = retry ? retry.regionIds : input.regionIds;
+    const regions: Region[] = (wantedRegions && wantedRegions.length ? wantedRegions : [GLOBAL_REGION.id]).map((id) => {
       const found = region(id);
       if (found) return found;
       const place = trackedLocationFrom(locationSet, id);
@@ -203,7 +269,8 @@ export class PromptRunService {
       throw new PromptRunUnavailableError(`Unknown market "${id}".`);
     });
 
-    const languages: AnswerLanguage[] = (input.languageIds && input.languageIds.length ? input.languageIds : [DEFAULT_LANGUAGE.id]).map((id) => {
+    const wantedLanguages = retry ? retry.languageIds : input.languageIds;
+    const languages: AnswerLanguage[] = (wantedLanguages && wantedLanguages.length ? wantedLanguages : [DEFAULT_LANGUAGE.id]).map((id) => {
       const found = language(id);
       if (!found) throw new PromptRunUnavailableError(`Unknown language "${id}".`);
       return found;
@@ -211,8 +278,17 @@ export class PromptRunService {
 
     // An unknown persona is refused rather than dropped, or the run would
     // cover fewer audiences than it was asked for and never say so.
+    //
+    // Asked for nothing in particular, a run covers every persona being
+    // tracked, which is what adding one is for, plus the arm that states
+    // nobody so the figures stay comparable with every run before personas.
     const personaSet = this.personas ? await this.personas.get(input.projectId) : null;
-    const personas: Persona[] = (input.personaIds && input.personaIds.length ? input.personaIds : [NO_PERSONA.id]).map((id) => {
+    const wantedPersonas = retry && retry.personaIds.length
+      ? retry.personaIds
+      : input.personaIds && input.personaIds.length
+      ? input.personaIds
+      : [NO_PERSONA.id, ...(personaSet ? trackedPersonas(personaSet).map((row) => row.id) : [])];
+    const personas: Persona[] = [...new Set(wantedPersonas)].map((id) => {
       const found = personaFrom(personaSet, id);
       if (!found) throw new PromptRunUnavailableError(`Unknown persona "${id}".`);
       return found;
@@ -238,38 +314,55 @@ export class PromptRunService {
     await this.store.saveRun(run);
 
     let stopped = false;
+    // One question at a time per provider, and every provider at once. Asking
+    // a provider twice at once risks its rate limit; waiting on one while the
+    // others idle is how 28 questions became a three hour job.
+    const queues = new Map<string, Array<() => Promise<void>>>();
     for (const prompt of prompts) {
-      if (stopped) break;
       for (const model of models) {
-        if (stopped) break;
         for (const market of regions) {
-          if (stopped) break;
           for (const tongue of languages) {
-            if (stopped) break;
             for (const who of personas) {
-              if (stopped) break;
               for (let pass = 1; pass <= repetitions; pass += 1) {
-                if (this.cancelled.has(run.id)) { stopped = true; break; }
-                // Written before the call so the interface can name what is in
-                // flight rather than only how many are done.
-                run.currentPromptText = prompt.text;
-                run.currentModelId = model.modelId;
-                await this.store.saveRun(run);
-                const answer = await this.ask({ run, baseline, model, prompt, identity, market, tongue, who });
-                await this.store.saveAnswer({ ...answer, repetition: pass });
-                if (countsTowardProgress(answer)) run.answersCompleted += 1;
-                else run.answersFailed += 1;
-                // Progress is written as it happens, so a long run is readable while it runs.
-                await this.store.saveRun(run);
+                if (retry && !retry.tuples.has(workKey({ promptId: prompt.id, modelId: model.modelId, regionId: market.id, languageId: tongue.id, personaId: who.id }))) continue;
+                const queue = queues.get(model.providerId) || [];
+                queue.push(async () => {
+                  // Written before the call so the interface can name what is in
+                  // flight rather than only how many are done.
+                  run.currentPromptText = prompt.text;
+                  run.currentModelId = model.modelId;
+                  await this.store.saveRun(run);
+                  const answer = await this.ask({ run, baseline, model, prompt, identity, market, tongue, who });
+                  await this.store.saveAnswer({ ...answer, repetition: pass });
+                  if (countsTowardProgress(answer)) run.answersCompleted += 1;
+                  else run.answersFailed += 1;
+                  // Progress is written as it happens, so a long run is readable while it runs.
+                  await this.store.saveRun(run);
+                });
+                queues.set(model.providerId, queue);
               }
             }
           }
         }
       }
+    }
+
+    await Promise.all([...queues.values()].map(async (queue) => {
+      for (const job of queue) {
+        if (this.cancelled.has(run.id)) { stopped = true; return; }
+        await job();
+      }
+    }));
+
+    // The surfaces stay one at a time. They are one browser, and two questions
+    // at once in the same signed-in session is a different thing to measure.
+    for (const prompt of prompts) {
+      if (stopped) break;
       for (const engine of chosenEngines) {
         if (stopped) break;
         for (let pass = 1; pass <= repetitions; pass += 1) {
           if (this.cancelled.has(run.id)) { stopped = true; break; }
+          if (retry && !retry.tuples.has(workKey({ promptId: prompt.id, modelId: engine.id, regionId: regions[0]?.id || GLOBAL_REGION.id, languageId: languages[0]?.id || DEFAULT_LANGUAGE.id, personaId: personas[0]?.id }))) continue;
           run.currentPromptText = prompt.text;
           run.currentModelId = engine.id;
           await this.store.saveRun(run);
@@ -318,6 +411,95 @@ export class PromptRunService {
     return current;
   }
 
+  /** The exact combinations a run failed on. A surface that answered nothing
+   * is not one of them: it was reached and had nothing to say. */
+  private async failedWork(projectId: string, runId: string): Promise<{
+    promptIds: Set<string>;
+    modelIds: Set<string>;
+    regionIds: string[];
+    languageIds: string[];
+    personaIds: string[];
+    tuples: Set<string>;
+  }> {
+    const runs = await this.store.listRuns(projectId);
+    const previous = runs.find((row) => row.id === runId);
+    if (!previous) throw new PromptRunUnavailableError(`Run ${runId} does not exist.`);
+    const answers = (await this.store.listAnswers(projectId)).filter((answer) => answer.runId === runId);
+    const failed = answers.filter((answer) => !countsTowardProgress(answer));
+    if (!failed.length) throw new PromptRunUnavailableError("Nothing failed in that run, so there is nothing to ask again.");
+    return {
+      promptIds: new Set(failed.map((answer) => answer.promptId)),
+      modelIds: new Set(failed.map((answer) => answer.modelId)),
+      regionIds: previous.regionIds,
+      languageIds: previous.languageIds,
+      personaIds: previous.personaIds || [],
+      tuples: new Set(failed.map((answer) => workKey(answer))),
+    };
+  }
+
+  /** A grounded answer and its sources come back as prose, so the mentions are
+   * read from that prose, the same two steps a browser surface already takes. */
+  private async readGrounded(
+    base: Omit<PromptAnswer, "status" | "text" | "mentions" | "citationUrls" | "errorCode" | "errorMessage" | "latencyMs">,
+    input: { prompt: { text: string }; identity: BrandIdentity; run: PromptRun },
+    result: AnswerResult,
+  ): Promise<PromptAnswer> {
+    const providerCitations = result.citations.map((citation) => citation.url).filter(Boolean);
+    const citationUrls = [...new Set(providerCitations)];
+    const search = result.search
+      ? {
+          requested: result.search.requested,
+          used: result.search.used,
+          usedMode: result.search.usedMode,
+          queries: result.search.webQueries.slice(0, SEARCH_QUERIES_KEPT),
+        }
+      : undefined;
+    const shell = {
+      ...base,
+      ...(result.modelVersion ? { modelVersion: result.modelVersion } : {}),
+      text: result.text,
+      citationUrls,
+      ...(search ? { search } : {}),
+      latencyMs: result.latencyMs,
+    };
+    if (!result.text.trim()) {
+      return { ...shell, status: "no_answer", mentions: [], errorCode: "empty_answer", errorMessage: "The provider searched and returned no answer to read.", };
+    }
+    let analysis;
+    try {
+      analysis = parseEngineAnalysisOutput(await (this.read as StructuredAsk)({
+        projectId: input.run.projectId,
+        prompt: engineAnalysisPrompt({ question: input.prompt.text, answer: result.text }),
+        schemaName: ENGINE_ANALYSIS_SCHEMA_NAME,
+        schemaDescription: ENGINE_ANALYSIS_TOOL_DESCRIPTION,
+        schema: engineAnalysisResponseSchema,
+      }));
+    } catch (error) {
+      // The answer and its sources are real and kept. Only the reading failed.
+      return {
+        ...shell,
+        status: "analysis_failed",
+        mentions: [],
+        errorCode: "analysis_failed",
+        errorMessage: error instanceof Error ? error.message : String(error),
+      };
+    }
+    if (analysis.analysisStatus !== "completed") {
+      return { ...shell, status: "analysis_failed", mentions: [], errorCode: "unreadable_answer", errorMessage: "The reader could not finish reading this answer, so it counts as nothing rather than as an absence of mentions." };
+    }
+    const reported: AnswerMention[] = analysis.mentions.map((row) => ({
+      ...row,
+      isTarget: answerNamesBrand({ text: "", citationUrls: row.domain ? [row.domain] : [], names: [row.name] }, input.identity),
+    }));
+    return {
+      ...shell,
+      status: "completed",
+      mentions: corroborateMentions({ answer: result.text, mentions: reported }),
+      errorCode: null,
+      errorMessage: null,
+    };
+  }
+
   private async ask(input: {
     run: PromptRun;
     baseline: ProductBaseline;
@@ -345,13 +527,17 @@ export class PromptRunService {
       createdAt: nowIso(),
     };
 
+    // A grounded provider drops its source annotations the moment a schema is
+    // attached, so the answer is asked for plainly and then read in a step.
+    const grounded = input.model.webSearchMode === "provider_native" && Boolean(this.read);
     try {
       const result = await this.executor.execute({
         baseline: input.baseline,
         modelSnapshot: input.model,
-        prompt: promptAnswerPrompt({
+        ...(grounded ? { unstructured: true } : {}),
+        prompt: (grounded ? plainAnswerPrompt : promptAnswerPrompt)({
           question: input.prompt.text,
-          languageInstruction: languageInstruction(input.tongue),
+          languageInstruction: grounded ? plainLanguageInstruction(input.tongue) : languageInstruction(input.tongue),
           audience: [audienceInstruction(input.market), personaInstruction(input.who)].filter(Boolean).join(" "),
         }),
         requestParameters: {
@@ -372,7 +558,14 @@ export class PromptRunService {
         },
       });
 
+      if (grounded) return await this.readGrounded(base, input, result);
+      // A model that wrote a good answer and ignored the schema has still
+      // answered. Reading it back is what the grounded path and every browser
+      // surface already do, and discarding it loses a measurement that happened.
       if (!result.structuredOutput) {
+        if (result.text.trim() && !looksStructured(result.text) && this.read) {
+          return await this.readGrounded(base, input, result);
+        }
         return {
           ...base,
           status: "analysis_failed",
@@ -380,21 +573,29 @@ export class PromptRunService {
           mentions: [],
           citationUrls: [],
           errorCode: "no_structured_output",
-          errorMessage: "The provider returned no structured payload, so nothing could be counted from it.",
+          errorMessage: "The provider returned no structured payload and wrote nothing to read instead.",
           latencyMs: result.latencyMs,
         };
       }
 
       const parsed = parsePromptAnswerOutput(readStructuredValue(result.structuredOutput.value));
       if (parsed.analysisStatus !== "completed") {
+        // The usual cause is a payload cut off mid-way, which leaves the answer
+        // itself written and only the listing of what it named unfinished.
+        const written = parsed.answer || result.text || "";
+        if (written.trim() && !looksStructured(written) && this.read) {
+          return await this.readGrounded(base, input, { ...result, text: written });
+        }
         return {
           ...base,
           status: "analysis_failed",
-          text: parsed.answer || result.text || "",
+          text: written,
           mentions: [],
           citationUrls: [],
-          errorCode: "unreadable_answer",
-          errorMessage: "The answer could not be read as a completed observation, so it counts as nothing rather than as an absence of mentions.",
+          errorCode: looksStructured(written) ? "truncated_payload" : "unreadable_answer",
+          errorMessage: looksStructured(written)
+            ? "The structured payload was cut off before it finished, so the answer it was carrying is incomplete. This model needs a larger output budget for this question."
+            : "The answer could not be read as a completed observation, so it counts as nothing rather than as an absence of mentions.",
           latencyMs: result.latencyMs,
         };
       }
@@ -441,13 +642,16 @@ export class PromptRunService {
         latencyMs: result.latencyMs,
       };
     } catch (error) {
+      // The provider layer already worked out which kind of failure this is,
+      // and flattening every one of them to provider_error threw that away.
+      const code = providerFailureCode(error);
       return {
         ...base,
         status: "provider_failed",
         text: "",
         mentions: [],
         citationUrls: [],
-        errorCode: "provider_error",
+        errorCode: code === "unknown" ? "provider_error" : code,
         errorMessage: error instanceof Error ? error.message : String(error),
         latencyMs: null,
       };

@@ -1,3 +1,4 @@
+import { DROPPABLE_PARAMETERS, refusedParameter } from "./provider-error.js";
 import type {
   AnswerProvider,
   AnswerResult,
@@ -194,20 +195,30 @@ export class OpenAICompatibleProvider implements AnswerProvider {
       ...this.extraBody,
       ...bodyPatch,
     };
-    const response = await postJsonWithRetry(this.endpoint, {
-      method: "POST",
-      headers: {
-        ...(this.authHeader === "bearer"
-          ? { Authorization: `Bearer ${input.apiKey}` }
-          : { [this.authHeader]: input.apiKey }),
-        "Content-Type": "application/json",
-        ...this.extraHeaders,
-      },
-      body: JSON.stringify(body),
-    });
+    const headers = {
+      ...(this.authHeader === "bearer"
+        ? { Authorization: `Bearer ${input.apiKey}` }
+        : { [this.authHeader]: input.apiKey }),
+      "Content-Type": "application/json",
+      ...this.extraHeaders,
+    };
+    const sent: Record<string, unknown> = { ...body };
+    const post = () => postJsonWithRetry(this.endpoint, { method: "POST", headers, body: JSON.stringify(sent) });
+
+    let response = await post();
+    let error = asObject(asObject(response.data)?.error);
+    // A model that refuses a sampling parameter is asked again without it
+    // rather than counted as a failure, and the answer says it was dropped.
+    const dropped: string[] = [];
+    const refused = !response.ok ? refusedParameter(error) : null;
+    if (refused && DROPPABLE_PARAMETERS.has(refused) && refused in sent) {
+      delete sent[refused];
+      dropped.push(refused);
+      response = await post();
+      error = asObject(asObject(response.data)?.error);
+    }
 
     const raw = response.data;
-    const error = asObject(asObject(raw)?.error);
     if (!response.ok || error) {
       const message = typeof error?.message === "string" ? error.message : `Provider ${this.definition.id} failed with HTTP ${response.status}`;
       throw new ProviderRequestError({
@@ -257,7 +268,9 @@ export class OpenAICompatibleProvider implements AnswerProvider {
       providerName: this.definition.label,
       sourceType: this.definition.sourceType,
       sourceLabel: `Source: ${this.definition.label} API`,
-      resultCaveat: this.definition.resultCaveat,
+      resultCaveat: dropped.length
+        ? `${this.definition.resultCaveat} This model refused ${dropped.join(" and ")}, so the answer was taken at its own default instead of the one asked for.`
+        : this.definition.resultCaveat,
       model: input.model,
       modelVersion: extractModelVersion(raw, input.model),
       text,

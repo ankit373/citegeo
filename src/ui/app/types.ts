@@ -51,7 +51,16 @@ export interface PromptRow {
 }
 
 export interface TopicRow { id: string; name: string; description: string }
-export interface TopicSetShape { topics: TopicRow[]; prompts: PromptRow[] }
+export interface TopicSetShape {
+  topics: TopicRow[];
+  prompts: PromptRow[];
+  /** True where the set was proposed with no description and no category, so
+   * the model had the brand name and the domain and nothing else. */
+  generatedWithoutFacts?: boolean;
+  /** What anyone was observed to ask when this set was proposed. Absent on a
+   * set proposed before demand could ground one. */
+  groundedIn?: { searchQueries: number; corpusQuestions: number; observed: number };
+}
 
 export interface PromptStandingRow {
   promptId: string;
@@ -88,8 +97,16 @@ export interface StabilityShape {
   measured: number;
   askedOnce: number;
   sourceOverlap: number | null;
+  /** The questions the overlap was taken over, which is not every measured one. */
+  withSources: number;
+  /** Distinct questions behind the condition groups, and how many have been
+   * asked twice. measured and askedOnce count groups, not questions. */
+  distinctQuestions: number;
+  questionsRepeated: number;
   namingUnstable: number;
-  questions: Array<{ promptId: string; promptText: string; modelId: string; passes: number; named: number; namingAgreed: boolean; sourceOverlap: number | null; sourcesAlways: number; sourcesEver: number }>;
+  neverNamed: number;
+  alwaysNamed: number;
+  questions: Array<{ promptId: string; promptText: string; modelId: string; passes: number; named: number; naming: "always" | "never" | "split"; namingAgreed: boolean; sourceOverlap: number | null; sourcesAlways: number; sourcesEver: number }>;
   caveat: string;
 }
 
@@ -98,9 +115,11 @@ export interface PhrasingShape {
   namesTheBrand: number;
   oneWording: number;
   unstable: number;
+  neverNamed: number;
+  alwaysNamed: number;
   spread: number | null;
   questions: Array<{
-    rootId: string; rootText: string; modelId: string; namedIn: number; agreed: boolean; spread: number | null;
+    rootId: string; rootText: string; modelId: string; namedIn: number; naming: "always" | "never" | "split"; agreed: boolean; spread: number | null;
     wordings: Array<{ promptId: string; text: string; answers: number; named: number }>;
   }>;
   caveat: string;
@@ -210,6 +229,8 @@ export interface InsightsShape {
   position?: PositionShape | undefined;
   answers: number;
   answersFailed: number;
+  /** Answers to questions since retired, left out of every figure here. */
+  answersRetired: number;
   overall: ScoreShape;
   rank: number | null;
   /** The objective and limits are absent on an archive scored before they were

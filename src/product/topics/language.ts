@@ -47,6 +47,13 @@ export function languageInstruction(row: AnswerLanguage): string {
   return `Write the answer in ${row.endonymFreeName}, as you would for a ${row.endonymFreeName} speaker. Keep every other field in English, and keep company names exactly as they are normally written.`;
 }
 
+/** The same instruction for an answer nobody will read as JSON, where "every
+ * other field" names fields the model was never asked for. */
+export function plainLanguageInstruction(row: AnswerLanguage): string {
+  if (row.id === DEFAULT_LANGUAGE.id) return "Answer in English.";
+  return `Answer in ${row.endonymFreeName}, as you would for a ${row.endonymFreeName} speaker, and keep company names exactly as they are normally written.`;
+}
+
 /** The language a market reads in by default, taken from its locale. */
 export function languageForLocale(locale: string): AnswerLanguage {
   const base = locale.split("-")[0] || "";

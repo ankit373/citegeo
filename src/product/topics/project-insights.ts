@@ -22,6 +22,9 @@ export async function projectInsights(input: {
   /** The kind of brand this is, so a visibility figure has something to be
    * read against. Unstated when nobody has declared one. */
   tier?: ((projectId: string) => Promise<BrandTier>) | undefined;
+  /** How many cited pages have been read back. Absent leaves the task list
+   * silent about it, which is honest: nobody looked. */
+  citedPages?: ((projectId: string) => Promise<{ cited: number; read: number }>) | undefined;
 }): Promise<TopicInsights> {
   const [set, answers, runList, identity] = await Promise.all([
     input.topics.get(input.projectId),
@@ -33,9 +36,11 @@ export async function projectInsights(input: {
   const personas = input.personas ? await input.personas.get(input.projectId).catch(() => null) : null;
   const places = input.locations ? await input.locations.get(input.projectId).catch(() => null) : null;
   const tier = input.tier ? await input.tier(input.projectId).catch(() => undefined) : undefined;
+  const citedPages = input.citedPages ? await input.citedPages(input.projectId).catch(() => undefined) : undefined;
   return buildTopicInsights({
     projectId: input.projectId,
     tier,
+    ...(citedPages ? { citedPages } : {}),
     set,
     answers: input.slice ? input.slice(answers) : answers,
     runs: runList,

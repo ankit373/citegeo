@@ -38,14 +38,18 @@ export async function handleExperimentApi(input: {
   if (method === "POST" && tail.length === 1 && input.readJson) {
     try {
       const body = await input.readJson();
-      await service.start(projectId, {
+      const asked = {
         name: typeof body.name === "string" ? body.name : "",
         hypothesis: typeof body.hypothesis === "string" ? body.hypothesis : "",
         changed: typeof body.changed === "string" ? body.changed : "",
         treatedPromptIds: stringList(body.treatedPromptIds),
-        controlPromptIds: stringList(body.controlPromptIds),
         changedAt: typeof body.changedAt === "string" ? body.changedAt : undefined,
-      });
+      };
+      const control = stringList(body.controlPromptIds);
+      // No control named means derive it, not run without one. An experiment
+      // with no control reports nothing however well the change worked.
+      if (control.length) await service.start(projectId, { ...asked, controlPromptIds: control });
+      else await service.startAgainst(projectId, asked, await input.answers(projectId));
       send(201, { experiments: await service.list(projectId, await input.answers(projectId)) });
     } catch (error) {
       send(error instanceof ExperimentInputError ? 400 : 500, { error: message(error) });

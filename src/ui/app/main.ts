@@ -4,7 +4,7 @@ import { buyingView, claimsView, conversationsView, draftsView, entityView, mark
 import { exportName, filterSummary, matchesQuery, panelCsv } from "./components/panel-tools.js";
 import { emptyState, notice, section } from "./components/primitives.js";
 import { button } from "./components/button.js";
-import { navScrim, navToggle, wireNav } from "./components/nav.js";
+import { navScrim, navToggle, sidebar, wireNav } from "./components/nav.js";
 import { hasPanelOrder, resetPanelOrder, setPanelSpan, togglePanelHidden, wirePanelDrag } from "./components/reorder.js";
 import { wireChartHover } from "./components/chart-hover.js";
 import { setupView, type CredentialRow, type IntegrationRow, type ProviderRow, type SetupData, type StorageCheck, type StorageSettings } from "./pages/setup-view.js";
@@ -36,7 +36,7 @@ export function boot(): void {
     projects: ProjectRow[]; currentProjects: ProjectRow[]; selectedId: string;
     providers: ProviderRow[]; providersState: LoadState;
     insights: Unshaped; insightsState: LoadState;
-    crawlers: Unshaped; crawlersState: LoadState;
+    crawlers: Unshaped; crawlersState: LoadState; crawlerUploading: boolean; crawlerNotice: { text: string; kind: string };
     plan: Unshaped; planState: LoadState;
     marketer: Unshaped; drafts: Unshaped; claims: Unshaped; buying: Unshaped; conversations: Unshaped; entity: Unshaped;
     marketerState: LoadState;
@@ -84,11 +84,14 @@ export function boot(): void {
     shape: Unshaped; shapeState: LoadState;
     kinds: Unshaped; kindsState: LoadState;
     experiments: Unshaped; experimentsState: LoadState;
+    history: Unshaped; historyState: LoadState;
+    marketerNotice: { text: string; kind: string };
     check: Unshaped; checkState: LoadState;
     credit: Unshaped; creditState: LoadState;
     reach: Unshaped; reachState: LoadState;
     paste: Unshaped; pasteState: LoadState; pasteCount: number;
     repetitions: number;
+    runLanguageId: string;
     searchDemand: Unshaped; searchDemandState: LoadState; pulling: boolean;
     personas: Unshaped; personasState: LoadState;
     priority: Unshaped; priorityState: LoadState;
@@ -104,7 +107,7 @@ export function boot(): void {
     matrixHidden: string[];
   }
 
-    const state: State = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", plan:null, planState:"idle", marketer:null, drafts:null, claims:null, buying:null, conversations:null, entity:null, marketerState:"idle", signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, integrations:[], integrationsState:"idle", externalMetrics:null, externalMetricsState:"idle", externalMetricsPulling:"", externalMetricsNotice:{text:"",kind:""}, digest:null, digestState:"idle", demand:null, demandState:"idle", repetitions:Number(savedPreference("repetitions", "1")) || 1, dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", promptFilters:{ query:"", topicId:"", intent:"", status:"" }, promptSelection:[], answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", rivals:null, rivalsState:"idle", segments:null, segmentsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, lastRun:null, runPollTimer:0, runFeed:[], runFeedState:"idle", runFeedTimer:0, rankPlan:null, rankPlanState:"idle", brief:null, briefState:"idle", outreach:null, outreachState:"idle", harvesting:false, paste:null, pasteState:"idle", pasteCount:Number(savedPreference("pasteCount", "2")) || 2, uptake:null, uptakeState:"idle", interference:null, interferenceState:"idle", concentration:null, concentrationState:"idle", shape:null, shapeState:"idle", kinds:null, kindsState:"idle", experiments:null, experimentsState:"idle", check:null, checkState:"idle", credit:null, creditState:"idle", reach:null, reachState:"idle", searchDemand:null, searchDemandState:"idle", pulling:false, personas:null, personasState:"idle", priority:null, priorityState:"idle", promptSort:"topic", referrals:null, referralsState:"idle", pullingReferrals:false, engines:null, enginesState:"idle", actions:[], actionsState:"idle", matrixOpen:[], editingBoard:false, brandIcons:{}, panelViews:savedJson("panelViews"), matrixHidden:savedList("matrixHidden") };
+    const state: State = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", crawlerUploading:false, crawlerNotice:{ text:"", kind:"" }, plan:null, planState:"idle", marketer:null, drafts:null, claims:null, buying:null, conversations:null, entity:null, marketerState:"idle", marketerNotice:{ text:"", kind:"" }, signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, integrations:[], integrationsState:"idle", externalMetrics:null, externalMetricsState:"idle", externalMetricsPulling:"", externalMetricsNotice:{text:"",kind:""}, digest:null, digestState:"idle", demand:null, demandState:"idle", repetitions:Number(savedPreference("repetitions", "1")) || 1, runLanguageId:savedPreference("runLanguage", "en"), dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", promptFilters:{ query:"", topicId:"", intent:"", status:"" }, promptSelection:[], answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", history:null, historyState:"idle", rivals:null, rivalsState:"idle", segments:null, segmentsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, lastRun:null, runPollTimer:0, runFeed:[], runFeedState:"idle", runFeedTimer:0, rankPlan:null, rankPlanState:"idle", brief:null, briefState:"idle", outreach:null, outreachState:"idle", harvesting:false, paste:null, pasteState:"idle", pasteCount:Number(savedPreference("pasteCount", "2")) || 2, uptake:null, uptakeState:"idle", interference:null, interferenceState:"idle", concentration:null, concentrationState:"idle", shape:null, shapeState:"idle", kinds:null, kindsState:"idle", experiments:null, experimentsState:"idle", check:null, checkState:"idle", credit:null, creditState:"idle", reach:null, reachState:"idle", searchDemand:null, searchDemandState:"idle", pulling:false, personas:null, personasState:"idle", priority:null, priorityState:"idle", promptSort:"topic", referrals:null, referralsState:"idle", pullingReferrals:false, engines:null, enginesState:"idle", actions:[], actionsState:"idle", matrixOpen:[], editingBoard:false, brandIcons:{}, panelViews:savedJson("panelViews"), matrixHidden:savedList("matrixHidden") };
     const app = document.getElementById("app") as HTMLElement;
     let renderOverride: (() => void) | null = null;
     // render() was a hoisted declaration that a later line reassigned. A
@@ -531,8 +534,12 @@ export function boot(): void {
         return head + '<p class="subtle">' + (state.crawlersState === "error" ? "Could not read the access log." : "Reading the access log…") + '</p></section>';
       }
       const report = state.crawlers;
-      if (report.state !== "ready" || !report.activity) {
-        return head + '<div class="warning-box">' + html(report.detail) + '</div></section>';
+      // The guard tested for a state this endpoint has never returned, so the
+      // table below it has never been drawn: every reader got the warning box
+      // and nothing else, whatever was in the log. What decides is whether
+      // there is any activity to show.
+      if (!report.activity) {
+        return head + '<div class="warning-box">' + html(report.detail) + '</div>' + crawlerUpload() + '</section>';
       }
       const activity = report.activity;
       const rows = activity.crawlers.map((row: any) => '<div class="mrow mcols-crawler"><div class="mname"><strong>' + html(row.name) + '</strong><span>' + html(row.engine) + ' · ' + html(row.purpose === "live_fetch" ? "fetches when asked" : row.purpose === "training" ? "training crawl" : "search index") + '</span></div><span class="mcell">' + row.fetches + '</span><span class="mcell">' + row.pages + '</span><span class="mcell ' + (row.errorRate ? "state-flag" : "") + '">' + (row.errorRate === null ? "n/a" : Math.round(row.errorRate * 100) + "%") + '</span><span class="mcell mono">' + html(row.lastSeen ? row.lastSeen.slice(0, 10) : "unknown") + '</span></div>').join("");
@@ -542,11 +549,56 @@ export function boot(): void {
       const orphan = activity.citedNeverFetched.length
         ? '<p class="mlegend">' + activity.citedNeverFetched.length + ' cited page(s) were never seen being fetched, so those citations came from a cache, a training set or a third party.</p>'
         : '';
+      // Whose log this is. A path set on the server is that server's log and
+      // every project on it reads the same traffic; an uploaded one is this
+      // project's. Saying which is the difference between a figure a reader
+      // can act on and one they cannot place.
+      const whose = report.source === "upload"
+        ? '<p class="subtle">Counted from a log you uploaded.</p>'
+        : report.source
+          ? '<p class="subtle">Counted from ' + html(report.source) + ' on this server, which is the same log for every project here. Upload your own to count only your traffic.</p>'
+          : '';
       return head
         + '<div class="countstrip"><span class="count"><strong>' + activity.totalFetches + '</strong>Crawler fetches</span><span class="count"><strong>' + activity.crawlers.length + '</strong>Bots seen</span><span class="count"><strong>' + activity.pages.length + '</strong>Pages fetched</span><span class="count"><strong>' + activity.fetchedNeverCited.length + '</strong>Fetched, never cited</span></div>'
+        + whose
         + absent
         + insightTable("mcols-crawler", ["Crawler", "Fetches", "Pages", "Errors", "Last seen"], rows ? [rows] : [], "No AI crawler appears in this log.")
-        + orphan + '</section>';
+        + orphan + crawlerUpload() + '</section>';
+    }
+
+    /** The door. The log could only ever be named by an environment variable
+     * set where the server runs, so anybody without a shell on that machine
+     * could not use this feature at all. */
+    function crawlerUpload() {
+      return '<div class="inline-actions" style="margin-top:14px">'
+        + '<label class="button quiet" for="crawler-log-file">' + (state.crawlerUploading ? "Reading the log\u2026" : "Upload an access log") + '</label>'
+        + '<input type="file" id="crawler-log-file" accept=".log,.txt,text/plain" hidden data-crawler-log>'
+        + '</div>'
+        + (state.crawlerNotice.text ? '<p class="' + (state.crawlerNotice.kind === "bad" ? "warning-box" : "subtle") + '">' + html(state.crawlerNotice.text) + '</p>' : '')
+        + '<p class="mlegend">A combined-format access log, or a CloudFront one with its #Fields header. It is read for crawler user agents and paths and nothing else, and the same file counted twice is counted once.</p>';
+    }
+
+    async function uploadCrawlerLog(file: File) {
+      const selected = project();
+      if (!selected || state.crawlerUploading) return;
+      state.crawlerUploading = true;
+      state.crawlerNotice = { text: "", kind: "" };
+      render();
+      try {
+        const text = await file.text();
+        const result = await request("/api/projects/" + selected.id + "/crawlers", {
+          method: "POST",
+          headers: { "content-type": "text/plain" },
+          body: text,
+        });
+        state.crawlers = result;
+        state.crawlersState = "ready";
+        state.crawlerNotice = { text: result.detail, kind: result.linesParsed ? "" : "bad" };
+      } catch (error) {
+        state.crawlerNotice = { text: error instanceof Error ? error.message : String(error), kind: "bad" };
+      }
+      state.crawlerUploading = false;
+      render();
     }
     /** Every marketer surface is read-only and cheap, so one loader fills them
      * all and a page never waits on a request it does not use. */
@@ -656,6 +708,30 @@ export function boot(): void {
           body: JSON.stringify({ status: value.slice(at + 1) }),
         });
         state.marketerState = "idle";
+        loadMarketer();
+      } catch (error) {
+        shortReason(control, error);
+        (control as HTMLButtonElement).disabled = false;
+      }
+    }
+
+    async function publishDraft(control: Element, draftId: string) {
+      const selected = project();
+      if (!selected || !draftId) return;
+      const where = window.prompt("Where did it go live? Paste the address of the published page.");
+      if (!where || !where.trim()) return;
+      const when = window.prompt("When did it go live? Leave this as it is unless it was earlier.", new Date().toISOString().slice(0, 10)) || "";
+      (control as HTMLButtonElement).disabled = true;
+      try {
+        const result: any = await request("/api/projects/" + selected.id + "/agents/" + draftId + "/publish", {
+          method: "POST",
+          body: JSON.stringify({ url: where.trim(), at: when.trim() || undefined }),
+        });
+        state.marketerNotice = result && result.measuring
+          ? { text: 'Recorded as live, and "' + result.measuring.name + '" is now measuring it against the questions it was written for.', kind: "success" }
+          : { text: "Recorded as live. " + ((result && result.notMeasured) || "Nothing is measuring it yet."), kind: "warning" };
+        state.marketerState = "idle";
+        state.experimentsState = "idle";
         loadMarketer();
       } catch (error) {
         shortReason(control, error);
@@ -849,16 +925,21 @@ export function boot(): void {
         ? left + (width - left) / 2
         : left + index * (width - left - 8) / (points.length - 1);
       const y = (value: any) => 10 + (max - value) * (height - bottom - 10) / (max || 1);
+      // The line joins readings. A point off a handful of answers is plotted
+      // where it fell and the line is broken through it, because joining two of
+      // them draws a move that the answer count invented.
       let path = "";
       let open = false;
       points.forEach((point, index) => {
-        if (point.value === null) { open = false; return; }
+        if (point.value === null || point.thin) { open = false; return; }
         path += (open ? " L " : " M ") + x(index).toFixed(1) + " " + y(point.value).toFixed(1);
         open = true;
       });
       const dots = points.map((point, index) => point.value === null
         ? ''
-        : '<circle cx="' + x(index).toFixed(1) + '" cy="' + y(point.value).toFixed(1) + '" r="3.5"><title>' + html(point.at.slice(0, 10)) + ': ' + html(point.display) + '</title></circle>').join("");
+        : '<circle cx="' + x(index).toFixed(1) + '" cy="' + y(point.value).toFixed(1) + '" r="3.5"'
+          + (point.thin ? ' class="chart-thin"' : '') + '><title>' + html(point.at.slice(0, 10)) + ': ' + html(point.display)
+          + (point.thin && point.note ? ' (' + html(point.note) + ')' : '') + '</title></circle>').join("");
       const gridY = [0, max / 2, max];
       const grid = gridY.map((value) => '<line x1="' + left + '" x2="' + width + '" y1="' + y(value).toFixed(1) + '" y2="' + y(value).toFixed(1) + '" class="chart-grid"/><text x="0" y="' + (y(value) + 4).toFixed(1) + '" class="chart-axis">' + html(points[0].format(value)) + '</text>').join("");
       return '<svg class="trend" viewBox="0 0 ' + width + ' ' + height + '" role="img" aria-label="' + html(label) + ' over time">' + grid + '<path d="' + path + '" class="chart-line"/>' + dots + '</svg>';
@@ -926,16 +1007,37 @@ export function boot(): void {
     }
     /** One shell for every marketer page, so each one loads the same way and
      * an empty one says what is absent rather than showing nothing. */
+    // These five lost their rail entries when it collapsed to six destinations,
+    // and a page nothing links to is a page nobody can open.
+    const ACT_PAGES = [
+      ["marketer", "What to do"],
+      ["drafts", "Drafts"],
+      ["claims", "Claims"],
+      ["buying", "Buying"],
+      ["conversations", "Conversations"],
+      ["entity", "Entity"],
+    ];
+
+    function actTabs(): string {
+      return '<div class="toolbar">' + ACT_PAGES.map(([page, label]) =>
+        '<button type="button" class="filter ' + (state.page === page ? "active" : "")
+        + '" data-page="' + html(page) + '"' + (state.page === page ? ' aria-current="page"' : '')
+        + '>' + html(label) + '</button>').join("") + '</div>';
+    }
+
     function marketerPage(title: string, blurb: string, body: () => string) {
       if (state.marketerState === "idle") { loadMarketer(); }
       const inner = state.marketerState === "error"
         ? '<p class="subtle">Could not read this project.</p>'
         : state.marketerState !== "ready" ? '<p class="subtle">Reading what has been measured…</p>' : body();
-      return '<section class="view"><div class="heading"><div><h1>' + html(title) + '</h1><p class="subtle">' + html(blurb) + '</p></div></div>' + inner + '</section>';
+      const notice = state.marketerNotice.text
+        ? '<div class="' + (state.marketerNotice.kind === "success" ? "success-box" : "warning-box") + '">' + html(state.marketerNotice.text) + '</div>'
+        : '';
+      return '<section class="view"><div class="heading"><div><h1>' + html(title) + '</h1><p class="subtle">' + html(blurb) + '</p></div></div>' + actTabs() + notice + inner + '</section>';
     }
 
     function renderMarketer() {
-      return marketerPage("Marketer", "What moved, what moved it, and what would act on it. Nothing here calls a model.", () => marketerView(state.marketer));
+      return marketerPage("Act", "What moved, what moved it, and what would act on it. Nothing here calls a model.", () => marketerView(state.marketer));
     }
     function renderDrafts() {
       return marketerPage("Drafts", "Pages drafted from a measured gap. Every one waits for your decision.", () => draftsView(state.drafts));
@@ -1146,6 +1248,23 @@ export function boot(): void {
       return '<div class="stat"><span>' + html(label) + '</span><strong>' + value + '</strong><small>' + html(note) + '</small>' + bar(fraction) + '</div>';
     }
 
+    // Prominence and framing are means over the answers that named the brand,
+    // which on a handful of them cannot be told from a coin. The counts are the
+    // finding there, and a percentage beside "Not named" is the old bug.
+    function overAppearances(score: any, value: any, words: string) {
+      if (!score || score.tooFewAppearances) {
+        const named = score ? score.namedIn || score.appearances || 0 : 0;
+        return {
+          value: named ? 'Too few' : pct(null),
+          note: named
+            ? named + ' appearance(s) cannot be read as a rate. ' + words
+            : 'Nothing named, so nothing judged.',
+          fraction: null,
+        };
+      }
+      return { value: pct(value), note: words, fraction: value };
+    }
+
     function renderScoreBreakdown(score: any) {
       if (!score || score.answers === 0) return '<p class="subtle">Nothing has been answered yet, so there is nothing to score. This is not a zero.</p>';
       const band = score.presenceInterval;
@@ -1159,10 +1278,12 @@ export function boot(): void {
           + score.answers + ' answer(s) leave the presence rate anywhere from ' + pct(band.low) + ' to ' + pct(band.high)
           + ', which decides nothing. Track more questions, or more models, before acting on the number. ' + html(band.caveat) + '</div>'
         : '';
+      const prom = overAppearances(score, score.prominence, 'Full marks means always named first.');
+      const sent = overAppearances(score, score.sentiment, 'Full marks means always recommended.');
       return '<div class="statgrid" style="--tile-columns:3">'
         + stat("Presence", pct(score.presenceRate), presenceNote, score.presenceRate)
-        + stat("Prominence", pct(score.prominence), score.prominence === null ? 'No answer gave a readable order' : 'Full marks means always named first', score.prominence)
-        + stat("Sentiment", pct(score.sentiment), score.sentiment === null ? 'Nothing named, so nothing judged' : 'Full marks means always recommended', score.sentiment)
+        + stat("Prominence", prom.value, score.prominence === null && !score.namedIn ? 'No answer gave a readable order' : prom.note, prom.fraction)
+        + stat("Sentiment", sent.value, sent.note, sent.fraction)
         + '</div>' + width;
     }
 
@@ -1175,13 +1296,22 @@ export function boot(): void {
 
     function renderModelRows(rows: any[]) {
       if (!rows || !rows.length) return '<p class="subtle">No model has answered yet.</p>';
+      // A model is a proportion like any other here. One appearance in twenty
+      // four answers reads as 4% and is consistent with anything from under one
+      // per cent to twenty, so the range goes beside it rather than nowhere.
+      const asked = rows.filter((row) => row.score.answers > 0);
+      const silent = rows.length - asked.length;
+      const band = (score: any) => score.presenceInterval && score.presenceInterval.low !== null
+        ? '<small>' + Math.round(score.presenceInterval.low * 100) + ' to ' + Math.round(score.presenceInterval.high * 100) + '%</small>'
+        : '';
       return '<div class="mtable"><div class="mhead mcols-aemodel"><span>AI assistant</span><span>Score</span><span>Presence</span><span>Answers</span></div>'
-        + rows.map((row) => '<div class="mrow mcols-aemodel">'
+        + asked.map((row) => '<div class="mrow mcols-aemodel">'
           + '<div class="mname"><strong>' + html(row.displayName) + '</strong><span class="mono">' + html(row.providerId) + ' · ' + html(row.modelId) + '</span></div>'
           + '<span class="mcell">' + scoreText(row.score.score) + '</span>'
-          + '<span class="mcell">' + pct(row.score.presenceRate) + '</span>'
+          + '<span class="mcell">' + pct(row.score.presenceRate) + band(row.score) + '</span>'
           + '<span class="mcell">' + row.score.answers + '</span></div>').join("")
-        + '</div>';
+        + '</div>'
+        + (silent ? '<p class="subtle">' + silent + ' more model(s) are saved or have been seen and have never produced an answer, so there is nothing to read for them.</p>' : '');
     }
 
     function renderPromptTrend(trend: any) {
@@ -1189,14 +1319,23 @@ export function boot(): void {
       const points = trend.points.map((point: any) => ({
         at: point.at,
         value: point.score.score,
+        thin: point.score.tooFewAnswers,
+        note: point.score.answers + (point.score.answers === 1 ? " answer" : " answers"),
         display: point.score.score === null ? "Not measurable" : point.score.score + " / 100",
         format: (value: any) => Math.round(value) + "",
         axisMax: 100,
       }));
       const change = trend.change === null
-        ? '<span class="subtle">Not comparable yet</span>'
+        ? '<span class="subtle">' + (trend.readablePoints < 2
+            ? 'Not comparable yet: ' + trend.readablePoints + ' of ' + trend.points.length + ' run(s) asked enough to read a figure off'
+            : 'Not comparable yet') + '</span>'
         : '<span class="' + (trend.change > 0 ? "state-ok" : trend.change < 0 ? "state-bad" : "") + '">' + (trend.change > 0 ? "+" : "") + trend.change + ' since ' + html(trend.since.slice(0, 10)) + '</span>';
-      return '<div class="trend-head">' + change + '</div>' + trendChart(points, "answer engine score");
+      // Named rather than only drawn faintly, because a chart whose shape comes
+      // from run size reads as a finding to anybody who does not hover a dot.
+      const thin = trend.thinPoints
+        ? '<p class="subtle">' + trend.thinPoints + ' of ' + trend.points.length + ' run(s) asked too few answers to read a score off. They are plotted where they fell, and the line is not drawn through them.</p>'
+        : '';
+      return '<div class="trend-head">' + change + '</div>' + trendChart(points, "answer engine score") + thin;
     }
 
     function renderRegionRows(rows: any[], caveat: string) {
@@ -1227,8 +1366,11 @@ export function boot(): void {
     }
 
     // A trend read at a glance: no axes, no grid, just the shape.
+    // A spark has no room to say which points it dropped, so it draws only the
+    // runs that asked enough to read a figure off. A line through a one-answer
+    // run is a picture of how big the run was.
     function sparkline(points: any[], width?: number, height?: number) {
-      const usable = points.filter((point) => point.score.score !== null);
+      const usable = points.filter((point) => point.score.score !== null && !point.score.tooFewAnswers);
       if (usable.length < 2) return '<span class="subtle">Run again to see movement</span>';
       const values = usable.map((point) => point.score.score);
       const max = Math.max(100, ...values);
@@ -1268,6 +1410,8 @@ export function boot(): void {
 
     function renderHero(data: any) {
       const rank = data.rank === null ? "Not named" : "#" + data.rank + " of " + data.leaderboard.length;
+      const heroProm = overAppearances(data.overall, data.overall.prominence, 'how early you appear');
+      const heroSent = overAppearances(data.overall, data.overall.sentiment, 'recommended or listed');
       const leader = data.leaderboard.find((row: any) => !row.isTarget);
       return '<div class="hero">'
         + '<div class="hero-figure"><span class="scorebig">' + scoreText(data.overall.score) + '</span>'
@@ -1275,8 +1419,8 @@ export function boot(): void {
         + '<span class="hero-spark">' + sparkline(data.trend.points, 150, 26) + '</span></div>'
         + '<div class="hero-stats">'
         + '<div class="hero-stat"><span>Presence</span><strong>' + pct(data.overall.presenceRate) + '</strong><small>' + data.overall.appearances + ' of ' + data.overall.answers + ' answers</small></div>'
-        + '<div class="hero-stat"><span>Prominence</span><strong>' + pct(data.overall.prominence) + '</strong><small>how early you appear</small></div>'
-        + '<div class="hero-stat"><span>Sentiment</span><strong>' + pct(data.overall.sentiment) + '</strong><small>recommended or listed</small></div>'
+        + '<div class="hero-stat"><span>Prominence</span><strong>' + heroProm.value + '</strong><small>' + html(heroProm.note) + '</small></div>'
+        + '<div class="hero-stat"><span>Sentiment</span><strong>' + heroSent.value + '</strong><small>' + html(heroSent.note) + '</small></div>'
         + '<div class="hero-stat"><span>Ahead of you</span><strong>' + (leader ? html(leader.name) : "—") + '</strong><small>' + (leader ? leader.appearances + ' answers' : 'nobody named') + '</small></div>'
         + '</div></div>';
     }
@@ -1384,12 +1528,23 @@ export function boot(): void {
       return '<select class="filter" data-repetitions aria-label="How many times to ask each question">' + options + '</select>';
     }
 
+    // The same question in another language is a different question to a model,
+    // and until this existed there was no way to ask one from here at all.
+    function languagePicker() {
+      const rows = state.languages || [];
+      if (rows.length < 2) return '';
+      const options = rows.map((row: any) =>
+        '<option value="' + html(row.id) + '"' + (state.runLanguageId === row.id ? ' selected' : '') + '>'
+        + html(row.id === "en" ? "Answer in English" : "Answer in " + row.label) + '</option>').join("");
+      return '<select class="filter" data-run-language aria-label="Which language to answer in">' + options + '</select>';
+    }
+
     // A second run is refused by the server, so the page must not offer one.
     function runActionButton(label: string, enabled?: boolean) {
       if (state.liveRun) return button({ label: "Watch the run", kind: "primary", on: { "data-open-run": state.liveRun.id } });
       const busy = state.promptRunState === "running";
       const last = state.lastRun ? button({ label: "Last run", on: { "data-open-run": state.lastRun.id } }) : '';
-      return last + repetitionPicker() + button({ label: (busy ? "Starting…" : html(label)), kind: "primary", disabled: busy || enabled === false, on: { "data-run-prompts": true } });
+      return last + languagePicker() + repetitionPicker() + button({ label: (busy ? "Starting…" : html(label)), kind: "primary", disabled: busy || enabled === false, on: { "data-run-prompts": true } });
     }
 
     function openRunPane(runId: string) {
@@ -1688,26 +1843,34 @@ export function boot(): void {
       }
       const report = state.uptake;
       if (!report.measured && !report.unread) return '<p class="subtle">No answer carried a citation, so there is no page to compare one against.</p>';
+      // The button that clears this sits on the outreach panel, so the task
+      // is shown where the figure is missing rather than only in the list.
+      const unreadCta = report.unread ? taskCta("sources-unread") : '';
+      // A reading is one page against one answer. The same page cited by five
+      // answers gives five readings and five figures, and calling them pages
+      // printed one page disagreeing with itself.
       const lead = report.mean === null
         ? 'No cited page has been read back, so nothing can be said about what the answers took from them.'
-        : 'Across ' + report.measured + ' cited page(s) read back, the mean uptake is ' + uptakePct(report.mean) + '.'
+        : 'Across ' + report.measured + ' reading(s) of ' + report.pagesRead + ' cited page(s) read back, the mean uptake is ' + uptakePct(report.mean) + '.'
           + (report.citedNotUsed
-            ? ' ' + report.citedNotUsed + (report.citedNotUsed === 1 ? ' was cited by an answer that barely touches its subject.' : ' were cited by answers that barely touch their subject.')
+            ? ' ' + report.citedNotUsed + (report.citedNotUsed === 1 ? ' reading is of a page whose subject the answer barely touches.' : ' readings are of pages whose subject the answer barely touches.')
             : ' Every cited page shares its subject with the answer that cited it.');
       const unread = report.unread
-        ? '<p class="subtle">' + report.unread + ' cited page(s) have not been read back, so they are left out rather than counted as unused.</p>'
+        ? '<p class="subtle">' + report.pagesUnread + ' of the ' + (report.pagesRead + report.pagesUnread)
+          + ' cited page(s) have not been read back, so they are left out rather than counted as unused.</p>'
         : '';
       const rows = report.pages.slice(0, 10).map((row: any) => '<div class="mrow mcols-uptake"><div class="mname"><strong>' + html(row.host) + '</strong>'
         + '<span class="mono">' + html(row.url.length > 70 ? row.url.slice(0, 70) + "\u2026" : row.url) + '</span>'
+        + '<span class="subtle">' + html(row.promptText.length > 70 ? row.promptText.slice(0, 70) + "\u2026" : row.promptText) + ' \u00b7 ' + html(row.modelId) + '</span>'
         + (row.phrases.length ? '<span class="subtle">\u201c' + html(row.phrases[0].text.slice(0, 90)) + '\u201d</span>' : '')
         + '</div>'
         + '<span class="mcell">#' + row.citedAt + '</span>'
         + '<span class="mcell ' + (row.uptake === null ? "" : row.uptake >= 0.4 ? "state-ok" : row.uptake > 0 ? "state-flag" : "state-bad") + '">'
         + (row.uptake === null ? 'Not read' : uptakePct(row.uptake)) + '</span>'
-        + '<span class="mcell">' + (row.shared === null ? '\u2014' : uptakePct(row.shared)) + '</span>'
-        + '<span class="mcell">' + (row.coverage === null ? '\u2014' : uptakePct(row.coverage)) + '</span></div>').join("");
-      return '<p>' + html(lead) + '</p>' + unread
-        + '<div class="mtable"><div class="mhead mcols-uptake"><span>Page</span><span>Cited</span><span>Uptake</span><span>Shared subject</span><span>Coverage</span></div>' + rows + '</div>'
+        + '<span class="mcell">' + (row.shared === null ? "Not measurable" : uptakePct(row.shared)) + '</span>'
+        + '<span class="mcell">' + (row.coverage === null ? "Not measurable" : uptakePct(row.coverage)) + '</span></div>').join("");
+      return '<p>' + html(lead) + '</p>' + unread + unreadCta
+        + '<div class="mtable"><div class="mhead mcols-uptake"><span>Page, and the answer that cited it</span><span>Cited</span><span>Uptake</span><span>Shared subject</span><span>Coverage</span></div>' + rows + '</div>'
         + '<p class="mlegend">' + html(report.caveat) + '</p>';
     }
 
@@ -1735,9 +1898,12 @@ export function boot(): void {
       if (report.runs < 2) {
         return '<p class="subtle">' + report.runs + ' run(s) have cited anything. A source that arrived everywhere at once can only be told from one that was always there by comparing runs, so this needs a second one.</p>';
       }
+      // "Everything grew in over more than one run" was false for 107 of this
+      // project's 122 hosts, which were cited in exactly one run and never again.
       const lead = sudden.length
         ? sudden.length + ' source(s) arrived across most of the questions in a single run rather than growing into them.'
-        : 'No source arrived across most of the questions in one run. Everything cited grew in over more than one.';
+        : 'No source arrived across most of the questions in a run that was not the first.'
+          + (report.arrivedOnce ? ' ' + report.arrivedOnce + ' of the ' + report.arrivals.length + ' host(s) cited here appear in one run only, which is neither shape.' : '');
       const shifts = report.shifts.length
         ? '<p>' + report.shifts.length + ' cited page(s) changed materially since they were last read.</p>'
           + '<div class="mtable"><div class="mhead mcols-shift"><span>Page</span><span>Changed</span><span>Last read</span></div>'
@@ -1778,18 +1944,27 @@ export function boot(): void {
       }
       const report = state.concentration;
       if (!report.hosts.length) return '<p class="subtle">No answer carried a citation, so there is nobody supplying them to count.</p>';
-      const half = report.halfHeldBy === null ? '' : report.halfHeldBy + ' domain(s) supply half of every citation here.';
+      const half = report.halfHeldBy === null ? '' : report.halfHeldBy + ' of ' + report.hosts.length + ' domain(s) supply half of every citation here.';
+      // The header offers the reader two worlds and the figures decide which
+      // one this is, so the panel says it rather than leaving it as homework.
+      const which = report.verdict === "concentrated"
+        ? ' A handful of them own the category, so getting onto those is the game.'
+        : report.verdict === "spread"
+          ? ' The tail is long enough that a new page can still get in.'
+          : '';
       const where = report.yourRank === null
         ? ' Your own domain is not among them.'
         : ' Yours is ranked ' + report.yourRank + ' of ' + report.hosts.length + '.';
       const curve = report.topShares.map((row: any) => '<span class="count"><strong>' + Math.round(row.share * 100) + '%</strong>top ' + row.rank + '</span>').join("");
+      // Both readings of the row. One count beside one share left a reader
+      // dividing the count by the answers and getting a third number.
       const rows = report.hosts.slice(0, 10).map((row: any, index: number) => '<div class="mrow mcols-concentration"><div class="mname"><strong>' + html(row.host) + (row.isYours ? ' <span class="tag">yours</span>' : '') + '</strong></div>'
         + '<span class="mcell mono">' + (index + 1) + '</span>'
-        + '<span class="mcell">' + row.answers + '</span>'
+        + '<span class="mcell">' + row.answers + ' of ' + report.answersWithCitations + '</span>'
         + '<span class="mcell">' + Math.round(row.share * 100) + '%</span></div>').join("");
-      return '<p>' + html(half + where) + '</p>'
-        + '<div class="countstrip">' + curve + '<span class="count"><strong>' + (report.gini === null ? '\u2014' : (Math.round(report.gini * 100) / 100)) + '</strong>concentration</span></div>'
-        + '<div class="mtable"><div class="mhead mcols-concentration"><span>Domain</span><span>Rank</span><span>Answers</span><span>Share</span></div>' + rows + '</div>'
+      return '<p>' + html(half + which + where) + '</p>'
+        + '<div class="countstrip">' + curve + '<span class="count"><strong>' + (report.gini === null ? "Not measurable" : (Math.round(report.gini * 100) / 100)) + '</strong>concentration</span></div>'
+        + '<div class="mtable"><div class="mhead mcols-concentration"><span>Domain</span><span>Rank</span><span>Cited in</span><span>Share of citations</span></div>' + rows + '</div>'
         + '<p class="mlegend">' + html(report.caveat) + '</p>';
     }
 
@@ -1821,11 +1996,17 @@ export function boot(): void {
       }
       const report = state.shape;
       if (!report.theirs.pages) return '<p class="subtle">No page cited on a question you lose has been read back, so there is nothing to compare a layout against.</p>';
-      const lead = report.behindOnAll === null
-        ? 'None of your own pages has been cited and read back, so there is nothing of yours to compare. The figures on the left are what is already winning here.'
-        : report.behindOnAll
+      // A verdict off one page of yours is a verdict about that page. The side
+      // that is short is named, because "nothing to compare" and "three pages
+      // short of a comparison" are different things to do something about.
+      const lead = report.behindOnAll !== null
+        ? report.behindOnAll
           ? 'The pages cited instead of you carry more structure than yours on every count below.'
-          : 'Your pages are not behind on every count.';
+          : 'Your pages are not behind on every count.'
+        : !report.yours.pages
+          ? 'None of your own pages has been cited and read back, so there is nothing of yours to compare. The figures on the left are what is already winning here.'
+          : 'Each side needs ' + report.minimum + ' pages read back before this is a comparison between two kinds of page rather than between two pages. '
+            + report.yours.pages + ' of yours and ' + report.theirs.pages + ' of theirs have been read, so the figures stand and the verdict does not.';
       return '<p>' + html(lead) + '</p>'
         + '<div class="mtable"><div class="mhead mcols-shape"><span>Per thousand words</span><span>Cited instead of you</span><span>Yours</span></div>'
         + shapeRow("Headings", report.theirs.headingsPerThousand, report.yours.headingsPerThousand)
@@ -1896,11 +2077,17 @@ export function boot(): void {
         + '<span class="mcell">' + row.checked + '</span>'
         + '<span class="mcell ' + (row.interval.rate === null ? "" : row.interval.rate >= 0.9 ? "state-ok" : "state-flag") + '">'
         + (row.interval.rate === null ? 'Not checked' : Math.round(row.interval.rate * 100) + '%') + '</span>'
-        + '<span class="mcell subtle">' + (row.interval.low === null ? '\u2014' : Math.round(row.interval.low * 100) + ' to ' + Math.round(row.interval.high * 100) + '%') + '</span></div>').join("");
+        + '<span class="mcell subtle">' + (row.interval.low === null ? "Not measurable" : Math.round(row.interval.low * 100) + ' to ' + Math.round(row.interval.high * 100) + '%') + '</span></div>').join("");
       const next = report.items[0];
       const judging = next
         ? '<div class="fix"><div class="fix-top"><strong>' + html(next.name) + '</strong><span class="tag">' + html(next.modelId) + '</span></div>'
           + '<p class="evidence-note">Asked: ' + html(next.promptText) + '</p>'
+          // The window centres on the name. Where the answer never spells it,
+          // this is the opening of the answer instead, which is a different
+          // thing to be judging and the reviewer is told so.
+          + (next.excerptHasName === false
+            ? '<p class="warning-box">The answer does not contain this name anywhere, so what follows is its opening rather than the place being judged. The model reported a mention its own answer does not carry.</p>'
+            : '')
           + '<p class="why">\u2026' + html(next.excerpt) + '\u2026</p>'
           + verdictButtons(next)
           + '<p class="mlegend">' + report.remaining + ' left in this sample, drawn from ' + agreement.population + ' mention(s).</p></div>'
@@ -1924,9 +2111,11 @@ export function boot(): void {
     }
 
     function creditRows(rows: any[], kind: string) {
+      // Ranked against the pages that could be read, with the place it really
+      // held in the citation list beside it where the two differ.
       return rows.slice(0, 5).map((row: any) => '<div class="mrow mcols-credit"><div class="mname"><strong>' + html(row.host) + '</strong>'
         + '<span class="mono">' + html(row.url.slice(0, 64)) + '</span></div>'
-        + '<span class="mcell">#' + row.citedAt + '</span>'
+        + '<span class="mcell">#' + row.creditedAt + (row.citedAt !== row.creditedAt ? '<small> of ' + row.citedAt + ' cited</small>' : '') + '</span>'
         + '<span class="mcell">#' + row.usedAt + '</span>'
         + '<span class="mcell ' + kind + '">' + (row.gap > 0 ? '+' : '') + row.gap + '</span></div>').join("");
     }
@@ -1940,7 +2129,8 @@ export function boot(): void {
       if (!report.comparable) {
         return '<p class="subtle">No answer cited two pages that could both be read back, so there is no citation list to rank within. Read the cited pages and this fills.</p>';
       }
-      const lead = 'Across ' + report.comparable + ' answer(s) citing more than one page that could be read, a page sits ' + report.meanGap + ' place(s) from where its contribution would put it on average.';
+      const lead = 'Across ' + report.comparable + ' answer(s) citing more than one page that could be read, a page sits ' + report.meanGap + ' place(s) from where its contribution would put it on average, over ' + report.rows + ' page(s) ranked.'
+        + (report.tooFewRead ? ' ' + report.tooFewRead + ' more answer(s) cited something, with fewer than two of their pages read back, so nothing could be ranked inside them.' : '');
       const over = report.overCredited.length
         ? '<p><strong>Cited early, barely used.</strong></p><div class="mtable"><div class="mhead mcols-credit"><span>Page</span><span>Cited</span><span>Used</span><span>Gap</span></div>' + creditRows(report.overCredited, "state-flag") + '</div>'
         : '';
@@ -1993,9 +2183,29 @@ export function boot(): void {
       }
       const report = state.kinds;
       if (!report.pages) return '<p class="subtle">No cited page has been read back, so there is nothing to say about what kind of page wins here.</p>';
-      const listicle = 'Ranked best-of pages are ' + Math.round((report.listicleShare || 0) * 100) + '% of what is cited here, against ' + Math.round(report.listicleBaseline * 100) + '% published.';
-      const corporate = ' A company\u2019s own site accounts for ' + Math.round((report.corporateShare || 0) * 100) + '%, against ' + Math.round(report.corporateBaseline * 100) + '%.';
-      return '<p>' + html(listicle + corporate) + '</p>'
+      // A share off thirteen pages has a range wider than its distance from the
+      // published figure, so the range travels with it and the comparison is
+      // withheld rather than printed as a finding.
+      const over = report.pages + ' of the ' + report.cited + ' page(s) these answers cited have been read back. ';
+      const span = (interval: any) => interval && interval.low !== null
+        ? ' (' + Math.round(interval.low * 100) + ' to ' + Math.round(interval.high * 100) + '%)'
+        : '';
+      const listicle = 'Ranked best-of pages are ' + Math.round((report.listicleShare || 0) * 100) + '%' + span(report.listicleInterval)
+        + ' of what has been read here, against ' + Math.round(report.listicleBaseline * 100) + '% published.';
+      const corporate = ' A site belonging to a company in this category accounts for ' + Math.round((report.corporateShare || 0) * 100) + '%'
+        + span(report.corporateInterval) + ', against ' + Math.round(report.corporateBaseline * 100) + '%.';
+      const thin = report.tooFewToCompare
+        ? '<p class="subtle">' + html(over + 'That is too few for either share to be set against a published one: the range each is consistent with is wider than its distance from the baseline. Read the rest of the cited pages to close it.') + '</p>'
+        : '';
+      // Being absent from your own citations is what usually happens, so the
+      // figure is given with the band rather than as nought out of ten.
+      const ownedPercent = Math.round((report.ownedShare || 0) * 100);
+      const band = Math.round(report.ownedBaselineLow * 100) + ' to ' + Math.round(report.ownedBaselineHigh * 100) + '%';
+      const owned = report.ownedShare === null ? '' : report.ownedShare >= report.ownedBaselineLow
+        ? 'Your own pages are ' + ownedPercent + '% of what was cited, inside the ' + band + ' a brand\u2019s own domain usually gets.'
+        : 'Your own pages are ' + ownedPercent + '% of what was cited. Published work puts a brand\u2019s own domain at ' + band + ' of its citations, so the work is on the pages you do not own.';
+      return '<p>' + html(listicle + corporate) + '</p>' + thin
+        + (owned ? '<p>' + html(owned) + '</p>' : '')
         + '<div class="mtable"><div class="mhead mcols-kind"><span>Format</span><span>Pages</span><span>Share</span><span></span></div>' + kindRows(report.formats) + '</div>'
         + '<div class="mtable" style="margin-top:14px"><div class="mhead mcols-kind"><span>Belongs to</span><span>Pages</span><span>Share</span><span></span></div>' + kindRows(report.sources) + '</div>'
         + '<p class="mlegend">' + html(report.caveat) + '</p>';
@@ -2059,7 +2269,7 @@ export function boot(): void {
       const freshLine = aged || age.undated
         ? '<p class="subtle">Of the pages read back, ' + age.fresh + ' fresh, ' + age.ageing + ' ageing and ' + age.stale + ' stale'
           + (age.undated ? ', and ' + age.undated + ' state no date at all' : '')
-          + (age.medianAgeDays === null ? '. None of them gave a date to take a median of.' : '. Median age ' + age.medianAgeDays + ' days.')
+          + (age.medianAgeDays === null ? '. None of them gave a date to take a median of.' : '. Median age ' + age.medianAgeDays + ' days, over the ' + age.datedPages + ' that state one.')
           + ' ' + html(age.caveat) + '</p>'
         : '';
       return '<p class="subtle">' + plan.cited + ' page(s) cited across ' + plan.answersWithCitations + ' of ' + plan.answersConsidered + ' answer(s). ' + plan.read + ' read back.</p>'
@@ -2391,7 +2601,7 @@ export function boot(): void {
         score: home.score ?? null,
         change: home.change ?? null,
         rank: home.rank ?? null,
-        overall: data ? data.overall : { score: null, presenceRate: null, prominence: null, sentiment: null, answers: 0, appearances: 0 },
+        overall: data ? data.overall : { score: null, presenceRate: null, prominence: null, sentiment: null, answers: 0, appearances: 0, namedIn: 0, tooFewAppearances: true },
         leaderboard: data ? (data.leaderboard as any[]).map((row: any) => ({
           name: row.name,
           domain: row.domain ?? null,
@@ -2409,7 +2619,12 @@ export function boot(): void {
         questions,
         measurable,
         absent: data ? data.absentFrom.length : 0,
-        assistants: data ? data.byModel.length : 0,
+        // The models that actually answered. byModel carries every model the
+        // archive has ever seen, and fourteen of this project's twenty four
+        // have never produced an answer, so "3 of 24" was over a denominator
+        // more than twice the number that were asked.
+        assistants: data ? data.byModel.filter((row: any) => row.score.answers > 0).length : 0,
+        assistantsConfigured: data ? data.byModel.length : 0,
         assistantsNaming: data ? data.byModel.filter((row: any) => row.score.appearances > 0).length : 0,
         moves: plan ? (plan.moves as any[]).filter((m: any) => m.effect === "raises_visibility") : [],
         citationsUnavailable: data ? data.citationsUnavailable : false,
@@ -2444,7 +2659,7 @@ export function boot(): void {
           name: row.name, isTarget: row.isTarget,
           domain: ((data.leaderboard as any[]) || []).find((entry: any) => entry.name === row.name)?.domain ?? null,
           icon: state.brandIcons[((data.leaderboard as any[]) || []).find((entry: any) => entry.name === row.name)?.domain || ""] ?? null,
-          points: (row.points as any[]).map((point: any) => ({ at: point.at, share: point.share })),
+          points: (row.points as any[]).map((point: any) => ({ at: point.at, share: point.share, answers: point.answers, readable: point.readable })),
         })) : [],
         alerts: (home.alerts as any[]).length,
       };
@@ -2510,8 +2725,8 @@ export function boot(): void {
       if (state.answerEngineState === "idle") { loadAnswerEngine(); }
       if (state.outreachState === "idle") { loadOutreach(); }
       if (state.rankPlanState === "idle") { loadRankingPlan(); }
-      const heading = '<section class="view"><div class="heading"><div class="headmain"><h1>Brand visibility</h1>'
-        + '<p class="subtle">Share of voice, who is named, how each one is described, what gets cited, and how often anyone asks.</p></div>'
+      const heading = '<section class="view"><div class="heading"><div class="headmain"><h1>Rivals</h1>'
+        + '<p class="subtle">Who the models name instead of you, and where. Counted once per answer however often a name appears in it, and how often anyone asks.</p></div>'
         + '<div class="inline-actions">' + button({ label: "Full report", on: { "data-page": "answer-engine" } }) + runActionButton("Run prompts") + '</div></div>';
       const view = dashboardView();
       if (!view) return heading + dashboardBody({ status: "loading" }) + '</section>';
@@ -2525,7 +2740,8 @@ export function boot(): void {
         wide: true,
         open: panel.id,
       })).join("");
-      return heading + '<div class="dgrid">' + body + '</div>' + renderDemand() + '</section>';
+      // The board first, then what sits behind it. One destination, one page.
+      return heading + '<div class="dgrid">' + body + '</div>' + renderDemand() + rivalDetail() + '</section>';
     }
 
     function renderHome() {
@@ -2611,6 +2827,49 @@ export function boot(): void {
       return found ? found.id : "";
     }
 
+    async function loadHistory() {
+      if (!state.selectedId || state.historyState === "loading") return;
+      state.historyState = "loading";
+      try {
+        state.history = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/source-history");
+        state.historyState = "ready";
+      } catch (error) {
+        state.historyState = "error";
+      }
+      render();
+    }
+
+    function historyWord(verdict: string | null) {
+      if (verdict === "cited") return '<span class="state-ok">still cited</span>';
+      if (verdict === "slipping") return '<span class="state-flag">missed one run</span>';
+      if (verdict === "dropped") return '<span class="state-bad">stopped</span>';
+      if (verdict === "cited_once") return '<span class="state-flag">cited once, never again</span>';
+      return '<span class="state-flag">one run only</span>';
+    }
+
+    // Pages that stopped being cited, which is a claim no single run can make.
+    function renderCitationHistory() {
+      if (state.historyState === "idle") { loadHistory(); }
+      if (state.historyState !== "ready" || !state.history) return '<p class="subtle">Reading what each page did over time.</p>';
+      const data = state.history as any;
+      if (data.measurableRuns < 2) {
+        return '<p class="subtle">' + data.measurableRuns + ' run(s) carried a citation. Two are needed before a page can be shown to have changed either way.</p>';
+      }
+      const worth = ["dropped", "slipping", "cited_once"];
+      const rows = (data.pages || []).filter((row: any) => worth.indexOf(row.verdict) >= 0).slice(0, 12);
+      const table = rows.length
+        ? '<div class="mtable"><div class="mhead mcols-aemodel"><span>Page</span><span>Answers</span><span>Last cited</span><span>State</span></div>'
+          + rows.map((row: any) => '<div class="mrow mcols-aemodel">'
+            + '<div class="mname"><strong>' + html(row.host) + '</strong><span class="mono">' + html(row.url) + '</span></div>'
+            + '<span class="mcell">' + row.answers + '</span>'
+            + '<span class="mcell mono">' + html(row.lastCitedAt ? row.lastCitedAt.slice(0, 10) : "never") + '</span>'
+            + '<span class="mcell">' + historyWord(row.verdict) + '</span></div>').join("") + '</div>'
+        : '<p class="subtle">Every page cited before is still being cited.</p>';
+      return '<p class="subtle">Across ' + data.measurableRuns + ' run(s) that cited something'
+        + (data.silentRuns ? ', ignoring ' + data.silentRuns + ' that cited nothing at all' : '') + '.</p>'
+        + table + '<p class="subtle">' + html(data.caveat) + '</p>';
+    }
+
     function renderCitedPages() {
       if (state.citedState === "idle") { loadCited(); }
       if (state.citedState !== "ready" || !state.cited) return '<p class="subtle">Reading the archived sources.</p>';
@@ -2644,7 +2903,8 @@ export function boot(): void {
         + renderDecomposition(data.decomposition)
         + '<h3 style="margin-top:16px">Pages of yours the models reached for</h3>' + own
         + '<h3 style="margin-top:20px">Every domain cited</h3>' + rivals
-        + '<h3 style="margin-top:20px">Pages that won a question you are absent from</h3>' + openings;
+        + '<h3 style="margin-top:20px">Pages that won a question you are absent from</h3>' + openings
+        + '<h3 style="margin-top:20px">Pages that stopped being cited</h3>' + renderCitationHistory();
     }
 
     function sharePct(value: any) { return value === null || value === undefined ? null : (Math.round(value * 1000) / 10) + "%"; }
@@ -2684,16 +2944,28 @@ export function boot(): void {
         return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>How much the answer moves</h3>'
           + '<p class="subtle">Every question here was asked once, so nothing can be said about how much of an answer is the question and how much is the day.</p></div></div>' + taskCta("asked-once") + '</div>';
       }
+      // The overlap is a mean over the questions that cited anything, and most
+      // of these cited nothing. Printing it against the larger number claims a
+      // reading of questions there was nothing to read.
       const overall = report.sourceOverlap === null
         ? 'No pair of passes cited a source between them, so there is no overlap to take.'
-        : 'Across ' + report.measured + ' question(s) asked more than once, ' + sharePct(report.sourceOverlap) + ' of the cited sources survived from one pass to the next.';
+        : 'Across the ' + report.withSources + ' of ' + report.measured + ' question(s) asked more than once that cited anything, '
+          + sharePct(report.sourceOverlap) + ' of the cited sources survived from one pass to the next.';
+      // Never naming you and always naming you are both agreement. Only one of
+      // them is good news, and reporting them as one printed your absence as
+      // a reassurance about the measurement.
       const naming = report.namingUnstable
         ? report.namingUnstable + ' question(s) named you on one pass and not on another, which means a single pass would have reported either answer.'
-        : 'Every question agreed with itself about whether you appear.';
+        : report.alwaysNamed === 0
+          ? 'No pass of any of them named you, so they agree on an absence rather than on a reading.'
+          : report.neverNamed === 0
+            ? 'Every pass of every question named you.'
+            : report.alwaysNamed + ' question(s) named you on every pass and ' + report.neverNamed + ' named you on none. Each agrees with itself.';
       const rows = report.questions.slice(0, 8).map((row: any) =>
         '<div class="mrow mcols-stability"><div class="mname"><strong>' + html(row.promptText) + '</strong>'
         + '<span class="mono">' + html(row.modelId) + ' · ' + row.passes + ' passes</span></div>'
-        + '<span class="mcell ' + (row.namingAgreed ? "state-ok" : "state-bad") + '">' + (row.namingAgreed ? "Agreed" : row.named + ' of ' + row.passes) + '</span>'
+        + '<span class="mcell ' + (row.naming === "always" ? "state-ok" : row.naming === "split" ? "state-bad" : "subtle") + '">'
+        + (row.naming === "always" ? "Every pass" : row.naming === "split" ? row.named + ' of ' + row.passes : "No pass") + '</span>'
         + '<span class="mcell">' + row.sourcesAlways + ' of ' + row.sourcesEver + '</span>'
         + '<span class="mcell">' + (row.sourceOverlap === null ? 'No sources' : sharePct(row.sourceOverlap)) + '</span>'
         + '<span class="mcell subtle">' + (row.spanHours === null ? 'Unknown span' : row.spanHours < 1 ? 'Minutes apart' : row.spanHours < 48 ? Math.round(row.spanHours) + 'h apart' : Math.round(row.spanHours / 24) + 'd apart') + '</span></div>').join("");
@@ -2775,7 +3047,11 @@ export function boot(): void {
         : 'Across ' + report.measured + ' question(s) written more than one way, the widest gap between two wordings averages ' + sharePct(report.spread) + '.';
       const naming = report.unstable
         ? ' ' + report.unstable + ' question(s) named you under one wording and not another, so that figure is about the words rather than about you.'
-        : ' Every question agreed with itself whichever way it was put.';
+        : report.alwaysNamed === 0
+          ? ' No wording of any of them named you, so they agree on an absence rather than on a reading.'
+          : report.neverNamed === 0
+            ? ' Every wording of every question named you.'
+            : ' ' + report.alwaysNamed + ' question(s) named you under every wording and ' + report.neverNamed + ' under none.';
       const named = report.namesTheBrand
         ? ' ' + report.namesTheBrand + ' wording(s) name you and are left out, because the model discusses a brand the question names whatever it thinks.'
         : '';
@@ -2783,8 +3059,9 @@ export function boot(): void {
         + '<span class="mono">' + html(row.modelId) + ' \u00b7 ' + row.wordings.length + ' wordings</span>'
         + row.wordings.slice(0, 4).map((wording: any) => '<span class="subtle">' + (wording.named ? '\u2713' : '\u2717') + ' ' + html(wording.text) + '</span>').join("")
         + '</div>'
-        + '<span class="mcell ' + (row.agreed ? "state-ok" : "state-bad") + '">' + (row.agreed ? "Agreed" : row.namedIn + ' of ' + row.wordings.length) + '</span>'
-        + '<span class="mcell">' + (row.spread === null ? '\u2014' : sharePct(row.spread)) + '</span></div>').join("");
+        + '<span class="mcell ' + (row.naming === "always" ? "state-ok" : row.naming === "split" ? "state-bad" : "subtle") + '">'
+        + (row.naming === "always" ? "Every wording" : row.naming === "split" ? row.namedIn + ' of ' + row.wordings.length : "No wording") + '</span>'
+        + '<span class="mcell">' + (row.spread === null ? "Not measurable" : sharePct(row.spread)) + '</span></div>').join("");
       return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>How much the wording decides</h3>'
         + '<p class="subtle">' + html(report.caveat) + '</p></div></div>'
         + '<p>' + html(lead + naming + named) + '</p>'
@@ -2835,8 +3112,10 @@ export function boot(): void {
       }
       const measured = report.factors.filter((row: any) => row.share !== null);
       if (!measured.length) return '';
+      // The rarer outcome is what every share is taken over, and saying the
+      // answer count here would point at the larger, reassuring number.
       const few = report.tooFew
-        ? '<div class="warning-box">' + report.answers + ' answers is too few for these to be read as anything but arithmetic.</div>'
+        ? '<div class="warning-box">' + (report.events === undefined ? report.answers + ' answers' : report.events + ' of ' + report.answers + ' answers are the outcome these shares are taken over, which') + ' is too few for them to be read as anything but a direction. ' + html(report.caveat) + '</div>'
         : '';
       const rows = measured.map((row: any) => '<div class="mrow mcols-variance"><div class="mname"><strong>' + html(row.label) + '</strong>'
         + (row.best && row.worst ? '<span class="subtle">' + html(String(row.best.level).slice(0, 40)) + ' ' + Math.round(row.best.rate * 100) + '% against ' + html(String(row.worst.level).slice(0, 40)) + ' ' + Math.round(row.worst.rate * 100) + '%</span>' : '')
@@ -2946,15 +3225,14 @@ export function boot(): void {
 
     async function startExperiment() {
       const selected = state.promptSelection.slice();
-      if (selected.length < 2) {
-        state.promptNotice = { text: "Select at least two questions on the Prompts page first: the ones the change should move, and the ones it should not.", kind: "warning" };
+      if (!selected.length) {
+        state.promptNotice = { text: "Select the questions the change is expected to move on the Prompts page first. Everything else already being asked becomes the control.", kind: "warning" };
         render();
         return;
       }
       const name = window.prompt("Name this experiment.");
       if (!name || !name.trim()) return;
       const changed = window.prompt("What did you change? Write it down now, so it can be checked later.") || "";
-      const half = Math.ceil(selected.length / 2);
       try {
         state.experiments = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/experiments", {
           method: "POST",
@@ -2963,8 +3241,9 @@ export function boot(): void {
             name: name.trim(),
             hypothesis: "",
             changed,
-            treatedPromptIds: selected.slice(0, half),
-            controlPromptIds: selected.slice(half),
+            // Only what the change was aimed at. The control is derived from
+            // everything else with a baseline, not from where this list splits.
+            treatedPromptIds: selected,
           }),
         });
         state.experimentsState = "ready";
@@ -3002,6 +3281,7 @@ export function boot(): void {
         + (row.status === "running" ? '<button type="button" class="card-action" data-stop-experiment="' + html(row.id) + '">Stop</button>' : '<span class="subtle">stopped</span>')
         + '</div>'
         + (row.changed ? '<p class="evidence-note">Changed: ' + html(row.changed) + '</p>' : '')
+        + (row.draftId ? '<p class="evidence-note">Started from a draft, against the questions it was written for.</p>' : '')
         + '<p class="evidence-note">Measured from ' + html(row.changedAt.slice(0, 10)) + ' \u00b7 ' + row.treatedPromptIds.length + ' treated, ' + row.controlPromptIds.length + ' control</p>'
         + band
         + '<div class="countstrip">' + armCell("treated before", result.treated.before) + armCell("treated after", result.treated.after)
@@ -3011,7 +3291,7 @@ export function boot(): void {
 
     function renderExperiments() {
       if (state.experimentsState === "idle") { loadExperiments(); }
-      const start = '<div class="inline-actions">' + button({ label: "Start one from the selected questions", kind: "quiet", on: { "data-start-experiment": "true" } }) + '</div>';
+      const start = '<div class="inline-actions">' + button({ label: "Start one against the selected questions", kind: "quiet", on: { "data-start-experiment": "true" } }) + '</div>';
       if (state.experimentsState !== "ready" || !state.experiments) {
         return start + (state.experimentsState === "error" ? '<p class="subtle">Could not read the experiments.</p>' : '');
       }
@@ -3051,7 +3331,9 @@ export function boot(): void {
         + blind + '</div>';
     }
 
-    function renderAnswerEngine() {
+    // One shell for the three pages built on the same archive: the loading,
+    // the empty state and every notice live here once rather than three times.
+    function answerPage(title: string, subtitle: string, body: (data: any, page: { objective: string; weights: any }) => string) {
       const selected = project();
       if (!selected) return '<section class="view"><div class="empty"><div class="empty-copy"><h2>Select a project first</h2></div></div></section>';
       if (state.answerEngineState === "idle") { loadAnswerEngine(); loadLiveRun(); }
@@ -3068,7 +3350,18 @@ export function boot(): void {
         ? '<p class="subtle"><strong>What it is built to maximise.</strong> ' + html(weights.objective) + '</p>'
           + '<p class="subtle"><strong>What it cannot be used for.</strong> ' + html(weights.limits || "") + '</p>'
         : '';
-      const failedNote = data.answersFailed ? '<div class="warning-box">' + data.answersFailed + ' answer(s) failed and are excluded. They are not counted as answers that did not name you.' + taskCta("answers-failed") + '</div>' : '';
+      // Asking everything again is the wrong price for a retry, so the button
+      // asks only the combinations that failed, where they failed.
+      const retryButton = state.lastRun && state.lastRun.answersFailed && !state.liveRun
+        ? '<div class="inline-actions">' + button({ label: (state.promptRunState === "running" ? "Asking\u2026" : "Ask the " + state.lastRun.answersFailed + " that failed again"), kind: "quiet", disabled: state.promptRunState === "running", on: { "data-retry-run": state.lastRun.id } }) + '</div>'
+        : '';
+      const failedNote = data.answersFailed ? '<div class="warning-box">' + data.answersFailed + ' answer(s) failed and are excluded. They are not counted as answers that did not name you.' + taskCta("answers-failed") + retryButton + '</div>' : '';
+      // A question you retired is one you said is not your business. Its old
+      // answers stay archived and stop supplying the figures, and the reader
+      // is told rather than left wondering where the count went.
+      const retiredNote = data.answersRetired
+        ? '<div class="warning-box">' + data.answersRetired + ' archived answer(s) belong to questions since retired, and are left out of every figure here. They are still in the archive. A retired question is not this brand\u2019s category, so it does not get to say who the rivals are.</div>'
+        : '';
       const identityNote = data.identityCaveat ? '<div class="warning-box"><strong>Your name is a word in your own category.</strong> ' + html(data.identityCaveat) + '</div>' : '';
       const corr = data.corroboration;
       // Absent on an archive answered before the check existed, so nothing is
@@ -3095,24 +3388,35 @@ export function boot(): void {
         ? '<div class="warning-box">No answer carried a citation, so there are no sources to analyse. That is a property of the models you ran, not evidence that nobody cites you. '
           + html(citationCause) + citationFix + '</div>'
         : '';
-      return '<section class="view"><div class="heading"><div><h1>Answer engine</h1><p class="subtle">' + data.answers + ' answer(s) across ' + data.topics.length + ' topic(s) for ' + html(selected.normalizedDomain) + '. Click any question to read the answers behind it.</p></div><div class="inline-actions">' + button({ label: "Prompts", on: { "data-page": "prompts" } }) + '' + runActionButton("Run prompts") + '</div></div>'
+      return '<section class="view"><div class="heading"><div><h1>' + html(title) + '</h1>'
+        + '<p class="subtle">' + html(subtitle) + '</p></div>' + runActionButton("Ask the questions") + '</div>'
         + renderLiveRun()
-        + renderTasks()
-        + renderHero(data)
-        + renderSavedViews()
-        + renderSegment(data)
-        + identityNote + failedNote + citationNote + corroborationNote
-        + '<section class="section-card"><div class="section-head"><div><h2>How the score is built</h2><p class="subtle">Presence scaled by where you appear and how you are described.</p></div></div>'
-        + renderScoreBreakdown(data.overall)
-        + renderTier(data.tier)
-        + renderVersions(data.versions)
-        + renderDecoys(data.decoys)
-        + renderVariance(data.variance)
-        + taskCta("too-few-answers")
-        + renderStability(data.stability)
-        + renderPhrasing(data.phrasing)
-        + renderFraming(data.framing)
-        + '<details class="technical-details"><summary>The formula, and the judgement in it</summary>' + objective + '<p class="subtle">score = presence × (' + weights.prominenceFloor + ' + ' + (1 - weights.prominenceFloor).toFixed(1) + ' × prominence) × (' + weights.sentimentFloor + ' + ' + (1 - weights.sentimentFloor).toFixed(1) + ' × sentiment) × 100.</p><p class="subtle">The two floors are a judgement, not a measurement: being named late and grudgingly is still better than not being named, so prominence and sentiment scale presence rather than replacing it. Every component above is reported separately so you can ignore the composite entirely.</p></details></section>'
+        + identityNote + failedNote + retiredNote + citationNote + corroborationNote
+        + body(data, { objective, weights })
+        + '</section>';
+    }
+
+    function renderAnswerEngine() {
+      return answerPage("Sources", "What the answers cited, and whether the answer used it. A citation is an address until the page behind it is read.", (data) => ''
+        + '<section class="section-card"><div class="section-head"><div><h2>Sources</h2><p class="subtle">A domain says you are cited. A page says which one to write more of.</p></div></div>' + renderCitedPages() + '</section>'
+        + '<section class="section-card"><div class="section-head"><div><h2>What people search for</h2><p class="subtle">Search Console, joined to the questions you track. Not AI prompt volume, but real demand for the same subject.</p></div></div>' + renderSearchDemand() + '</section>'
+        + '<section class="section-card"><div class="section-head"><div><h2>Who arrived from an assistant</h2><p class="subtle">Analytics sessions by referring assistant. Being named is one claim; somebody arriving because of it is another.</p></div></div>' + renderReferrals() + '</section>'
+        + '<section class="section-card"><div class="section-head"><div><h2>Cited, or actually used</h2><p class="subtle">A citation says a page was listed. This says how much of the answer came from it. A page cited and used for nothing is the finding worth having.</p></div></div>' + renderUptake() + '</section>'
+        + '<section class="section-card"><div class="section-head"><div><h2>Who gets the credit</h2><p class="subtle">Where a page was cited against how much of the answer it actually accounts for. A page credited first that the answer took nothing from was credited for something other than its content.</p></div></div>' + renderCredit() + '</section>'
+        + '<section class="section-card"><div class="section-head"><div><h2>What kind of page gets cited</h2><p class="subtle">The ranked best-of listicle was the most cited format in published work, at about a fifth of everything. What wins here is a different question, and this is the answer to it.</p></div></div>' + renderKinds() + '</section>'
+        + '<section class="section-card"><div class="section-head"><div><h2>How the pages that beat you are built</h2><p class="subtle">The same facts rendered as structure instead of prose were measured to take citation credit from the page that stayed prose. This is the one lever here with a causal test behind it.</p></div></div>' + renderShape() + '</section>'
+        + '<section class="section-card"><div class="section-head"><div><h2>Who supplies these answers</h2><p class="subtle">A category where a handful of domains account for most citations is one where getting onto those domains is the whole game. A long tail is one where a new page can still get in.</p></div></div>' + renderConcentration() + '</section>'
+        + '<section class="section-card"><div class="section-head"><div><h2>Someone else is working on this answer</h2><p class="subtle">A document rewritten to match what an engine likes to cite stays factually consistent with the original, so nothing that checks facts will catch one. What is left is shape.</p></div></div>' + renderInterference() + '</section>'
+        + '<section class="section-card"><div class="section-head"><div><h2>Pages the models read</h2><p class="subtle">Each cited page, fetched and read back: who is on it, in what order, and whether you are. A page cited on a question you lose, without you on it, is the most specific thing here.</p></div></div>' + renderOutreach() + '</section>'
+      );
+    }
+
+    /** The detail behind the board: who was named, under which topic, and
+     * which questions never named you at all. */
+    function rivalDetail() {
+      const data = state.answerEngine;
+      if (state.answerEngineState !== "ready" || !data || !data.answers) return '';
+      return ''
         + '<section class="section-card"><div class="section-head"><div><h2>What would move this</h2><p class="subtle">Read off the archived answers, strongest lever first. None of it is an opinion about your marketing.</p></div></div>' + renderRankingPlan() + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>Competitors named in the answers</h2><p class="subtle">Organisations the assistants named while answering your questions. Not the assistants themselves. Ranked by how many answers named them, then by how early.</p></div></div>' + renderLeaderboard(data.leaderboard) + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>Rivals you name</h2><p class="subtle">Name a competitor here and it is tracked whether or not an answer mentions it. A tracked rival nobody named reads as zero, which is a finding; leaving it out would hide it.</p></div></div>' + renderRivals(data) + '</section>'
@@ -3123,21 +3427,29 @@ export function boot(): void {
         + '<section class="section-card"><div class="section-head"><div><h2>By market</h2><p class="subtle">The same questions, asked for a different buyer.</p></div></div>' + renderRegionRows(data.byRegion, data.regionCaveat) + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>By persona</h2><p class="subtle">The same questions, asked on behalf of someone else. A market says where a buyer is; a persona says what they are, which moves the answer further.</p></div></div>' + renderPersonaRows(data.byPersona) + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>Who is asking</h2><p class="subtle">Add a persona and every run asks on their behalf as well.</p></div></div>' + renderPersonas() + '</section>'
-        + '<section class="section-card"><div class="section-head"><div><h2>Sources</h2><p class="subtle">A domain says you are cited. A page says which one to write more of.</p></div></div>' + renderCitedPages() + '</section>'
-        + '<section class="section-card"><div class="section-head"><div><h2>What people search for</h2><p class="subtle">Search Console, joined to the questions you track. Not AI prompt volume, but real demand for the same subject.</p></div></div>' + renderSearchDemand() + '</section>'
-        + '<section class="section-card"><div class="section-head"><div><h2>Who arrived from an assistant</h2><p class="subtle">Analytics sessions by referring assistant. Being named is one claim; somebody arriving because of it is another.</p></div></div>' + renderReferrals() + '</section>'
-        + '<section class="section-card"><div class="section-head"><div><h2>Cited, or actually used</h2><p class="subtle">A citation says a page was listed. This says how much of the answer came from it. A page cited and used for nothing is the finding worth having.</p></div></div>' + renderUptake() + '</section>'
-        + '<section class="section-card"><div class="section-head"><div><h2>Who gets the credit</h2><p class="subtle">Where a page was cited against how much of the answer it actually accounts for. A page credited first that the answer took nothing from was credited for something other than its content.</p></div></div>' + renderCredit() + '</section>'
+        + '<section class="section-card"><div class="section-head"><div><h2>By AI assistant</h2><p class="subtle">The models you picked in Choose models, each answering the same questions. These are who was asked, not who you compete with.</p></div></div>' + renderModelRows(data.byModel) + '</section>'
+        ;
+    }
+
+    function renderTrustPage() {
+      return answerPage("Trust", "The instrument rather than the brand. Every figure on the other pages is worth what this page says it is.", (data, page) => ''
+        + '<section class="section-card"><div class="section-head"><div><h2>How the score is built</h2><p class="subtle">Presence scaled by where you appear and how you are described.</p></div></div>'
+        + renderScoreBreakdown(data.overall)
+        + renderTier(data.tier)
+        + renderVersions(data.versions)
+        + renderDecoys(data.decoys)
+        + renderVariance(data.variance)
+        + taskCta("too-few-answers")
+        + renderStability(data.stability)
+        + renderPhrasing(data.phrasing)
+        + renderFraming(data.framing)
+        + '<details class="technical-details"><summary>The formula, and the judgement in it</summary>' + page.objective + '<p class="subtle">score = presence × (' + page.weights.prominenceFloor + ' + ' + (1 - page.weights.prominenceFloor).toFixed(1) + ' × prominence) × (' + page.weights.sentimentFloor + ' + ' + (1 - page.weights.sentimentFloor).toFixed(1) + ' × sentiment) × 100.</p><p class="subtle">The two floors are a judgement, not a measurement: being named late and grudgingly is still better than not being named, so prominence and sentiment scale presence rather than replacing it. Every component above is reported separately so you can ignore the composite entirely.</p></details></section>'
         + '<section class="section-card"><div class="section-head"><div><h2>Check the machine</h2><p class="subtle">Every figure here rests on a model classifying what another model wrote. Judge a few yourself and the agreement rate becomes the confidence in the whole column.</p></div></div>' + renderHumanCheck() + '</section>'
         + '<section class="section-card"><div class="section-head"><div><h2>Did your change do anything</h2><p class="subtle">Everything else here watches. This tests. Change something, leave a comparable set of questions alone, and whatever moved for both is subtracted rather than claimed.</p></div></div>' + renderExperiments() + '</section>'
-        + '<section class="section-card"><div class="section-head"><div><h2>What kind of page gets cited</h2><p class="subtle">The ranked best-of listicle was the most cited format in published work, at about a fifth of everything. What wins here is a different question, and this is the answer to it.</p></div></div>' + renderKinds() + '</section>'
-        + '<section class="section-card"><div class="section-head"><div><h2>How the pages that beat you are built</h2><p class="subtle">The same facts rendered as structure instead of prose were measured to take citation credit from the page that stayed prose. This is the one lever here with a causal test behind it.</p></div></div>' + renderShape() + '</section>'
-        + '<section class="section-card"><div class="section-head"><div><h2>Who supplies these answers</h2><p class="subtle">A category where a handful of domains account for most citations is one where getting onto those domains is the whole game. A long tail is one where a new page can still get in.</p></div></div>' + renderConcentration() + '</section>'
-        + '<section class="section-card"><div class="section-head"><div><h2>Someone else is working on this answer</h2><p class="subtle">A document rewritten to match what an engine likes to cite stays factually consistent with the original, so nothing that checks facts will catch one. What is left is shape.</p></div></div>' + renderInterference() + '</section>'
-        + '<section class="section-card"><div class="section-head"><div><h2>Pages the models read</h2><p class="subtle">Each cited page, fetched and read back: who is on it, in what order, and whether you are. A page cited on a question you lose, without you on it, is the most specific thing here.</p></div></div>' + renderOutreach() + '</section>'
-        + '<section class="section-card"><div class="section-head"><div><h2>By AI assistant</h2><p class="subtle">The models you picked in Choose models, each answering the same questions. These are who was asked, not who you compete with.</p></div></div>' + renderModelRows(data.byModel) + '</section>'
-        + '<section class="section-card"><div class="section-head"><div><h2>Keep it running</h2><p class="subtle">A tracker that is run by hand is a snapshot.</p></div></div>' + renderSchedule() + '</section></section>';
+        + '<section class="section-card"><div class="section-head"><div><h2>Keep it running</h2><p class="subtle">A tracker that is run by hand is a snapshot.</p></div></div>' + renderSchedule() + '</section>'
+      );
     }
+
 
     const PROMPT_INTENTS = ["discovery", "comparison", "alternatives", "brand", "problem"];
     const PROMPT_STATES = [["", "Any state"], ["tracked", "Tracked"], ["proposed", "Needs review"], ["absent", "Never named"], ["unmeasured", "Cannot measure"]];
@@ -3277,6 +3589,11 @@ export function boot(): void {
     }
 
     function livePrompts(set: TopicSetShape) { return set.prompts.filter((prompt) => prompt.status !== "retired"); }
+    /** Every tile on this row counts live prompts, and the topic tile counted
+     * every topic ever generated, so a project regenerated against the right
+     * category read as having eight groups of questions and twenty five
+     * questions in five of them. */
+    function liveTopics(set: TopicSetShape) { return set.topics.filter((topic: any) => topic.status !== "retired"); }
 
     function filteredPrompts(set: TopicSetShape, standings: any) {
       const filters = state.promptFilters;
@@ -3306,7 +3623,18 @@ export function boot(): void {
       if (models === null) return { value: "Unknown", note: "the saved model count has not loaded" };
       if (!models) return { value: "None", note: "no models are saved, so a run cannot ask anything" };
       if (!tracked) return { value: "None", note: "nothing is tracked, so a run has nothing to ask" };
-      return { value: String(tracked * models), note: tracked + " question(s) by " + models + " model(s), one market, one language" };
+      // A run covers nobody in particular plus every tracked persona, so a
+      // forecast that leaves them out is short by exactly that multiple.
+      if (state.personasState === "idle") { loadPersonas(); }
+      if (state.personasState !== "ready" || !state.personas) {
+        return { value: "Unknown", note: "the personas a run covers have not loaded" };
+      }
+      const personas = state.personas.personas.filter((row: any) => row.tracked).length;
+      const arms = personas + 1;
+      const note = tracked + " question(s) by " + models + " model(s)"
+        + (personas ? " on behalf of nobody and " + personas + " persona(s)" : "")
+        + ", one market, one language";
+      return { value: String(tracked * models * arms), note };
     }
 
     function renderPromptStats(set: TopicSetShape, standings: any) {
@@ -3319,7 +3647,10 @@ export function boot(): void {
       return '<div class="statgrid" style="--tile-columns:6">'
         + stat("Tracked", String(tracked.length), tracked.length ? "asked on every run" : "nothing is being asked", live.length ? tracked.length / live.length : null)
         + stat("Needs review", String(proposed), proposed ? "proposed, never asked until tracked" : "nothing waiting on you", null)
-        + stat("Topics", String(set.topics.length), set.topics.length + " group(s) of questions", null)
+        + stat("Topics", String(liveTopics(set).length),
+            (set.topics.length - liveTopics(set).length)
+              ? (set.topics.length - liveTopics(set).length) + " more retired, and left out of every figure"
+              : liveTopics(set).length + " group(s) of questions", null)
         + stat("Answers per run", forecast.value, forecast.note, null)
         + stat("Measures visibility", measuring + " of " + tracked.length, "the rest name you, so presence is not earned", tracked.length ? measuring / tracked.length : null)
         + stat("Has an answer", answered + " of " + tracked.length, answered ? "tracked question(s) with archived answers" : "no tracked question has been answered yet", tracked.length ? answered / tracked.length : null)
@@ -3452,13 +3783,13 @@ export function boot(): void {
       if (state.scheduleState === "idle") { loadSchedule(); }
       if (state.priorityState === "idle") { loadPriority(); }
       if (state.topicState !== "ready") {
-        return '<section class="view"><div class="heading"><div><h1>Prompts</h1><p class="subtle">The questions your buyers ask.</p></div></div><div class="empty"><div class="empty-copy"><h2>' + (state.topicState === "error" ? "Could not read the prompt set" : "Loading prompts") + '</h2></div></div></section>';
+        return '<section class="view"><div class="heading"><div><h1>Questions</h1><p class="subtle">The questions your buyers ask.</p></div></div><div class="empty"><div class="empty-copy"><h2>' + (state.topicState === "error" ? "Could not read the prompt set" : "Loading prompts") + '</h2></div></div></section>';
       }
       const set = state.topicSet || { topics: [], prompts: [] };
       const notice = state.promptNotice.text ? '<div class="' + (state.promptNotice.kind === "error" ? "warning-box" : "success-box") + '">' + html(state.promptNotice.text) + '</div>' : '';
       const live = livePrompts(set);
       const active = live.filter((prompt) => prompt.status === "active").length;
-      const head = '<section class="view"><div class="heading"><div><h1>Prompts</h1><p class="subtle">The questions buyers type, grouped by topic. Every other number in this tool is these questions, asked and archived.</p></div><div class="inline-actions">' + button({ label: (state.promptRunState === "generating" ? "Proposing…" : "Propose a set"), on: { "data-generate-prompts": true } }) + '' + runActionButton("Run all " + active, active > 0) + '</div></div>' + notice + renderLiveRun();
+      const head = '<section class="view"><div class="heading"><div><h1>Questions</h1><p class="subtle">The questions buyers type, grouped by topic. Every other number in this tool is these questions, asked and archived.</p></div><div class="inline-actions">' + button({ label: (state.promptRunState === "generating" ? "Proposing…" : "Propose a set"), on: { "data-generate-prompts": true } }) + '' + runActionButton("Run all " + active, active > 0) + '</div></div>' + notice + renderLiveRun();
       if (!live.length) {
         // Retiring the last question must not remove the only way to add one.
         return head + '<div class="empty"><div class="empty-copy"><h2>Nothing is being asked</h2><p class="subtle">Propose a set and a model will suggest the questions buyers ask about what you do, grouped into topics. Nothing runs until you have read them and chosen which to track, because what buyers ask is not something this tool can observe.</p></div></div>' + promptAddForms(set) + '</section>';
@@ -3469,15 +3800,40 @@ export function boot(): void {
       const review = proposed
         ? '<div class="warning-box"><strong>' + proposed + ' question(s) are proposed and not tracked.</strong> A proposed question is never asked. Read them and track the ones buyers actually type. ' + button({ label: "Show only those", kind: "link", on: { "data-prompt-review": true } }) + '</div>'
         : '';
+      // A set proposed with nothing established about the business was written
+      // off the domain name. Read it that way or it reads like a finding.
+      const blind = set.generatedWithoutFacts
+        ? '<div class="warning-box"><strong>These were proposed without anything established about the business.</strong> The site read returned no description and no category, so the model had the brand name and the domain and guessed from them. Read every one before tracking it, and say what the company does on Setup to propose a better set.</div>'
+        : '';
       return head
         + renderPromptStats(set, standings)
         + renderPromptCoverage(set)
+        + blind
+        + grounding(set)
         + review
         + promptToolbar(set, rows.length)
         + '<div class="prompt-bulk">' + promptBulkInner() + '</div>'
         + '<div class="prompt-results">' + renderPromptGroups(set, rows, standings, (topicStandings() as any)) + '</div>'
         + promptAddForms(set)
         + '</section>';
+    }
+
+    // What a proposal was grounded in decides how much of it is observation
+    // and how much is supposition, which does not show on the questions.
+    function grounding(set: any) {
+      if (!set || !set.generatedAt) return '';
+      const held = set.groundedIn;
+      if (!held) {
+        return '<div class="warning-box"><strong>This set was proposed before observed demand could ground one.</strong> What anyone really asks was not read when these were written, so they are the model\'s supposition about what buyers type. Propose again to ground the next set in what has been observed.</div>';
+      }
+      if (!held.observed) {
+        return '<div class="warning-box"><strong>Nothing observed grounded these questions.</strong> No search queries and no conversations were available when they were proposed, so every one is the model\'s supposition about what buyers type. Connect Search Console on Setup and propose again.</div>';
+      }
+      const parts = [];
+      if (held.searchQueries) parts.push(held.searchQueries + ' search quer(ies)');
+      if (held.corpusQuestions) parts.push(held.corpusQuestions + ' past conversation(s)');
+      return '<div class="success-box"><strong>Grounded in ' + held.observed + ' question(s) people really asked</strong>, drawn from ' + parts.join(' and ')
+        + '. Those are search and conversation records, not a measure of how often anyone asks an assistant, and a subject missing from them is not a subject nobody asks about.</div>';
     }
 
     function resultsSwitch(active: any) {
@@ -3600,7 +3956,8 @@ export function boot(): void {
         + '<span class="subtle">' + html(row.detail) + '</span></div>'
         + '<span class="mcell ' + reachInk(row.reach) + '">' + html(reachWords(row.reach)) + '</span>'
         + '<span class="mcell mono">' + html((row.landedOn || row.home).slice(0, 34)) + '</span></div>').join("");
-      return action + '<div class="mtable"><div class="mhead mcols-reach"><span>Surface</span><span>State</span><span>Landed on</span></div>' + rows + '</div>'
+      const where = state.reach.found ? '<p class="subtle">' + html(state.reach.found) + '</p>' : '';
+      return action + where + '<div class="mtable"><div class="mhead mcols-reach"><span>Surface</span><span>State</span><span>Landed on</span></div>' + rows + '</div>'
         + '<p class="mlegend">' + html(state.reach.caveat) + '</p>';
     }
 
@@ -3610,12 +3967,16 @@ export function boot(): void {
         return '<p class="subtle">' + (state.enginesState === "error" ? "Could not read the engines." : "Checking for a browser to drive.") + '</p>';
       }
       const data = state.engines;
+      const looked = (data.looked || []).length
+        ? '<p class="subtle">Looked at: ' + (data.looked || []).map((where: string) => '<span class="mono">' + html(where) + '</span>').join(", ") + '.</p>'
+        : '';
       const reach = data.reachable === null
         ? '<div class="warning-box">Not checked yet.</div>'
         : data.reachable
-          ? '<div class="success-box">Browser reachable at <span class="mono">' + html(data.endpoint) + '</span>. ' + html(data.detail) + '</div>'
-          : '<div class="warning-box"><strong>No browser to drive at <span class="mono">' + html(data.endpoint) + '</span>.</strong> ' + html(data.detail)
-            + ' Start Chrome with remote debugging and sign in to the surfaces you want read. Selecting an engine here is still saved; it just cannot run yet.</div>';
+          ? '<div class="success-box">' + html(data.detail) + ' <span class="mono">' + html(data.endpoint) + '</span></div>'
+          : '<div class="warning-box"><strong>No browser to drive.</strong> ' + html(data.detail)
+            + ' Start the browser with remote debugging, or switch it on from the browser\'s own inspect page. Selecting a surface here is still saved; it just cannot run yet.'
+            + looked + '</div>';
       const rows = data.engines.map((engine: any) => '<div class="mrow mcols-engine">'
         + '<input type="checkbox" data-engine-checkbox="' + html(engine.id) + '"' + (engine.selected ? ' checked' : '') + ' aria-label="Ask ' + html(engine.label) + '">'
         + '<div class="mname"><strong>' + html(engine.label) + '</strong><span class="subtle">' + html(engine.caveat) + '</span></div>'
@@ -3673,19 +4034,7 @@ export function boot(): void {
         + '<span>Every figure here opens the answer it came from.</span></footer>';
     }
 
-    function phase2RenderImpl() { if (window.__citegeoPhase5Active) return; const selected = project(); const options = state.currentProjects.length ? state.currentProjects.map((item) => '<option value="' + html(item.id) + '">' + html(item.name) + ' · ' + html(item.normalizedDomain) + '</option>').join("") : '<option value="">No projects yet</option>'; let view = state.page === "marketer" ? renderMarketer() : state.page === "drafts" ? renderDrafts() : state.page === "claims" ? renderClaims() : state.page === "buying" ? renderBuying() : state.page === "conversations" ? renderConversations() : state.page === "entity" ? renderEntity() : state.page === "models" ? renderModels() : state.page === "configuration" ? renderConfiguration() : state.page === "setup" ? renderSetup() : state.page === "visibility" ? renderVisibility() : state.page === "brand-visibility" ? renderBrandVisibility() : state.page === "prompts" ? renderPrompts() : state.page === "answer-engine" ? renderAnswerEngine() : state.page === "dashboard" ? renderHome() : renderOverview(); app.innerHTML = renderEvidence() + '<div class="shell">' + navScrim() + '<aside class="sidebar"><button type="button" class="brand" data-page="dashboard" aria-label="Back to the dashboard">' + brandLockup + '</button><div class="project-label">Project</div><select id="project-select" class="project-select" aria-label="Switch project" data-testid="project-select">' + options + '</select><nav class="nav" aria-label="Project navigation"><button type="button" class="nav-item ' + (state.page === "dashboard" ? "active" : "") + '" data-page="dashboard"><span>Dashboard</span></button><div class="nav-label">Run a test</div><button type="button" class="nav-item ' + (state.page === "models" ? "active" : "") + '" data-page="models"><span class="nav-step">1</span><span>Choose models</span></button><button type="button" class="nav-item ' + (state.page === "recognition" || state.page === "reports" ? "active" : "") + '" data-page="recognition"><span class="nav-step">2</span><span>Results</span></button><button type="button" class="nav-item ' + (state.page === "visibility" ? "active" : "") + '" data-page="visibility"><span class="nav-step">3</span><span>Visibility</span></button><div class="nav-label">Answer engine</div><button type="button" class="nav-item ' + (state.page === "answer-engine" ? "active" : "") + '" data-page="answer-engine"><span>Scores</span></button><button type="button" class="nav-item ' + (state.page === "brand-visibility" ? "active" : "") + '" data-page="brand-visibility"><span>Brand visibility</span></button><button type="button" class="nav-item ' + (state.page === "prompts" ? "active" : "") + '" data-page="prompts"><span>Prompts</span></button><div class="nav-label">Marketer</div><button type="button" class="nav-item '
-       + (state.page === "marketer" ? "active" : "")
-       + '" data-page="marketer"><span>What to do</span></button><button type="button" class="nav-item '
-       + (state.page === "drafts" ? "active" : "")
-       + '" data-page="drafts"><span>Drafts</span></button><button type="button" class="nav-item '
-       + (state.page === "claims" ? "active" : "")
-       + '" data-page="claims"><span>Claims</span></button><button type="button" class="nav-item '
-       + (state.page === "buying" ? "active" : "")
-       + '" data-page="buying"><span>Buying</span></button><button type="button" class="nav-item '
-       + (state.page === "conversations" ? "active" : "")
-       + '" data-page="conversations"><span>Conversations</span></button><button type="button" class="nav-item '
-       + (state.page === "entity" ? "active" : "")
-       + '" data-page="entity"><span>Entity</span></button><div class="nav-label">Over time</div><a class="nav-item" href="?view=measurements"><span>Continuous measurement</span></a><div class="nav-label">Machine</div><button type="button" class="nav-item ' + (state.page === "overview" ? "active" : "") + '" data-page="overview"><span>Projects</span></button><button type="button" class="nav-item ' + (state.page === "configuration" ? "active" : "") + '" data-page="configuration"><span>Configuration history</span></button><button type="button" class="nav-item ' + (state.page === "setup" ? "active" : "") + '" data-page="setup"><span>Setup</span></button></nav><div class="sidebar-bottom">Domain recognition</div></aside><main class="workspace"><header class="topbar"><div class="topbar-lead">' + navToggle() + '<div class="crumb"><button type="button" class="crumb-home" data-page="dashboard">' + html(CONFIG.productName) + '</button> / ' + html(selected ? selected.name : "Project") + '</div></div><div class="topbar-actions"><button type="button" class="theme-toggle" data-theme-toggle aria-label="Switch between light and dark">&#9681;</button>' + button({ label: "New project", kind: "primary", id: "new-project", testId: "new-project" }) + '</div></header><section class="content">' + view + '</section>' + renderFooter() + '</main></div>'; const select = element("project-select"); select.value = state.selectedId; document.title = selected ? selected.name + " | " + CONFIG.productTitle + "" : "" + CONFIG.productTitle + ""; }
+    function phase2RenderImpl() { if (window.__citegeoPhase5Active) return; const selected = project(); const options = state.currentProjects.length ? state.currentProjects.map((item) => '<option value="' + html(item.id) + '">' + html(item.name) + ' · ' + html(item.normalizedDomain) + '</option>').join("") : '<option value="">No projects yet</option>'; let view = state.page === "marketer" ? renderMarketer() : state.page === "drafts" ? renderDrafts() : state.page === "claims" ? renderClaims() : state.page === "buying" ? renderBuying() : state.page === "conversations" ? renderConversations() : state.page === "entity" ? renderEntity() : state.page === "models" ? renderModels() : state.page === "configuration" ? renderConfiguration() : state.page === "setup" ? renderSetup() : state.page === "visibility" ? renderVisibility() : state.page === "brand-visibility" ? renderBrandVisibility() : state.page === "trust" ? renderTrustPage() : state.page === "prompts" ? renderPrompts() : state.page === "answer-engine" ? renderAnswerEngine() : state.page === "dashboard" ? renderHome() : renderOverview(); app.innerHTML = renderEvidence() + '<div class="shell">' + navScrim() + '<aside class="sidebar"><button type="button" class="brand" data-page="dashboard" aria-label="Back to the dashboard">' + brandLockup + '</button><div class="project-label">Project</div><select id="project-select" class="project-select" aria-label="Switch project" data-testid="project-select">' + options + '</select>' + sidebar({ page: state.page, options }) + '<div class="sidebar-bottom">Domain recognition</div></aside><main class="workspace"><header class="topbar"><div class="topbar-lead">' + navToggle() + '<div class="crumb"><button type="button" class="crumb-home" data-page="dashboard">' + html(CONFIG.productName) + '</button> / ' + html(selected ? selected.name : "Project") + '</div></div><div class="topbar-actions"><button type="button" class="theme-toggle" data-theme-toggle aria-label="Switch between light and dark">&#9681;</button>' + button({ label: "New project", kind: "primary", id: "new-project", testId: "new-project" }) + '</div></header><section class="content">' + view + '</section>' + renderFooter() + '</main></div>'; const select = element("project-select"); select.value = state.selectedId; document.title = selected ? selected.name + " | " + CONFIG.productTitle + "" : "" + CONFIG.productTitle + ""; }
     async function setPage(page: any) { state.page = page; savePreference("page", page); if (page === "configuration") { await refreshConfiguration(); return; } if (page === "reports" && window.__citegeoPhase4 && typeof window.__citegeoPhase4.open === "function") { await window.__citegeoPhase4.open(); return; } render(); if (page === "models") { await refreshConfiguration(); await loadCatalog(); } }
     async function createDraft(event: any) { event.preventDefault(); const control = element("save-draft"); const session = state.drawerSession; setFormStatus("Creating project draft", "loading"); try { const response = await runAction(control, { loading:"Saving…", success:"Saved", error:"Save failed" }, () => request("/api/projects", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ domain:element("project-domain").value, name:element("project-name").value }) })); state.mode = "current"; state.page = "overview"; setSelectedProject(response.project.id); await refreshProjects(); state.selections = []; state.baselines = []; resetDraftSelections(); setFormStatus("Draft saved", "success"); render(); window.setTimeout(() => { if (state.drawerSession === session) closeDrawer(); }, 850); } catch (error) { setFormStatus(error instanceof Error ? error.message : String(error), "error"); } }
     async function saveProject(event: any) { event.preventDefault(); const selected = project(); if (!selected) return; const control = event.currentTarget.querySelector('control[type="submit"]'); try { await runAction(control, { loading:"Saving…", success:"Saved", error:"Save failed" }, () => request("/api/projects/" + encodeURIComponent(selected.id), { method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ domain:element("edit-domain").value, name:element("edit-name").value }) })); await refreshProjects(); render(); } catch (error) { window.alert(error instanceof Error ? error.message : String(error)); } }
@@ -3701,7 +4050,9 @@ export function boot(): void {
       const clicked = el(event.target) as any;
       if (!clicked || !clicked.closest) return;
       if (clicked.closest("[data-generate-prompts]")) { await postPrompts("/topics/generate", {}, "generating", "A set has been proposed. Read it, then track the questions worth tracking."); return; }
-      if (clicked.closest("[data-run-prompts]")) { loadLiveRun(); await postPrompts("/prompt-runs", { repetitions: state.repetitions }, "running", "The run finished. Every answer is archived."); loadLiveRun(); return; }
+      const retrying = clicked.closest("[data-retry-run]");
+      if (retrying) { loadLiveRun(); await postPrompts("/prompt-runs", { retryOf: retrying.getAttribute("data-retry-run") }, "running", "Asked again. Every answer is archived."); loadLiveRun(); return; }
+      if (clicked.closest("[data-run-prompts]")) { loadLiveRun(); await postPrompts("/prompt-runs", { repetitions: state.repetitions, languageIds: [state.runLanguageId] }, "running", "The run finished. Every answer is archived."); loadLiveRun(); return; }
       const activate = clicked.closest("[data-activate-prompt]");
       if (activate) { await postPrompts("/prompts/activate", { promptIds:[activate.getAttribute("data-activate-prompt")] }, "saving", "Now tracked."); return; }
       const retire = clicked.closest("[data-retire-prompt]");
@@ -3978,10 +4329,20 @@ export function boot(): void {
       if (draftEvery) { await runDraft(draftEvery, draftEvery.getAttribute("data-draft-batch") || "", true); return; }
       const reviewButton = target && target.closest ? target.closest("[data-review]") : null;
       if (reviewButton) { await reviewDraft(reviewButton, reviewButton.getAttribute("data-review") || ""); return; }
+      const publishButton = target && target.closest ? target.closest("[data-publish-draft]") : null;
+      if (publishButton) { await publishDraft(publishButton, publishButton.getAttribute("data-publish-draft") || ""); return; }
       const probeButton = target && target.closest ? target.closest("[data-probe-signals]") : null;
       if (probeButton) { await captureSignals(probeButton); state.signalsState = "idle"; loadSignals(); return; } if (!(target instanceof Element)) return; const pageButton = target.closest("[data-page]"); if (pageButton) { await setPage(pageButton.getAttribute("data-page") || "overview"); return; } const listModeButton = target.closest("[data-list-mode]"); if (listModeButton) { state.mode = listModeButton.getAttribute("data-list-mode") || "current"; await refreshProjects(); render(); return; } if (target.id === "new-project" || target.id === "empty-new-project") { openDrawer(); return; } if (target.id === "close-drawer" || target.id === "cancel-draft" || target.id === "drawer-backdrop") { closeDrawer(); return; } if (target.id === "retry-catalog") { state.catalogState = "idle"; await loadCatalog(); return; } const opened = target.closest("[data-matrix-open]"); if (opened) { const key = opened.getAttribute("data-matrix-open") || ""; const at = state.matrixOpen.indexOf(key); if (at >= 0) state.matrixOpen.splice(at, 1); else state.matrixOpen.push(key); render(); return; } const expand = target.closest("[data-expand-panel]"); if (expand && !target.closest("button:not(.panel-open),a,select,input,textarea,label")) { openPanel(expand.getAttribute("data-expand-panel") || ""); return; } if (target.closest("[data-edit-board]")) { state.editingBoard = !state.editingBoard; render(); return; } const span = target.closest("[data-panel-span]"); if (span) { const parts = (span.getAttribute("data-panel-span") || "").split(":"); setPanelSpan(parts[0] || "", Number(parts[1])); render(); return; } const hide = target.closest("[data-panel-hide]"); if (hide) { togglePanelHidden(hide.getAttribute("data-panel-hide") || ""); render(); return; } if (target.closest("[data-reset-panels]")) { resetPanelOrder(); state.editingBoard = false; render(); return; } const brand = target.closest("[data-brand-evidence]"); if (brand) { await openBrandEvidence(brand.getAttribute("data-brand-evidence") || "", brand.getAttribute("data-brand-tone") || ""); return; } const dropped = target.closest("[data-drop-selection]"); if (dropped) { dropSelection(dropped.getAttribute("data-drop-selection") || ""); return; } if (target.id === "save-models") { await saveModels((target as any)); return; } if (target.id === "save-monitoring-configuration") { await saveMonitoringConfiguration(); return; } if (target.id === "archive-project") { const selected = project(); if (selected) await projectAction("archive", selected.id, (target as any)); return; } if (target.id === "delete-project") { const selected = project(); if (selected) await projectAction("delete", selected.id, (target as any)); return; } const action = target.closest("[data-project-action]"); if (action) { const projectId = action.getAttribute("data-project-id"); const name = action.getAttribute("data-project-action"); if (projectId && name) await projectAction(name, projectId, (action as any)); } });
     document.addEventListener("change", async (event) => { const target = el(event.target) as any; if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) return; if (target.id === "project-select") { setSelectedProject(target.value); state.selectionsDirty = false; await refreshConfiguration(); loadLiveRun(); render(); return; } if (target instanceof HTMLInputElement && target.hasAttribute("data-model-checkbox")) { changeModel(target.getAttribute("data-model-checkbox") || "", target.checked); return; } if (target instanceof HTMLSelectElement && target.hasAttribute("data-model-mode")) { changeModelMode(target.getAttribute("data-model-mode") || "", target.value); return; } if (target instanceof HTMLSelectElement && target.hasAttribute("data-selected-model-mode")) { changeModelMode(target.getAttribute("data-selected-model-mode") || "", target.value); return; } });
-    document.addEventListener("change", (event) => { const target = el(event.target) as any; if (!(target instanceof HTMLSelectElement)) return; if (target.id === "model-provider-filter") { state.catalogProvider = target.value; render(); return; } if (target.id === "model-native-search-filter") { state.catalogNativeSearch = target.value; render(); return; } if (target.id === "model-catalog-sort") { state.catalogSort = target.value; render(); return; } if (target.hasAttribute("data-repetitions")) { state.repetitions = Number(target.value) || 1; savePreference("repetitions", String(state.repetitions)); render(); return; } if (target.hasAttribute("data-brand-tier")) { setTier(target.value); return; } if (target.hasAttribute("data-paste-count")) { state.pasteCount = Number(target.value) || 2; savePreference("pasteCount", String(state.pasteCount)); state.pasteState = "idle"; loadPaste(); render(); } });
+    document.addEventListener("change", (event) => {
+      const target = el(event.target);
+      if (target instanceof HTMLInputElement && target.hasAttribute("data-crawler-log")) {
+        const file = target.files && target.files[0];
+        target.value = "";
+        if (file) uploadCrawlerLog(file);
+      }
+    });
+    document.addEventListener("change", (event) => { const target = el(event.target) as any; if (!(target instanceof HTMLSelectElement)) return; if (target.id === "model-provider-filter") { state.catalogProvider = target.value; render(); return; } if (target.id === "model-native-search-filter") { state.catalogNativeSearch = target.value; render(); return; } if (target.id === "model-catalog-sort") { state.catalogSort = target.value; render(); return; } if (target.hasAttribute("data-repetitions")) { state.repetitions = Number(target.value) || 1; savePreference("repetitions", String(state.repetitions)); render(); return; } if (target.hasAttribute("data-run-language")) { state.runLanguageId = target.value || "en"; savePreference("runLanguage", state.runLanguageId); render(); return; } if (target.hasAttribute("data-brand-tier")) { setTier(target.value); return; } if (target.hasAttribute("data-paste-count")) { state.pasteCount = Number(target.value) || 2; savePreference("pasteCount", String(state.pasteCount)); state.pasteState = "idle"; loadPaste(); render(); } });
     // The drawer filters in place rather than through a re-render, because a
     // re-render takes the focus out of the box you are typing in.
     const PANEL_ROWS = ".mrow, .rankrow, .panel-body li";
@@ -4076,7 +4437,7 @@ export function boot(): void {
     async function retryRecognition(modelRunId: any, button: HTMLElement | null) { const selected = project(); const detail = state.recognitionDetail; if (!selected || !detail) return; try { await runAction(button, { loading:"Retrying…", success:"Started", error:"Retry failed" }, () => request("/api/projects/" + encodeURIComponent(selected.id) + "/recognition-runs/" + encodeURIComponent(((detail as any).run.id as any)) + "/model-runs/" + encodeURIComponent(modelRunId) + "/retry", { method:"POST" })); state.recognitionNotice = { text:"A new execution attempt was created for this model.", kind:"success" }; await refreshRecognition(); } catch (error) { state.recognitionNotice = { text: error instanceof Error ? error.message : (expectedErrorText.request_failed || "The request failed."), kind: "error" }; render(); } }
     async function reanalyzeRecognition(modelRunId: any, attemptId: any, button: HTMLElement | null) { const selected = project(); const detail = state.recognitionDetail; if (!selected || !detail || !attemptId) return; try { await runAction(button, { loading:"Parsing the saved answer…", success:"Local parse complete", error:"Parsing failed" }, () => request("/api/projects/" + encodeURIComponent(selected.id) + "/recognition-runs/" + encodeURIComponent(((detail as any).run.id as any)) + "/model-runs/" + encodeURIComponent(modelRunId) + "/attempts/" + encodeURIComponent(attemptId) + "/reanalyze", { method:"POST" })); state.recognitionNotice = { text:"A new local parse was generated from the saved raw answer. No model was called.", kind:"success" }; await refreshRecognition(); } catch (error) { state.recognitionNotice = { text: error instanceof Error ? error.message : (expectedErrorText.request_failed || "The request failed."), kind: "error" }; render(); } }
     const phase2Render = phase2RenderImpl;
-    renderOverride = function renderWithRecognition() { if (window.__citegeoPhase5Active) return; if (state.page === "reports" && window.__citegeoPhase4 && typeof window.__citegeoPhase4.render === "function") return window.__citegeoPhase4.render(); if (state.page !== "recognition") return phase2Render(); const selected = project(); const options = state.currentProjects.length ? state.currentProjects.map((item) => '<option value="' + html(item.id) + '">' + html(item.name) + ' · ' + html(item.normalizedDomain) + '</option>').join("") : '<option value="">No projects yet</option>'; app.innerHTML = renderEvidence() + '<div class="shell">' + navScrim() + '<aside class="sidebar"><button type="button" class="brand" data-page="dashboard" aria-label="Back to the dashboard">' + brandLockup + '</button><div class="project-label">Project</div><select id="project-select" class="project-select" aria-label="Switch project" data-testid="project-select">' + options + '</select><nav class="nav" aria-label="Project navigation"><button type="button" class="nav-item" data-page="dashboard"><span>Dashboard</span></button><div class="nav-label">Run a test</div><button type="button" class="nav-item" data-page="models"><span class="nav-step">1</span><span>Choose models</span></button><button type="button" class="nav-item" data-page="recognition"><span class="nav-step">2</span><span>Results</span></button><button type="button" class="nav-item" data-page="visibility"><span class="nav-step">3</span><span>Visibility</span></button><div class="nav-label">Answer engine</div><button type="button" class="nav-item" data-page="answer-engine"><span>Scores</span></button><button type="button" class="nav-item" data-page="brand-visibility"><span>Brand visibility</span></button><button type="button" class="nav-item" data-page="prompts"><span>Prompts</span></button><div class="nav-label">Over time</div><a class="nav-item" href="?view=measurements"><span>Continuous measurement</span></a><div class="nav-label">Machine</div><button type="button" class="nav-item" data-page="overview"><span>Projects</span></button><button type="button" class="nav-item" data-page="configuration"><span>Configuration history</span></button><button type="button" class="nav-item" data-page="setup"><span>Setup</span></button></nav><div class="sidebar-bottom">Domain recognition</div></aside><main class="workspace"><header class="topbar"><div class="topbar-lead">' + navToggle() + '<div class="crumb"><button type="button" class="crumb-home" data-page="dashboard">' + html(CONFIG.productName) + '</button> / ' + html(selected ? selected.name : "Project") + '</div></div><div class="topbar-actions"><button type="button" class="theme-toggle" data-theme-toggle aria-label="Switch between light and dark">&#9681;</button>' + button({ label: "New project", kind: "primary", id: "new-project", testId: "new-project" }) + '</div></header><section class="content">' + renderRecognitionPage() + '</section>' + renderFooter() + '</main></div>'; const select = element("project-select"); if (select) select.value = state.selectedId; document.title = selected ? selected.name + " | " + CONFIG.productTitle + "" : "" + CONFIG.productTitle + ""; };
+    renderOverride = function renderWithRecognition() { if (window.__citegeoPhase5Active) return; if (state.page === "reports" && window.__citegeoPhase4 && typeof window.__citegeoPhase4.render === "function") return window.__citegeoPhase4.render(); if (state.page !== "recognition") return phase2Render(); const selected = project(); const options = state.currentProjects.length ? state.currentProjects.map((item) => '<option value="' + html(item.id) + '">' + html(item.name) + ' · ' + html(item.normalizedDomain) + '</option>').join("") : '<option value="">No projects yet</option>'; app.innerHTML = renderEvidence() + '<div class="shell">' + navScrim() + '<aside class="sidebar"><button type="button" class="brand" data-page="dashboard" aria-label="Back to the dashboard">' + brandLockup + '</button><div class="project-label">Project</div><select id="project-select" class="project-select" aria-label="Switch project" data-testid="project-select">' + options + '</select>' + sidebar({ page: state.page, options }) + '<div class="sidebar-bottom">Domain recognition</div></aside><main class="workspace"><header class="topbar"><div class="topbar-lead">' + navToggle() + '<div class="crumb"><button type="button" class="crumb-home" data-page="dashboard">' + html(CONFIG.productName) + '</button> / ' + html(selected ? selected.name : "Project") + '</div></div><div class="topbar-actions"><button type="button" class="theme-toggle" data-theme-toggle aria-label="Switch between light and dark">&#9681;</button>' + button({ label: "New project", kind: "primary", id: "new-project", testId: "new-project" }) + '</div></header><section class="content">' + renderRecognitionPage() + '</section>' + renderFooter() + '</main></div>'; const select = element("project-select"); if (select) select.value = state.selectedId; document.title = selected ? selected.name + " | " + CONFIG.productTitle + "" : "" + CONFIG.productTitle + ""; };
     document.addEventListener("click", async (event) => { const target = el(event.target) as any; if (!(target instanceof Element)) return; if (target.id === "start-recognition") { await startRecognition(); return; } const evidenceButton = target.closest("[data-evidence-target]"); if (evidenceButton) { const card = evidenceButton.closest("[data-testid=recognition-model-run]"); const details = card ? card.querySelector("details.evidence-details") : null; if (details) (details as any).open = true; const evidenceTarget = evidenceButton.getAttribute("data-evidence-target"); window.setTimeout(() => { const marked = evidenceTarget ? element(evidenceTarget) : null; if (marked) marked.scrollIntoView({ block:"center", behavior:"smooth" }); }, 0); return; } const runButton = target.closest("[data-recognition-run]"); if (runButton) { state.recognitionSelectedRunId = runButton.getAttribute("data-recognition-run") || ""; await refreshRecognition(); return; } const reanalyzeButton = target.closest("[data-recognition-reanalyze]"); if (reanalyzeButton) { await reanalyzeRecognition(reanalyzeButton.getAttribute("data-recognition-reanalyze") || "", reanalyzeButton.getAttribute("data-recognition-attempt") || "", (reanalyzeButton as any)); return; } const retryButton = target.closest("[data-recognition-retry]"); if (retryButton) { await retryRecognition(retryButton.getAttribute("data-recognition-retry") || "", (retryButton as any)); return; } const pageButton = target.closest("[data-page]"); if (pageButton && pageButton.getAttribute("data-page") === "recognition") { window.setTimeout(() => refreshRecognition().catch((error) => { state.recognitionNotice = { text: error instanceof Error ? error.message : (expectedErrorText.request_failed || "The request failed."), kind: "error" }; render(); }), 0); } if (pageButton && pageButton.getAttribute("data-page") !== "recognition") window.clearTimeout(state.recognitionRefreshTimer); });
     document.addEventListener("change", (event) => { const target = el(event.target) as any; if (target instanceof HTMLSelectElement && target.id === "project-select") { state.recognitionSelectedRunId = ""; window.setTimeout(() => { if (state.page === "recognition") refreshRecognition().catch(() => {}); }, 0); } });
     wireNav();

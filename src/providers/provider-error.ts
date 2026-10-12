@@ -35,3 +35,25 @@ export function providerFailureCode(error: unknown): ProviderFailureCode {
   return error instanceof ProviderRequestError ? error.code : "unknown";
 }
 
+/** Parameters this will drop and ask again without. Both change how an answer
+ * is sampled and neither changes what is being asked, so dropping is honest. */
+export const DROPPABLE_PARAMETERS = new Set(["temperature", "top_p"]);
+
+const UNSUPPORTED = "unsupported parameter: '";
+const UNSUPPORTED_VALUE = "unsupported value: '";
+
+/** The parameter a provider refused, taken from the field it reports it in and
+ * otherwise read out of the message. A model list here would go stale. */
+export function refusedParameter(error: { param?: unknown; message?: unknown } | null | undefined): string | null {
+  if (!error) return null;
+  if (typeof error.param === "string" && error.param) return error.param;
+  const message = typeof error.message === "string" ? error.message.toLocaleLowerCase() : "";
+  for (const marker of [UNSUPPORTED, UNSUPPORTED_VALUE]) {
+    const start = message.indexOf(marker);
+    if (start === -1) continue;
+    const from = start + marker.length;
+    const end = message.indexOf("'", from);
+    if (end > from) return message.slice(from, end);
+  }
+  return null;
+}

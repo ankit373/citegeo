@@ -19,7 +19,7 @@ async function call(options: { answers?: PromptAnswer[] | undefined; fromRecogni
     method: "GET",
     route: ["api", "projects", "p", "crawlers"],
     send: () => undefined,
-    crawlerLog: { ingest: async (input: { citedPaths?: string[] }) => { seen = input.citedPaths || []; return {}; } } as never,
+    crawlerLog: { ingest: async (_projectId: string, input: { citedPaths?: string[] }) => { seen = input.citedPaths || []; return {}; } } as never,
     insights: { build: async () => ({ citedPaths: options.fromRecognition }) } as never,
     ...(options.answers ? { answers: async () => options.answers as PromptAnswer[], domain: async () => "example.com" } : {}),
   });

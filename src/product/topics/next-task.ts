@@ -33,6 +33,9 @@ export interface TaskInput {
   citationsUnavailable: boolean;
   /** Questions answered where the brand was never named. */
   absentFrom: number;
+  /** Cited pages, and how many have been read back. Absent where nobody has
+   * looked, which is not the same as nothing having been cited. */
+  citedPages?: { cited: number; read: number } | undefined;
   /** Why the failed answers failed, largest group first. The product knows,
    * so telling somebody to go and find out would be withholding it. */
   failureReasons?: Array<{ code: string; count: number }> | undefined;
@@ -44,8 +47,18 @@ const FAILURE_WORDS: Record<string, string> = {
   unavailable: "a browser surface that could not be reached or was asking to sign in",
   no_answer: "a surface that returned nothing to read",
   unreadable: "an answer that could not be read back",
+  unreadable_answer: "an answer that could not be read back",
   provider_error: "the provider returning an error",
   empty_answer: "the model returning an empty answer",
+  rate_limited: "a model asked more often than its plan allows",
+  billing: "a model the account cannot pay for",
+  authentication: "a key the provider refused",
+  timeout: "a model that did not answer in the time allowed",
+  upstream_unavailable: "the provider being down",
+  invalid_response: "the provider refusing the request",
+  analysis_failed: "an answer that arrived and could not be read",
+  truncated_payload: "a model cut off before it finished writing",
+  no_structured_output: "a model that answered in prose where a listing was asked for",
 };
 
 /** Where a failure of that kind is actually cleared. Sending somebody to the
@@ -54,6 +67,14 @@ const FAILURE_FIX: Record<string, { page: string; action: string }> = {
   provider_error: { page: "setup", action: "Check the keys" },
   unavailable: { page: "models", action: "Check the surfaces" },
   empty_answer: { page: "models", action: "Check the models" },
+  // A plan's limit is cleared by dropping the model or paying for it, and
+  // neither of those happens on the page the keys live on.
+  rate_limited: { page: "models", action: "Choose models" },
+  billing: { page: "setup", action: "Check the account" },
+  authentication: { page: "setup", action: "Check the keys" },
+  timeout: { page: "models", action: "Choose models" },
+  upstream_unavailable: { page: "models", action: "Choose models" },
+  truncated_payload: { page: "models", action: "Choose models" },
 };
 
 const URGENCY_ORDER: Record<TaskUrgency, number> = { blocking: 0, limiting: 1, work: 2 };
@@ -147,18 +168,38 @@ export function nextTasks(input: TaskInput): MeasurementTask[] {
 
   // Fires on the majority, not only on all of them: a project where six
   // questions were asked once and five twice has six single draws in it.
-  const { askedOnce, measured, namingUnstable, sourceOverlap } = input.stability;
+  const { askedOnce, measured, namingUnstable, sourceOverlap, distinctQuestions, questionsRepeated } = input.stability;
   if (askedOnce > measured) {
+    // The groups are question by model by market by language by persona, so
+    // counting them as questions turned this project's twenty eight into a
+    // hundred and thirty four. The reader acts on the questions.
+    const waiting = distinctQuestions - questionsRepeated;
     tasks.push({
       id: "asked-once",
       urgency: "limiting",
       title: "Ask each question more than once",
       why: "One pass cannot tell a finding from the day it was taken. Published work puts the day to day overlap of cited sources near a third, which makes a single pass close to a coin.",
       evidence: measured === 0
-        ? `${askedOnce} ${plural(askedOnce, "question was", "questions were")} asked once and none more than once, so nothing here says how much of the answer is the question.`
-        : `${askedOnce} of ${askedOnce + measured} questions were asked once, so most of what is below is a single draw.`,
+        ? `No question has been asked twice under the same conditions, so nothing here says how much of the answer is the question. ${askedOnce} ${plural(askedOnce, "pass is", "passes are")} a single draw.`
+        : `${waiting} of ${distinctQuestions} ${plural(distinctQuestions, "question has", "questions have")} never been asked twice under one set of conditions, so most of what is below is a single draw.`,
       page: "prompts",
       action: "Run them again",
+    });
+  }
+
+  // A citation is a URL until the page behind it is read. Four panels are
+  // taken over read pages and every one of them sits empty until somebody does.
+  const cited = input.citedPages;
+  if (cited && cited.cited > 0 && cited.read < cited.cited) {
+    const unread = cited.cited - cited.read;
+    tasks.push({
+      id: "sources-unread",
+      urgency: "limiting",
+      title: `Read the ${unread} cited ${plural(unread, "page", "pages")} nobody has opened`,
+      why: "Whether a cited page was used or only listed, who gets the credit, how the pages that beat you are built and what kind of page wins are all taken over the pages themselves. A citation on its own is an address.",
+      evidence: `${cited.read} of ${cited.cited} cited ${plural(cited.cited, "page has", "pages have")} been read back.`,
+      page: "answer-engine",
+      action: "Read the pages",
     });
   }
 

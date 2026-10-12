@@ -17,15 +17,15 @@ const EMPTY_SET: TopicSet = {
 };
 
 const SCORE: VisibilityScore = {
-  answers: 0, appearances: 0, presenceInterval: wilsonInterval(0, 0), tooFewAnswers: false, presenceRate: null, prominence: null, sentiment: null, score: null,
+  answers: 0, appearances: 0, presenceInterval: wilsonInterval(0, 0), tooFewAnswers: false, namedIn: 0, tooFewAppearances: true, presenceRate: null, prominence: null, sentiment: null, score: null,
   weights: SCORE_WEIGHTS,
 };
 
 function insights(): TopicInsights {
   return {
-    projectId: "p", answers: 0, answersFailed: 0, overall: SCORE, rank: null,
+    projectId: "p", answers: 0, answersFailed: 0, answersRetired: 0, overall: SCORE, rank: null,
     weights: SCORE.weights, leaderboard: [], topics: [], byModel: [], absentFrom: [],
-    citationsUnavailable: false, corroboration: summariseCorroboration([]), activation: splitActivation([]), stability: buildStabilityReport([]), phrasing: { measured: 0, namesTheBrand: 0, oneWording: 0, unstable: 0, spread: null, questions: [], caveat: "" }, decoys: { considered: 0, decoys: [], noiseFloor: null, matcherErrors: 0, presenceRate: null, clearsFloor: null, caveat: "" }, variance: { answers: 0, rate: null, flat: false, factors: [], tooFew: true, caveat: "" }, framing: { measured: 0, flipped: 0, flipRate: null, namingFlipped: 0, namingFlipRate: null, ratio: null, publishedRatio: 6.7, questions: [], caveat: "" }, tier: { tier: "unstated" as const, baseline: null, presence: wilsonInterval(0, 0), typical: null, standing: null, caveat: "" }, versions: { models: [], unconfirmed: [], separatedShifts: 0, caveat: "" }, tasks: [], trend: { points: [], change: null, since: null }, byRegion: [], byLanguage: [], byPersona: [],
+    citationsUnavailable: false, corroboration: summariseCorroboration([]), activation: splitActivation([]), stability: buildStabilityReport([]), phrasing: { measured: 0, namesTheBrand: 0, oneWording: 0, unstable: 0, neverNamed: 0, alwaysNamed: 0, spread: null, questions: [], caveat: "" }, decoys: { considered: 0, decoys: [], noiseFloor: null, matcherErrors: 0, presenceRate: null, clearsFloor: null, caveat: "" }, variance: { answers: 0, rate: null, flat: false, factors: [], tooFew: true, wordingIsTheQuestion: false, events: 0, caveat: "" }, framing: { measured: 0, flipped: 0, flipRate: null, namingFlipped: 0, namingFlipRate: null, ratio: null, publishedRatio: 6.7, questions: [], caveat: "" }, tier: { tier: "unstated" as const, baseline: null, presence: wilsonInterval(0, 0), typical: null, standing: null, caveat: "" }, versions: { models: [], unconfirmed: [], separatedShifts: 0, caveat: "" }, tasks: [], trend: { points: [], change: null, since: null, thinPoints: 0, readablePoints: 0 }, byRegion: [], byLanguage: [], byPersona: [],
     regionCaveat: "", identityCaveat: null, trackedRivals: [],
   };
 }

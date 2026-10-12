@@ -1,4 +1,5 @@
 import { answerIndexDir, browserDebugEndpoint, integrationSetting, productDataDir } from "../config/env.js";
+import { providerStatuses } from "./configuration/provider-status.js";
 import { AnswerIndexService } from "./index/answer-index-service.js";
 import { PROVIDER_MODEL_CAPABILITIES } from "../providers/catalog.js";
 import { ProductConfigurationFileStore } from "./configuration/configuration-store.js";
@@ -24,6 +25,7 @@ import { TopicService } from "./topics/topic-service.js";
 import { createStructuredAsk } from "./topics/structured-ask.js";
 import { PromptScheduleFileStore, PromptScheduleService } from "./topics/prompt-schedule.js";
 import { DemandReportFileStore } from "./demand/demand-store.js";
+import { ObservedDemandFileStore } from "./demand/observed-store.js";
 import { ExplorationFileStore } from "./demand/exploration-store.js";
 import { BrandProfileFileStore, BrandProfileService } from "./discovery/brand-profile-service.js";
 import { projectInsights } from "./topics/project-insights.js";
@@ -185,7 +187,7 @@ export function createProductServices(dependencies: ProductServerDependencies = 
   const reports = new RecognitionReportService(projects, baselines, recognitionStore, reportStore);
   const insights = new ProductInsightsService(projects, recognition);
   const signals = new SiteSignalProbeService(projects, new SiteSignalFileStore(projectStore));
-  const crawlerLog = new CrawlerLogIngestService(new CrawlerLogStateStore(productDataDir()));
+  const crawlerLog = new CrawlerLogIngestService(new CrawlerLogStateStore(projectStore));
   const measurementStore = new ProductMeasurementFileStore(projectStore);
   const watchSets = new ProductWatchSetService(projects, baselines, measurementStore, recognitionStore, reportStore);
   const measurements = new ProductMeasurementRunService(projects, baselines, watchSets, measurementStore, dependencies.measurementExecutor || dependencies.recognitionExecutor);
@@ -199,7 +201,11 @@ export function createProductServices(dependencies: ProductServerDependencies = 
   const humanCheck = new HumanCheckService(projectStore);
   const experiments = new ExperimentService(projectStore);
   const icons = new SiteIconService(new SiteIconStore(projectStore));
-  const topics = new TopicService(new TopicFileStore(projectStore), projects, insights, profiles);
+  // Reached only when a set is proposed, which is long after the graph is
+  // built, so the later binding is safe and saves reordering the whole file.
+  const observedDemand = new ObservedDemandFileStore(projectStore);
+  const topics = new TopicService(new TopicFileStore(projectStore), projects, insights, profiles,
+    (id) => searchConsole.observedRows(id), (id) => observedDemand.load(id));
   const ask = createStructuredAsk({ baselines, executor });
   const personas = new PersonaService(projectStore);
   const locations = new LocationService(projectStore);
@@ -213,11 +219,13 @@ export function createProductServices(dependencies: ProductServerDependencies = 
     saved: (projectId) => engines.saved(projectId),
     lookup: (engineId) => engines.lookup(engineId),
     ask: (input) => engines.askOne(input),
-  }, personas, locations);
+  }, personas, locations, () => providerStatuses(catalog), ask);
   const promptSchedule = new PromptScheduleService(new PromptScheduleFileStore(projectStore), promptRuns);
+  const sourcePages = new SourcePageService(projectStore);
   const agents = new ProductAgentService(projects,
     (id) => projectInsights({ projectId: id, topics, runs: promptRuns, competitors, personas, locations }),
-    new AgentDraftFileStore(projectStore));
+    new AgentDraftFileStore(projectStore), undefined,
+    (id) => sourcePages.list(id), (id) => promptRuns.listAnswers(id));
   const shopping = new ProductShoppingService(projects, promptRuns, new ShoppingFileStore(projectStore));
   const factcheck = new ProductFactCheckService(projects, promptRuns, new FactCheckFileStore(projectStore));
   const demand = new DemandReportFileStore(projectStore);
@@ -225,7 +233,6 @@ export function createProductServices(dependencies: ProductServerDependencies = 
   const competitors = new CompetitorService(new CompetitorFileStore(projectStore));
   const segments = new SegmentService(new SegmentFileStore(projectStore));
   const actions = new ActionLogService(new ActionLogStore(projectStore));
-  const sourcePages = new SourcePageService(projectStore);
   const credentials = new CredentialService(new CredentialFileStore(productDataDir()));
   // The environment owns a credential when it sets one, the same rule every
   // other integration here follows.

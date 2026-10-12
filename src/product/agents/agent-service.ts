@@ -12,9 +12,13 @@ import {
   agentPrompt,
   agentResponseSchema,
 } from "./agent-protocol.js";
-import { parseDraft, type AgentDraft, type DraftReview } from "./agent-schema.js";
+import { parseDraft, type AgentDraft, type DraftPublication, type DraftReview } from "./agent-schema.js";
 import { AGENT_TEMPLATES, briefFor, briefsFor, templateById, type TemplateId } from "./agent-templates.js";
-import type { TemplateBrief } from "./agent-templates.js";
+import type { BriefContext, CitedPage, PageLookup, TemplateBrief } from "./agent-templates.js";
+import { buildCitationHistory, droppedOn } from "../citations/citation-history.js";
+import type { PromptAnswer } from "../topics/prompt-run-schema.js";
+import { canonicalUrl } from "../citations/canonical-url.js";
+import type { SourcePage } from "../citations/source-page.js";
 import type { AgentDraftFileStore } from "./agent-store.js";
 
 export class AgentUnavailableError extends Error {}
@@ -34,6 +38,24 @@ export type InsightsSource = (projectId: string) => Promise<TopicInsights>;
 /** The brand's pages as text, or why they could not be read. Injectable so the
  * drafting path can be tested without a network read deciding the result. */
 export type PagesSource = (domain: string) => Promise<{ digest: string; detail: string | null }>;
+
+/** Pages already read back from citations. A page nothing read is reported as
+ * unread rather than left out, so the brief is not quietly shorter. */
+export type CitedPagesSource = (projectId: string) => Promise<SourcePage[]>;
+
+/** Every archived answer, which is where per-page citation history comes from. */
+export type AnswersSource = (projectId: string) => Promise<PromptAnswer[]>;
+
+function lookupOver(pages: SourcePage[]): PageLookup {
+  const byKey = new Map<string, CitedPage>();
+  for (const page of pages) {
+    const key = canonicalUrl(page.url)?.key;
+    // A page read before its title was kept is still the page that was cited.
+    if (!key || (byKey.has(key) && !page.title)) continue;
+    byKey.set(key, { url: page.url, host: page.host, title: page.title, headings: page.headings, namesYou: page.namesYou });
+  }
+  return (url: string) => byKey.get(canonicalUrl(url)?.key || url) || null;
+}
 
 async function readPages(domain: string): Promise<{ digest: string; detail: string | null }> {
   const site = await readSite(domain);
@@ -57,15 +79,34 @@ export class ProductAgentService {
     private readonly insights: InsightsSource,
     private readonly store: AgentDraftFileStore,
     private readonly pages: PagesSource = readPages,
+    private readonly cited: CitedPagesSource = async () => [],
+    private readonly answers: AnswersSource = async () => [],
   ) {}
+
+  /** A failed read must not stop a draft. The brief then says what it could
+   * not see, which is true, rather than failing the whole workflow. */
+  private async context(projectId: string, domain: string, insights: TopicInsights): Promise<BriefContext> {
+    const [pages, answers] = await Promise.all([
+      this.cited(projectId).catch(() => []),
+      this.answers(projectId).catch((): PromptAnswer[] => []),
+    ]);
+    const asked = new Map(insights.absentFrom.map((row) => [row.promptId, row.text]));
+    for (const topic of insights.topics) for (const row of topic.prompts) asked.set(row.promptId, row.text);
+    return {
+      page: lookupOver(pages),
+      dropped: droppedOn(buildCitationHistory(answers), domain),
+      questionText: (promptId: string) => asked.get(promptId) || null,
+    };
+  }
 
   /** What each template would do against the evidence that exists right now,
    * so a blocked one says why instead of failing when it is asked for. */
   async offers(projectId: string): Promise<TemplateOffer[]> {
-    await this.projects.get(projectId);
+    const project = await this.projects.get(projectId);
     const insights = await this.insights(projectId);
+    const context = await this.context(projectId, project?.normalizedDomain || "", insights);
     return AGENT_TEMPLATES.map((template) => {
-      const brief = briefFor(template.id, insights);
+      const brief = briefFor(template.id, insights, context);
       return {
         id: template.id,
         label: template.label,
@@ -89,7 +130,8 @@ export class ProductAgentService {
     if (!template) throw new AgentUnavailableError(`No workflow called ${templateId}.`);
 
     const insights = await this.insights(projectId);
-    const brief = briefFor(template.id, insights);
+    const context = await this.context(projectId, project.normalizedDomain, insights);
+    const brief = briefFor(template.id, insights, context);
     if (!brief.instruction) {
       throw new AgentUnavailableError(brief.blocked || "There is no evidence to draft from yet.");
     }
@@ -149,6 +191,8 @@ export class ProductAgentService {
       createdAt: new Date().toISOString(),
       reviewedAt: null,
       reviewNote: null,
+      publishedUrl: null,
+      publishedAt: null,
     };
     await this.store.save(draft);
     return draft;
@@ -163,9 +207,10 @@ export class ProductAgentService {
     if (!template) throw new AgentUnavailableError(`No workflow called ${templateId}.`);
 
     const insights = await this.insights(projectId);
-    const briefs = briefsFor(template.id, insights, limit).filter((brief) => brief.instruction);
+    const context = await this.context(projectId, project.normalizedDomain, insights);
+    const briefs = briefsFor(template.id, insights, limit, context).filter((brief) => brief.instruction);
     if (!briefs.length) {
-      throw new AgentUnavailableError(briefFor(template.id, insights).blocked || "There is no evidence to draft from yet.");
+      throw new AgentUnavailableError(briefFor(template.id, insights, context).blocked || "There is no evidence to draft from yet.");
     }
 
     const site = await this.pages(project.normalizedDomain);
@@ -205,6 +250,24 @@ export class ProductAgentService {
     };
     await this.store.save(reviewed);
     return reviewed;
+  }
+
+  /** The one thing this product never knew: that the page went live, and when.
+   * Without that date no later run can be read as before or after the change,
+   * so an approved draft was the end of the line. */
+  async publish(projectId: string, draftId: string, publication: DraftPublication): Promise<AgentDraft> {
+    await this.projects.get(projectId);
+    const draft = await this.store.read(projectId, draftId);
+    if (!draft) throw new AgentUnavailableError("That draft does not exist.");
+    if (draft.status !== "approved") {
+      throw new AgentUnavailableError("Only an approved draft can be recorded as published, because nothing else was agreed to go live.");
+    }
+    if (draft.publishedAt) {
+      throw new AgentUnavailableError(`That draft was already recorded as live at ${draft.publishedUrl}.`);
+    }
+    const published: AgentDraft = { ...draft, publishedUrl: publication.url, publishedAt: publication.at };
+    await this.store.save(published);
+    return published;
   }
 
   static readonly schemaHash = AGENT_SCHEMA_HASH;

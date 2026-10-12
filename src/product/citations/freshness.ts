@@ -103,6 +103,9 @@ export interface FreshnessReport {
   ageing: number;
   stale: number;
   undated: number;
+  /** Pages stating a date, which is what the median is taken over. An undated
+   * page has an unknown age, so it is not in it and the count says so. */
+  datedPages: number;
   /** Null when no cited page states a date at all, because an average over
    * nothing is not zero days old. */
   medianAgeDays: number | null;
@@ -118,6 +121,7 @@ export function freshnessReport(pages: PageAge[]): FreshnessReport {
     ageing: pages.filter((row) => row.freshness === "ageing").length,
     stale: pages.filter((row) => row.freshness === "stale").length,
     undated: pages.filter((row) => row.freshness === "undated").length,
+    datedPages: dated.length,
     medianAgeDays: middle,
     caveat: FRESHNESS_CAVEAT,
   };

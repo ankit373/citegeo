@@ -86,3 +86,49 @@ export function wireNav(): void {
     document.body.classList.remove("nav-open");
   });
 }
+
+export interface Destination {
+  page: string;
+  label: string;
+  /** What this page answers, shown on the page itself rather than here. */
+  question: string;
+  /** Pages that are really this one under another name, so the rail still
+   * marks the destination when a reader lands on one of them. */
+  also?: string[];
+}
+
+// Six destinations, each answering one question, after a rail of fifteen items
+// in five groups where "Scores", "Visibility" and "Brand visibility" were three
+// names for two pages and the same panel rendered on both of them.
+export const DESTINATIONS: Destination[] = [
+  { page: "dashboard", label: "Today", question: "What is the reading, and what is holding it back" },
+  { page: "prompts", label: "Questions", question: "What buyers ask, and who wins each one" },
+  { page: "brand-visibility", label: "Rivals", question: "Who gets named instead of you" },
+  { page: "answer-engine", label: "Sources", question: "What gets cited, and whether the answer used it" },
+  { page: "trust", label: "Trust", question: "Whether any of this can be relied on" },
+  { page: "marketer", label: "Act", question: "What to do about it", also: ["drafts", "claims", "buying", "conversations", "entity"] },
+];
+
+const MACHINE: Destination[] = [
+  { page: "models", label: "Models and surfaces", question: "", also: ["recognition", "reports"] },
+  { page: "overview", label: "Projects", question: "", also: ["configuration"] },
+  { page: "setup", label: "Setup", question: "" },
+];
+
+function item(destination: Destination, page: string): string {
+  const here = destination.page === page || (destination.also || []).indexOf(page) >= 0;
+  return '<button type="button" class="nav-item' + (here ? " active" : "")
+    + '" data-page="' + destination.page + '"' + (here ? ' aria-current="page"' : "")
+    + '><span>' + destination.label + "</span></button>";
+}
+
+/** The rail, in one place. It used to be written out twice, which is how it
+ * grew two names for the same page without anybody noticing. */
+export function sidebar(input: { page: string; options: string }): string {
+  return '<nav class="nav" aria-label="Project navigation">'
+    + DESTINATIONS.map((destination) => item(destination, input.page)).join("")
+    + '<div class="nav-label">Machine</div>'
+    + MACHINE.map((destination) => item(destination, input.page)).join("")
+    + '<a class="nav-item" href="?view=measurements"><span>Continuous measurement</span></a>'
+    + "</nav>";
+}

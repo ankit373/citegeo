@@ -4,6 +4,73 @@
 
 Nothing yet.
 
+## 0.5.0 - 2026-10-12
+
+Fifteen merges. The product could already say what was wrong and could already
+test whether a change had worked, and nothing joined the two. A draft was
+written from a measured gap, approved, and then forgotten: no field recorded
+that it went live, so no later run could be read against it. This release joins
+them, and grounds the other end, where the questions themselves were a guess.
+
+### Added
+
+- **A draft that went live becomes the experiment that measures it.** Approval
+  was the end of the line. A draft now records where it went live and when, set
+  once, only on an approved draft, and only with an address somebody can open.
+  That date starts the experiment, built from what the draft already carried:
+  the treated arm is the questions it was written against.
+- **A control arm that is derived rather than picked.** Starting an experiment
+  by hand split one selection down the middle, so which questions were treated
+  depended on the order somebody clicked in. The control is now every question
+  with a baseline that the change was not aimed at, less any another running
+  experiment already treats.
+- **What each page did over time.** Citations were recorded against an answer,
+  and an answer carries its run and its date, so this was always derivable and
+  never derived. A run where nothing was cited says nothing about any page and
+  is set aside rather than read as every page losing its citation at once. A
+  page cited once has no pattern to lose and is not called dropped.
+- **The pages that won a question, in the brief that answers it.** A draft
+  source kind for citations had been declared since it was written and nothing
+  ever emitted one, so a brief named the rivals that beat you without showing
+  what their pages covered. It now carries them, under an instruction that they
+  are ground to cover and never a source to take a fact from.
+- **Questions grounded in what anyone was observed to ask.** Generation had the
+  brand name, the domain, a description and a category. Search records and the
+  conversation corpus existed only to score the result afterwards. Both now
+  reach the proposal, and where nothing was observed the model is told that
+  every question it proposes is its own supposition.
+- **The evidence under a draft, visible.** Every draft row carried an attribute
+  for opening it and nothing listened, so what a draft was built from could not
+  be read anywhere in the product.
+
+### Changed
+
+- A search query that already names the brand is navigational, says nothing
+  about discovery, and is counted out rather than quietly filtered.
+- A Search Console pull keeps its strongest rows. It had matched five thousand
+  of them against the questions already chosen and discarded every one, so
+  demand could only ever confirm a decision already made.
+- The corpus indexer no longer refuses a project with no questions yet. That is
+  the project with the most to gain from knowing what people ask.
+- Search impressions and conversation counts are different units. They are
+  reported apart rather than summed into a number that means nothing.
+
+### Fixed
+
+- **The memo headline was a unit error.** A visibility score is an index out of
+  a hundred and was formatted as a proportion, so a reading of 1.4 printed as
+  140%. The endpoints were worse: the overall score across every answer less a
+  change taken between two runs, which went below nought. No reading can be.
+  The threshold for a movement worth reporting was a hundredth of its intent.
+- A critical alert fired because a run of two answers named nobody.
+- Twenty-three questions that never named the brand were printed in green as
+  agreed.
+- One page cited by five answers printed as five pages disagreeing.
+- A crawler table keyed to the wrong project, which nobody had ever seen.
+- Fourteen of twenty four assistants were never asked.
+- Four stylesheets named a font the document head had stopped loading.
+- Three roadmap items had shipped and stayed on the roadmap.
+
 ## 0.4.0 - 2026-10-04
 
 Twenty merges, and one theme: the distance between a number and a claim.

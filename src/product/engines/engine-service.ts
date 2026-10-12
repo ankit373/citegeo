@@ -1,7 +1,7 @@
-import { listTargets } from "./cdp-client.js";
 import { askBrowserEngine } from "./engine-run.js";
+import { DISCOVERY_CAVEAT } from "./browser-discovery.js";
 import { BROWSER_ENGINES, browserEngine } from "./engine-registry.js";
-import { DEFAULT_DEBUG_ENDPOINT, type BrowserEngine, type EngineRunOptions } from "./browser-engine.js";
+import { findBrowser, type BrowserEngine, type EngineRunOptions } from "./browser-engine.js";
 import { getJson, putJson } from "../storage/object-store.js";
 import type { ProductProjectFileStore } from "../projects/project-store.js";
 import type { BrandIdentity } from "../topics/brand-identity.js";
@@ -25,12 +25,16 @@ export interface EngineDescription {
 }
 
 export interface EngineStatus {
+  /** Where the browser actually is, which is not always where it was named. */
   endpoint: string;
   /** Null until it has been probed: a browser nobody looked for is not a
    * browser that is not there. */
   reachable: boolean | null;
   detail: string;
   engines: EngineDescription[];
+  /** Everywhere that was tried, so an empty result can be disagreed with. */
+  looked: string[];
+  caveat: string;
 }
 
 export class EngineService {
@@ -65,7 +69,6 @@ export class EngineService {
   /** Probes the browser rather than assuming it. Nothing here signs anybody
    * in; the answer is whatever the already signed-in browser shows. */
   async status(projectId: string, probe = true): Promise<EngineStatus> {
-    const endpoint = this.options.endpoint || DEFAULT_DEBUG_ENDPOINT;
     const chosen = new Set(await this.saved(projectId));
     const engines = BROWSER_ENGINES.map((engine) => ({
       id: engine.id,
@@ -73,24 +76,18 @@ export class EngineService {
       caveat: engine.caveat,
       selected: chosen.has(engine.id),
     }));
-    if (!probe) return { endpoint, reachable: null, detail: "Not checked.", engines };
-    try {
-      const targets = await listTargets(endpoint);
-      const pages = targets.filter((target) => target.type === "page").length;
-      return {
-        endpoint,
-        reachable: true,
-        detail: `${pages} open tab(s) to drive.`,
-        engines,
-      };
-    } catch (error) {
-      return {
-        endpoint,
-        reachable: false,
-        detail: error instanceof Error ? error.message : String(error),
-        engines,
-      };
-    }
+    const configured = this.options.endpoint || process.env.BROWSER_DEBUG_ENDPOINT || "";
+    if (!probe) return { endpoint: configured, reachable: null, detail: "Not checked.", engines, looked: [], caveat: DISCOVERY_CAVEAT };
+    const search = await findBrowser(this.options);
+    const found = search.found;
+    return {
+      endpoint: found ? found.endpoint || found.browserWsUrl : configured,
+      reachable: Boolean(found),
+      detail: search.detail,
+      engines,
+      looked: search.looked,
+      caveat: search.caveat,
+    };
   }
 
   async askOne(input: { run: PromptRun; prompt: Prompt; engine: BrowserEngine; identity: BrandIdentity }): Promise<PromptAnswer> {

@@ -151,3 +151,34 @@ function searchNote(access: ProviderAccess): string {
   }
   return "No web search, so this measures visibility and share of voice but produces no citations.";
 }
+
+export interface ModelBlock {
+  modelId: string;
+  reason: string;
+}
+
+/** A model the catalogue still lists and the account cannot run. Asking it
+ * anyway spends the run and files a provider error per question. */
+export function modelsBlockedByAccount(
+  models: Array<{ providerId: ProductProviderId; modelId: string }>,
+  statuses: ProviderStatus[],
+): ModelBlock[] {
+  const blocked: ModelBlock[] = [];
+  for (const model of models) {
+    const status = statuses.find((row) => row.providerId === model.providerId);
+    if (!status) continue;
+    if (!status.configured) {
+      blocked.push({ modelId: model.modelId, reason: `No key is set for ${status.label}, so nothing can be asked of it.` });
+      continue;
+    }
+    // A free model runs on an account with no credit, which is the whole
+    // reason the suffix exists, so only the paid ones are blocked.
+    if (status.balance && !status.balance.paidModelsRunnable && !model.modelId.endsWith(":free")) {
+      blocked.push({
+        modelId: model.modelId,
+        reason: `${status.label} has no credit left, so this model answers HTTP 402 and returns no answer.`,
+      });
+    }
+  }
+  return blocked;
+}

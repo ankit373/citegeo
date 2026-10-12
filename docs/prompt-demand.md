@@ -21,14 +21,31 @@ terms before download.
 ## Building the index
 
 ```bash
-npm run demand:index -- --source wildchat --path ./wildchat.jsonl
+npm run demand:index -- --project <id> --source wildchat --path ./wildchat.jsonl
 ```
+
+Add `--subject "stock screener india"` to say what to look up. Without it the
+category and description already known for the project are used, and the command
+stops if neither exists rather than looking up nothing.
+
+The index itself is never saved: it is hundreds of megabytes and goes stale as
+soon as the prompt set changes. Two small files are written instead.
 
 Read line by line, so a multi-gigabyte file never has to fit in memory. Only the
 opening user turn of each conversation is indexed: later turns are follow-ups to
 an answer, not demand. A turn over 300 characters is a pasted document rather
 than a question and is skipped, because those would otherwise dominate the
 index.
+
+## What is written
+
+**`observed-demand.json`** holds the questions people really asked about the
+subject, commonest first, with how many asked each. This is what a proposed
+question set is grounded in, so it is written whether or not the project tracks
+any prompts yet. A project with none is the one that needs it most.
+
+**`prompt-demand.json`** scores the prompts already tracked. It is written only
+where there are some.
 
 ## Reading the numbers
 

@@ -64,20 +64,25 @@ it sits each archived answer, the question that produced it, the model that
 wrote it and the sentences themselves.
 
 <p align="center">
-  <img src="assets/readme/hero.png" alt="A visibility score of 76.3, up 3.7, ranked first of 71 brands, with presence 84 percent, prominence 82 percent and sentiment 96 percent beside it" width="900">
+  <img src="assets/readme/hero.png" alt="A visibility score of 76.3, ranked first of 57 brands, with presence 84 percent, average position 2.2, prominence 82 percent and sentiment 96 percent beside it" width="900">
 </p>
 
-The score is never shown alone. Presence, prominence and sentiment sit beside
-it with the counts they came from, because a composite with no components is a
-number you cannot argue with.
+The score is never shown alone. Presence, position, prominence and sentiment sit
+beside it with the counts they came from, because a composite with no components
+is a number you cannot argue with. Where there is no earlier run big enough to
+compare against, it says so rather than drawing a movement.
 
 <p align="center">
-  <img src="assets/readme/share-of-voice.png" alt="Share of voice: a line per brand across runs, with a ranked list beside it showing each brand's share and movement in percentage points" width="900">
+  <img src="assets/readme/share-of-voice.png" alt="Share of voice: the ranked standings beside the chart, each brand with its share and its movement in percentage points" width="900">
 </p>
 
 Share of voice, with the standings beside the chart rather than a colour key to
-decode. Brands level on share take the same place. A brand nobody named still
-gets a line, along the bottom, because that absence is the finding.
+decode. Brands level on share take the same place, and a brand nobody named
+still gets a line along the bottom, because that absence is the finding. The
+chart is drawn over the runs that asked enough answers for a share to mean
+anything, and says how many it left out: a run of one answer gives every brand
+nought or one, and a line through those draws the run size rather than the
+visibility.
 
 <p align="center">
   <img src="assets/readme/heatmap.gif" alt="The topics by competitor heatmap, where opening a topic row reveals the individual questions under it" width="900">
@@ -182,7 +187,7 @@ nothing anywhere except to the model APIs you configure.
 | :--- | :--- |
 | **Scheduled measurement** | Repeat a scope on a cadence through the monitoring worker. Changing your model selection never fabricates history for the new models. |
 | **Digests** | Reported only when something moved, with the baseline advancing only on a send that succeeded. |
-| **AI crawler analytics** | Which AI crawlers reached your site, from a combined-format access log, with the three states a frequency chart hides: allowed but never arrived, fetched but never cited, and cited but never fetched. |
+| **AI crawler analytics** | Which AI crawlers reached your site, from a combined-format access log you upload or one the server can read, with the three states a frequency chart hides: allowed but never arrived, fetched but never cited, and cited but never fetched. Counted per project, so two sites on one server never share a figure. |
 | **Site signal probe** | Schema, `llms.txt` and robots state on a worker cadence, with stored history and a diff between probes. |
 | **Next actions** | A plan built from the stored probe and the real evidence, never from a model's opinion. |
 
@@ -251,8 +256,14 @@ Any model reachable through OpenRouter, the OpenAI, Anthropic, Google Gemini,
 Perplexity and DeepSeek APIs, or through a cloud account you already hold:
 Azure OpenAI, Amazon Bedrock, Google Vertex AI, Databricks model serving and
 IBM watsonx.ai. Any OpenAI-compatible endpoint works too, including a local
-gateway. Engines with no API, such as Google AI Overviews, are
-on the [roadmap](ROADMAP.md) and blocked on browser automation.
+gateway.
+
+Engines with no API are driven in a browser you point it at: Google AI
+Overviews, Perplexity, ChatGPT and Copilot. It never scans for a browser; it
+drives the endpoint you name, and a reach probe says which of the four it can
+reach right now rather than failing in the middle of a run. Surfaces behind a
+sign-in wall stay signed in to your own session, which is why this is something
+you run rather than something a server does for you.
 
 ### Does it need my data to leave my machine?
 

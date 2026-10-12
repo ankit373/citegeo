@@ -1,4 +1,5 @@
 import { sha256 } from "../../utils/hash.js";
+import { asDomain } from "./prompt-identity.js";
 import type { DiscoveryRecommendation, FirstPositionState } from "../measurements/measurement-schema.js";
 
 type Schema = Record<string, unknown>;
@@ -60,6 +61,24 @@ export function promptAnswerPrompt(input: { question: string; languageInstructio
   ].join("\n");
 }
 
+// A grounded answer is read in a second step, so the question is put the way a
+// buyer would put it. Asking for JSON here puts JSON in the answer being read.
+const PLAIN_TEMPLATE = [
+  "Answer the question below the way you would answer it for the person asking. Do not adjust it for anyone watching.",
+  "Answer in prose. Do not return JSON, and do not describe what you are about to do.",
+].join("\n");
+
+export const PLAIN_ANSWER_PROMPT_HASH = sha256(PLAIN_TEMPLATE);
+
+export function plainAnswerPrompt(input: { question: string; languageInstruction?: string; audience?: string }): string {
+  return [
+    PLAIN_TEMPLATE,
+    ...(input.audience ? [input.audience] : []),
+    `Question: ${input.question}`,
+    input.languageInstruction || "Answer in English.",
+  ].join("\n");
+}
+
 export interface StructuredPromptAnswer {
   analysisStatus: "completed" | "unknown";
   answer: string;
@@ -100,7 +119,7 @@ export function parsePromptAnswerOutput(raw: unknown): StructuredPromptAnswer {
     const position = text(row?.firstMentionState);
     mentions.push({
       name,
-      domain: text(row?.domain) || null,
+      domain: asDomain(row?.domain),
       // An unreadable judgement is uncertain, never a neutral-looking "mentioned".
       recommendation: (RECOMMENDATIONS.includes(recommendation) ? recommendation : "uncertain") as DiscoveryRecommendation,
       mentionQuote: text(row?.mentionQuote) || null,

@@ -14,6 +14,13 @@ export const VARIANCE_CAVEAT = "Each share is how much of the variation in wheth
 /** Levels below this and a share is arithmetic on too little to read. */
 export const MIN_ANSWERS = 8;
 
+/** A factor with at least as many levels as there are events can separate them
+ * by construction, so its share is an artefact of the grouping rather than a
+ * finding: 28 questions put "which question" at 100% of three appearances. */
+export function canIsolate(levels: number, events: number): boolean {
+  return events <= 0 || levels >= events;
+}
+
 export type FactorId = "question" | "wording" | "model" | "market" | "language" | "persona" | "run";
 
 export interface FactorShare {
@@ -38,6 +45,10 @@ export interface VarianceReport {
   factors: FactorShare[];
   /** Too few answers for any of it to be read. */
   tooFew: boolean;
+  wordingIsTheQuestion: boolean;
+  /** The rarer outcome, named or not named. A share is driven by this and not
+   * by the number of answers, which can be large while this is three. */
+  events: number;
   caveat: string;
 }
 
@@ -75,6 +86,9 @@ export function buildVarianceReport(answers: PromptAnswer[]): VarianceReport {
   const rate = outcomes.length ? outcomes.reduce((sum, value) => sum + value, 0) / outcomes.length : null;
   const flat = outcomes.length > 0 && outcomes.every((value) => value === outcomes[0]);
 
+  const appeared = outcomes.reduce((sum, value) => sum + value, 0);
+  const events = Math.min(appeared, outcomes.length - appeared);
+
   const factors: FactorShare[] = FACTORS.map((factor) => {
     const byLevel = new Map<string, number[]>();
     for (const answer of completed) {
@@ -91,19 +105,33 @@ export function buildVarianceReport(answers: PromptAnswer[]): VarianceReport {
       factor: factor.id,
       label: factor.label,
       levels: byLevel.size,
-      share: varianceShare(groups),
+      // Not measurable rather than nought: the grouping could explain it all
+      // whatever the answers said, so the share would be about the grouping.
+      share: canIsolate(byLevel.size, events) ? null : varianceShare(groups),
       best: rates[0] || null,
       worst: rates.length > 1 ? rates[rates.length - 1] || null : null,
     };
   });
 
-  factors.sort((left, right) => (right.share ?? -1) - (left.share ?? -1));
+  // With no question written more than one way, every wording is its own
+  // question and the two factors are the same one. Reporting both reads as two
+  // findings agreeing where there is only one.
+  const question = factors.find((row) => row.factor === "question");
+  const wording = factors.find((row) => row.factor === "wording");
+  const sameFactor = Boolean(question && wording && question.levels === wording.levels);
+  const reported = sameFactor ? factors.filter((row) => row.factor !== "wording") : factors;
+
+  reported.sort((left, right) => (right.share ?? -1) - (left.share ?? -1));
   return {
     answers: completed.length,
     rate,
     flat,
-    factors,
+    factors: reported,
+    /** True where no question has a rewording, so the wording factor is the
+     * question factor and is left out rather than printed twice. */
+    wordingIsTheQuestion: sameFactor,
     tooFew: completed.length < MIN_ANSWERS,
+    events,
     caveat: VARIANCE_CAVEAT,
   };
 }

@@ -20,8 +20,14 @@ export const AUTHORITY_FINDING = "Models choosing what to recommend have been sh
 export interface CreditRow {
   url: string;
   host: string;
-  /** Where it sat in the answer's citation list, from one. */
+  /** Where it sat in the answer's citation list, from one. The real place, so
+   * a page cited ninth is not reported as cited second because the seven
+   * before it have not been read back. */
   citedAt: number;
+  /** Where it sat among the same answer's pages that could be measured, from
+   * one. The gap is between this and usedAt, because only pages with a figure
+   * can be ranked against each other. */
+  creditedAt: number;
   /** Where it ranks among the same answer's pages by how much of the answer it
    * accounts for, from one. */
   usedAt: number;
@@ -33,12 +39,18 @@ export interface CreditRow {
 export interface CreditReport {
   /** Answers with at least two cited pages that could both be measured. */
   comparable: number;
+  /** Pages ranked across those answers, which is what meanGap is taken over. */
+  rows: number;
+  /** Answers with a citation that were left out because fewer than two of
+   * their pages have been read back. Nothing can be ranked inside one. */
+  tooFewRead: number;
   /** Pages credited well above what they contributed. */
   overCredited: CreditRow[];
   /** Pages that contributed well above where they were credited. */
   underCredited: CreditRow[];
-  /** Mean gap between credit and contribution, over every comparable page.
-   * Null where nothing could be compared. */
+  /** Mean distance between where a page was credited and where it was used,
+   * over every comparable page. A mean of the sizes, not of the signed gaps,
+   * which would cancel to nought by construction. Null with nothing compared. */
   meanGap: number | null;
   finding: string;
   caveat: string;
@@ -51,21 +63,30 @@ export function creditGaps(perAnswer: Array<PageUptake[]>): CreditReport {
   const under: CreditRow[] = [];
   const gaps: number[] = [];
   let comparable = 0;
+  let tooFewRead = 0;
 
   for (const pages of perAnswer) {
     const measured = pages.filter((page) => page.uptake !== null);
-    if (measured.length < 2) continue;
+    if (measured.length < 2) { tooFewRead += 1; continue; }
     comparable += 1;
     const byUse = [...measured].sort((left, right) => (right.uptake as number) - (left.uptake as number));
-    const usedRank = new Map(byUse.map((page, index) => [page.url, index + 1]));
+    // Keyed by position in the sorted list rather than by address, because two
+    // citations can resolve to one stored page and share a url string.
+    const usedRank = new Map(byUse.map((page, index) => [page, index + 1]));
     const byCite = [...measured].sort((left, right) => left.citedAt - right.citedAt);
     for (let index = 0; index < byCite.length; index += 1) {
       const page = byCite[index] as PageUptake;
-      const citedAt = index + 1;
-      const usedAt = usedRank.get(page.url) || citedAt;
-      const gap = usedAt - citedAt;
+      // Rank among the pages that could be measured. The page's real place in
+      // the citation list travels beside it, because they are not the same
+      // thing once most of a list has not been read back.
+      const creditedAt = index + 1;
+      const usedAt = usedRank.get(page) || creditedAt;
+      const gap = usedAt - creditedAt;
       gaps.push(gap);
-      const row: CreditRow = { url: page.url, host: page.host, citedAt, usedAt, uptake: page.uptake as number, gap };
+      const row: CreditRow = {
+        url: page.url, host: page.host, citedAt: page.citedAt, creditedAt, usedAt,
+        uptake: page.uptake as number, gap,
+      };
       if (gap >= RANK_GAP) over.push(row);
       else if (gap <= -RANK_GAP) under.push(row);
     }
@@ -73,6 +94,8 @@ export function creditGaps(perAnswer: Array<PageUptake[]>): CreditReport {
 
   return {
     comparable,
+    rows: gaps.length,
+    tooFewRead,
     overCredited: over.sort((left, right) => right.gap - left.gap),
     underCredited: under.sort((left, right) => left.gap - right.gap),
     meanGap: gaps.length ? Math.round((gaps.reduce((sum, value) => sum + Math.abs(value), 0) / gaps.length) * 100) / 100 : null,

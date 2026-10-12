@@ -1,5 +1,59 @@
-import type { TopicInsights } from "../topics/topic-insights.js";
+import type { PromptStanding, TopicInsights } from "../topics/topic-insights.js";
+import type { PageHistory } from "../citations/citation-history.js";
 import type { DraftSource } from "./agent-schema.js";
+import { RUNS_TO_CALL_IT_DROPPED } from "../citations/citation-history.js";
+
+/** A page an answer cited, as far as it has been read back. Null title means
+ * the page is known to have been cited and has not been read. */
+export interface CitedPage {
+  url: string;
+  host: string;
+  title: string | null;
+  headings: string[];
+  namesYou: boolean;
+}
+
+/** Null for a page nothing has read, which is reported rather than guessed at. */
+export type PageLookup = (url: string) => CitedPage | null;
+
+/** Everything a brief needs that the insights do not carry. Each piece is
+ * optional, and a template without it says what it is missing. */
+export interface BriefContext {
+  page?: PageLookup;
+  /** Pages on the brand's own domain that stopped being cited. */
+  dropped?: PageHistory[];
+  /** What each tracked question asks, for naming one by text rather than id. */
+  questionText?: (promptId: string) => string | null;
+}
+
+const NO_CONTEXT: BriefContext = {};
+const NO_PAGES: PageLookup = () => null;
+
+/** What the pages that won a question cover. Ground to answer, never fact to
+ * copy: the brand's own pages stay the only source for a claim about it. */
+function groundFrom(prompt: PromptStanding, page: PageLookup): { lines: string[]; sources: DraftSource[] } {
+  const lines: string[] = [];
+  const sources: DraftSource[] = [];
+  let unread = 0;
+  for (const cited of prompt.cited.slice(0, 8)) {
+    const read = page(cited.url);
+    if (!read) {
+      unread += 1;
+      continue;
+    }
+    const covers = read.headings.slice(0, 6).join(" / ");
+    lines.push(`- ${read.host}${read.title ? `, "${read.title}"` : ""}${covers ? `: ${covers}` : ""}`);
+    sources.push({
+      kind: "citation",
+      reference: cited.url,
+      detail: `cited by ${cited.answers} answer(s) to this question${read.namesYou ? ", and names the brand" : ""}`,
+    });
+  }
+  if (unread) {
+    lines.push(`- ${unread} more page(s) were cited and have not been read, so what they cover is not known here.`);
+  }
+  return { lines, sources };
+}
 
 export type TemplateId = "missing_answer" | "faq" | "competitor_brief" | "refresh";
 
@@ -34,7 +88,7 @@ export const AGENT_TEMPLATES: AgentTemplate[] = [
     id: "refresh",
     label: "Refresh a page that stopped being cited",
     purpose: "What changed on a page the answers used to cite and no longer do.",
-    needs: "Citation history for a page across two or more runs.",
+    needs: "A page of yours that was cited and has not been since, across two or more runs that cited something.",
   },
 ];
 
@@ -55,7 +109,7 @@ function namedInstead(ahead: TopicInsights["leaderboard"]): string {
   return names.length ? names.join(", ") : "nobody";
 }
 
-function missingAnswer(insights: TopicInsights): TemplateBrief {
+function missingAnswer(insights: TopicInsights, page: PageLookup): TemplateBrief {
   const prompt = insights.absentFrom.find((row) => row.measuresVisibility && row.score.answers > 0);
   if (!prompt) {
     return {
@@ -66,10 +120,17 @@ function missingAnswer(insights: TopicInsights): TemplateBrief {
     };
   }
   const rivals = namedInstead(prompt.ahead);
+  const ground = groundFrom(prompt, page);
   return {
     instruction: [
       `Write a page that answers this question directly: "${prompt.text}"`,
       `Across ${prompt.score.answers} answer(s) to it, the brand was never named. Named instead: ${rivals}.`,
+      ...(ground.lines.length
+        ? [
+          "These pages were cited in those answers. Cover the ground they cover, so the question is answered as fully. Take no fact from them: they are what was asked for, not a source.",
+          ...ground.lines,
+        ]
+        : []),
       "Answer the question first and completely, before mentioning the brand at all.",
       "Only claim what the brand's own pages support. Leave out anything they do not.",
     ].join("\n"),
@@ -81,6 +142,7 @@ function missingAnswer(insights: TopicInsights): TemplateBrief {
         reference: row.domain || row.name,
         detail: `named in ${row.appearances} answer(s) on this question`,
       })),
+      ...ground.sources,
     ],
     rationale: `${prompt.score.answers} answer(s) to this question named ${rivals} and never the brand.`,
   };
@@ -146,29 +208,56 @@ function competitorBrief(insights: TopicInsights): TemplateBrief {
   };
 }
 
-// Citation history per page is not stored, so this template reports what it
-// would need rather than drafting from a single run and calling it a decline.
-function refresh(insights: TopicInsights): TemplateBrief {
+function refresh(insights: TopicInsights, context: BriefContext): TemplateBrief {
+  if (insights.citationsUnavailable) {
+    return {
+      instruction: null,
+      blocked: "No answer carried a citation, so no page can be shown to have been cited at all.",
+      sources: [],
+      rationale: "",
+    };
+  }
+  const page = (context.dropped || [])[0];
+  if (!page) {
+    return {
+      instruction: null,
+      blocked: `No page of yours was cited and has since stopped. A page is only called dropped after ${RUNS_TO_CALL_IT_DROPPED} runs that cited something else.`,
+      sources: [],
+      rationale: "",
+    };
+  }
+  const asked = context.questionText || (() => null);
+  const questions = page.promptIds.map((id) => asked(id)).filter(Boolean);
   return {
-    instruction: null,
-    blocked: insights.citationsUnavailable
-      ? "No answer carried a citation, so no page can be shown to have been cited at all."
-      : "Citations are recorded per run and not yet tracked per page over time, so a page cannot be shown to have stopped being cited.",
-    sources: [],
-    rationale: "",
+    instruction: [
+      `Read this page and write what changed about what it answers: ${page.url}`,
+      `It was cited by ${page.answers} answer(s), most recently on ${(page.lastCitedAt || "").slice(0, 10)}, and has not been cited in the ${page.runsSince} run(s) since that cited anything at all.`,
+      questions.length
+        ? `It was cited on these questions:\n${questions.map((text) => `- ${text}`).join("\n")}`
+        : "The questions it was cited on are no longer tracked, so what it was being read for cannot be stated.",
+      "Say what the page no longer answers for those questions and what would have to change on it. Do not rewrite the page.",
+      "Use only what the page itself says. Where it does not settle something, say so.",
+    ].join("\n"),
+    blocked: null,
+    sources: [
+      { kind: "citation", reference: page.url, detail: `cited by ${page.answers} answer(s), last on ${(page.lastCitedAt || "").slice(0, 10)}` },
+      ...page.promptIds.slice(0, 6).map((id): DraftSource => ({ kind: "prompt", reference: id, detail: asked(id) || "no longer tracked" })),
+    ],
+    rationale: `${page.url} was cited ${page.answers} time(s) and has not been cited in the last ${page.runsSince} run(s) that cited anything.`,
   };
 }
 
 /** Every brief a template can build right now, not only the first. Each one is
  * built by narrowing the insights to one gap and reusing the single-gap
  * builder, so a batch and a single draft cannot disagree about a brief. */
-export function briefsFor(templateId: TemplateId, insights: TopicInsights, limit: number): TemplateBrief[] {
+export function briefsFor(templateId: TemplateId, insights: TopicInsights, limit: number, context: BriefContext = NO_CONTEXT): TemplateBrief[] {
+  const page = context.page || NO_PAGES;
   const take = Math.max(1, Math.min(limit, 50));
   if (templateId === "missing_answer") {
     return insights.absentFrom
       .filter((row) => row.measuresVisibility && row.score.answers > 0)
       .slice(0, take)
-      .map((row) => missingAnswer({ ...insights, absentFrom: [row] }));
+      .map((row) => missingAnswer({ ...insights, absentFrom: [row] }, page));
   }
   if (templateId === "faq") {
     return insights.topics
@@ -183,13 +272,15 @@ export function briefsFor(templateId: TemplateId, insights: TopicInsights, limit
       .slice(0, take)
       .map((row) => competitorBrief({ ...insights, leaderboard: target ? [target, row] : [row] }));
   }
-  const only = refresh(insights);
-  return only.instruction ? [only] : [];
+  if (templateId === "refresh") {
+    return (context.dropped || []).slice(0, take).map((row) => refresh(insights, { ...context, dropped: [row] }));
+  }
+  return [];
 }
 
-export function briefFor(templateId: TemplateId, insights: TopicInsights): TemplateBrief {
-  if (templateId === "missing_answer") return missingAnswer(insights);
+export function briefFor(templateId: TemplateId, insights: TopicInsights, context: BriefContext = NO_CONTEXT): TemplateBrief {
+  if (templateId === "missing_answer") return missingAnswer(insights, context.page || NO_PAGES);
   if (templateId === "faq") return faq(insights);
   if (templateId === "competitor_brief") return competitorBrief(insights);
-  return refresh(insights);
+  return refresh(insights, context);
 }

@@ -1,6 +1,6 @@
 import type { ProductProjectFileStore } from "../projects/project-store.js";
 import { getJson, listJson, putJson } from "../storage/object-store.js";
-import type { AgentDraft } from "./agent-schema.js";
+import { withPublication, type AgentDraft } from "./agent-schema.js";
 
 export class AgentDraftFileStore {
   constructor(private readonly projects: ProductProjectFileStore) {}
@@ -15,11 +15,12 @@ export class AgentDraftFileStore {
 
   async list(projectId: string): Promise<AgentDraft[]> {
     const rows = await listJson<AgentDraft>(this.projects.objects, this.prefix(projectId));
-    return rows.sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+    return rows.map(withPublication).sort((left, right) => right.createdAt.localeCompare(left.createdAt));
   }
 
   async read(projectId: string, draftId: string): Promise<AgentDraft | null> {
-    return getJson<AgentDraft>(this.projects.objects, this.key(projectId, draftId));
+    const draft = await getJson<AgentDraft>(this.projects.objects, this.key(projectId, draftId));
+    return draft ? withPublication(draft) : null;
   }
 
   async save(draft: AgentDraft): Promise<void> {

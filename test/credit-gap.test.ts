@@ -4,7 +4,10 @@ import { AUTHORITY_FINDING, CREDIT_CAVEAT, creditGaps, RANK_GAP } from "../src/p
 import type { PageUptake } from "../src/product/citations/answer-uptake.js";
 
 function page(host: string, citedAt: number, uptake: number | null): PageUptake {
-  return { url: `https://${host}/x`, host, uptake, shared: uptake, phrases: [], coverage: null, citedAt, detail: null };
+  return {
+    url: `https://${host}/x`, host, uptake, shared: uptake, phrases: [], coverage: null, citedAt, detail: null,
+    answerId: "a-1", promptText: "best stock screener", modelId: "gpt-4o",
+  };
 }
 
 test("one cited page has nothing to be ranked against", () => {
@@ -72,4 +75,27 @@ test("the finding is stated as consistent with, never as evidence of", () => {
   const empty = creditGaps([]);
   assert.equal(empty.finding, AUTHORITY_FINDING);
   assert.equal(empty.caveat, CREDIT_CAVEAT);
+});
+
+test("a page keeps its real place in the citation list once the unread are dropped", () => {
+  // Cited third and ninth, with everything between unread. Ranked against each
+  // other they are first and second, and they were still cited third and ninth.
+  const report = creditGaps([[
+    page("a.test", 3, 0.2),
+    page("b.test", 9, 0.9),
+  ]]);
+  assert.equal(report.comparable, 1);
+  const rows = [...report.overCredited, ...report.underCredited];
+  assert.deepEqual(report.overCredited.map((row) => [row.citedAt, row.creditedAt, row.usedAt]), []);
+  assert.deepEqual(rows, [], "a gap of one does not clear the threshold");
+  assert.equal(report.rows, 2);
+});
+
+test("an answer whose pages are mostly unread is counted as such, not ignored", () => {
+  const report = creditGaps([
+    [page("a.test", 1, 0.5), page("b.test", 2, 0.2)],
+    [page("c.test", 1, null), page("d.test", 2, 0.4)],
+  ]);
+  assert.equal(report.comparable, 1);
+  assert.equal(report.tooFewRead, 1, "an answer nothing could be ranked inside is a finding, not a silence");
 });

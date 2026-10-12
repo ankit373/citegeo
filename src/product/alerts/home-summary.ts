@@ -49,6 +49,9 @@ export function buildHomeSummary(input: {
 }): HomeSummary {
   const { insights, set } = input;
   const activePrompts = set.prompts.filter((prompt) => prompt.status === "active").length;
+  // A retired question is not one waiting to be tracked. Counting them put
+  // thirty eight proposed on a project with twenty five.
+  const waiting = set.prompts.filter((prompt) => prompt.status === "proposed").length;
   const latest = input.runs[0];
 
   const setup: SetupStep[] = [
@@ -62,7 +65,7 @@ export function buildHomeSummary(input: {
       id: "prompts",
       label: "Track some questions",
       done: activePrompts > 0,
-      detail: activePrompts ? `${activePrompts} tracked` : set.prompts.length ? `${set.prompts.length} proposed, none tracked` : "None yet",
+      detail: activePrompts ? `${activePrompts} tracked` : waiting ? `${waiting} proposed, none tracked` : "None yet",
     },
     {
       id: "run",

@@ -8,8 +8,9 @@ import { buildSentimentVolatility, type SentimentVolatility } from "./sentiment-
 import { compareToTier, type BrandTier, type TierComparison } from "./visibility-tier.js";
 import { buildVersionReport, type VersionReport } from "./model-version.js";
 import { nextTasks, type MeasurementTask } from "./next-task.js";
-import { domainLabel, tokenize } from "./prompt-identity.js";
+import { asDomain, domainLabel, tokenize } from "./prompt-identity.js";
 import { buildPromptTrend, type PromptTrend } from "./prompt-trend.js";
+import { canonicalUrl } from "../citations/canonical-url.js";
 import { region, REGION_CAVEAT } from "./region.js";
 import { language } from "./language.js";
 import { matchesCompetitor, type Competitor } from "./competitor-set.js";
@@ -37,6 +38,9 @@ export interface EntityStanding {
   prominence: number | null;
   positive: number;
   negative: number;
+  /** The other names the answers used for this same site, most used first.
+   * Merging without showing them would hide what was actually written. */
+  alsoKnownAs?: string[];
 }
 
 export interface ModelStanding {
@@ -63,6 +67,14 @@ export interface PromptStanding {
   ahead: EntityStanding[];
   /** Everyone named on this prompt, strongest first, the brand included. */
   standing: EntityStanding[];
+  /** The pages answers to this question cited, most cited first. What won it. */
+  cited: CitedSource[];
+}
+
+export interface CitedSource {
+  url: string;
+  /** Answers to this question that cited it. */
+  answers: number;
 }
 
 export interface SubtopicStanding {
@@ -111,6 +123,10 @@ export interface TopicInsights {
   /** Completed answers behind everything below. */
   answers: number;
   answersFailed: number;
+  /** Archived answers to questions since retired, left out of every figure
+   * above. They are still in the archive; they are not this brand's category
+   * any more, so they do not get to say who its rivals are. */
+  answersRetired: number;
   overall: VisibilityScore;
   rank: number | null;
   weights: ScoreWeights;
@@ -170,16 +186,58 @@ export interface TopicInsights {
   trackedRivals: EntityStanding[];
 }
 
-/** Keyed on the name: a model gives ChatGPT as openai.com in one answer and
- * chatgpt.com in the next, which ranked one product as two rivals. */
-function entityKey(mention: AnswerMention): string {
-  const name = tokenize(mention.name).join(" ");
-  return name || (mention.domain ? domainLabel(mention.domain) : "");
+// Neither the name nor the site identifies a rival on its own. A model gives
+// ChatGPT as openai.com in one answer and chatgpt.com in the next, and it
+// writes Tickertape and Ticker Tape for one site. Each alone splits a rival in
+// half; what holds is that two mentions sharing either are the same rival.
+class SameRival {
+  private readonly parent = new Map<string, string>();
+
+  private root(key: string): string {
+    let current = key;
+    while (this.parent.get(current) && this.parent.get(current) !== current) {
+      current = this.parent.get(current) as string;
+    }
+    this.parent.set(key, current);
+    return current;
+  }
+
+  join(left: string, right: string): void {
+    if (!left || !right) return;
+    const a = this.root(left);
+    const b = this.root(right);
+    if (a !== b) this.parent.set(b, a);
+  }
+
+  add(key: string): void {
+    if (key && !this.parent.has(key)) this.parent.set(key, key);
+  }
+
+  keyFor(mention: AnswerMention): string {
+    const name = tokenize(mention.name).join(" ");
+    const host = asDomain(mention.domain);
+    return this.root(name || host || "");
+  }
+}
+
+function sameRivals(answers: PromptAnswer[]): SameRival {
+  const groups = new SameRival();
+  for (const answer of answers) {
+    for (const mention of answer.mentions) {
+      const name = tokenize(mention.name).join(" ");
+      const host = asDomain(mention.domain);
+      groups.add(name);
+      groups.add(host || "");
+      if (name && host) groups.join(name, host);
+    }
+  }
+  return groups;
 }
 
 function standings(answers: PromptAnswer[]): EntityStanding[] {
   const completed = answers.filter((answer) => answer.status === "completed");
-  const rows = new Map<string, EntityStanding & { positions: number[] }>();
+  const rows = new Map<string, EntityStanding & { positions: number[]; names: Map<string, number> }>();
+  const groups = sameRivals(completed);
 
   for (const answer of completed) {
     const ordered = answer.mentions
@@ -189,12 +247,12 @@ function standings(answers: PromptAnswer[]): EntityStanding[] {
     // in one answer has still produced one observation, not three.
     const seen = new Set<string>();
     for (const mention of answer.mentions) {
-      const key = entityKey(mention);
+      const key = groups.keyFor(mention);
       if (!key || seen.has(key)) continue;
       seen.add(key);
       const existing = rows.get(key) || {
         name: mention.name,
-        domain: mention.domain,
+        domain: asDomain(mention.domain),
         isTarget: mention.isTarget,
         appearances: 0,
         shareOfAnswers: null,
@@ -202,10 +260,13 @@ function standings(answers: PromptAnswer[]): EntityStanding[] {
         positive: 0,
         negative: 0,
         positions: [],
+        names: new Map<string, number>(),
       };
       existing.appearances += 1;
+      const written = mention.name.trim();
+      if (written) existing.names.set(written, (existing.names.get(written) || 0) + 1);
       if (mention.isTarget) existing.isTarget = true;
-      if (!existing.domain && mention.domain) existing.domain = mention.domain;
+      if (!existing.domain) existing.domain = asDomain(mention.domain);
       if (mention.recommendation === "positive") existing.positive += 1;
       if (mention.recommendation === "negative") existing.negative += 1;
       const index = ordered.findIndex((row) => row === mention);
@@ -217,9 +278,15 @@ function standings(answers: PromptAnswer[]): EntityStanding[] {
 
   return [...rows.values()]
     .map((row) => {
-      const { positions, ...rest } = row;
+      const { positions, names, ...rest } = row;
+      // Labelled by the name the answers used most, with the rest kept so a
+      // merge can be checked rather than taken on trust.
+      const written = [...names.entries()].sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]));
+      const alsoKnownAs = written.slice(1).map(([name]) => name);
       return {
         ...rest,
+        name: written[0]?.[0] || rest.name,
+        ...(alsoKnownAs.length ? { alsoKnownAs } : {}),
         shareOfAnswers: completed.length ? row.appearances / completed.length : null,
         prominence: positions.length ? positions.reduce((total, value) => total + value, 0) / positions.length : null,
       };
@@ -358,6 +425,25 @@ function hasCorroboration(mention: AnswerMention): mention is CorroboratedMentio
   return mention.corroboration !== undefined;
 }
 
+/** One row per page, counted once per answer. The same page cited twice in one
+ * answer is one answer that used it, not two. */
+function citedFor(answers: PromptAnswer[]): CitedSource[] {
+  const counts = new Map<string, number>();
+  for (const answer of answers) {
+    if (answer.status !== "completed") continue;
+    const seen = new Set<string>();
+    for (const raw of answer.citationUrls) {
+      const key = canonicalUrl(raw)?.key;
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+  }
+  return [...counts.entries()]
+    .map(([url, count]) => ({ url, answers: count }))
+    .sort((left, right) => right.answers - left.answers || left.url.localeCompare(right.url));
+}
+
 export function buildTopicInsights(input: {
   projectId: string;
   set: TopicSet;
@@ -372,8 +458,19 @@ export function buildTopicInsights(input: {
   personaLabels?: Map<string, string> | undefined;
   /** Location id to label, for places outside the fixed country list. */
   locationLabels?: Map<string, string> | undefined;
+  /** Cited pages and how many were read back, so the task list can say
+   * which panels are empty for want of a read rather than for want of data. */
+  citedPages?: { cited: number; read: number } | undefined;
 }): TopicInsights {
-  const { projectId, set, answers } = input;
+  const { projectId, set } = input;
+  // A retired question is one somebody said is not this brand's business. Its
+  // archived answers stay in the archive, and they stop driving the figures:
+  // a project whose questions were regenerated against the right category was
+  // still reporting the wrong category's rivals as its leaderboard, because
+  // retiring a question only stopped it being asked again.
+  const retired = new Set(set.prompts.filter((prompt) => prompt.status === "retired").map((prompt) => prompt.id));
+  const answers = input.answers.filter((answer) => !retired.has(answer.promptId));
+  const setAside = input.answers.length - answers.length;
   const completed = answers.filter((answer) => answer.status === "completed");
   const leaderboard = standings(answers);
 
@@ -397,6 +494,7 @@ export function buildTopicInsights(input: {
       // Everyone the model reached for before it reached for this brand.
       ahead: rank === null ? local.slice(0, 5) : local.slice(0, rank - 1),
       standing: local,
+      cited: citedFor(mine),
     });
   }
 
@@ -454,6 +552,7 @@ export function buildTopicInsights(input: {
     projectId,
     answers: completed.length,
     answersFailed: answers.length - completed.length,
+    answersRetired: setAside,
     overall,
     rank: rankOfTarget(leaderboard),
     weights: SCORE_WEIGHTS,
@@ -472,6 +571,7 @@ export function buildTopicInsights(input: {
     versions,
     corroboration,
     tasks: nextTasks({
+      ...(input.citedPages ? { citedPages: input.citedPages } : {}),
       answers: completed.length,
       answersFailed: answers.length - completed.length,
       overall,

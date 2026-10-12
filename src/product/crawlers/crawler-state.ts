@@ -37,6 +37,9 @@ export interface CrawlerLogState {
   /** A CloudFront #Fields header seen in an earlier read. Absent for every
    * other log shape, which names nothing outside the line. */
   logFields?: string[];
+  /** Digests of logs uploaded and already counted. An upload has no byte
+   * offset to resume from, so this is what stops the same file counting twice. */
+  uploads?: string[];
 }
 
 export function emptyCrawlerState(source: string): CrawlerLogState {

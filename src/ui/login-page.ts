@@ -1,3 +1,4 @@
+import { THEME_FONT_LINKS, THEME_FONT_TOKENS } from "./theme.js";
 export function renderLoginPageHtml(failed = false): string {
   // Deliberately plain: no catalogue fetch, no app shell, nothing that runs
   // before someone is admitted.
@@ -10,12 +11,13 @@ export function renderLoginPageHtml(failed = false): string {
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" type="image/svg+xml" href="/assets/brand/citegeo-emblem.svg">
   <title>Sign in | CiteGEO</title>
+  ${THEME_FONT_LINKS}
   <style>
-    :root { --bg:#14120F; --panel:#1C1914; --line:#332C22; --line-strong:#4A4030; --text:#F2EEE4; --muted:#A89C87; --failed-text:#CC7157; }
+    :root { ${THEME_FONT_TOKENS} --bg:#14120F; --panel:#1C1914; --line:#332C22; --line-strong:#4A4030; --text:#F2EEE4; --muted:#A89C87; --failed-text:#CC7157; }
     * { box-sizing:border-box; }
-    body { margin:0; min-height:100vh; display:grid; place-items:center; padding:24px; background:var(--bg); color:var(--text); font-family:"General Sans",ui-sans-serif,system-ui,-apple-system,sans-serif; }
+    body { margin:0; min-height:100vh; display:grid; place-items:center; padding:24px; background:var(--bg); color:var(--text); font-family:var(--font-ui); }
     main { width:min(380px,100%); }
-    h1 { font-family:"Cabinet Grotesk",ui-sans-serif,system-ui,sans-serif; font-size:22px; margin:0 0 6px; letter-spacing:-0.01em; }
+    h1 { font-family:var(--font-display); font-size:22px; margin:0 0 6px; letter-spacing:-0.01em; }
     p { color:var(--muted); margin:0 0 20px; line-height:1.5; font-size:14px; }
     form { display:grid; gap:10px; border:1px solid var(--line); border-radius:8px; background:var(--panel); padding:18px; }
     label { font-size:12px; color:var(--muted); }

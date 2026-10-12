@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { THEME_BASE, THEME_FONT_LINKS, THEME_TOKENS } from "../src/ui/theme.js";
+import { THEME_BASE, THEME_FONT_LINKS, THEME_FONT_TOKENS, THEME_TOKENS } from "../src/ui/theme.js";
 
 // The theme is CSS inside a string, so nothing type-checks it. A token defined
 // in one mode and forgotten in the other is invisible until the page is dark.
@@ -264,5 +264,36 @@ test("a row that hides has a rule saying so, because its class beats [hidden]", 
       css.includes(`.${row}[hidden]`),
       `.${row} sets display by class, so it needs a [hidden] rule or filtering it will do nothing`,
     );
+  }
+});
+
+// Every surface names its typeface through a token. A family written out by
+// hand in one file is a family the head may not be loading: Cabinet Grotesk
+// and General Sans sat in four stylesheets after the sheet that served them
+// had gone, and every one of them was quietly rendering as the system face.
+test("no surface writes a font family out by hand", () => {
+  const here = join(process.cwd(), "src", "ui");
+  // workbench-style.ts is a raw string with no interpolation, so it declares
+  // the three families itself. The next test holds it to the same three.
+  const surfaces = ["login-page.ts", "app-html.ts", "product-project-app.ts", "product-phase2-app.ts"];
+  for (const file of surfaces) {
+    const source = readFileSync(join(here, file), "utf8");
+    for (const family of ['"Wix Madefor', '"IBM Plex', '"General Sans', '"Cabinet Grotesk']) {
+      assert.equal(source.includes(family), false, `${file} names ${family} itself; use var(--font-ui), var(--font-display) or var(--font-mono)`);
+    }
+  }
+});
+
+test("a surface carrying its own palette still gets the families", () => {
+  // workbench-style.ts is a raw string with no interpolation, so it repeats
+  // the three declarations. They have to be the same three.
+  const workbench = readFileSync(join(process.cwd(), "src", "ui", "workbench-style.ts"), "utf8");
+  for (const token of ["--font-display:", "--font-ui:", "--font-mono:"]) {
+    assert.ok(workbench.includes(token), `workbench-style.ts is missing ${token}`);
+    assert.ok(THEME_FONT_TOKENS.includes(token), `theme.ts is missing ${token}`);
+  }
+  for (const family of ["Wix Madefor Display", "Wix Madefor Text", "IBM Plex Mono"]) {
+    assert.ok(workbench.includes(family), `workbench-style.ts has drifted from the theme on ${family}`);
+    assert.ok(THEME_FONT_LINKS.includes(family.split(" ").join("+")), `the head does not load ${family}`);
   }
 });

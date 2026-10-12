@@ -1,26 +1,38 @@
+import { wilsonInterval, tooWideToRead, type ProportionInterval } from "../topics/proportion-interval.js";
 import type { SourcePage } from "./source-page.js";
 
 // A page is cited for what it is as much as for what it says. Across a study of
 // 100k responses the ranked best-of listicle was the most cited format at about
-// a fifth of all citations, and roughly four citations in five went to a
-// corporate site, with video ahead of community, editorial and reference among
-// the rest.
+// a fifth of all citations, and roughly four citations in five went to a site
+// belonging to a company in the category rather than to a publisher.
 //
-// Both are read off the page that was actually cited, so the answer is what
-// wins here rather than what wins on average.
+// Separately, every 2026 study of where a brand's own citations come from puts
+// the brand's own domain at a twentieth to a tenth of them. Those are different
+// questions and the panel reports both rather than one standing for the other.
 
 export type PageFormat = "listicle" | "comparison" | "guide" | "documentation" | "review" | "forum" | "video" | "reference" | "article";
 
-export type SourceKind = "yours" | "rival" | "social" | "community" | "video" | "reference" | "corporate";
+export type SourceKind = "yours" | "rival" | "social" | "community" | "video" | "reference" | "independent";
 
 /** Published share of citations the ranked best-of listicle took, which is the
  * most cited format there. Carried so a project can see its own against it. */
 export const LISTICLE_BASELINE = 0.21;
 
-/** Published share of citations going to corporate sites. */
+/** Published share of citations going to a company's own site rather than to
+ * a publisher. Counted across every company in the category, not just yours. */
 export const CORPORATE_BASELINE = 0.78;
 
-export const KIND_CAVEAT = "Read off the pages these answers cited, from the address, the title and the shape of the markup. A page can be a comparison and a listicle at once and only its strongest signal is kept, so the split is a reading rather than a census. The baselines are from one published study, on its prompts and its engines.";
+/** Published share of a brand's citations that sit on the brand's own domain.
+ * A band rather than a figure, because the studies disagree inside it. */
+export const OWNED_BASELINE_LOW = 0.05;
+export const OWNED_BASELINE_HIGH = 0.1;
+
+/** Cited pages read back before a share is worth setting beside a published
+ * one. Below it the range the share is consistent with is wider than the gap
+ * to the baseline, so the comparison decides nothing. */
+export const MIN_PAGES_FOR_SHARE = 20;
+
+export const KIND_CAVEAT = "Read off the pages these answers cited, from the address, the title and the shape of the markup. A page can be a comparison and a listicle at once and only its strongest signal is kept, so the split is a reading rather than a census. A site counts as a company's only where an answer named a brand at that domain, so a company nobody named reads as a publisher here. The baselines come from published studies, on their prompts and their engines.";
 
 const VIDEO_HOSTS = ["youtube.com", "youtu.be", "vimeo.com", "dailymotion.com"];
 const COMMUNITY_HOSTS = ["reddit.com", "quora.com", "stackexchange.com", "stackoverflow.com", "ycombinator.com", "discourse.org"];
@@ -74,7 +86,9 @@ export function sourceOf(page: { host: string; namesYou?: boolean }, scope: { do
   if (isOn(host, COMMUNITY_HOSTS)) return "community";
   if (isOn(host, VIDEO_HOSTS)) return "video";
   if (isOn(host, REFERENCE_HOSTS)) return "reference";
-  return "corporate";
+  // Not your site, not a site an answer named a brand for, and not one of the
+  // kinds above. A publisher writing about the category, as far as this knows.
+  return "independent";
 }
 
 export interface KindShare<T extends string> {
@@ -86,16 +100,34 @@ export interface KindShare<T extends string> {
 export interface PageKindReport {
   /** Cited pages read back, which is what every share is taken over. */
   pages: number;
+  /** Distinct pages these answers cited, read or not. Every share below is
+   * taken over the pages read, and the gap between the two numbers is how
+   * much of the category the share speaks for. */
+  cited: number;
+  /** True where too few pages have been read back to set a share beside a
+   * published one. The shares are still carried, because the counts behind
+   * them are the finding; what they cannot do is settle a comparison. */
+  tooFewToCompare: boolean;
   formats: Array<KindShare<PageFormat>>;
   sources: Array<KindShare<SourceKind>>;
   /** This project's listicle share against the published one. Null with
    * nothing read back. */
   listicleShare: number | null;
+  /** What this many pages is consistent with, at about 95 per cent. A share
+   * off thirteen pages has a range wider than the gap to the baseline. */
+  listicleInterval: ProportionInterval;
   listicleBaseline: number;
-  /** Corporate here counts your own and your rivals' sites too, which is what
-   * the published figure counted. */
+  /** Pages on a site belonging to a company in this category, yours included.
+   * A publisher writing about the category is not one. */
   corporateShare: number | null;
+  corporateInterval: ProportionInterval;
   corporateBaseline: number;
+  /** Pages on your own domain, which published work puts at a twentieth to a
+   * tenth, so being absent here is usual rather than a finding. */
+  ownedShare: number | null;
+  ownedInterval: ProportionInterval;
+  ownedBaselineLow: number;
+  ownedBaselineHigh: number;
   caveat: string;
 }
 
@@ -112,22 +144,41 @@ export function buildPageKinds(input: {
   pages: SourcePage[];
   domain?: string | undefined;
   rivalDomains?: string[] | undefined;
+  /** Distinct pages these answers cited. Without it the report cannot say
+   * what share of the category the pages it read stand for. */
+  cited?: number | undefined;
 }): PageKindReport {
   // A page that would not load says nothing about what kind of page gets
-  // cited, so it is left out rather than counted as an article.
-  const readable = input.pages.filter((page) => !page.detail && page.title !== null);
+  // cited, so it is left out rather than counted as an article. A page that
+  // loaded and gave back no body is the same case: its format would be read
+  // off the address alone and land on article, the default.
+  const readable = input.pages.filter((page) => !page.detail && page.title !== null && Boolean(page.text) && page.words > 0);
   const formats = readable.map((page) => formatOf(page));
   const sources = readable.map((page) => sourceOf(page, { domain: input.domain, rivalDomains: input.rivalDomains }));
   const total = readable.length;
-  const corporate = sources.filter((kind) => kind === "corporate" || kind === "yours" || kind === "rival").length;
+  const corporate = sources.filter((kind) => kind === "yours" || kind === "rival").length;
+  const owned = sources.filter((kind) => kind === "yours").length;
+  const listicles = formats.filter((kind) => kind === "listicle").length;
+  const listicleInterval = wilsonInterval(listicles, total);
+  const corporateInterval = wilsonInterval(corporate, total);
+  const ownedInterval = wilsonInterval(owned, total);
   return {
     pages: total,
+    cited: input.cited ?? total,
+    // Either too few pages, or a range so wide the comparison decides nothing.
+    tooFewToCompare: total < MIN_PAGES_FOR_SHARE || tooWideToRead(listicleInterval),
     formats: tally(formats),
     sources: tally(sources),
-    listicleShare: total ? formats.filter((kind) => kind === "listicle").length / total : null,
+    listicleShare: total ? listicles / total : null,
+    listicleInterval,
     listicleBaseline: LISTICLE_BASELINE,
     corporateShare: total ? corporate / total : null,
+    corporateInterval,
     corporateBaseline: CORPORATE_BASELINE,
+    ownedShare: total ? owned / total : null,
+    ownedInterval,
+    ownedBaselineLow: OWNED_BASELINE_LOW,
+    ownedBaselineHigh: OWNED_BASELINE_HIGH,
     caveat: KIND_CAVEAT,
   };
 }

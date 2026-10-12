@@ -1,5 +1,5 @@
 import type { StructuredAsk } from "../topics/topic-service.js";
-import { countDrafts } from "./agent-schema.js";
+import { countDrafts, parsePublication, type AgentDraft } from "./agent-schema.js";
 import { AgentUnavailableError, type ProductAgentService } from "./agent-service.js";
 
 type JsonSender = (status: number, body: unknown) => void;
@@ -11,9 +11,8 @@ function reviewFrom(body: Record<string, unknown>): { status: "approved" | "reje
   return { status: asked, note };
 }
 
-// /agents lists what each workflow would do and the drafts already written.
-// A draft is written by POST and decided by POST to its own id. Nothing here
-// publishes anything anywhere.
+// Nothing here publishes anything anywhere. Publishing records that a person
+// did, which is the date every later measurement is read against.
 export async function handleAgentApi(input: {
   method: string;
   route: string[];
@@ -21,6 +20,9 @@ export async function handleAgentApi(input: {
   service: ProductAgentService;
   ask: StructuredAsk;
   readJson?: () => Promise<Record<string, unknown>>;
+  /** What to do once a draft is recorded as live. Injected so this domain
+   * never has to know that the thing measuring it is an experiment. */
+  onPublished?: (projectId: string, draft: AgentDraft) => Promise<{ id: string; name: string }>;
 }): Promise<boolean> {
   const { method, route, send, service } = input;
   if (route.length < 4 || route[0] !== "api" || route[1] !== "projects" || route[3] !== "agents") return false;
@@ -54,6 +56,27 @@ export async function handleAgentApi(input: {
       send(200, { draft: await service.review(projectId, route[4] || "", decision) });
       return true;
     }
+    if (route.length === 6 && route[5] === "publish" && method === "POST") {
+      const publication = parsePublication(body);
+      if (!publication) {
+        send(400, { code: "invalid_publication", error: "Recording a draft as live needs the http address it went live at." });
+        return true;
+      }
+      const draft = await service.publish(projectId, route[4] || "", publication);
+      // A draft that went live and cannot be measured is still live. The
+      // reason the measurement did not start is reported beside it, not thrown.
+      let measuring: { id: string; name: string } | null = null;
+      let notMeasured: string | null = null;
+      if (input.onPublished) {
+        try {
+          measuring = await input.onPublished(projectId, draft);
+        } catch (error) {
+          notMeasured = error instanceof Error ? error.message : String(error);
+        }
+      }
+      send(200, { draft, measuring, notMeasured });
+      return true;
+    }
   } catch (error) {
     if (error instanceof AgentUnavailableError) {
       send(409, { code: "agent_unavailable", error: error.message });
@@ -62,7 +85,7 @@ export async function handleAgentApi(input: {
     throw error;
   }
 
-  if (route.length === 4 || (route.length === 6 && route[5] === "review")) {
+  if (route.length === 4 || (route.length === 6 && (route[5] === "review" || route[5] === "publish"))) {
     send(405, { error: "method_not_allowed" });
     return true;
   }

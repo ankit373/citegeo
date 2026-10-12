@@ -13,7 +13,7 @@ import type { VisibilityScore } from "../src/product/topics/visibility-score.js"
 const WEIGHTS = SCORE_WEIGHTS;
 
 function score(overrides: Partial<VisibilityScore> = {}): VisibilityScore {
-  return { answers: 10, appearances: 0, presenceInterval: wilsonInterval(0, 0), tooFewAnswers: false, presenceRate: 0, prominence: null, sentiment: null, score: 0, weights: WEIGHTS, ...overrides };
+  return { answers: 10, appearances: 0, presenceInterval: wilsonInterval(0, 0), tooFewAnswers: false, namedIn: 0, tooFewAppearances: true, presenceRate: 0, prominence: null, sentiment: null, score: 0, weights: WEIGHTS, ...overrides };
 }
 
 function entity(name: string, overrides: Partial<EntityStanding> = {}): EntityStanding {
@@ -44,9 +44,9 @@ function set(prompts: Prompt[]): TopicSet {
 
 function insights(overrides: Partial<TopicInsights> = {}): TopicInsights {
   return {
-    projectId: "p", answers: 10, answersFailed: 0, overall: score(), rank: null, weights: WEIGHTS,
-    leaderboard: [], topics: [], byModel: [], absentFrom: [], citationsUnavailable: false, corroboration: summariseCorroboration([]), activation: splitActivation([]), stability: buildStabilityReport([]), phrasing: { measured: 0, namesTheBrand: 0, oneWording: 0, unstable: 0, spread: null, questions: [], caveat: "" }, decoys: { considered: 0, decoys: [], noiseFloor: null, matcherErrors: 0, presenceRate: null, clearsFloor: null, caveat: "" }, variance: { answers: 0, rate: null, flat: false, factors: [], tooFew: true, caveat: "" }, framing: { measured: 0, flipped: 0, flipRate: null, namingFlipped: 0, namingFlipRate: null, ratio: null, publishedRatio: 6.7, questions: [], caveat: "" }, tier: { tier: "unstated" as const, baseline: null, presence: wilsonInterval(0, 0), typical: null, standing: null, caveat: "" }, versions: { models: [], unconfirmed: [], separatedShifts: 0, caveat: "" }, tasks: [],
-    trend: { points: [], change: null, since: null }, byRegion: [], byLanguage: [], byPersona: [],
+    projectId: "p", answers: 10, answersFailed: 0, answersRetired: 0, overall: score(), rank: null, weights: WEIGHTS,
+    leaderboard: [], topics: [], byModel: [], absentFrom: [], citationsUnavailable: false, corroboration: summariseCorroboration([]), activation: splitActivation([]), stability: buildStabilityReport([]), phrasing: { measured: 0, namesTheBrand: 0, oneWording: 0, unstable: 0, neverNamed: 0, alwaysNamed: 0, spread: null, questions: [], caveat: "" }, decoys: { considered: 0, decoys: [], noiseFloor: null, matcherErrors: 0, presenceRate: null, clearsFloor: null, caveat: "" }, variance: { answers: 0, rate: null, flat: false, factors: [], tooFew: true, wordingIsTheQuestion: false, events: 0, caveat: "" }, framing: { measured: 0, flipped: 0, flipRate: null, namingFlipped: 0, namingFlipRate: null, ratio: null, publishedRatio: 6.7, questions: [], caveat: "" }, tier: { tier: "unstated" as const, baseline: null, presence: wilsonInterval(0, 0), typical: null, standing: null, caveat: "" }, versions: { models: [], unconfirmed: [], separatedShifts: 0, caveat: "" }, tasks: [],
+    trend: { points: [], change: null, since: null, thinPoints: 0, readablePoints: 0 }, byRegion: [], byLanguage: [], byPersona: [],
     regionCaveat: "", identityCaveat: null, trackedRivals: [], ...overrides,
   };
 }
@@ -104,7 +104,7 @@ test("a model that never names you is only a finding when another one does", () 
   assert.equal(ids(blindOnly).includes("blind-models"), false, "every model blind is the overall score, not a per-model gap");
 
   const mixed = buildRankingPlan({
-    insights: insights({ byModel: [model("a"), model("b", { appearances: 4, presenceInterval: wilsonInterval(0, 0), tooFewAnswers: false, presenceRate: 0.4 })] }),
+    insights: insights({ byModel: [model("a"), model("b", { appearances: 4, presenceInterval: wilsonInterval(0, 0), tooFewAnswers: false, namedIn: 0, tooFewAppearances: true, presenceRate: 0.4 })] }),
     set: set([prompt("a")]),
   });
   assert.ok(ids(mixed).includes("blind-models"));
@@ -114,7 +114,7 @@ test("moves that raise the score come before moves that only widen what is measu
   const plan = buildRankingPlan({
     insights: insights({
       leaderboard: [entity("Screener.in", { appearances: 9 })],
-      absentFrom: [{ promptId: "a", topicId: "t", text: "q", intent: "discovery", measuresVisibility: true, score: score(), rank: null, entitiesNamed: 1, byModel: [], ahead: [entity("Screener.in")], subtopic: null, standing: [entity("Screener.in")] } as PromptStanding],
+      absentFrom: [{ promptId: "a", topicId: "t", text: "q", intent: "discovery", measuresVisibility: true, score: score(), rank: null, entitiesNamed: 1, byModel: [], ahead: [entity("Screener.in")], subtopic: null, standing: [entity("Screener.in")], cited: [] } as PromptStanding],
     }),
     set: set([prompt("a"), prompt("b", { intent: "brand", measuresVisibility: false, visibilityExclusionReason: "names_the_brand" })]),
   });

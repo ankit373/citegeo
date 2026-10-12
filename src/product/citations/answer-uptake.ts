@@ -29,6 +29,12 @@ export interface SharedPhrase {
 export interface PageUptake {
   url: string;
   host: string;
+  /** The answer this reading belongs to. One page cited by five answers gives
+   * five readings with five different figures, and a table that does not name
+   * the answer prints them as five readings of one page contradicting itself. */
+  answerId: string;
+  promptText: string;
+  modelId: string;
   /** Null where the page could not be read, so nothing can be said. */
   uptake: number | null;
   /** Share of the answer's own vocabulary this page could account for. The
@@ -117,10 +123,19 @@ export interface UptakeInput {
   page: { url: string; host: string; text?: string | undefined; detail?: string | null | undefined };
   /** Place in this answer's citation list, from one. */
   citedAt: number;
+  /** Which answer this is a reading of. */
+  answer: { id: string; promptText: string; modelId: string };
 }
 
 export function uptakeOf(input: UptakeInput): PageUptake {
-  const shell = { url: input.page.url, host: input.page.host, citedAt: input.citedAt };
+  const shell = {
+    url: input.page.url,
+    host: input.page.host,
+    citedAt: input.citedAt,
+    answerId: input.answer.id,
+    promptText: input.answer.promptText,
+    modelId: input.answer.modelId,
+  };
   const text = input.page.text || "";
   if (!text) {
     return {
@@ -170,28 +185,43 @@ export const UPTAKE_CAVEAT = "Mostly how much of the answer's own vocabulary the
 export const WEAK_SHARE = 0.3;
 
 export interface UptakeSummary {
-  /** Cited pages that were read back, so a figure was possible. */
+  /** Readings that could be taken: one per page per answer that cited it, over
+   * the pages read back. A page used hard by one answer and ignored by the
+   * next is two readings, and counting them as pages overstated the evidence. */
   measured: number;
-  /** Cited pages not read back yet. Not counted as nought uptake. */
+  /** Readings that could not be taken, because the page is not read back yet.
+   * Not counted as nought uptake. */
   unread: number;
-  /** Mean uptake over the measured ones. Null with none. */
+  /** Distinct pages behind those readings, which is what a reader hears when
+   * a figure says "pages". */
+  pagesRead: number;
+  pagesUnread: number;
+  /** Mean uptake over the measured readings. Null with none. */
   mean: number | null;
-  /** Pages cited whose subject the answer barely touches. */
+  /** Readings where the answer barely touches the page's subject. */
   citedNotUsed: number;
   pages: PageUptake[];
   caveat: string;
 }
 
+function distinct(rows: PageUptake[]): number {
+  return new Set(rows.map((row) => row.url)).size;
+}
+
 export function summariseUptake(rows: PageUptake[]): UptakeSummary {
   const measured = rows.filter((row) => row.uptake !== null);
+  const unread = rows.filter((row) => row.uptake === null);
   const total = measured.reduce((sum, row) => sum + (row.uptake || 0), 0);
   return {
     measured: measured.length,
-    unread: rows.length - measured.length,
+    unread: unread.length,
+    pagesRead: distinct(measured),
+    pagesUnread: distinct(unread),
     mean: measured.length ? Math.round((total / measured.length) * 1000) / 1000 : null,
     citedNotUsed: measured.filter((row) => (row.shared ?? 0) < WEAK_SHARE).length,
-    // Least used first: a page cited and not used is the surprising one.
-    pages: [...rows].sort((left, right) => (left.uptake ?? 2) - (right.uptake ?? 2)),
+    // Least used first: a page cited and not used is the surprising one. The
+    // address breaks ties, so two equal readings do not swap between requests.
+    pages: [...rows].sort((left, right) => (left.uptake ?? 2) - (right.uptake ?? 2) || left.url.localeCompare(right.url)),
     caveat: UPTAKE_CAVEAT,
   };
 }

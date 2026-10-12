@@ -19,6 +19,9 @@ export interface Experiment {
   status: "running" | "stopped";
   createdAt: string;
   stoppedAt: string | null;
+  /** The draft this came from, where one did. Null for an experiment somebody
+   * started by hand against a change the product never saw. */
+  draftId: string | null;
 }
 
 export interface ExperimentFile {
@@ -36,6 +39,7 @@ export function newExperiment(input: {
   treatedPromptIds: string[];
   controlPromptIds: string[];
   changedAt?: string | undefined;
+  draftId?: string | null | undefined;
 }): Experiment {
   const name = input.name.trim();
   if (!name) throw new ExperimentInputError("An experiment needs a name.");
@@ -60,5 +64,6 @@ export function newExperiment(input: {
     status: "running",
     createdAt: new Date().toISOString(),
     stoppedAt: null,
+    draftId: input.draftId || null,
   };
 }

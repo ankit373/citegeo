@@ -45,6 +45,9 @@ export interface RecognitionAnswerExecutor {
     requestParameters: RecognitionRequestParameters;
     preserveEmptyStructuredTruncation?: boolean | undefined;
     executionContext?: RecognitionExecutionContext | undefined;
+    /** Asks for prose and nothing else. A grounded provider drops its source
+     * annotations the moment a schema is attached, so the two cannot be one call. */
+    unstructured?: boolean | undefined;
     structuredOutput?: {
       name: string;
       description: string;
@@ -71,6 +74,7 @@ export class OpenRouterRecognitionAnswerExecutor implements RecognitionAnswerExe
     requestParameters: RecognitionRequestParameters;
     preserveEmptyStructuredTruncation?: boolean | undefined;
     executionContext?: RecognitionExecutionContext | undefined;
+    unstructured?: boolean | undefined;
     structuredOutput?: {
       name: string;
       description: string;
@@ -92,7 +96,7 @@ export class OpenRouterRecognitionAnswerExecutor implements RecognitionAnswerExe
       webSearchEnabled: input.requestParameters.webSearchEnabled,
       webSearchMode: input.requestParameters.webSearchMode === "provider_native" ? "provider_native" : undefined,
       preserveEmptyStructuredTruncation: input.preserveEmptyStructuredTruncation,
-      ...(input.requestParameters.structuredOutputTransport === "function_tool"
+      ...(input.unstructured ? {} : input.requestParameters.structuredOutputTransport === "function_tool"
         ? {
             structuredOutputTool: {
               name: structuredOutput.name,

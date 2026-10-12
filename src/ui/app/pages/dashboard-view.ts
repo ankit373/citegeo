@@ -29,6 +29,11 @@ export interface Standing {
   sentiment: number | null;
   answers: number;
   appearances: number;
+  /** Answers that named the brand, which prominence and framing are means
+   * over. Absent on a figure built before this was carried. */
+  namedIn?: number | undefined;
+  /** True where there are too few of those to read either as a rate. */
+  tooFewAppearances?: boolean | undefined;
 }
 
 export interface NamedEntity {
@@ -120,6 +125,8 @@ export interface DashboardData {
   measurable: number;
   absent: number;
   assistants: number;
+  /** Models saved or seen, which is not the same as models that answered. */
+  assistantsConfigured?: number;
   assistantsNaming: number;
   moves: Move[];
   citationsUnavailable: boolean;
@@ -148,12 +155,24 @@ export function heroStats(standing: Standing, position?: PositionReport | undefi
         String(position.averagePosition),
         `best ${position.best}, worst ${position.worst}, over ${position.ranked} questions`,
       );
+  // Prominence and framing are means over the answers that named the brand. On
+  // a handful of those, 100% beside "Not named" is two true figures reading as
+  // a contradiction, and the big one reads as a win.
+  const named = standing.namedIn === undefined ? standing.appearances : standing.namedIn;
+  const thin = standing.tooFewAppearances === true;
+  const over = (value: number | null, note: string): [string, string] => {
+    if (!named) return [percent(null), "nothing named, so nothing judged"];
+    if (thin) return ["Too few", `${named} appearance(s) cannot be read as a rate`];
+    return [percent(value), note];
+  };
+  const prominence = over(standing.prominence, "how early you appear");
+  const sentiment = over(standing.sentiment, "recommended or listed");
   return join([
     '<div class="hero-stats">',
     stat("Presence", percent(standing.presenceRate), `${standing.appearances} of ${standing.answers} named you`),
     place,
-    stat("Prominence", percent(standing.prominence), "how early you appear"),
-    stat("Sentiment", percent(standing.sentiment), "recommended or listed"),
+    stat("Prominence", prominence[0], prominence[1]),
+    stat("Sentiment", sentiment[0], sentiment[1]),
     "</div>",
   ]);
 }
@@ -176,7 +195,10 @@ export function summaryTiles(data: DashboardData): string {
     {
       label: "Assistants asked",
       value: String(data.assistants),
-      note: `${data.assistantsNaming} named you at least once`,
+      note: `${data.assistantsNaming} named you at least once`
+        + (data.assistantsConfigured && data.assistantsConfigured > data.assistants
+          ? `. ${data.assistantsConfigured - data.assistants} more never answered`
+          : ""),
       fraction: data.assistants ? data.assistantsNaming / data.assistants : null,
     },
     {
@@ -239,7 +261,15 @@ export interface RivalSeries {
   domain?: string | null;
   icon?: string | null;
   isTarget: boolean;
-  points: Array<{ at: string; share: number }>;
+  /** A share off a run of one answer is nought or one for every brand, so the
+   * answer count travels with it and a run too thin to read is not drawn. */
+  points: Array<{ at: string; share: number; answers?: number; readable?: boolean }>;
+}
+
+/** Runs a share can be read off. A run is kept where nothing said otherwise,
+ * so a caller that does not carry the flag still gets every point. */
+function readableRuns(series: RivalSeries[]): RivalSeries[] {
+  return series.map((row) => ({ ...row, points: row.points.filter((point) => point.readable !== false) }));
 }
 
 /** One rule for a line's colour, so the list beside the chart can key to it. */
@@ -287,12 +317,21 @@ export interface ChartOptions {
 
 export function rivalChart(series: RivalSeries[], domain: string, options: ChartOptions = {}): string {
   const named = options.labels !== false;
-  const runs = series[0] ? series[0].points.length : 0;
-  if (runs < 2) return '<p class="subtle">One run so far. Run again to see movement.</p>';
+  // A run of one answer gives every brand a share of nought or one, and a line
+  // through those draws how big the runs were rather than who is being named.
+  const asked = series[0] ? series[0].points.length : 0;
+  const readable = readableRuns(series);
+  const runs = readable[0] ? readable[0].points.length : 0;
+  const dropped = asked - runs;
+  if (runs < 2) {
+    return '<p class="subtle">' + (dropped
+      ? `${runs} of ${asked} run(s) asked enough answers for a share to mean anything. Run the set again to see movement.`
+      : "One run so far. Run again to see movement.") + "</p>";
+  }
 
-  const first = series[0];
+  const first = readable[0];
   if (!first) return '<p class="subtle">Nothing has been named yet.</p>';
-  const drawn = withTarget(series, domain);
+  const drawn = withTarget(readable, domain);
 
   const width = 760;
   const height = 230;
@@ -368,6 +407,9 @@ export function rivalChart(series: RivalSeries[], domain: string, options: Chart
     "</svg>",
     '<div class="ch-tip" hidden></div>',
     "</div>",
+    dropped
+      ? `<p class="subtle">Drawn over the ${runs} run(s) that asked enough answers for a share to mean anything. ${dropped} more asked too few, and are in the figures below.</p>`
+      : "",
   ]);
 }
 
@@ -389,16 +431,22 @@ export interface RivalStanding {
 export function rivalStandings(series: RivalSeries[]): RivalStanding[] {
   const scored = series
     .map((line, index) => {
+      // The share is the latest run's, readable or not: it is what that run
+      // said. The movement is a difference between two runs, and a run of one
+      // answer can only report nought or one, so the chart leaves those out
+      // and the standings beside it cannot quietly keep them.
       const points = line.points;
       const last = points[points.length - 1];
-      const prior = points.length > 1 ? points[points.length - 2] : undefined;
+      const readable = points.filter((point) => point.readable !== false);
+      const recent = readable[readable.length - 1];
+      const prior = readable.length > 1 ? readable[readable.length - 2] : undefined;
       return {
         name: line.name,
         domain: line.domain ?? null,
         icon: line.icon ?? null,
         isTarget: line.isTarget,
         share: last ? last.share : 0,
-        moved: last && prior ? last.share - prior.share : null,
+        moved: recent && prior ? recent.share - prior.share : null,
         ink: seriesInk(line.isTarget, index),
       };
     })
@@ -458,17 +506,25 @@ export function rivalRuns(series: RivalSeries[], domain: string): string {
   if (!first || first.points.length < 2) return "";
   const ordered = rivalStandings(drawn);
   const columns = `grid-template-columns:minmax(0,1.5fr) repeat(${first.points.length},minmax(58px,1fr))`;
-  const heads = first.points.map((point) => `<span>${html(runLabel(point.at) || "Run")}</span>`).join("");
+  // Every run is in the table, including the ones the chart left out, with the
+  // answer count that decides whether its column says anything.
+  const heads = first.points.map((point) => {
+    const size = point.answers === undefined ? "" : `<small>${point.answers}</small>`;
+    return `<span${point.readable === false ? ' class="thin-run"' : ""}>${html(runLabel(point.at) || "Run")}${size}</span>`;
+  }).join("");
   const body = ordered.map((entry) => {
     const line = drawn.find((row) => row.name === entry.name);
-    const cells = (line ? line.points : []).map((point) => `<span class="mcell">${percent(point.share)}</span>`).join("");
+    const cells = (line ? line.points : []).map((point) =>
+      `<span class="mcell${point.readable === false ? " subtle" : ""}">${percent(point.share)}</span>`).join("");
     return `<div class="mrow" style="${columns}">`
       + `<div class="mname"><strong>${html(entry.name)}</strong>${entry.isTarget ? " " + pill("You", "good") : ""}</div>`
       + `${cells}</div>`;
   }).join("");
+  const thin = first.points.filter((point) => point.readable === false).length;
   return join([
     '<h3 class="panel-section">Every run, in figures</h3>',
     `<div class="mtable"><div class="mhead" style="${columns}"><span>Brand</span>${heads}</div>${body}</div>`,
+    thin ? `<p class="mlegend">The figure under each date is how many answers that run produced. ${thin} of them asked too few for a share to mean anything, and are greyed.</p>` : "",
   ]);
 }
 
@@ -773,7 +829,11 @@ export function topicMatrix(data: MatrixData, open: string[] = []): string {
     return '<p class="subtle">No answer has been scored against a topic yet.</p>';
   }
   const shown = new Set(open);
-  const columns = `grid-template-columns:minmax(150px,1.4fr) 92px repeat(${data.columns.length},minmax(52px,1fr))`;
+  // The topic name is what the row is about and it was losing to eight share
+  // columns: at the width this panel renders, 1.4fr of 9.4 left it 164px and
+  // "Screener vs spreadsheets" came out as "Screener vs spr…". A percentage
+  // needs far less room than a sentence does.
+  const columns = `grid-template-columns:minmax(190px,2.4fr) 92px repeat(${data.columns.length},minmax(46px,1fr))`;
   const heads = data.columns.map((column) =>
     `<span class="mxhead ${column.isTarget ? "is-you" : ""}" title="${html(column.name)}">${brandIcon(column.name, column.icon)}<b>${html(column.name.length > 11 ? column.name.slice(0, 10) + "…" : column.name)}</b></span>`).join("");
   const visible = data.rows.filter((row) => !row.parent || shown.has(row.parent));
