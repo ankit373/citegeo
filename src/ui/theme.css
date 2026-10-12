@@ -899,7 +899,16 @@ select[data-filter].is-set {
      fills down a row stay comparable. */
   .mxcell.is-you { box-shadow: inset 0 0 0 1px var(--line-strong); }
   .mxcell.is-strong { color: var(--accent-ink); }
+  /* Emitted since the grid was written and never given a rule, so a brand
+     nobody named read as an empty cell rather than as a stated absence. */
+  .mxnone { display: block; text-align: center; color: var(--weak); }
+  /* Your own column carries no fill when you were never named, which left a
+     bordered blank. The tint says the cell was measured and came back empty. */
+  .mxcell.is-you:has(.mxnone) { background: var(--sunken); }
   .mxrow:hover .mxcell { box-shadow: inset 0 0 0 1px var(--line); }
+  /* Three classes beat two, so the hover rule above used to wipe the marker
+     off your own column every time the pointer crossed the row. */
+  .mxrow:hover .mxcell.is-you { box-shadow: inset 0 0 0 1px var(--line-strong); }
   .mxname { min-width: 0; }
   .mxopen { display: flex; align-items: center; gap: 6px; width: 100%; border: 0; background: none; padding: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
   .mxopen small { color: var(--weak); font-size: var(--type-xs); }
