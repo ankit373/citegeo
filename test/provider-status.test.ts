@@ -34,11 +34,12 @@ function withOpenRouterKey<T>(run: () => Promise<T>): Promise<T> {
   return run().finally(restore);
 }
 
-const balanceOf = (purchased: number, used: number) => async (): Promise<OpenRouterAccountBalance> => ({
+const balanceOf = (purchased: number, used: number, keyRemaining: number | null = null) => async (): Promise<OpenRouterAccountBalance> => ({
   purchased,
   used,
   remaining: purchased - used,
-  paidModelsRunnable: purchased - used > 0,
+  keyRemaining,
+  paidModelsRunnable: purchased - used > 0 || (keyRemaining !== null && keyRemaining > 0),
 });
 
 test("an empty OpenRouter balance is reported before a run, not as a mid-run 402", async () => {
@@ -54,6 +55,22 @@ test("an empty OpenRouter balance is reported before a run, not as a mid-run 402
     assert.ok(openrouter.detail.includes("never purchased credits"));
     assert.ok(openrouter.detail.includes("HTTP 402"));
     // A free model still runs, so the provider is not written off entirely.
+    assert.equal(openrouter.runnableNow, true);
+  });
+});
+
+test("a key with its own budget can pay for a model the account has no credit for", async () => {
+  await withOpenRouterKey(async () => {
+    const rows = await providerStatuses(
+      catalogOf([model("openrouter", "openai/gpt-4o-mini")]),
+      { balance: balanceOf(0, 0, 10) },
+    );
+    const openrouter = rows.find((row) => row.providerId === "openrouter");
+    assert.ok(openrouter);
+    // Reading credits alone refused every paid model on a key holding $10.
+    assert.equal(openrouter.balance?.paidModelsRunnable, true);
+    assert.ok(!openrouter.detail.includes("no run can finish"));
+    assert.ok(openrouter.detail.includes("left on this key's budget"));
     assert.equal(openrouter.runnableNow, true);
   });
 });
