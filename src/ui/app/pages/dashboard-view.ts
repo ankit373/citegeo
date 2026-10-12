@@ -843,12 +843,11 @@ export function topicMatrix(data: MatrixData, open: string[] = []): string {
     const verdict = rowVerdict(row.shares, data.columns);
     const cells = row.shares.map((share, index) => {
       const target = data.columns[index]?.isTarget;
-      // Mixed in oklab so the steps are even to the eye, and started at 10 so a
-      // small share still reads as a value rather than as an empty cell.
-      const mix = share === null || share === 0 ? 0 : Math.round(10 + share * 62);
+      // Mixed in oklab so the steps are even to the eye, started at 10 so a small
+      // share still reads, and capped where the figure on top stays legible.
+      const mix = share === null || share === 0 ? 0 : Math.round(10 + share * 42);
       const fill = mix === 0 ? "" : ` style="background:color-mix(in oklab, var(--accent) ${mix}%, transparent)"`;
-      const dark = mix >= 52 ? " is-strong" : "";
-      return `<span class="mxcell${target ? " is-you" : ""}${dark}"${fill}>`
+      return `<span class="mxcell${target ? " is-you" : ""}"${fill}>`
         + (share === null ? '<span class="mxnone" title="Never named under this topic">&middot;</span>' : percent(share))
         + "</span>";
     }).join("");

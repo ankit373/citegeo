@@ -10,8 +10,8 @@
   --color-line: #DDE2E9;
   --color-line-strong: #C9D1DB;
   --color-text: #11151C;
-  --color-muted: #657182;
-  --color-weak: #8E99A8;
+  --color-muted: #4E5869;
+  --color-weak: #626A74;
   --color-accent: #0F6E7A;
   --color-accent-hover: #0B545E;
   --color-accent-ink: #FFFFFF;
@@ -128,6 +128,7 @@
    by an inline script before first paint. */
 @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
+    color-scheme: dark;
     --color-paper: #0D1117;
     --paper: #0D1117;
     --color-surface: #151B23;
@@ -142,10 +143,10 @@
     --line-strong: #323D4A;
     --color-text: #E8EDF4;
     --text: #E8EDF4;
-    --color-muted: #8B97A6;
-    --muted: #8B97A6;
-    --color-weak: #6B7785;
-    --weak: #6B7785;
+    --color-muted: #9AA6B5;
+    --muted: #9AA6B5;
+    --color-weak: #808A96;
+    --weak: #808A96;
     --color-accent: #4FC2CF;
     --accent: #4FC2CF;
     --color-accent-hover: #7FD8E2;
@@ -188,6 +189,7 @@
   /* Both selectors carry the whole palette. Tailwind compiles a utility to
      var(--color-x), so a name missing here silently paints the light value. */
   :root[data-theme="dark"] {
+    color-scheme: dark;
     --color-paper: #0D1117;
     --paper: #0D1117;
     --color-surface: #151B23;
@@ -202,10 +204,10 @@
     --line-strong: #323D4A;
     --color-text: #E8EDF4;
     --text: #E8EDF4;
-    --color-muted: #8B97A6;
-    --muted: #8B97A6;
-    --color-weak: #6B7785;
-    --weak: #6B7785;
+    --color-muted: #9AA6B5;
+    --muted: #9AA6B5;
+    --color-weak: #808A96;
+    --weak: #808A96;
     --color-accent: #4FC2CF;
     --accent: #4FC2CF;
     --color-accent-hover: #7FD8E2;
@@ -246,6 +248,9 @@
 
 @layer base {
 
+  /* Unstated, a browser assumes light and paints dialogs, form controls and
+     scrollbars with black ink, whatever the palette underneath says. */
+  :root { color-scheme: light; }
   * { box-sizing:border-box; }
   body {
     margin:0; min-height:100vh; background:var(--paper); color:var(--text);
@@ -930,7 +935,6 @@ select[data-filter].is-set {
   /* The reader's own column is marked by a rule, not a second hue, so the
      fills down a row stay comparable. */
   .mxcell.is-you { box-shadow: inset 0 0 0 1px var(--line-strong); }
-  .mxcell.is-strong { color: var(--accent-ink); }
   /* Emitted since the grid was written and never given a rule, so a brand
      nobody named read as an empty cell rather than as a stated absence. */
   .mxnone { display: block; text-align: center; color: var(--weak); }

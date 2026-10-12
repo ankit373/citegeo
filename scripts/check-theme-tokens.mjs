@@ -24,7 +24,7 @@ function declarations(text) {
   for (const line of text.split(';')) {
     const colon = line.indexOf(':');
     const name = line.slice(0, colon + 1).trim().replace(':', '').trim();
-    if (!name.startsWith('--')) continue;
+      if (!name.startsWith('--') && name !== 'color-scheme') continue;
     // Last one wins, the same way the cascade resolves it.
     found.set(name, line.slice(colon + 1).trim());
   }
@@ -52,9 +52,15 @@ for (const [name, value] of system) {
   }
 }
 
+// A browser told nothing assumes light and paints dialogs and form controls
+// with black ink, so each dark block has to say what it is.
+for (const [label, block] of [['system dark', system], ['data-theme="dark"', chosen]]) {
+  if (block.get('color-scheme') !== 'dark') problems.push(`${label} does not declare color-scheme: dark`);
+}
+
 if (problems.length) {
   console.error(`${path}: the two dark palettes disagree.\n  ${problems.join('\n  ')}`);
   process.exit(1);
 }
 
-console.log(`Both dark palettes carry the same ${system.size} tokens, covering every colour in the scale.`);
+console.log(`Both dark palettes carry the same ${system.size} declarations, covering every colour in the scale.`);

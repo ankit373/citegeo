@@ -15,7 +15,9 @@ export function brandIcon(name: string, icon?: string | null, ink?: string): str
   for (let at = 0; at < name.length; at += 1) sum = (sum + name.charCodeAt(at) * (at + 1)) % 360;
   const ring = ink ? ` style="border-color:${ink}"` : "";
   const mark = icon ? `<img src="${html(icon)}" alt="" loading="lazy" decoding="async">` : "";
-  return `<span class="bicon"${ring}><i style="background:hsl(${sum} 42% 46%);color:hsl(${sum} 44% 96%)">${html(letter)}</i>${mark}</span>`;
+  // 46% lightness is bright at the yellow end of the wheel, where the letter on
+  // top fell to 2.4:1. 30% holds above 5:1 at every hue the hash can produce.
+  return `<span class="bicon"${ring}><i style="background:hsl(${sum} 42% 30%);color:hsl(${sum} 44% 96%)">${html(letter)}</i>${mark}</span>`;
 }
 
 export function pill(text: string, tone: Tone = ""): string {
