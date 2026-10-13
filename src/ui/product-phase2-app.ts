@@ -225,6 +225,10 @@ export function renderProductPhase2AppHtml(): string {
     .scorebig { font-family:var(--font-display); font-size:clamp(44px,5.4vw,66px); font-weight:500; line-height:.92; letter-spacing:-0.035em; font-variant-numeric:tabular-nums; color:var(--text); }
     .stat span { font-size:11px; letter-spacing:.07em; text-transform:uppercase; color:var(--weak); font-weight:600; }
     .stat strong { font-family:var(--font-display); font-size:25px; font-weight:500; letter-spacing:-0.018em; line-height:1.15; }
+    /* Six figures at one size gave the eye nowhere to land. The first is what
+       the panel is about; the rest step down and read as its context. */
+    .statgrid > .stat:not(:first-child) strong { font-size:19px; color:var(--muted); }
+    .statgrid > .stat:first-child { box-shadow: inset 2px 0 0 var(--accent); }
     .stat small { font-size:12px; color:var(--weak); }
     .bar > i { display:block; height:100%; background:var(--accent); border-radius:2px; transition:width var(--motion-normal) var(--ease-standard); }
     .inline-form { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }

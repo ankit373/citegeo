@@ -44,14 +44,17 @@ export interface TileInput {
 /** One row of figures. The utilities are the styling; there is no .dtile rule
  * behind this any more, so nothing can style it from a distance. */
 export function tiles(rows: TileInput[]): string {
-  const shell = "tile";
   const caption = "text-[10px] font-semibold uppercase tracking-[.09em] text-weak";
-  const figure = "font-display text-[26px] font-medium leading-[1.1] tracking-[-0.02em]";
+  const lead = "font-display text-[26px] font-medium leading-[1.1] tracking-[-0.02em]";
+  const rest = "font-display text-[20px] font-medium leading-[1.2] tracking-[-0.02em] text-muted";
+  // The first figure is what the panel is about. Six at one size gave the eye
+  // nowhere to land, so the rest step down and read as its context.
+  const ranked = rows.length > 2;
   // auto-fit collapses the tracks it does not use, so no count is passed and
   // no empty cell is left for the separator behind to show through.
-  return `<div class="tilegrid">${rows.map((row) => join([
-    `<div class="${shell}"><span class="${caption}">`, html(row.label), "</span>",
-    `<strong class="${figure} ${html(row.tone || "")}">`, html(row.value), "</strong>",
+  return `<div class="tilegrid">${rows.map((row, at) => join([
+    `<div class="tile${ranked && at === 0 ? " is-lead" : ""}"><span class="${caption}">`, html(row.label), "</span>",
+    `<strong class="${ranked && at > 0 ? rest : lead} ${html(row.tone || "")}">`, html(row.value), "</strong>",
     `<small class="text-xs leading-[1.45] text-weak">`, html(row.note), "</small>",
     bar(row.fraction),
     "</div>",

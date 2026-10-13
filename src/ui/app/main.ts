@@ -2369,7 +2369,7 @@ export function boot(): void {
           + tracked.map((row: any) => '<div class="mrow mcols-persona">'
             + '<div class="mname"><strong>' + html(row.label) + '</strong></div>'
             + '<span class="mcell">' + html(row.describedAs) + '</span>'
-            + '<span class="mcell">' + button({ label: "Stop asking", kind: "link", on: { "data-retire-persona": row.id } }) + '</span></div>').join("")
+            + '<span class="mcell">' + button({ label: "Stop asking", kind: "link", tone: "danger", on: { "data-retire-persona": row.id } }) + '</span></div>').join("")
           + '</div>'
         : '<p class="subtle">No persona yet, so every question is asked on nobody\u2019s behalf. That is a real answer and stays comparable with every run so far.</p>';
       return rows
@@ -2812,7 +2812,7 @@ export function boot(): void {
             + '<div class="mname"><strong>' + html(row.name) + '</strong><span class="mono">' + html(row.domain || "no domain") + '</span></div>'
             + '<span class="mcell ' + (row.appearances ? "" : "state-bad") + '">' + row.appearances + '</span>'
             + '<span class="mcell">' + pct(row.shareOfAnswers) + '</span>'
-            + '<span class="mcell">' + button({ label: "Stop tracking", kind: "link", on: { "data-retire-rival": declaredIdFor(row.name) } }) + '</span></div>').join("") + '</div>'
+            + '<span class="mcell">' + button({ label: "Stop tracking", kind: "link", tone: "danger", on: { "data-retire-rival": declaredIdFor(row.name) } }) + '</span></div>').join("") + '</div>'
         : '<p class="subtle">No rival is tracked yet. Adopt the ones your site and your answers already name, or add one by hand.</p>';
       return body
         + '<div class="inline-actions" style="margin-top:14px">' + button({ label: "Adopt the ones already named", on: { "data-adopt-rivals": true } }) + '</div>'
@@ -3712,7 +3712,7 @@ export function boot(): void {
       const priority = priorityOf(prompt.id);
       const answers = standing ? standing.score.answers : 0;
       const label = answers
-        ? button({ label: prompt.text, kind: "link", on: { "data-evidence": prompt.id, "data-evidence-title": prompt.text } })
+        ? button({ label: prompt.text, kind: "title", on: { "data-evidence": prompt.id, "data-evidence-title": prompt.text } })
         : html(prompt.text);
       const scoreClass = !standing || standing.score.score === null ? "" : standing.score.score > 0 ? "state-ok" : "state-bad";
       return '<div class="mrow mcols-promptrow">'
@@ -3725,7 +3725,7 @@ export function boot(): void {
         + (prompt.variantOf ? '<span class="subtle">a rewording</span>' : button({ label: "Reword it", kind: "link", on: { "data-reword-prompt": prompt.id, "data-reword-text": prompt.text } }))
         + '</span>'
         + '<span class="mcell">' + (prompt.status === "active"
-          ? button({ label: "Stop tracking", kind: "link", on: { "data-retire-prompt": prompt.id } })
+          ? button({ label: "Stop tracking", kind: "link", tone: "danger", on: { "data-retire-prompt": prompt.id } })
           : button({ label: "Track it", kind: "link", on: { "data-activate-prompt": prompt.id } })) + '</span></div>';
     }
 

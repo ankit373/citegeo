@@ -373,8 +373,17 @@
   @apply rounded-[999px] border border-line px-2 py-[3px] text-xs;
 }
 
+/* Three things sat in a row looking identical: the name, an action on it, and
+   the action that stops tracking it. Each gets its own strength now. */
+@utility rowtitle {
+  @apply cursor-pointer border-0 bg-transparent p-0 text-left font-[inherit] text-[inherit] underline decoration-transparent underline-offset-2;
+  transition: text-decoration-color var(--motion-fast) var(--ease-standard);
+}
+
 @utility linklike {
-  @apply cursor-pointer border-0 bg-transparent p-0 font-[inherit] text-text underline;
+  @apply cursor-pointer border-0 bg-transparent p-0 font-[inherit] text-muted underline decoration-dotted underline-offset-[3px];
+  text-decoration-color: var(--line-strong);
+  transition: color var(--motion-fast) var(--ease-standard), text-decoration-color var(--motion-fast) var(--ease-standard);
 }
 
 /* The product app used these three before they existed here, so every badge
@@ -412,6 +421,10 @@
   @apply grid auto-rows-min gap-1 bg-surface px-[17px] py-[15px];
   grid-template-columns: minmax(0, 1fr);
 }
+
+/* The headline figure of a panel, marked so the row reads left to right as
+   one fact and its context rather than as six equal ones. */
+.tile.is-lead { box-shadow: inset 2px 0 0 var(--accent); }
 
 
 /* Column shapes. A table's layout is the one thing genuinely per table,
@@ -806,6 +819,13 @@ select[data-filter].is-set {
     color: var(--accent);
   }
 
+  .rowtitle:hover, .rowtitle:focus-visible { text-decoration-color: currentColor; }
+  /* Dotted at rest says it can be clicked without competing with the name
+     beside it, and solid on hover says which one the pointer is on. */
+  .linklike:hover, .linklike:focus-visible { color: var(--text); text-decoration-style: solid; text-decoration-color: currentColor; }
+  /* Destructive recedes until the pointer is on it, rather than shouting from
+     every row of a table that is mostly not about deleting anything. */
+  .linklike.is-danger:hover, .linklike.is-danger:focus-visible { color: var(--failed-text); }
   .btn-danger, .button.danger, .card-action.danger { color: var(--text); border-color: var(--line-strong); }
   .btn-danger:hover, .button.danger:hover, .card-action.danger:hover { border-color: var(--text); }
 
