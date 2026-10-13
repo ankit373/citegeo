@@ -906,6 +906,11 @@ function regionCells(rows: Split[]): RegionCell[] {
   }));
 }
 
+/* Three layers, after the published pattern: a summary, then the panels that
+   explain it, then everything else on demand. Fourteen panels open at once is
+   the data dump the pattern exists to prevent. */
+export const DECISION_PANELS = ["moves", "trend", "topics", "named"];
+
 export function dashboardPanels(data: DashboardData): Panel[] {
   const every = Number.MAX_SAFE_INTEGER;
   const matrix = data.matrix || { columns: [], rows: [] };
@@ -939,7 +944,7 @@ function panelTools(id: string, span: number): string {
     + `<button type="button" class="ptool is-drop" data-panel-hide="${html(id)}" title="Take this off the board">Remove</button></div>`;
 }
 
-export function dashboardBody(held: Loadable<DashboardData>, editing = false, views: Record<string, PanelView> = {}): string {
+export function dashboardBody(held: Loadable<DashboardData>, editing = false, views: Record<string, PanelView> = {}, opened: string[] = []): string {
   return match(held, {
     loading: () => dashboardSkeleton(),
     error: (error) => `<div class="warning-box">${html(error)}</div>`,
@@ -956,6 +961,7 @@ export function dashboardBody(held: Loadable<DashboardData>, editing = false, vi
         const span = layout.spans[id] ?? (panel.wide ? 0 : 1);
         const view: PanelView = views[id] === "table" ? "table" : "chart";
         const toggle = panelToggle(panel, view);
+        const diagnostic = !editing && !DECISION_PANELS.includes(id);
         return section({
           id: panel.id,
           title: panel.title,
@@ -963,6 +969,7 @@ export function dashboardBody(held: Loadable<DashboardData>, editing = false, vi
           body: panelBody(panel, view),
           span,
           off: layout.hidden.includes(id),
+          ...(diagnostic ? { folded: !(opened || []).includes(id) } : {}),
           ...(editing
             ? { aside: panelTools(id, span) }
             : { open: panel.id, ...(toggle ? { aside: toggle } : {}) }),

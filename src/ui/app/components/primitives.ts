@@ -97,6 +97,9 @@ export interface SectionInput {
   /** Stable name for this panel, so a reader can rearrange the dashboard
    * and have the arrangement survive the next render. */
   id?: string;
+  /** Folded away until a reader asks for it. The decision layer of a page
+   * stays open; everything under it is there to be opened, not scrolled past. */
+  folded?: boolean;
   /** Panel to open on a click anywhere that is not already a control. */
   open?: string;
   /** Tracks this card spans: 1, 2, or 0 for the whole row. */
@@ -106,19 +109,36 @@ export interface SectionInput {
 }
 
 export function section(input: SectionInput): string {
-  return join([
-    `<section class="section-card${input.wide || input.span === 0 ? " is-wide" : ""}${input.span === 2 ? " is-two" : ""}`
-      + `${input.open ? " is-openable" : ""}${input.off ? " is-off" : ""}"`,
-    input.id ? ` data-panel="${html(input.id)}" draggable="true"` : "",
-    input.open ? ` data-expand-panel="${html(input.open)}"` : "",
-    `><div class="section-head"><div class="headmain">`,
-    input.open
+  const head = join([
+    `<div class="section-head"><div class="headmain">`,
+    input.open && !input.folded
       ? `<h2><button type="button" class="panel-open" data-expand-panel="${html(input.open)}">${html(input.title)}</button></h2>`
       : `<h2>${html(input.title)}</h2>`,
     input.blurb ? `<p class="subtle">${html(input.blurb)}</p>` : "",
     "</div>",
     input.aside ? `<div class="headaside">${input.aside}</div>` : "",
     "</div>",
+  ]);
+  // A fold is a details element, so the keyboard and a screen reader get the
+  // open and shut for free rather than from a handler that has to be written.
+  if (input.folded !== undefined) {
+    return join([
+      `<details class="section-card is-folding${input.wide || input.span === 0 ? " is-wide" : ""}`
+        + `${input.span === 2 ? " is-two" : ""}${input.off ? " is-off" : ""}"`,
+      input.id ? ` data-panel="${html(input.id)}" data-fold="${html(input.id)}"` : "",
+      input.folded ? "" : " open",
+      `><summary>${head}</summary>`,
+      input.body,
+      "</details>",
+    ]);
+  }
+  return join([
+    `<section class="section-card${input.wide || input.span === 0 ? " is-wide" : ""}${input.span === 2 ? " is-two" : ""}`
+      + `${input.open ? " is-openable" : ""}${input.off ? " is-off" : ""}"`,
+    input.id ? ` data-panel="${html(input.id)}" draggable="true"` : "",
+    input.open ? ` data-expand-panel="${html(input.open)}"` : "",
+    `>`,
+    head,
     input.body,
     "</section>",
   ]);

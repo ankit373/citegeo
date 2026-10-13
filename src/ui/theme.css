@@ -300,6 +300,28 @@
   @apply flex flex-wrap gap-[9px];
 }
 
+/* The diagnostic layer. Open it and it is an ordinary card; shut it is a
+   title and a line saying what is inside, which is the whole point. */
+.section-card.is-folding { padding-block: 0; }
+.section-card.is-folding > summary {
+  display: block; list-style: none; cursor: pointer;
+  padding-block: clamp(16px,1.8vw,24px);
+  border-radius: var(--radius);
+}
+.section-card.is-folding > summary::-webkit-details-marker { display: none; }
+.section-card.is-folding > summary .section-head { margin: 0; }
+.section-card.is-folding > summary h2::after {
+  content: "";
+  display: inline-block; width: 7px; height: 7px; margin-left: 9px;
+  border-right: 1.5px solid var(--weak); border-bottom: 1.5px solid var(--weak);
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform var(--motion-fast) var(--ease-standard);
+}
+.section-card.is-folding[open] > summary h2::after { transform: translateY(1px) rotate(-135deg); }
+.section-card.is-folding > summary:hover h2 { color: var(--accent); }
+.section-card.is-folding[open] > summary { padding-bottom: 0; }
+.section-card.is-folding[open] { padding-bottom: clamp(16px,1.8vw,24px); }
+
 @utility section-card {
   @apply mt-3 rounded-[var(--radius)] border border-line bg-surface p-[clamp(16px,1.8vw,24px)] shadow-[var(--shadow-sm)];
 }
