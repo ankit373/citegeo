@@ -43,7 +43,9 @@ export function renderProductPhase2AppHtml(): string {
     .theme-toggle:hover { color:var(--text); border-color:var(--line-strong); }
     .crumb strong { color:var(--text); }
     /* The failed colour reports an evidence state; chrome must not borrow it. */
-    .content { max-width:1280px; margin:0 auto; padding-top:clamp(24px,3vw,40px); }
+    /* The workspace is a flex column, and an auto side margin there turns off
+       stretch, so a page light on content shrank to its text and centred. */
+    .content { width:100%; max-width:1280px; margin:0 auto; padding-top:clamp(24px,3vw,40px); }
     /* No entrance animation: a view is static content, not a state change. */
     h1 { margin:0; font-size:clamp(26px,2.6vw,34px); letter-spacing:-0.03em; font-weight:650; }
     h2 { margin:0; font-size:16px; font-weight:600; letter-spacing:-0.015em; }
