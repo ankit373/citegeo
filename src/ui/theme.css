@@ -554,8 +554,9 @@
 @utility mcols-offer {
   @apply grid-cols-[minmax(72px,1fr)_minmax(72px,1.1fr)_190px] items-start;
 }
+/* The middle column holds one number, and three buttons need the room more. */
 @utility mcols-draft {
-  @apply grid-cols-[minmax(72px,1fr)_110px_180px] items-start;
+  @apply grid-cols-[minmax(72px,1fr)_64px_210px] items-start;
 }
 @utility mcols-claim {
   @apply grid-cols-[minmax(72px,1.2fr)_140px_minmax(72px,1.2fr)] items-start;
@@ -1033,9 +1034,17 @@ select[data-filter].is-set {
   .ranklist { display: grid; margin: 0; padding: 0; list-style: none; }
   .sources { margin-top: var(--space-xs); }
   .sources summary { cursor: pointer; color: var(--weak); font-size: var(--type-sm); }
-  .sourcelist { display: grid; gap: 5px; margin: var(--space-xs) 0 0; padding: 0; list-style: none; font-size: var(--type-sm); }
-  .sourcelist li { overflow-wrap: anywhere; line-height: 1.5; }
-  .sourcelist .state-flag { margin-right: 6px; }
+  .sourcelist { display: grid; gap: 6px; margin: var(--space-xs) 0 0; padding: 0; list-style: none; font-size: var(--type-sm); }
+  /* The kind is a column of its own, so a reader scans down it instead of
+     reading the first word of every line to find out what each row is. */
+  .sourcelist li { display: grid; grid-template-columns: 62px minmax(0, 1fr); gap: 10px; align-items: baseline; line-height: 1.5; }
+  .sourcelist .sref { min-width: 0; overflow-wrap: anywhere; }
+  /* One colour and one weight for all three made a question, a rival and a
+     cited page read as the same sort of evidence. */
+  .skind { font-size: var(--type-micro); font-weight: 600; text-transform: uppercase; letter-spacing: .07em; }
+  .skind.is-prompt { color: var(--accent); }
+  .skind.is-entity { color: var(--unknown-text); }
+  .skind.is-citation { color: var(--weak); }
   .draftcell { min-width: 0; }
   .rankrow { display: grid; grid-template-columns: 18px 18px minmax(0, 1fr) auto 54px; align-items: center; gap: 9px; min-height: 34px; border-bottom: 1px solid var(--line); font-size: var(--type-md); }
   .rankrow:last-child { border-bottom: 0; }
