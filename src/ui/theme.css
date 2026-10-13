@@ -312,7 +312,15 @@
    a floor-less track went to nothing and the names painted over the next cell. */
 @utility mtable {
   @apply mt-[14px] overflow-x-auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
 }
+
+/* A table that scrolls has to say so. macOS hides the overlay bar until the
+   pointer moves, so a clipped column read as a bug rather than as more. */
+.mtable::-webkit-scrollbar { height: 7px; }
+.mtable::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 4px; }
+.mtable::-webkit-scrollbar-track { background: transparent; }
 
 @utility mhead {
   @apply grid items-center gap-4 border-b border-line px-2 py-[10px] text-[10px] font-semibold uppercase tracking-[.09em] text-weak;
@@ -387,174 +395,182 @@
   @apply mt-2 h-1 overflow-hidden rounded-[2px] bg-sunken;
 }
 
+/* Same as tilegrid: the room it has decides, not the window behind it. */
 @utility statgrid {
-  @apply mt-[18px] grid grid-cols-1 gap-px overflow-hidden rounded-[var(--radius)] border border-line bg-line;
-  @media (min-width: 640px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  @media (min-width: 1024px) { grid-template-columns: repeat(var(--tile-columns, 3), minmax(0, 1fr)); }
+  @apply mt-[18px] grid gap-px overflow-hidden rounded-[var(--radius)] border border-line bg-line;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
 }
 
+/* One bounded column. Left to itself a grid gets an auto track that sizes to
+   the longest line, so the caption painted past the cell instead of wrapping. */
 @utility stat {
   @apply grid gap-1 bg-surface px-[18px] py-4;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@utility tile {
+  @apply grid auto-rows-min gap-1 bg-surface px-[17px] py-[15px];
+  grid-template-columns: minmax(0, 1fr);
 }
 
 
 /* Column shapes. A table's layout is the one thing genuinely per table,
    so each is a utility rather than a string repeated at every row. */
 @utility mcols-project {
-  @apply grid-cols-[minmax(150px,1.1fr)_minmax(110px,1.2fr)_86px_148px_auto];
+  @apply grid-cols-[minmax(72px,1.1fr)_minmax(72px,1.2fr)_86px_148px_auto];
 }
 @utility mcols-provider {
-  @apply grid-cols-[minmax(150px,1fr)_210px_124px_minmax(110px,1.5fr)] items-start;
+  @apply grid-cols-[minmax(72px,1fr)_210px_124px_minmax(72px,1.5fr)] items-start;
 }
 @utility mcols-promptrow {
-  @apply grid-cols-[20px_minmax(150px,1fr)_96px_82px_96px_104px] items-start;
+  @apply grid-cols-[20px_minmax(72px,1fr)_96px_82px_96px_104px] items-start;
 }
 @utility mcols-engine {
-  @apply grid-cols-[20px_minmax(150px,1fr)_150px] items-start;
+  @apply grid-cols-[20px_minmax(72px,1fr)_150px] items-start;
 }
 @utility mcols-stability {
-  @apply grid-cols-[minmax(150px,1fr)_96px_132px_86px_110px] items-start;
+  @apply grid-cols-[minmax(72px,1fr)_96px_132px_86px_110px] items-start;
 }
 
 @utility mcols-uptake {
-  @apply grid-cols-[minmax(150px,1fr)_96px_132px_86px_110px] items-start;
+  @apply grid-cols-[minmax(72px,1fr)_96px_132px_86px_110px] items-start;
 }
 
 @utility mcols-phrasing {
-  @apply grid-cols-[minmax(150px,1fr)_132px_110px] items-start;
+  @apply grid-cols-[minmax(72px,1fr)_132px_110px] items-start;
 }
 
 @utility mcols-framing {
-  @apply grid-cols-[minmax(150px,1fr)_110px_180px] items-start;
+  @apply grid-cols-[minmax(72px,1fr)_110px_180px] items-start;
 }
 
 @utility mcols-version {
-  @apply grid-cols-[minmax(150px,1fr)_130px_150px] items-start;
+  @apply grid-cols-[minmax(72px,1fr)_130px_150px] items-start;
 }
 
 @utility mcols-decoy {
-  @apply grid-cols-[minmax(150px,1fr)_110px_96px_150px] items-start;
+  @apply grid-cols-[minmax(72px,1fr)_110px_96px_150px] items-start;
 }
 
 @utility mcols-arrival {
-  @apply grid-cols-[minmax(150px,1fr)_132px_96px] items-start;
+  @apply grid-cols-[minmax(72px,1fr)_132px_96px] items-start;
 }
 
 @utility mcols-shift {
-  @apply grid-cols-[minmax(150px,1fr)_110px_120px] items-start;
+  @apply grid-cols-[minmax(72px,1fr)_110px_120px] items-start;
 }
 
 @utility mcols-concentration {
-  @apply grid-cols-[minmax(150px,1fr)_72px_96px_86px] items-start;
+  @apply grid-cols-[minmax(72px,1fr)_72px_96px_86px] items-start;
 }
 
 @utility mcols-variance {
-  @apply grid-cols-[minmax(150px,1fr)_72px_96px_120px] items-start;
+  @apply grid-cols-[minmax(72px,1fr)_72px_96px_120px] items-start;
 }
 
 @utility mcols-shape {
-  @apply grid-cols-[minmax(150px,1fr)_170px_110px] items-start;
+  @apply grid-cols-[minmax(72px,1fr)_170px_110px] items-start;
 }
 
 @utility mcols-kind {
-  @apply grid-cols-[minmax(150px,1fr)_72px_72px_120px] items-start;
+  @apply grid-cols-[minmax(72px,1fr)_72px_72px_120px] items-start;
 }
 
 @utility mcols-check {
-  @apply grid-cols-[minmax(150px,1fr)_96px_110px_140px] items-start;
+  @apply grid-cols-[minmax(72px,1fr)_96px_110px_140px] items-start;
 }
 
 @utility mcols-credit {
-  @apply grid-cols-[minmax(150px,1fr)_72px_72px_72px] items-start;
+  @apply grid-cols-[minmax(72px,1fr)_72px_72px_72px] items-start;
 }
 
 @utility mcols-reach {
-  @apply grid-cols-[minmax(150px,1fr)_150px_200px] items-start;
+  @apply grid-cols-[minmax(72px,1fr)_150px_200px] items-start;
 }
 
 @utility mcols-source {
-  @apply grid-cols-[minmax(150px,1fr)_110px_100px_116px] items-start;
+  @apply grid-cols-[minmax(72px,1fr)_110px_100px_116px] items-start;
 }
 @utility mcols-search {
-  @apply grid-cols-[minmax(150px,1fr)_104px_74px_92px] items-start;
+  @apply grid-cols-[minmax(72px,1fr)_104px_74px_92px] items-start;
 }
 @utility mcols-persona {
-  @apply grid-cols-[minmax(150px,1fr)_minmax(110px,1.6fr)_110px] items-start;
+  @apply grid-cols-[minmax(72px,1fr)_minmax(72px,1.6fr)_110px] items-start;
 }
 @utility mcols-selected {
-  @apply grid-cols-[minmax(150px,1fr)_104px_92px_178px_84px];
+  @apply grid-cols-[minmax(72px,1fr)_104px_92px_178px_84px];
 }
 @utility mcols-external-metrics {
-  @apply grid-cols-[minmax(150px,1.7fr)_90px_120px_120px] items-start;
+  @apply grid-cols-[minmax(72px,1.7fr)_90px_120px_120px] items-start;
 }
 @utility mcols-readonly {
-  @apply grid-cols-[minmax(150px,1fr)_104px_178px];
+  @apply grid-cols-[minmax(72px,1fr)_104px_178px];
 }
 @utility mcols-catalog {
-  @apply grid-cols-[20px_minmax(150px,1fr)_116px_96px_178px];
+  @apply grid-cols-[20px_minmax(72px,1fr)_116px_96px_178px];
 }
 @utility mcols-board {
-  @apply grid-cols-[28px_minmax(150px,1.3fr)_minmax(190px,1fr)_96px] items-center;
+  @apply grid-cols-[28px_minmax(72px,1.3fr)_minmax(190px,1fr)_96px] items-center;
 }
 @utility mcols-topic {
-  @apply grid-cols-[minmax(150px,1.3fr)_80px_110px_90px_minmax(110px,1.4fr)] items-start;
+  @apply grid-cols-[minmax(72px,1.3fr)_80px_110px_90px_minmax(72px,1.4fr)] items-start;
 }
 @utility mcols-aemodel {
-  @apply grid-cols-[minmax(150px,1.6fr)_80px_110px_90px] items-start;
+  @apply grid-cols-[minmax(72px,1.6fr)_80px_110px_90px] items-start;
 }
 @utility mcols-prompt {
-  @apply grid-cols-[minmax(150px,1fr)_110px_120px] items-start;
+  @apply grid-cols-[minmax(72px,1fr)_110px_120px] items-start;
 }
 @utility mcols-step {
-  @apply grid-cols-[28px_minmax(150px,1fr)_90px] items-center;
+  @apply grid-cols-[28px_minmax(72px,1fr)_90px] items-center;
 }
 @utility mcols-vis {
-  @apply grid-cols-[minmax(150px,1fr)_120px_110px];
+  @apply grid-cols-[minmax(72px,1fr)_120px_110px];
 }
 @utility mcols-voice {
-  @apply grid-cols-[minmax(150px,1fr)_110px_120px];
+  @apply grid-cols-[minmax(72px,1fr)_110px_120px];
 }
 @utility mcols-cited {
-  @apply grid-cols-[minmax(150px,1fr)_100px_minmax(110px,1fr)];
+  @apply grid-cols-[minmax(72px,1fr)_100px_minmax(72px,1fr)];
 }
 @utility mcols-crawler {
-  @apply grid-cols-[minmax(150px,1fr)_92px_84px_84px_108px];
+  @apply grid-cols-[minmax(72px,1fr)_92px_84px_84px_108px];
 }
 @utility mcols-signal {
-  @apply grid-cols-[130px_minmax(150px,1fr)] items-start;
+  @apply grid-cols-[130px_minmax(72px,1fr)] items-start;
 }
 @utility mcols-credential {
-  @apply grid-cols-[minmax(150px,1fr)_120px_minmax(110px,1.3fr)];
+  @apply grid-cols-[minmax(72px,1fr)_120px_minmax(72px,1.3fr)];
 }
 @utility mcols-rank {
-  @apply grid-cols-[minmax(150px,1fr)_92px_84px];
+  @apply grid-cols-[minmax(72px,1fr)_92px_84px];
 }
 @utility mcols-cause {
-  @apply grid-cols-[minmax(150px,1fr)_minmax(110px,1.2fr)] items-start;
+  @apply grid-cols-[minmax(72px,1fr)_minmax(72px,1.2fr)] items-start;
 }
 @utility mcols-task {
-  @apply grid-cols-[minmax(150px,1fr)_200px] items-start;
+  @apply grid-cols-[minmax(72px,1fr)_200px] items-start;
 }
 @utility mcols-offer {
-  @apply grid-cols-[minmax(150px,1fr)_minmax(110px,1.1fr)_190px] items-start;
+  @apply grid-cols-[minmax(72px,1fr)_minmax(72px,1.1fr)_190px] items-start;
 }
 @utility mcols-draft {
-  @apply grid-cols-[minmax(150px,1fr)_110px_180px] items-start;
+  @apply grid-cols-[minmax(72px,1fr)_110px_180px] items-start;
 }
 @utility mcols-claim {
-  @apply grid-cols-[minmax(150px,1.2fr)_140px_minmax(110px,1.2fr)] items-start;
+  @apply grid-cols-[minmax(72px,1.2fr)_140px_minmax(72px,1.2fr)] items-start;
 }
 @utility mcols-product {
-  @apply grid-cols-[minmax(150px,1fr)_140px_minmax(110px,1fr)] items-start;
+  @apply grid-cols-[minmax(72px,1fr)_140px_minmax(72px,1fr)] items-start;
 }
 @utility mcols-merchant {
-  @apply grid-cols-[minmax(150px,1fr)_110px_minmax(110px,1fr)] items-start;
+  @apply grid-cols-[minmax(72px,1fr)_110px_minmax(72px,1fr)] items-start;
 }
 @utility mcols-question {
-  @apply grid-cols-[minmax(150px,1fr)_130px_90px] items-start;
+  @apply grid-cols-[minmax(72px,1fr)_130px_90px] items-start;
 }
 @utility mcols-anchor {
-  @apply grid-cols-[minmax(150px,1fr)_170px_170px] items-start;
+  @apply grid-cols-[minmax(72px,1fr)_170px_170px] items-start;
 }
 
 /* The frame. One shell, one rail, one header, one footer. */
@@ -840,7 +856,7 @@ select[data-filter].is-set {
 }
 
 @utility mcols-brand {
-  @apply grid items-center gap-[10px] grid-cols-[minmax(150px,1.4fr)_70px_70px_92px_minmax(110px,1.3fr)];
+  @apply grid items-center gap-[10px] grid-cols-[minmax(72px,1.4fr)_70px_70px_92px_minmax(72px,1.3fr)];
 }
 
 @utility ch {
@@ -883,14 +899,11 @@ select[data-filter].is-set {
   @apply font-display text-[21px] font-medium tracking-[-0.015em];
 }
 
-/* Tiles are white cards on a hairline background, so an empty cell is a grey
-   hole. The count is set per instance rather than guessed by auto-fit, and
-   every breakpoint lives in here: a responsive utility would outrank a rule
-   for the same thing written in any layer below. */
+/* Sized by the room there is, not by the window. These sit in cards from 306px
+   to 1042px wide, and a viewport breakpoint knows nothing about either. */
 @utility tilegrid {
-  @apply my-[18px] grid grid-cols-1 gap-px overflow-hidden rounded-[var(--radius)] border border-line bg-line;
-  @media (min-width: 640px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  @media (min-width: 1024px) { grid-template-columns: repeat(var(--tile-columns, 3), minmax(0, 1fr)); }
+  @apply my-[18px] grid gap-px overflow-hidden rounded-[var(--radius)] border border-line bg-line;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
 }
 
 /* A figure that opens the answers behind it. Underlined on hover only, so a
@@ -938,9 +951,6 @@ select[data-filter].is-set {
   /* Emitted since the grid was written and never given a rule, so a brand
      nobody named read as an empty cell rather than as a stated absence. */
   .mxnone { display: block; text-align: center; color: var(--weak); }
-  /* Your own column carries no fill when you were never named, which left a
-     bordered blank. The tint says the cell was measured and came back empty. */
-  .mxcell.is-you:has(.mxnone) { background: var(--sunken); }
   .mxrow:hover .mxcell { box-shadow: inset 0 0 0 1px var(--line); }
   /* Three classes beat two, so the hover rule above used to wipe the marker
      off your own column every time the pointer crossed the row. */
@@ -1040,7 +1050,7 @@ select[data-filter].is-set {
 }
 
 @utility mcols-demand {
-  @apply grid items-center gap-[10px] grid-cols-[minmax(150px,1.6fr)_110px_120px_128px];
+  @apply grid items-center gap-[10px] grid-cols-[minmax(72px,1.6fr)_110px_120px_128px];
 }
 
 @utility tagrow {

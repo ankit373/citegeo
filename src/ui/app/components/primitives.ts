@@ -44,12 +44,12 @@ export interface TileInput {
 /** One row of figures. The utilities are the styling; there is no .dtile rule
  * behind this any more, so nothing can style it from a distance. */
 export function tiles(rows: TileInput[]): string {
-  const shell = "grid auto-rows-min gap-1 bg-surface px-[17px] py-[15px]";
+  const shell = "tile";
   const caption = "text-[10px] font-semibold uppercase tracking-[.09em] text-weak";
   const figure = "font-display text-[26px] font-medium leading-[1.1] tracking-[-0.02em]";
-  // The column count follows the tile count. auto-fit left empty cells,
-  // and the separator background showed through them as a grey block.
-  return `<div class="tilegrid" style="--tile-columns:${rows.length}">${rows.map((row) => join([
+  // auto-fit collapses the tracks it does not use, so no count is passed and
+  // no empty cell is left for the separator behind to show through.
+  return `<div class="tilegrid">${rows.map((row) => join([
     `<div class="${shell}"><span class="${caption}">`, html(row.label), "</span>",
     `<strong class="${figure} ${html(row.tone || "")}">`, html(row.value), "</strong>",
     `<small class="text-xs leading-[1.45] text-weak">`, html(row.note), "</small>",

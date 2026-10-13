@@ -1280,7 +1280,7 @@ export function boot(): void {
         : '';
       const prom = overAppearances(score, score.prominence, 'Full marks means always named first.');
       const sent = overAppearances(score, score.sentiment, 'Full marks means always recommended.');
-      return '<div class="statgrid" style="--tile-columns:3">'
+      return '<div class="statgrid">'
         + stat("Presence", pct(score.presenceRate), presenceNote, score.presenceRate)
         + stat("Prominence", prom.value, score.prominence === null && !score.namedIn ? 'No answer gave a readable order' : prom.note, prom.fraction)
         + stat("Sentiment", sent.value, sent.note, sent.fraction)
@@ -3644,7 +3644,7 @@ export function boot(): void {
       const measuring = tracked.filter((prompt) => prompt.measuresVisibility).length;
       const answered = tracked.filter((prompt) => { const row = standings.get(prompt.id); return Boolean(row) && row.score.answers > 0; }).length;
       const forecast = runForecast(tracked.length);
-      return '<div class="statgrid" style="--tile-columns:6">'
+      return '<div class="statgrid">'
         + stat("Tracked", String(tracked.length), tracked.length ? "asked on every run" : "nothing is being asked", live.length ? tracked.length / live.length : null)
         + stat("Needs review", String(proposed), proposed ? "proposed, never asked until tracked" : "nothing waiting on you", null)
         + stat("Topics", String(liveTopics(set).length),
