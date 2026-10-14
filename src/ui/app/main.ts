@@ -409,7 +409,7 @@ export function boot(): void {
       if (!ids.length) return;
       state.promptSelection = [];
       loadLiveRun();
-      await postPrompts("/prompt-runs", { promptIds: ids }, "running", "The run finished. Every answer is archived.");
+      await postPrompts("/prompt-runs", { promptIds: ids }, "running", "The run has started. Watch it below, or leave the page and come back.");
       loadLiveRun();
     }
 
@@ -2733,7 +2733,9 @@ export function boot(): void {
       if (state.rankPlanState === "idle") { loadRankingPlan(); }
       const heading = '<section class="view"><div class="heading"><div class="headmain"><h1>Rivals</h1>'
         + '<p class="subtle">Who the models name instead of you, and where. Counted once per answer however often a name appears in it, and how often anyone asks.</p></div>'
-        + '<div class="inline-actions">' + button({ label: "Full report", on: { "data-page": "answer-engine" } }) + runActionButton("Run prompts") + '</div></div>';
+        // A page that offers a run has to show the run, or starting one from
+        // here looked like nothing happened.
+        + '<div class="inline-actions">' + button({ label: "Full report", on: { "data-page": "answer-engine" } }) + runActionButton("Run prompts") + '</div></div>' + renderLiveRun();
       const view = dashboardView();
       if (!view) return heading + dashboardBody({ status: "loading" }) + '</section>';
       const wanted = ["trend", "named", "described", "sources"];
@@ -4071,8 +4073,8 @@ export function boot(): void {
       if (!clicked || !clicked.closest) return;
       if (clicked.closest("[data-generate-prompts]")) { await postPrompts("/topics/generate", {}, "generating", "A set has been proposed. Read it, then track the questions worth tracking."); return; }
       const retrying = clicked.closest("[data-retry-run]");
-      if (retrying) { loadLiveRun(); await postPrompts("/prompt-runs", { retryOf: retrying.getAttribute("data-retry-run") }, "running", "Asked again. Every answer is archived."); loadLiveRun(); return; }
-      if (clicked.closest("[data-run-prompts]")) { loadLiveRun(); await postPrompts("/prompt-runs", { repetitions: state.repetitions, languageIds: [state.runLanguageId] }, "running", "The run finished. Every answer is archived."); loadLiveRun(); return; }
+      if (retrying) { loadLiveRun(); await postPrompts("/prompt-runs", { retryOf: retrying.getAttribute("data-retry-run") }, "running", "Asking again. Watch it below, or leave the page and come back."); loadLiveRun(); return; }
+      if (clicked.closest("[data-run-prompts]")) { loadLiveRun(); await postPrompts("/prompt-runs", { repetitions: state.repetitions, languageIds: [state.runLanguageId] }, "running", "The run has started. Watch it below, or leave the page and come back."); loadLiveRun(); return; }
       const activate = clicked.closest("[data-activate-prompt]");
       if (activate) { await postPrompts("/prompts/activate", { promptIds:[activate.getAttribute("data-activate-prompt")] }, "saving", "Now tracked."); return; }
       const retire = clicked.closest("[data-retire-prompt]");
