@@ -94,11 +94,11 @@ export function marketerView(memo: AimMemo | null): string {
     ? table({
       layout: "mcols-task",
       columns: ["What to do", "Runs as"],
-      rows: memo.tasks.map((task) => row("mcols-task", [
+      rows: memo.tasks.map((task, index) => row("mcols-task", [
         nameCell(html(task.title), html(task.detail)),
         // A task no workflow can do says so rather than offering the nearest.
         cell(task.workflow
-          ? button({ label: "Draft it", on: { "data-aim-run": task.workflow } })
+          ? button({ label: "Draft it", kind: index === 0 ? "primary" : "secondary", on: { "data-aim-run": task.workflow } })
           : '<span class="state-flag">a change to the site, not a draft</span>'),
       ])),
     })
@@ -220,14 +220,12 @@ export function draftsView(input: { offers: TemplateOffer[]; drafts: DraftRow[] 
 }
 
 /** Claims the answers made about the brand, settled against the brand's pages. */
-const CHECK_CLAIMS = button({ label: "Check claims now", on: { "data-run-factcheck": true } });
-
 export function claimsView(report: FactCheckView | null): string {
   if (!report) {
     return section({
       title: "Claims",
       blurb: "Reads what the archived answers assert about you and settles each against your own pages.",
-      body: join([empty("No claim check has been run for this project yet."), `<div class="inline-actions">${CHECK_CLAIMS}</div>`]),
+      body: empty("No claim check has been run for this project yet."),
     });
   }
   const group = (rows: ClaimGroup[], what: string) => table({
@@ -247,7 +245,6 @@ export function claimsView(report: FactCheckView | null): string {
     section({
       title: "Claims",
       blurb: `Settled against the pages at ${report.domain}. Nothing here calls a claim false; it reports disagreement with those pages.`,
-      aside: CHECK_CLAIMS,
       body: tiles([
         { label: "Supported", value: String(report.tally.supported), note: "the pages say it", fraction: null },
         { label: "Contradicted", value: String(report.tally.contradicted), note: "the pages say otherwise", fraction: null },
@@ -261,14 +258,12 @@ export function claimsView(report: FactCheckView | null): string {
 }
 
 /** What a buying answer named, with the limit of the reading stated. */
-const READ_BUYING = button({ label: "Read buying answers", on: { "data-run-shopping": true } });
-
 export function buyingView(report: ShoppingView | null): string {
   if (!report) {
     return section({
       title: "Buying",
       blurb: "Reads which products, brands and retailers your archived buying answers actually named.",
-      body: join([empty("No buying answer has been read for this project yet."), `<div class="inline-actions">${READ_BUYING}</div>`]),
+      body: empty("No buying answer has been read for this project yet."),
     });
   }
 
@@ -298,7 +293,6 @@ export function buyingView(report: ShoppingView | null): string {
     section({
       title: "Buying",
       blurb: report.caveat,
-      aside: READ_BUYING,
       body: tiles([
         { label: "Answers naming you", value: report.namedRate === null ? "not asked" : `${Math.round(report.namedRate * 100)}%`, note: "of buying answers", fraction: report.namedRate },
         { label: "Named nothing", value: String(report.genericAnswers), note: "stayed generic", fraction: null },
@@ -346,12 +340,11 @@ export function conversationsView(rows: ExplorationRow[]): string {
 
 /** What corroborates this brand from outside its own control. */
 export function entityView(alignment: EntityView | null, llms: { text: string; listed: number } | null): string {
-  const probe = button({ label: "Probe the site now", on: { "data-probe-signals": true } });
   if (!alignment) {
     return section({
       title: "Entity",
       blurb: "Reads what the live site publishes about who owns it.",
-      body: join([empty("This project's site has not been probed yet, so nothing is known about what resolves it."), `<div class="inline-actions">${probe}</div>`]),
+      body: empty("This project's site has not been probed yet, so nothing is known about what resolves it."),
     });
   }
   const anchors = table({
@@ -370,7 +363,6 @@ export function entityView(alignment: EntityView | null, llms: { text: string; l
     section({
       title: "Entity",
       blurb: `Whether a model can resolve ${alignment.domain} to a stable entity.`,
-      aside: probe,
       body: tiles([
         { label: "Corroborated by", value: String(alignment.corroborated), note: "anchors outside your control", fraction: null },
         { label: "Anchors in total", value: String(alignment.anchors.length), note: "most of them your own", fraction: null },
