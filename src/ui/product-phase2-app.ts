@@ -123,6 +123,18 @@ export function renderProductPhase2AppHtml(): string {
     .sk-head { display:grid; gap:8px; margin-bottom:6px; }
     .sk-wrap { display:block; }
     .visually-hidden { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+    /* The outcome, at the bottom of the screen the reader is on, rather than
+       under a heading five screens above the thing they clicked. */
+    .toasts { position:fixed; left:50%; bottom:22px; transform:translateX(-50%); z-index:12; display:grid; gap:8px; width:min(430px,calc(100vw - 32px)); pointer-events:none; }
+    .toasts > [data-live] { display:contents; }
+    .toast { pointer-events:auto; display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:start; gap:10px; padding:11px 11px 11px 14px; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); box-shadow:var(--shadow); font-size:var(--type-sm); line-height:1.45; color:var(--text); animation:toastin var(--motion-normal) var(--ease-standard); }
+    .toast.is-success { box-shadow:inset 2px 0 0 var(--confirmed-text), var(--shadow); }
+    .toast.is-error { box-shadow:inset 2px 0 0 var(--failed-text), var(--shadow); }
+    .toast.is-going { opacity:0; transition:opacity var(--motion-fast) var(--ease-standard); }
+    .toast-shut { border:0; background:transparent; color:var(--weak); cursor:pointer; font-size:15px; line-height:1; padding:2px 4px; border-radius:4px; }
+    .toast-shut:hover, .toast-shut:focus-visible { color:var(--text); }
+    @keyframes toastin { from { opacity:0; transform:translateY(9px); } }
+    @media (prefers-reduced-motion:reduce) { .toast { animation:none; } }
     @keyframes sheen { to { transform:translateX(100%); } }
     @media (prefers-reduced-motion:reduce) { .sk-line::after { animation:none; } }
     .headaside { display:flex; align-items:center; gap:14px; flex-wrap:wrap; justify-content:flex-end; margin-left:auto; }
