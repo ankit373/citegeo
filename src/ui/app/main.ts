@@ -4,7 +4,8 @@ import { buyingView, claimsView, conversationsView, draftsView, entityView, mark
 import { exportName, filterSummary, matchesQuery, panelCsv } from "./components/panel-tools.js";
 import { emptyState, notice, section } from "./components/primitives.js";
 import { button } from "./components/button.js";
-import { loading, skeletonCard, skeletonTiles } from "./components/skeleton.js";
+import { remaining } from "./format.js";
+import { loading, skeletonCard, skeletonTable, skeletonText, skeletonTiles } from "./components/skeleton.js";
 import { clearToasts, toast } from "./components/toast.js";
 import { DESTINATIONS, navScrim, navToggle, sidebar, wireNav } from "./components/nav.js";
 import { hasPanelOrder, resetPanelOrder, setPanelSpan, togglePanelHidden, wirePanelDrag } from "./components/reorder.js";
@@ -1055,7 +1056,7 @@ export function boot(): void {
       if (state.marketerState === "idle") { loadMarketer(); }
       const inner = state.marketerState === "error"
         ? '<p class="subtle">Could not read this project.</p>'
-        : state.marketerState !== "ready" ? '<p class="subtle">Reading what has been measured…</p>' : body();
+        : state.marketerState !== "ready" ? loading("this page", skeletonTiles(3) + skeletonCard({ rows: 4 })) : body();
       const notice = state.marketerNotice.text
         ? '<div class="' + (state.marketerNotice.kind === "success" ? "success-box" : "warning-box") + '">' + html(state.marketerNotice.text) + '</div>'
         : '';
@@ -1078,7 +1079,8 @@ export function boot(): void {
         button({ label: "Read buying answers", kind: "primary", on: { "data-run-shopping": true } }));
     }
     function renderConversations() {
-      return marketerPage("Conversations", "Real demand, and which of it nothing here measures.", () => conversationsView(state.conversations || []));
+      return marketerPage("Conversations", "Real demand, and which of it nothing here measures.", () => conversationsView(state.conversations || []),
+        button({ label: "Open questions", on: { "data-page": "prompts" } }));
     }
     function renderEntity() {
       return marketerPage("Entity", "What corroborates this brand from outside its own control.", () => entityView(state.entity?.alignment || null, state.entity?.llms || null),
@@ -1382,7 +1384,7 @@ export function boot(): void {
     function renderSchedule() {
       if (state.scheduleState === "idle") { loadSchedule(); }
       const schedule = state.schedule;
-      if (!schedule) return '<p class="subtle">Reading the schedule.</p>';
+      if (!schedule) return loading("the schedule", skeletonText(2));
       const options = ["daily", "weekly", "monthly"].map((value) => '<option value="' + value + '"' + (schedule.rule.frequency === value ? " selected" : "") + '>' + value.charAt(0).toUpperCase() + value.slice(1) + '</option>').join("");
       const markets = (state.regions || []).map((row) => '<label class="checkline"><input type="checkbox" name="regionIds" value="' + html(row.id) + '"' + (schedule.regionIds.indexOf(row.id) >= 0 ? " checked" : "") + '> ' + html(row.label) + '</label>').join("");
       const next = schedule.enabled && schedule.nextRunAt ? 'Next run ' + html(schedule.nextRunAt.slice(0, 16).replace("T", " ")) + ' UTC.' : 'Not scheduled.';
@@ -1425,16 +1427,22 @@ export function boot(): void {
       if (!run) return "";
       const done = run.answersCompleted + run.answersFailed;
       const pctDone = run.answersRequested ? Math.round(done / run.answersRequested * 100) : 0;
+      const since = Date.parse(run.startedAt || "");
+      // Until one answer lands there is no rate to read, so the run says it is
+      // still working that out rather than printing a number nothing supports.
+      const left = run.status === "cancelling" || !since ? null : remaining(done, run.answersRequested, Date.now() - since);
+      const eta = run.status === "cancelling" ? "" : (left || (done ? "" : "working out how long this takes"));
       const doing = run.currentPromptText
         ? 'Asking ' + html(run.currentModelId || "a model") + ': \u201c' + html(run.currentPromptText) + '\u201d'
         : "Starting up";
       return '<div class="liverun is-clickable" data-open-run="' + html(run.id) + '" role="button" tabindex="0"><div class="liverun-top"><strong>' + (run.status === "cancelling" ? "Stopping" : "Running") + '</strong>'
         + '<span>' + done + ' of ' + run.answersRequested + ' answers</span>'
+        + (eta ? '<span class="subtle">' + html(eta) + '</span>' : '')
         + '<span class="spacer"></span>'
         + (run.status === "cancelling"
           ? '<span class="subtle">Finishing the answer in flight.</span>'
           : button({ label: "Stop", tone: "danger", on: { "data-stop-run": true } }))
-        + '</div><div class="bar"><i style="width:' + pctDone + '%"></i></div>'
+        + '</div><div class="bar is-live"><i style="width:' + pctDone + '%"></i></div>'
         + '<p class="subtle">' + doing + '. Open this to watch each question and answer as it lands.</p></div>';
     }
 
@@ -1630,8 +1638,10 @@ export function boot(): void {
       }
       const done = run.answersCompleted + run.answersFailed;
       const share = run.answersRequested ? Math.round(done / run.answersRequested * 100) : 0;
-      return '<span>' + done + ' of ' + run.answersRequested + ' answers · ' + run.answersFailed + ' failed</span>'
-        + '<div class="bar"><i style="width:' + share + '%"></i></div>';
+      const since = Date.parse(run.startedAt || "");
+      const left = run.status === "cancelling" || !since ? null : remaining(done, run.answersRequested, Date.now() - since);
+      return '<span>' + done + ' of ' + run.answersRequested + ' answers · ' + run.answersFailed + ' failed' + (left ? ' · ' + html(left) : '') + '</span>'
+        + '<div class="bar is-live"><i style="width:' + share + '%"></i></div>';
     }
 
     function mentionChips(answer: AnswerRow) {
@@ -1675,7 +1685,7 @@ export function boot(): void {
     }
 
     function runFeedBody() {
-      if (state.runFeedState === "loading" && !state.runFeed.length) return '<p class="subtle">Reading what this run has archived so far.</p>';
+      if (state.runFeedState === "loading" && !state.runFeed.length) return loading("what this run has archived", skeletonText(3) + skeletonText(4));
       if (state.runFeedState === "error") return '<p class="subtle">Could not read this run.</p>';
       const cards = state.runFeed.map(runAnswerCard).join("");
       const flight = runInFlightCard();
@@ -1803,7 +1813,7 @@ export function boot(): void {
     }
 
     function renderBrief() {
-      if (state.briefState === "loading") return '<p class="subtle">Reading what the models credited here.</p>';
+      if (state.briefState === "loading") return loading("what the models credited", skeletonText(3));
       if (state.briefState === "error" || !state.brief) return '';
       const brief = state.brief;
       if (!brief.answers) return '<div class="brief"><p class="why">' + html(brief.verdict) + '</p></div>';
@@ -2491,7 +2501,7 @@ export function boot(): void {
           + '<div class="panel-body">' + String(state.panel.body || "") + '</div></aside>';
       }
       const body = state.panelState === "loading"
-        ? '<p class="subtle">Reading the archived answers.</p>'
+        ? loading("the archived answers", skeletonText(4) + skeletonText(3))
         : state.panelState === "error"
           ? '<p class="subtle">Could not read the answers for this question.</p>'
           : !state.panelAnswers.length
@@ -2719,7 +2729,7 @@ export function boot(): void {
       if (state.demandState === "idle") { loadDemand(); }
       const head = '<section class="section-card"><div class="section-head"><div class="headmain"><h2>Prompt volume</h2>'
         + '<p class="subtle">How often anyone asked something like each tracked question, in an openly licensed corpus of real conversations.</p></div></div>';
-      if (state.demandState === "loading") return head + '<p class="subtle">Reading the corpus report.</p></section>';
+      if (state.demandState === "loading") return head + loading("the corpus report", skeletonTiles(3) + skeletonTable({ rows: 4 })) + '</section>';
       const report = state.demand;
       if (!report || !report.prompts) {
         // Not built is not zero demand, and the difference matters here.
@@ -2821,7 +2831,7 @@ export function boot(): void {
 
       const digest = state.digest;
       const changed = state.digestState === "loading"
-        ? '<p class="subtle">Reading what changed.</p>'
+        ? loading("what changed", skeletonText(3))
         : digest && digest.lines.length
           ? '<p class="changed-headline">' + html(digest.headline) + '</p><ul class="protocol-list">'
             + digest.lines.map((line: string) => '<li>' + html(line) + '</li>').join("") + '</ul>'
@@ -2882,7 +2892,8 @@ export function boot(): void {
     // Pages that stopped being cited, which is a claim no single run can make.
     function renderCitationHistory() {
       if (state.historyState === "idle") { loadHistory(); }
-      if (state.historyState !== "ready" || !state.history) return '<p class="subtle">Reading what each page did over time.</p>';
+      if (state.historyState === "error") return '<p class="subtle">Could not read what each page did over time.</p>';
+      if (state.historyState !== "ready" || !state.history) return loading("the citation history", skeletonTable({ rows: 4, columns: "minmax(0,1fr) 96px 110px 96px" }));
       const data = state.history as any;
       if (data.measurableRuns < 2) {
         return '<p class="subtle">' + data.measurableRuns + ' run(s) carried a citation. Two are needed before a page can be shown to have changed either way.</p>';
@@ -2904,7 +2915,8 @@ export function boot(): void {
 
     function renderCitedPages() {
       if (state.citedState === "idle") { loadCited(); }
-      if (state.citedState !== "ready" || !state.cited) return '<p class="subtle">Reading the archived sources.</p>';
+      if (state.citedState === "error") return '<p class="subtle">Could not read the archived sources.</p>';
+      if (state.citedState !== "ready" || !state.cited) return loading("the archived sources", skeletonTable({ rows: 5, columns: "minmax(0,1fr) 96px 82px 90px" }));
       const data = state.cited;
       if (data.unavailable) {
         return '<div class="warning-box">No answer carried a source, so there are no pages to analyse. That is a property of the models you ran, not evidence that nobody cites you.</div>';
@@ -2973,8 +2985,9 @@ export function boot(): void {
     function renderStability(report: any) {
       if (!report) return '';
       if (!report.measured) {
-        return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>How much the answer moves</h3>'
-          + '<p class="subtle">Every question here was asked once, so nothing can be said about how much of an answer is the question and how much is the day.</p></div></div>' + taskCta("asked-once") + '</div>';
+        return trustCard("trust-stability", "How much the answer moves",
+          "Every question here was asked once, so nothing can be said about how much of an answer is the question and how much is the day.",
+          taskCta("asked-once"));
       }
       // The overlap is a mean over the questions that cited anything, and most
       // of these cited nothing. Printing it against the larger number claims a
@@ -3001,12 +3014,11 @@ export function boot(): void {
         + '<span class="mcell">' + row.sourcesAlways + ' of ' + row.sourcesEver + '</span>'
         + '<span class="mcell">' + (row.sourceOverlap === null ? 'No sources' : sharePct(row.sourceOverlap)) + '</span>'
         + '<span class="mcell subtle">' + (row.spanHours === null ? 'Unknown span' : row.spanHours < 1 ? 'Minutes apart' : row.spanHours < 48 ? Math.round(row.spanHours) + 'h apart' : Math.round(row.spanHours / 24) + 'd apart') + '</span></div>').join("");
-      return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>How much the answer moves</h3>'
-        + '<p class="subtle">' + html(report.caveat) + '</p></div></div>'
+      return trustCard("trust-stability", "How much the answer moves", report.caveat, ''
         + '<p>' + overall + ' ' + naming + '</p>'
         + '<div class="mtable"><div class="mhead mcols-stability"><span>Question</span><span>Named you</span><span>Sources every pass</span><span>Overlap</span><span>Span</span></div>'
         + rows + '</div>'
-        + (taskCta("naming-unstable") || taskCta("sources-turn-over") || taskCta("asked-once")) + '</div>';
+        + (taskCta("naming-unstable") || taskCta("sources-turn-over") || taskCta("asked-once")));
     }
 
     // One list, two places: the listing at the top of a page and the button
@@ -3070,9 +3082,9 @@ export function boot(): void {
     function renderPhrasing(report: any) {
       if (!report) return '';
       if (!report.measured) {
-        return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>How much the wording decides</h3>'
-          + '<p class="subtle">Every question here is written down one way, so nothing says whether you are visible for what was asked or for the exact words it was asked in. Add a rewording to a question and the next run compares them.</p></div></div>'
-          + '<div class="inline-actions">' + button({ label: "Open questions", kind: "quiet", on: { "data-page": "prompts" } }) + '</div></div>';
+        return trustCard("trust-phrasing", "How much the wording decides",
+          "Every question here is written down one way, so nothing says whether you are visible for what was asked or for the exact words it was asked in. Add a rewording to a question and the next run compares them.",
+          '<div class="inline-actions">' + button({ label: "Open questions", kind: "quiet", on: { "data-page": "prompts" } }) + '</div>');
       }
       const lead = report.spread === null
         ? 'No pair of wordings produced an answer to compare.'
@@ -3094,11 +3106,10 @@ export function boot(): void {
         + '<span class="mcell ' + (row.naming === "always" ? "state-ok" : row.naming === "split" ? "state-bad" : "subtle") + '">'
         + (row.naming === "always" ? "Every wording" : row.naming === "split" ? row.namedIn + ' of ' + row.wordings.length : "No wording") + '</span>'
         + '<span class="mcell">' + (row.spread === null ? "Not measurable" : sharePct(row.spread)) + '</span></div>').join("");
-      return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>How much the wording decides</h3>'
-        + '<p class="subtle">' + html(report.caveat) + '</p></div></div>'
+      return trustCard("trust-phrasing", "How much the wording decides", report.caveat, ''
         + '<p>' + html(lead + naming + named) + '</p>'
         + '<div class="mtable"><div class="mhead mcols-phrasing"><span>Question and its wordings</span><span>Named you</span><span>Widest gap</span></div>'
-        + rows + '</div></div>';
+        + rows + '</div>');
     }
 
     // The error rate every other figure here should be read against. It sits
@@ -3106,9 +3117,9 @@ export function boot(): void {
     function renderDecoys(report: any) {
       if (!report) return '';
       if (!report.decoys.length) {
-        return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>A brand that should never appear</h3>'
-          + '<p class="subtle">Nothing here measures how often this product finds a name that is not there. Declare a brand you know is irrelevant to these questions and every run carries it, so the share it turns up in becomes the figure yours has to beat.</p></div></div>'
-          + '<div class="inline-actions">' + button({ label: "Add a decoy", kind: "quiet", on: { "data-add-decoy": "true" } }) + '</div></div>';
+        return trustCard("trust-decoys", "A brand that should never appear",
+          "Nothing here measures how often this product finds a name that is not there. Declare a brand you know is irrelevant to these questions and every run carries it, so the share it turns up in becomes the figure yours has to beat.",
+          '<div class="inline-actions">' + button({ label: "Add a decoy", kind: "quiet", on: { "data-add-decoy": "true" } }) + '</div>');
       }
       const floor = sharePct(report.noiseFloor);
       const verdict = report.clearsFloor === null
@@ -3126,11 +3137,10 @@ export function boot(): void {
         + '<span class="mcell">' + row.namedIn + ' of ' + report.considered + '</span>'
         + '<span class="mcell ' + (row.namedIn ? "state-flag" : "state-ok") + '">' + (row.share === null ? '\u2014' : sharePct(row.share)) + '</span>'
         + '<span class="mcell">' + (row.high === null ? '\u2014' : sharePct(row.high)) + '</span></div>').join("");
-      return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>A brand that should never appear</h3>'
-        + '<p class="subtle">' + html(report.caveat) + '</p></div></div>'
+      return trustCard("trust-decoys", "A brand that should never appear", report.caveat, ''
         + '<p><strong>Anything under ' + floor + ' is not a finding.</strong> ' + html(verdict) + '</p>' + errors
         + '<div class="mtable"><div class="mhead mcols-decoy"><span>Decoy</span><span>Named in</span><span>Share</span><span>Consistent with up to</span></div>'
-        + rows + '</div>' + add + '</div>';
+        + rows + '</div>' + add);
     }
 
     // Published work decomposing what decides a recommendation put the product's
@@ -3139,8 +3149,8 @@ export function boot(): void {
     function renderVariance(report: any) {
       if (!report || !report.answers) return '';
       if (report.flat) {
-        return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>What decides whether you appear</h3>'
-          + '<p class="subtle">Every answer said the same thing about you, so nothing here varies and nothing can explain it. That is a finding about the brand rather than a gap in the measurement.</p></div></div></div>';
+        return trustCard("trust-variance", "What decides whether you appear",
+          "Every answer said the same thing about you, so nothing here varies and nothing can explain it. That is a finding about the brand rather than a gap in the measurement.", '');
       }
       const measured = report.factors.filter((row: any) => row.share !== null);
       if (!measured.length) return '';
@@ -3159,10 +3169,9 @@ export function boot(): void {
       const nothing = unvaried.length
         ? '<p class="subtle">' + unvaried.map((row: any) => html(row.label)).join(", ") + ' took one value, so nothing varied for them to explain.</p>'
         : '';
-      return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>What decides whether you appear</h3>'
-        + '<p class="subtle">' + html(report.caveat) + '</p></div></div>' + few
+      return trustCard("trust-variance", "What decides whether you appear", report.caveat, few
         + '<div class="mtable"><div class="mhead mcols-variance"><span>Factor</span><span>Values</span><span>Goes with</span><span></span></div>' + rows + '</div>'
-        + nothing + '</div>';
+        + nothing);
     }
 
     // The more volatile half of the score, and the half that had no stability
@@ -3170,9 +3179,9 @@ export function boot(): void {
     function renderFraming(report: any) {
       if (!report) return '';
       if (!report.measured) {
-        return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>How steady the framing is</h3>'
-          + '<p class="subtle">No question named you more than once under identical conditions, so nothing says whether the way you are described holds still. Published work puts framing flipping about '
-          + report.publishedRatio + ' times as often as whether you are named at all, so this is the half of the score most likely to be moving.</p></div></div></div>';
+        return trustCard("trust-framing", "How steady the framing is",
+          'No question named you more than once under identical conditions, so nothing says whether the way you are described holds still. Published work puts framing flipping about '
+          + report.publishedRatio + ' times as often as whether you are named at all, so this is the half of the score most likely to be moving.', '');
       }
       const lead = report.flipped
         ? report.flipped + ' of ' + report.measured + ' question(s) described you more than one way across passes that all named you.'
@@ -3184,10 +3193,9 @@ export function boot(): void {
         + '<span class="mono">' + html(row.modelId) + ' \u00b7 named in ' + row.named + ' passes</span></div>'
         + '<span class="mcell ' + (row.steady ? "state-ok" : "state-bad") + '">' + (row.steady ? "Steady" : row.framings.length + ' ways') + '</span>'
         + '<span class="mcell subtle">' + html(row.framings.join(", ")) + '</span></div>').join("");
-      return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>How steady the framing is</h3>'
-        + '<p class="subtle">' + html(report.caveat) + '</p></div></div>'
+      return trustCard("trust-framing", "How steady the framing is", report.caveat, ''
         + '<p>' + html(lead + against) + '</p>'
-        + '<div class="mtable"><div class="mhead mcols-framing"><span>Question</span><span>Framing</span><span>Called it</span></div>' + rows + '</div></div>';
+        + '<div class="mtable"><div class="mhead mcols-framing"><span>Question</span><span>Framing</span><span>Called it</span></div>' + rows + '</div>');
     }
 
     const TIERS = [["unstated", "Not said"], ["household", "Global household name"], ["mid_market", "Mid-market or regional"], ["niche", "Niche or small"]];
@@ -3218,9 +3226,9 @@ export function boot(): void {
         + TIERS.map(([value, label]) => '<option value="' + value + '"' + (report.tier === value ? " selected" : "") + '>' + html(label) + '</option>').join("")
         + '</select></label>';
       if (!report.baseline) {
-        return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>Against brands like yours</h3>'
-          + '<p class="subtle">A visibility figure on its own answers nothing. The same number is poor for a household name and ordinary for a brand nobody has heard of. Say which this is and the figure gets something to be read against.</p></div>'
-          + '<div class="inline-actions">' + picker + '</div></div></div>';
+        return trustCard("trust-tier", "Against brands like yours",
+          "A visibility figure on its own answers nothing. The same number is poor for a household name and ordinary for a brand nobody has heard of. Say which this is and the figure gets something to be read against.",
+          '', '<div class="inline-actions">' + picker + '</div>');
       }
       const yours = report.presence.rate === null
         ? 'Nothing answered yet, so there is nothing of yours to compare.'
@@ -3233,11 +3241,10 @@ export function boot(): void {
             ? ' That is clear of the ' + sharePct(report.baseline.rate) + ' brands of this kind tended to get.'
             : ' That falls short of the ' + sharePct(report.baseline.rate) + ' brands of this kind tended to get.';
       const ink = report.standing === "above" ? "state-ok" : report.standing === "below" ? "state-bad" : "state-flag";
-      return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>Against brands like yours</h3>'
-        + '<p class="subtle">' + html(report.caveat) + '</p></div><div class="inline-actions">' + picker + '</div></div>'
+      return trustCard("trust-tier", "Against brands like yours", report.caveat, ''
         + '<div class="countstrip"><span class="count ' + ink + '"><strong>' + (report.presence.rate === null ? '\u2014' : sharePct(report.presence.rate)) + '</strong>yours</span>'
         + '<span class="count"><strong>' + sharePct(report.baseline.rate) + '</strong>' + html(report.baseline.label) + '</span></div>'
-        + '<p>' + html(yours + verdict) + '</p></div>';
+        + '<p>' + html(yours + verdict) + '</p>', '<div class="inline-actions">' + picker + '</div>');
     }
 
     // Everything else here is an observation. This is the only thing that can
@@ -3356,11 +3363,10 @@ export function boot(): void {
       const blind = report.unconfirmed.length
         ? '<p class="subtle">' + report.unconfirmed.map((id: string) => html(id)).join(", ") + ' never named a version, so a change there cannot be seen. That is unconfirmed, not steady.</p>'
         : '';
-      return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>Was it you, or did the model ship</h3>'
-        + '<p class="subtle">' + html(report.caveat) + '</p></div></div>'
+      return trustCard("trust-versions", "Was it you, or did the model ship", report.caveat, ''
         + '<p>' + html(lead) + '</p>'
         + (rows ? '<div class="mtable"><div class="mhead mcols-version"><span>Change</span><span>Presence moved</span><span>Reading</span></div>' + rows + '</div>' : '')
-        + blind + '</div>';
+        + blind);
     }
 
     // One shell for the three pages built on the same archive: the loading,
@@ -3402,8 +3408,9 @@ export function boot(): void {
         ? '<div class="warning-box"><strong>What the model said it named, checked against what it wrote.</strong> '
           + corr.measured + ' of ' + corr.reported + ' mentions were found in the answer and their position measured from it'
           + (corr.absentFromAnswer ? ', and ' + corr.absentFromAnswer + ' named nothing the answer actually contains' : '')
-          + '. ' + (corr.quotesChecked ? corr.quotesFound + ' of ' + corr.quotesChecked + ' quoted lines are really in the answer. ' : '')
-          + html(corr.caveat) + taskCta("quotes-not-found") + taskCta("mentions-absent") + '</div>'
+          + '. ' + (corr.quotesChecked ? corr.quotesFound + ' of ' + corr.quotesChecked + ' quoted lines are really in the answer.' : '')
+          + '<details class="technical-details"><summary>What that does and does not prove</summary><p>' + html(corr.caveat) + '</p></details>'
+          + taskCta("quotes-not-found") + taskCta("mentions-absent") + '</div>'
         : '';
       // Naming the cause matters more than naming the symptom. Telling somebody
       // to get a provider with web search is wrong when they have one, switched off.
@@ -3420,10 +3427,19 @@ export function boot(): void {
         ? '<div class="warning-box">No answer carried a citation, so there are no sources to analyse. That is a property of the models you ran, not evidence that nobody cites you. '
           + html(citationCause) + citationFix + '</div>'
         : '';
+      // An action stays where it can be taken. An explanation folds, because
+      // five amber boxes above a page is two screens before any content.
+      const notes = [identityNote, failedNote, retiredNote, citationNote, corroborationNote].filter(Boolean);
+      const acts = notes.filter((note) => note.indexOf("task-cta") >= 0 || note.indexOf("data-retry-run") >= 0);
+      const explains = notes.filter((note) => acts.indexOf(note) < 0);
+      const caveats = explains.length
+        ? '<details class="caveats" data-fold="answer-caveats"' + (state.panelOpen.indexOf("answer-caveats") >= 0 ? " open" : "")
+          + '><summary>What these numbers do and do not cover (' + explains.length + ')</summary>' + explains.join("") + '</details>'
+        : '';
       return '<section class="view"><div class="heading"><div><h1>' + html(title) + '</h1>'
-        + '<p class="subtle">' + html(subtitle) + '</p></div>' + runActionButton("Ask the questions") + '</div>'
+        + '<p class="subtle">' + html(subtitle) + '</p></div><div class="inline-actions">' + runActionButton("Ask the questions") + '</div></div>'
         + renderLiveRun()
-        + identityNote + failedNote + retiredNote + citationNote + corroborationNote
+        + acts.join("") + caveats
         + body(data, { objective, weights })
         + '</section>';
     }
@@ -3475,10 +3491,18 @@ export function boot(): void {
         + card("rival-model", "By AI assistant", "The models you picked in Choose models, each answering the same questions. These are who was asked, not who you compete with.", renderModelRows(data.byModel));
     }
 
+    // Eight cards nested inside a ninth, none of which could fold and none of
+    // which closed its own div. Each is a card of its own now, on the module.
+    function trustCard(id: string, title: string, blurb: string, body: string, aside = "") {
+      return section({ id, title, blurb, body, aside, wide: true, folded: state.panelOpen.indexOf(id) < 0 });
+    }
+
     function renderTrustPage() {
       return answerPage("Trust", "The instrument rather than the brand. Every figure on the other pages is worth what this page says it is.", (data, page) => ''
-        + '<section class="section-card"><div class="section-head"><div><h2>How the score is built</h2><p class="subtle">Presence scaled by where you appear and how you are described.</p></div></div>'
-        + renderScoreBreakdown(data.overall)
+        + section({ id: "trust-score", title: "How the score is built", wide: true,
+          blurb: "Presence scaled by where you appear and how you are described.",
+          body: renderScoreBreakdown(data.overall)
+            + '<details class="technical-details"><summary>The formula, and the judgement in it</summary>' + page.objective + '<p class="subtle">score = presence \u00d7 (' + page.weights.prominenceFloor + ' + ' + (1 - page.weights.prominenceFloor).toFixed(1) + ' \u00d7 prominence) \u00d7 (' + page.weights.sentimentFloor + ' + ' + (1 - page.weights.sentimentFloor).toFixed(1) + ' \u00d7 sentiment) \u00d7 100.</p><p class="subtle">The two floors are a judgement, not a measurement: being named late and grudgingly is still better than not being named, so prominence and sentiment scale presence rather than replacing it. Every component above is reported separately so you can ignore the composite entirely.</p></details>' })
         + renderTier(data.tier)
         + renderVersions(data.versions)
         + renderDecoys(data.decoys)
@@ -3487,10 +3511,9 @@ export function boot(): void {
         + renderStability(data.stability)
         + renderPhrasing(data.phrasing)
         + renderFraming(data.framing)
-        + '<details class="technical-details"><summary>The formula, and the judgement in it</summary>' + page.objective + '<p class="subtle">score = presence × (' + page.weights.prominenceFloor + ' + ' + (1 - page.weights.prominenceFloor).toFixed(1) + ' × prominence) × (' + page.weights.sentimentFloor + ' + ' + (1 - page.weights.sentimentFloor).toFixed(1) + ' × sentiment) × 100.</p><p class="subtle">The two floors are a judgement, not a measurement: being named late and grudgingly is still better than not being named, so prominence and sentiment scale presence rather than replacing it. Every component above is reported separately so you can ignore the composite entirely.</p></details></section>'
-        + '<section class="section-card"><div class="section-head"><div><h2>Check the machine</h2><p class="subtle">Every figure here rests on a model classifying what another model wrote. Judge a few yourself and the agreement rate becomes the confidence in the whole column.</p></div></div>' + renderHumanCheck() + '</section>'
-        + '<section class="section-card"><div class="section-head"><div><h2>Did your change do anything</h2><p class="subtle">Everything else here watches. This tests. Change something, leave a comparable set of questions alone, and whatever moved for both is subtracted rather than claimed.</p></div></div>' + renderExperiments() + '</section>'
-        + '<section class="section-card"><div class="section-head"><div><h2>Keep it running</h2><p class="subtle">A tracker that is run by hand is a snapshot.</p></div></div>' + renderSchedule() + '</section>'
+        + trustCard("trust-check", "Check the machine", "Every figure here rests on a model classifying what another model wrote. Judge a few yourself and the agreement rate becomes the confidence in the whole column.", renderHumanCheck())
+        + trustCard("trust-experiments", "Did your change do anything", "Everything else here watches. This tests. Change something, leave a comparable set of questions alone, and whatever moved for both is subtracted rather than claimed.", renderExperiments())
+        + trustCard("trust-schedule", "Keep it running", "A tracker that is run by hand is a snapshot.", renderSchedule())
       );
     }
 
@@ -3716,8 +3739,12 @@ export function boot(): void {
       const note = thin.length
         ? thin.length + ' topic(s) have nothing tracked: ' + thin.map((topic) => html(topic.name)).join(", ") + '.'
         : 'Every topic has at least one tracked question.';
-      return '<section class="section-card"><div class="section-head"><div><h2>Coverage</h2><p class="subtle">A buyer arrives five ways. An intent with nothing tracked is a blind spot, not a zero.</p></div></div>'
-        + '<div class="coverage">' + chips + '</div><p class="subtle">' + note + '</p></section>';
+      return section({
+        id: "prompt-coverage", title: "Coverage", wide: true,
+        blurb: "A buyer arrives five ways. An intent with nothing tracked is a blind spot, not a zero.",
+        body: '<div class="coverage">' + chips + '</div><p class="subtle">' + note + '</p>',
+        folded: state.panelOpen.indexOf("prompt-coverage") < 0,
+      });
     }
 
     function promptToolbar(set: TopicSetShape, shown: number) {
@@ -3807,15 +3834,20 @@ export function boot(): void {
       if (bulk) bulk.innerHTML = promptBulkInner();
     }
 
-    function promptAddForms(set: TopicSetShape) {
+    function promptAddForms(set: TopicSetShape, folds = true) {
       if (!set.topics.length) return '';
       const topics = set.topics.map((topic) => '<option value="' + html(topic.id) + '">' + html(topic.name) + '</option>').join("");
       const intents = PROMPT_INTENTS.map((intent) => '<option value="' + intent + '">' + intentLabel(intent) + '</option>').join("");
-      return '<section class="section-card"><div class="section-head"><div><h2>Add your own</h2><p class="subtle">A question you know buyers ask. It starts tracked.</p></div></div>'
-        + '<form id="add-prompt-form" class="inline-form"><select name="topicId" aria-label="Topic">' + topics + '</select><input name="text" type="text" placeholder="best stock screener for indian markets" aria-label="Question"><select name="intent" aria-label="Intent">' + intents + '</select>' + button({ label: "Add", submit: true }) + '</form>'
+      const body = ''
+        + '<form id="add-prompt-form" class="inline-form"><select name="topicId" aria-label="Topic">' + topics + '</select><input name="text" type="text" value="' + html(state.promptDraft.text) + '" placeholder="best stock screener for indian markets" aria-label="Question"><select name="intent" aria-label="Intent">' + intents + '</select>' + button({ label: "Add", submit: true }) + '</form>'
         + '<details class="technical-details" style="margin-top:14px"><summary>Paste a list</summary>'
         + '<form id="bulk-prompt-form" class="inline-form"><select name="topicId" aria-label="Topic for the pasted questions">' + topics + '</select><select name="intent" aria-label="Intent for the pasted questions">' + intents + '</select><textarea name="text" rows="6" placeholder="One question per line" aria-label="Questions, one per line"></textarea>' + button({ label: "Add them all", submit: true }) + '</form>'
-        + '<p class="subtle">One question per line, all under the same topic and intent. A question already in the set is skipped rather than added twice.</p></details></section>';
+        + '<p class="subtle">One question per line, all under the same topic and intent. A question already in the set is skipped rather than added twice.</p></details>';
+      return section({
+        id: "prompt-add", title: "Add your own", body, wide: true,
+        blurb: "A question you know buyers ask. It starts tracked.",
+        ...(folds ? { folded: state.panelOpen.indexOf("prompt-add") < 0 } : {}),
+      });
     }
 
     /** The first paint, before any read has landed. The page's own name is
@@ -3850,7 +3882,7 @@ export function boot(): void {
       const head = '<section class="view"><div class="heading"><div><h1>Questions</h1><p class="subtle">The questions buyers type, grouped by topic. Every other number in this tool is these questions, asked and archived.</p></div><div class="inline-actions">' + button({ label: (state.promptRunState === "generating" ? "Proposing…" : "Propose a set"), on: { "data-generate-prompts": true } }) + '' + runActionButton("Run all " + active, active > 0) + '</div></div>' + notice + renderLiveRun();
       if (!live.length) {
         // Retiring the last question must not remove the only way to add one.
-        return head + '<div class="empty"><div class="empty-copy"><h2>Nothing is being asked</h2><p class="subtle">Propose a set and a model will suggest the questions buyers ask about what you do, grouped into topics. Nothing runs until you have read them and chosen which to track, because what buyers ask is not something this tool can observe.</p></div></div>' + promptAddForms(set) + '</section>';
+        return head + '<div class="empty"><div class="empty-copy"><h2>Nothing is being asked</h2><p class="subtle">Propose a set and a model will suggest the questions buyers ask about what you do, grouped into topics. Nothing runs until you have read them and chosen which to track, because what buyers ask is not something this tool can observe.</p></div></div>' + promptAddForms(set, false) + '</section>';
       }
       const standings = promptStandings();
       const rows = filteredPrompts(set, standings);
@@ -3863,12 +3895,19 @@ export function boot(): void {
       const blind = set.generatedWithoutFacts
         ? '<div class="warning-box"><strong>These were proposed without anything established about the business.</strong> The site read returned no description and no category, so the model had the brand name and the domain and guessed from them. Read every one before tracking it, and say what the company does on Setup to propose a better set.</div>'
         : '';
+      // The same rule the answer pages use: what can be acted on stays, what
+      // only explains folds into one line above the list.
+      const said = [blind, grounding(set), review].filter(Boolean);
+      const doable = said.filter((note) => note.indexOf("<button") >= 0);
+      const toldOnly = said.filter((note) => doable.indexOf(note) < 0);
+      const folded = toldOnly.length
+        ? '<details class="caveats" data-fold="prompt-caveats"' + (state.panelOpen.indexOf("prompt-caveats") >= 0 ? " open" : "")
+          + '><summary>How this set was written (' + toldOnly.length + ')</summary>' + toldOnly.join("") + '</details>'
+        : '';
       return head
         + renderPromptStats(set, standings)
+        + doable.join("") + folded
         + renderPromptCoverage(set)
-        + blind
-        + grounding(set)
-        + review
         + promptToolbar(set, rows.length)
         + '<div class="prompt-bulk">' + promptBulkInner() + '</div>'
         + '<div class="prompt-results">' + renderPromptGroups(set, rows, standings, (topicStandings() as any)) + '</div>'
@@ -4043,12 +4082,14 @@ export function boot(): void {
         + '<p class="subtle">These are the only sources here that search the web by construction, so they are where citations come from. Nothing signs in on your behalf; the answer is whatever your own signed-in session shows.</p>';
     }
 
-    function renderModels() { if (state.providersState === "idle") { loadProviders(); } const selected = project(); if (!selected) return '<section class="view"><div class="empty"><div class="empty-copy"><h2>Select a project first</h2><p class="subtle">A model configuration belongs to a single project.</p></div></div></section>'; const vendors = catalogVendors(); const results = filteredCatalogModels(); const list = state.catalogState === "idle" || state.catalogState === "loading" ? '<p class="subtle">Loading the OpenRouter model catalog…</p>' : state.catalogState === "error" ? '<div class="warning-box"><strong>Model catalog unavailable</strong><p>' + html(state.catalogError) + '</p>' + button({ label: "Retry", id: "retry-catalog", testId: "retry-catalog" }) + '</div>' : results.length === 0 ? '<p class="subtle">No matching models.</p>' : '<p class="catalog-result-summary">' + catalogResultSummary(results.length) + '</p><div class="mtable">' + catalogHead() + '<div class="model-list">' + renderCatalogModelRows(results) + '</div></div>'; const notice = state.modelNotice.text || (state.selectionsDirty ? "Configuration not saved yet" : ""); const noticeClass = state.modelNotice.kind || (state.selectionsDirty ? "warning" : ""); const saveLabel = state.modelActionState === "error" ? "Retry saving model configuration" : "Save model configuration"; const vendorOptions = vendors.map((vendor) => '<option value="' + html(vendor) + '" ' + (state.catalogProvider === vendor ? "selected" : "") + '>' + html(vendor) + '</option>').join(""); const cfg = monitoringConfiguration(); return '<section class="view"><div class="heading"><div><h1>Choose models</h1><p class="subtle">Pick the models to ask, set each one\'s web search mode, then save them as this project\'s configuration. Currently ' + (cfg.currentVersion ? "saved as v" + cfg.currentVersion : "not saved") + '.</p></div><div class="inline-actions">' + button({ label: saveLabel, id: "save-models", testId: "save-models", on: { "data-action-state": state.modelActionState } }) + '' + saveConfigurationButton(cfg, state.selections.length > 0) + '</div></div><div id="models-status" class="form-status ' + noticeClass + '" aria-live="polite">' + html(notice) + '</div><div class="section-stack"><section class="section-card"><div class="section-head"><div><h2>Selected models</h2><p class="subtle">Select one or more models.</p></div><span class="tag">' + selectedRows().length + '  selected</span></div>' + blockedSelectionBanner() + renderSelectedModels() + '</section><section class="section-card"><div class="section-head"><div><h2>Answer surfaces</h2><p class="subtle">The products a buyer actually opens, read through your own browser. The only sources here that search the web.</p></div></div>' + renderEngines() + '</section><section class="section-card"><div class="section-head"><div><h2>Model catalog</h2><p class="subtle">Searchable and multi-select. A provider that is unreachable contributes nothing; no fabricated models are shown.</p></div><span class="tag ' + (state.catalogState === "ready" ? "ready" : state.catalogState === "error" ? "warning" : "") + '">' + (state.catalogState === "ready" ? "Catalog available" : state.catalogState === "error" ? "Catalog error" : "Loading") + '</span></div><input id="model-search" class="model-search" data-testid="model-search" type="search" value="' + html(state.query) + '" placeholder="Search by model name, model ID or vendor"><div class="model-catalog-controls"><label for="model-provider-filter">Model vendor<select id="model-provider-filter" data-testid="model-provider-filter"><option value="">All vendors</option>' + vendorOptions + '</select></label><label for="model-native-search-filter">Web search capability<select id="model-native-search-filter" data-testid="model-native-search-filter"><option value="all" ' + (state.catalogNativeSearch === "all" ? "selected" : "") + '>All</option><option value="supported" ' + (state.catalogNativeSearch === "supported" ? "selected" : "") + '>Supports native web search</option><option value="unsupported" ' + (state.catalogNativeSearch === "unsupported" ? "selected" : "") + '>Does not support native web search</option></select></label><label for="model-catalog-sort">Sort<select id="model-catalog-sort" data-testid="model-catalog-sort"><option value="name" ' + (state.catalogSort === "name" ? "selected" : "") + '>Name A-Z</option><option value="vendor" ' + (state.catalogSort === "vendor" ? "selected" : "") + '>Vendor A-Z</option><option value="newest" ' + (state.catalogSort === "newest" ? "selected" : "") + '>Release date: newest first</option><option value="oldest" ' + (state.catalogSort === "oldest" ? "selected" : "") + '>Release date: oldest first</option></select></label></div>' + list + '</section></div></section>'; }
+    function renderModels() { if (state.providersState === "idle") { loadProviders(); } const selected = project(); if (!selected) return '<section class="view"><div class="empty"><div class="empty-copy"><h2>Select a project first</h2><p class="subtle">A model configuration belongs to a single project.</p></div></div></section>'; const vendors = catalogVendors(); const results = filteredCatalogModels(); const list = state.catalogState === "idle" || state.catalogState === "loading" ? '<p class="subtle">Loading the OpenRouter model catalog…</p>' : state.catalogState === "error" ? '<div class="warning-box"><strong>Model catalog unavailable</strong><p>' + html(state.catalogError) + '</p>' + button({ label: "Retry", id: "retry-catalog", testId: "retry-catalog" }) + '</div>' : results.length === 0 ? '<p class="subtle">No matching models.</p>' : '<p class="catalog-result-summary">' + catalogResultSummary(results.length) + '</p><div class="mtable">' + catalogHead() + '<div class="model-list">' + renderCatalogModelRows(results) + '</div></div>'; const notice = state.modelNotice.text || (state.selectionsDirty ? "Configuration not saved yet" : ""); const noticeClass = state.modelNotice.kind || (state.selectionsDirty ? "warning" : ""); const saveLabel = state.modelActionState === "error" ? "Retry saving model configuration" : "Save model configuration"; const vendorOptions = vendors.map((vendor) => '<option value="' + html(vendor) + '" ' + (state.catalogProvider === vendor ? "selected" : "") + '>' + html(vendor) + '</option>').join(""); const cfg = monitoringConfiguration(); return '<section class="view"><div class="heading"><div><h1>Choose models</h1><p class="subtle">Pick the models to ask, set each one\'s web search mode, then save them as this project\'s configuration. Currently ' + (cfg.currentVersion ? "saved as v" + cfg.currentVersion : "not saved") + '.</p></div><div class="inline-actions">' + button({ label: saveLabel, kind: state.selectionsDirty || state.modelActionState === "error" ? "primary" : "secondary", id: "save-models", testId: "save-models", on: { "data-action-state": state.modelActionState } }) + '' + saveConfigurationButton(cfg, state.selections.length > 0, false) + '</div></div><div id="models-status" class="form-status ' + noticeClass + '" aria-live="polite">' + html(notice) + '</div><div class="section-stack"><section class="section-card"><div class="section-head"><div><h2>Selected models</h2><p class="subtle">Select one or more models.</p></div><span class="tag">' + selectedRows().length + '  selected</span></div>' + blockedSelectionBanner() + renderSelectedModels() + '</section><section class="section-card"><div class="section-head"><div><h2>Answer surfaces</h2><p class="subtle">The products a buyer actually opens, read through your own browser. The only sources here that search the web.</p></div></div>' + renderEngines() + '</section><section class="section-card"><div class="section-head"><div><h2>Model catalog</h2><p class="subtle">Searchable and multi-select. A provider that is unreachable contributes nothing; no fabricated models are shown.</p></div><span class="tag ' + (state.catalogState === "ready" ? "ready" : state.catalogState === "error" ? "warning" : "") + '">' + (state.catalogState === "ready" ? "Catalog available" : state.catalogState === "error" ? "Catalog error" : "Loading") + '</span></div><input id="model-search" class="model-search" data-testid="model-search" type="search" value="' + html(state.query) + '" placeholder="Search by model name, model ID or vendor"><div class="model-catalog-controls"><label for="model-provider-filter">Model vendor<select id="model-provider-filter" data-testid="model-provider-filter"><option value="">All vendors</option>' + vendorOptions + '</select></label><label for="model-native-search-filter">Web search capability<select id="model-native-search-filter" data-testid="model-native-search-filter"><option value="all" ' + (state.catalogNativeSearch === "all" ? "selected" : "") + '>All</option><option value="supported" ' + (state.catalogNativeSearch === "supported" ? "selected" : "") + '>Supports native web search</option><option value="unsupported" ' + (state.catalogNativeSearch === "unsupported" ? "selected" : "") + '>Does not support native web search</option></select></label><label for="model-catalog-sort">Sort<select id="model-catalog-sort" data-testid="model-catalog-sort"><option value="name" ' + (state.catalogSort === "name" ? "selected" : "") + '>Name A-Z</option><option value="vendor" ' + (state.catalogSort === "vendor" ? "selected" : "") + '>Vendor A-Z</option><option value="newest" ' + (state.catalogSort === "newest" ? "selected" : "") + '>Release date: newest first</option><option value="oldest" ' + (state.catalogSort === "oldest" ? "selected" : "") + '>Release date: oldest first</option></select></label></div>' + list + '</section></div></section>'; }
     function configurationVisualState(configuration: any) { return state.monitoringSaveState === "idle" ? configuration.status : state.monitoringSaveState; }
     function renderConfigurationDiff(configuration: any) { const diff = configuration.diff; const rows = []; for (const item of diff.addedModels) rows.push("Models added: " + item.displayName); for (const item of diff.removedModels) rows.push("Models removed: " + item.displayName); for (const item of diff.webSearchModeChanges) rows.push("Web search mode change: " + item.displayName + " from \"" + modeText(item.previousMode) + "\" to \"" + modeText(item.currentMode) + "\""); if (diff.protocolVersionChange) rows.push("Protocol version change: " + diff.protocolVersionChange.previous + " → " + diff.protocolVersionChange.current); if (diff.domainChange) rows.push("Domain change: " + diff.domainChange.previous + " → " + diff.domainChange.current); if (diff.languageChange) rows.push("Output language change: " + diff.languageChange.previous + " → " + diff.languageChange.current); if (rows.length === 0) return ""; return '<section class="section-card" data-testid="configuration-diff"><div class="section-head"><div><h2>Changes in this run</h2><p class="subtle">Saving creates a new configuration version.</p></div></div><ul class="protocol-list">' + rows.map((row) => '<li>' + html(row) + '</li>').join("") + '</ul></section>'; }
     function renderConfigurationRows(configuration: any) { if (state.baselines.length === 0) return '<p class="subtle">No past configurations yet.</p>'; const currentId = configuration.currentBaseline ? configuration.currentBaseline.id : ""; return '<div class="baseline-list">' + state.baselines.map((baseline) => '<article class="baseline-row" data-testid="configuration-version-row" data-configuration-id="' + html(baseline.id) + '"><div><strong>config v' + baseline.version + (currentId === baseline.id ? " · Current version" : "") + '</strong><span>' + html(baseline.normalizedDomain) + ' · ' + baseline.modelSnapshots.length + '  models</span><span>' + baseline.modelSnapshots.map((item: any) => html(item.displayName + "（" + modeText(item.webSearchMode) + "）")).join(", ") + '</span></div><span class="tag mono">' + html(formatTime(baseline.createdAt)) + '</span></article>').join("") + '</div>'; }
     function renderTechnicalDetails(configuration: any) { const protocol = configuration.currentProtocol; const capabilities = configuration.currentModelSnapshots.length ? configuration.currentModelSnapshots.map((item: any) => '<li>' + html(item.displayName + " · " + formatTime(item.capabilityCheckedAt)) + '</li>').join("") : '<li>The capability check time is recorded once models are saved.</li>'; return '<details class="technical-details"><summary>Technical details</summary><div class="detail-grid"><div class="detail-cell"><span>Protocol</span><strong>' + html(protocol.protocolId + "/" + protocol.protocolVersion) + '</strong></div><div class="detail-cell"><span>Protocol hash</span><strong>' + html(protocol.promptTemplateHash || "Recorded on first save") + '</strong></div><div class="detail-cell"><span>Input scope</span><strong>Domain only</strong></div><div class="detail-cell"><span>Output language</span><strong>' + html(configuration.currentLanguage) + '</strong></div></div><p class="field-help">Model capability check time</p><ul class="protocol-list">' + capabilities + '</ul></details>'; }
-    function saveConfigurationButton(configuration: any, hasModels: any) { const visual = configurationVisualState(configuration); const disabled = !hasModels || visual === "unchanged" || visual === "saving" || visual === "saved"; const label = visual === "no_version" ? "Save config v1" : visual === "unchanged" ? "✓ Current configuration saved" : visual === "changed" ? "Save as config v" + configuration.nextVersion : visual === "saving" ? "Saving…" : visual === "saved" ? "✓ Saved as v" + configuration.currentVersion : "Save again"; return button({ label: label, kind: "primary", disabled: disabled, id: "save-monitoring-configuration", testId: "save-monitoring-configuration", on: { "data-action-state": visual } }); }
+    // A disabled button reading "✓ saved" is a status wearing the loudest paint
+    // on the page. It stops leading the moment there is nothing to press.
+    function saveConfigurationButton(configuration: any, hasModels: any, lead = true) { const visual = configurationVisualState(configuration); const disabled = !hasModels || visual === "unchanged" || visual === "saving" || visual === "saved"; const label = visual === "no_version" ? "Save config v1" : visual === "unchanged" ? "✓ Current configuration saved" : visual === "changed" ? "Save as config v" + configuration.nextVersion : visual === "saving" ? "Saving…" : visual === "saved" ? "✓ Saved as v" + configuration.currentVersion : "Save again"; return button({ label: label, kind: lead && !disabled ? "primary" : "secondary", disabled: disabled, id: "save-monitoring-configuration", testId: "save-monitoring-configuration", on: { "data-action-state": visual } }); }
     /** The page only draws. Loading stays here, because a view that fetches
      * is a view that cannot be rendered twice. */
     function renderSetup() {
@@ -4309,6 +4350,7 @@ export function boot(): void {
       if (!form || form.id !== "add-prompt-form") return;
       event.preventDefault();
       const data = new FormData(form);
+      state.promptDraft = { topicId: "", text: "", intent: "discovery" };
       await postPrompts("/prompts", { topicId: data.get("topicId"), text: data.get("text"), intent: data.get("intent") }, "saving", "Added and tracked.");
     });
 
@@ -4390,7 +4432,7 @@ export function boot(): void {
       const publishButton = target && target.closest ? target.closest("[data-publish-draft]") : null;
       if (publishButton) { await publishDraft(publishButton, publishButton.getAttribute("data-publish-draft") || ""); return; }
       const probeButton = target && target.closest ? target.closest("[data-probe-signals]") : null;
-      if (probeButton) { await captureSignals(probeButton); state.signalsState = "idle"; loadSignals(); return; } if (!(target instanceof Element)) return; const pageButton = target.closest("[data-page]"); if (pageButton) { await setPage(pageButton.getAttribute("data-page") || "overview"); return; } const listModeButton = target.closest("[data-list-mode]"); if (listModeButton) { state.mode = listModeButton.getAttribute("data-list-mode") || "current"; await refreshProjects(); render(); return; } if (target.id === "new-project" || target.id === "empty-new-project") { openDrawer(); return; } if (target.id === "close-drawer" || target.id === "cancel-draft" || target.id === "drawer-backdrop") { closeDrawer(); return; } if (target.id === "retry-catalog") { state.catalogState = "idle"; await loadCatalog(); return; } const opened = target.closest("[data-matrix-open]"); if (opened) { const key = opened.getAttribute("data-matrix-open") || ""; const at = state.matrixOpen.indexOf(key); if (at >= 0) state.matrixOpen.splice(at, 1); else state.matrixOpen.push(key); render(); return; } const expand = target.closest("[data-expand-panel]"); if (expand && !target.closest("button:not(.panel-open),a,select,input,textarea,label")) { openPanel(expand.getAttribute("data-expand-panel") || ""); return; } if (target.closest("[data-edit-board]")) { state.editingBoard = !state.editingBoard; render(); return; } const span = target.closest("[data-panel-span]"); if (span) { const parts = (span.getAttribute("data-panel-span") || "").split(":"); setPanelSpan(parts[0] || "", Number(parts[1])); render(); return; } const folded = target.closest("[data-fold]"); if (folded && target.closest("summary")) { const foldId = folded.getAttribute("data-fold") || ""; const foldAt = state.panelOpen.indexOf(foldId); if (foldAt >= 0) state.panelOpen.splice(foldAt, 1); else state.panelOpen.push(foldId); savePreference("panelOpen", state.panelOpen.join(",")); return; } const hide = target.closest("[data-panel-hide]"); if (hide) { togglePanelHidden(hide.getAttribute("data-panel-hide") || ""); render(); return; } if (target.closest("[data-reset-panels]")) { resetPanelOrder(); state.editingBoard = false; render(); return; } const brand = target.closest("[data-brand-evidence]"); if (brand) { await openBrandEvidence(brand.getAttribute("data-brand-evidence") || "", brand.getAttribute("data-brand-tone") || ""); return; } const dropped = target.closest("[data-drop-selection]"); if (dropped) { dropSelection(dropped.getAttribute("data-drop-selection") || ""); return; } if (target.id === "save-models") { await saveModels((target as any)); return; } if (target.id === "save-monitoring-configuration") { await saveMonitoringConfiguration(); return; } if (target.id === "archive-project") { const selected = project(); if (selected) await projectAction("archive", selected.id, (target as any)); return; } if (target.id === "delete-project") { const selected = project(); if (selected) await projectAction("delete", selected.id, (target as any)); return; } const action = target.closest("[data-project-action]"); if (action) { const projectId = action.getAttribute("data-project-id"); const name = action.getAttribute("data-project-action"); if (projectId && name) await projectAction(name, projectId, (action as any)); } });
+      if (probeButton) { await captureSignals(probeButton); state.signalsState = "idle"; loadSignals(); return; } if (!(target instanceof Element)) return; const pageButton = target.closest("[data-page]"); if (pageButton) { await setPage(pageButton.getAttribute("data-page") || "overview"); return; } const listModeButton = target.closest("[data-list-mode]"); if (listModeButton) { state.mode = listModeButton.getAttribute("data-list-mode") || "current"; await refreshProjects(); render(); return; } if (target.id === "new-project" || target.id === "empty-new-project") { openDrawer(); return; } if (target.id === "close-drawer" || target.id === "cancel-draft" || target.id === "drawer-backdrop") { closeDrawer(); return; } if (target.id === "retry-catalog") { state.catalogState = "idle"; await loadCatalog(); return; } const opened = target.closest("[data-matrix-open]"); if (opened) { const key = opened.getAttribute("data-matrix-open") || ""; const at = state.matrixOpen.indexOf(key); if (at >= 0) state.matrixOpen.splice(at, 1); else state.matrixOpen.push(key); render(); return; } const expand = target.closest("[data-expand-panel]"); if (expand && !target.closest("button:not(.panel-open),a,select,input,textarea,label")) { openPanel(expand.getAttribute("data-expand-panel") || ""); return; } if (target.closest("[data-edit-board]")) { state.editingBoard = !state.editingBoard; render(); return; } const span = target.closest("[data-panel-span]"); if (span) { const parts = (span.getAttribute("data-panel-span") || "").split(":"); setPanelSpan(parts[0] || "", Number(parts[1])); render(); return; } const folded = target.closest("[data-fold]"); if (folded && target.closest("summary")) { const foldId = folded.getAttribute("data-fold") || ""; const foldAt = state.panelOpen.indexOf(foldId); if (foldAt >= 0) state.panelOpen.splice(foldAt, 1); else state.panelOpen.push(foldId); savePreference("panelOpen", state.panelOpen.join(",")); return; } const hide = target.closest("[data-panel-hide]"); if (hide) { togglePanelHidden(hide.getAttribute("data-panel-hide") || ""); render(); return; } if (target.closest("[data-reset-panels]")) { resetPanelOrder(); state.editingBoard = false; render(); return; } const tracked = target.closest("[data-track-question]"); if (tracked) { state.promptDraft = { topicId: "", text: tracked.getAttribute("data-track-question") || "", intent: "discovery" }; await setPage("prompts"); toast({ text: "Pick a topic for it under Add your own, then add it." }); return; } const brand = target.closest("[data-brand-evidence]"); if (brand) { await openBrandEvidence(brand.getAttribute("data-brand-evidence") || "", brand.getAttribute("data-brand-tone") || ""); return; } const dropped = target.closest("[data-drop-selection]"); if (dropped) { dropSelection(dropped.getAttribute("data-drop-selection") || ""); return; } if (target.id === "save-models") { await saveModels((target as any)); return; } if (target.id === "save-monitoring-configuration") { await saveMonitoringConfiguration(); return; } if (target.id === "archive-project") { const selected = project(); if (selected) await projectAction("archive", selected.id, (target as any)); return; } if (target.id === "delete-project") { const selected = project(); if (selected) await projectAction("delete", selected.id, (target as any)); return; } const action = target.closest("[data-project-action]"); if (action) { const projectId = action.getAttribute("data-project-id"); const name = action.getAttribute("data-project-action"); if (projectId && name) await projectAction(name, projectId, (action as any)); } });
     document.addEventListener("change", async (event) => { const target = el(event.target) as any; if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) return; if (target.id === "project-select") { setSelectedProject(target.value); state.selectionsDirty = false; await refreshConfiguration(); loadLiveRun(); render(); return; } if (target instanceof HTMLInputElement && target.hasAttribute("data-model-checkbox")) { changeModel(target.getAttribute("data-model-checkbox") || "", target.checked); return; } if (target instanceof HTMLSelectElement && target.hasAttribute("data-model-mode")) { changeModelMode(target.getAttribute("data-model-mode") || "", target.value); return; } if (target instanceof HTMLSelectElement && target.hasAttribute("data-selected-model-mode")) { changeModelMode(target.getAttribute("data-selected-model-mode") || "", target.value); return; } });
     document.addEventListener("change", (event) => {
       const target = el(event.target);

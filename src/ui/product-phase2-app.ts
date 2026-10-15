@@ -245,6 +245,13 @@ export function renderProductPhase2AppHtml(): string {
     .statgrid > .stat:first-child { box-shadow: inset 2px 0 0 var(--accent); }
     .stat small { font-size:12px; color:var(--weak); }
     .bar > i { display:block; height:100%; background:var(--accent); border-radius:2px; transition:width var(--motion-normal) var(--ease-standard); }
+    /* A slow model holds the bar still for minutes. The stripe past the filled
+       part keeps saying "in flight" when the number cannot. */
+    .bar.is-live { overflow:hidden; }
+    .bar.is-live > i { position:relative; overflow:visible; }
+    .bar.is-live > i::after { content:""; position:absolute; left:100%; top:0; bottom:0; width:34px; border-radius:2px; background:linear-gradient(90deg,var(--accent),transparent); animation:barflight 1.6s var(--ease-standard) infinite; }
+    @keyframes barflight { 0% { opacity:.12; transform:translateX(-10px); } 50% { opacity:.7; } 100% { opacity:.12; transform:translateX(16px); } }
+    @media (prefers-reduced-motion:reduce) { .bar.is-live > i::after { animation:none; opacity:.4; } }
     .inline-form { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
     .inline-form input,.inline-form select { flex:1 1 180px; min-width:0; padding:8px 10px; border-radius:6px; border:1px solid var(--line); background:var(--sunken); color:var(--text); font:inherit; font-size:13px; }
     .inline-form input { flex:3 1 320px; }

@@ -322,6 +322,29 @@
 .section-card.is-folding[open] > summary { padding-bottom: 0; }
 .section-card.is-folding[open] { padding-bottom: clamp(16px,1.8vw,24px); }
 
+/* Five amber boxes between a heading and its page is two screens of warning
+   before any content. One line, which opens to all of them. */
+.caveats { margin-top: 12px; display: grid; gap: 8px; }
+.caveats > summary {
+  list-style: none; cursor: pointer;
+  display: flex; align-items: center; gap: 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--unknown);
+  background: var(--unknown-wash);
+  color: var(--unknown-text);
+  padding: 9px 14px;
+  font-size: var(--type-sm);
+}
+.caveats > summary::-webkit-details-marker { display: none; }
+.caveats > summary::after {
+  content: ""; width: 6px; height: 6px; margin-left: auto; flex: none;
+  border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor;
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform var(--motion-fast) var(--ease-standard);
+}
+.caveats[open] > summary::after { transform: translateY(1px) rotate(-135deg); }
+.caveats > summary:hover { border-color: var(--unknown-text); }
+
 @utility section-card {
   @apply mt-3 rounded-[var(--radius)] border border-line bg-surface p-[clamp(16px,1.8vw,24px)] shadow-[var(--shadow-sm)];
 }
@@ -732,6 +755,10 @@ select[data-filter].is-set {
               border-color var(--motion-fast) var(--ease-standard),
               transform var(--motion-fast) var(--ease-press);
 }
+
+/* A select is as wide as its longest option, which put two 524px dropdowns
+   across a row of 34px buttons. The chosen value is what has to be readable. */
+select.filter { max-width: 180px; }
 
 @utility theme-toggle {
   @apply grid h-[34px] w-[34px] place-items-center rounded-[var(--radius-xs)] border border-line bg-surface text-muted;

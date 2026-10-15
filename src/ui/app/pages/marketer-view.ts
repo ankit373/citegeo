@@ -326,10 +326,14 @@ export function conversationsView(rows: ExplorationRow[]): string {
         layout: "mcols-question",
         columns: ["Asked", "Trying to", "Tracked"],
         empty: "No question to show.",
+        // A question nothing measures was a dead end. It now carries itself
+        // to the form that can track it.
         rows: exploration.questions.map((question) => row("mcols-question", [
           nameCell(html(question.text)),
           cell(`<span class="subtle">${html(question.intent.split("_").join(" "))}</span>`),
-          cell(question.coveredBy ? '<span class="state-ok">yes</span>' : '<span class="state-flag">no</span>'),
+          cell(question.coveredBy
+            ? '<span class="state-ok">yes</span>'
+            : button({ label: "Track it", kind: "quiet", on: { "data-track-question": question.text } })),
         ])),
       }),
       `<p class="field-help">${html(exploration.caveat)}</p>`,
