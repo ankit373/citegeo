@@ -5,18 +5,22 @@ import { readFile } from 'node:fs/promises';
 const path = 'src/ui/theme.css';
 const css = await readFile(path, 'utf8');
 
-function body(marker, from = 0) {
-  const at = css.indexOf(marker, from);
-  if (at < 0) throw new Error(`${path}: no block for ${marker}`);
-  const open = css.indexOf('{', at);
+function blockIn(source, where, marker, from = 0) {
+  const at = source.indexOf(marker, from);
+  if (at < 0) throw new Error(`${where}: no block for ${marker}`);
+  const open = source.indexOf('{', at);
   let depth = 0;
   let cursor = open;
   for (;;) {
-    if (css[cursor] === '{') depth += 1;
-    else if (css[cursor] === '}' && --depth === 0) break;
+    if (source[cursor] === '{') depth += 1;
+    else if (source[cursor] === '}' && --depth === 0) break;
     cursor += 1;
   }
-  return { text: css.slice(open + 1, cursor), end: cursor };
+  return { text: source.slice(open + 1, cursor), end: cursor };
+}
+
+function body(marker, from = 0) {
+  return blockIn(css, path, marker, from);
 }
 
 function declarations(text) {
@@ -64,3 +68,37 @@ if (problems.length) {
 }
 
 console.log(`Both dark palettes carry the same ${system.size} declarations, covering every colour in the scale.`);
+
+// The surfaces that carry their own palette are in a file this check did not
+// read, which is the drift it exists to catch, one directory over.
+const shellPath = 'src/ui/theme.ts';
+const shell = await readFile(shellPath, 'utf8');
+const shellLight = declarations(blockIn(shell, shellPath, ':root {').text);
+const shellMedia = blockIn(shell, shellPath, '@media (prefers-color-scheme: dark)');
+const shellSystem = declarations(blockIn(shell, shellPath, ':root:not([data-theme="light"]) {', shellMedia.end - shellMedia.text.length).text);
+const shellChosen = declarations(blockIn(shell, shellPath, ':root[data-theme="dark"]').text);
+
+function isColour(value) {
+  const head = value.toLowerCase();
+  return head.startsWith('#') || head.startsWith('rgb') || head.startsWith('hsl') || head.startsWith('color-mix');
+}
+
+const shellColours = [...shellLight].filter(([, value]) => isColour(value)).map(([name]) => name);
+const shellProblems = [];
+for (const name of shellColours) {
+  for (const [label, block] of [['system dark', shellSystem], ['data-theme="dark"', shellChosen]]) {
+    if (!block.has(name)) shellProblems.push(`${name} has no value under ${label}`);
+  }
+}
+for (const [name, value] of shellSystem) {
+  if (shellChosen.get(name) !== value) {
+    shellProblems.push(`${name} is "${value}" under system dark and "${shellChosen.get(name) ?? 'unset'}" under data-theme="dark"`);
+  }
+}
+
+if (shellProblems.length) {
+  console.error(`${shellPath}: the two dark palettes disagree.\n  ${shellProblems.join('\n  ')}`);
+  process.exit(1);
+}
+
+console.log(`${shellPath}: every one of its ${shellColours.length} colours has a value under both dark palettes.`);
