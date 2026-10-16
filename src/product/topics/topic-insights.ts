@@ -7,7 +7,7 @@ import { buildVarianceReport, type VarianceReport } from "./variance-share.js";
 import { buildSentimentVolatility, type SentimentVolatility } from "./sentiment-volatility.js";
 import { compareToTier, type BrandTier, type TierComparison } from "./visibility-tier.js";
 import { buildVersionReport, type VersionReport } from "./model-version.js";
-import { nextTasks, type MeasurementTask } from "./next-task.js";
+import { FAILURE_WORDS, nextTasks, type MeasurementTask } from "./next-task.js";
 import { asDomain, domainLabel, tokenize } from "./prompt-identity.js";
 import { buildPromptTrend, type PromptTrend } from "./prompt-trend.js";
 import { canonicalUrl } from "../citations/canonical-url.js";
@@ -127,6 +127,9 @@ export interface TopicInsights {
    * above. They are still in the archive; they are not this brand's category
    * any more, so they do not get to say who its rivals are. */
   answersRetired: number;
+  /** Every cause with its count, so a failure is accounted for rather than
+   * totalled and left for the reader to go and find. */
+  failureReasons: Array<{ code: string; count: number; label: string }>;
   overall: VisibilityScore;
   rank: number | null;
   weights: ScoreWeights;
@@ -545,7 +548,7 @@ export function buildTopicInsights(input: {
     failed.set(code, (failed.get(code) || 0) + 1);
   }
   const failureReasons = [...failed.entries()]
-    .map(([code, count]) => ({ code, count }))
+    .map(([code, count]) => ({ code, count, label: FAILURE_WORDS[code] || code }))
     .sort((left, right) => right.count - left.count);
 
   return {
@@ -553,6 +556,7 @@ export function buildTopicInsights(input: {
     answers: completed.length,
     answersFailed: answers.length - completed.length,
     answersRetired: setAside,
+    failureReasons,
     overall,
     rank: rankOfTarget(leaderboard),
     weights: SCORE_WEIGHTS,

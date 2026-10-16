@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { nextTasks, type TaskInput } from "../src/product/topics/next-task.js";
-import { failureCodeForStatus } from "../src/providers/provider-error.js";
+import { ProviderRequestError, failureCodeForStatus } from "../src/providers/provider-error.js";
+import { postJsonWithRetry } from "../src/providers/http.js";
 
 function input(reasons: Array<{ code: string; count: number }>): TaskInput {
   return {
@@ -46,4 +47,16 @@ test("every code the provider layer can produce has words for it", () => {
     assert.ok(task, `no task for ${code}`);
     assert.equal(task.evidence.includes(code), false, `${code} printed as itself`);
   }
+});
+
+test("a request that never reached the provider is not the provider erroring", async () => {
+  // Measured live: 56 answers in one day recorded "fetch failed" as a provider
+  // error, which sent the reader to the keys page to fix a network fault.
+  const failure = await postJsonWithRetry("http://127.0.0.1:1/v1/chat", { method: "POST" }, 1)
+    .then(() => null, (error: unknown) => error);
+  assert.ok(failure instanceof ProviderRequestError);
+  assert.equal(failure.code, "upstream_unavailable");
+  assert.ok(failure.message.includes("127.0.0.1:1"), failure.message);
+  const task = nextTasks(input([{ code: failure.code, count: 56 }])).find((row) => row.id === "answers-failed");
+  assert.equal(task?.page, "models", "a network fault is not fixed on the keys page");
 });

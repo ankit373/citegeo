@@ -1,3 +1,5 @@
+import { ProviderRequestError } from "./provider-error.js";
+
 export interface JsonResponse {
   status: number;
   ok: boolean;
@@ -40,11 +42,34 @@ export async function postJsonWithRetry(url: string, init: RequestInit, attempts
       lastError = new Error(`HTTP ${response.status}`);
     } catch (error) {
       lastError = error;
-      if (attempt === attempts) throw error;
+      if (attempt === attempts) throw asProviderError(error, url);
     } finally {
       clearTimeout(timeout);
     }
     await sleep(500 * attempt);
   }
-  throw lastError instanceof Error ? lastError : new Error(String(lastError));
+  throw asProviderError(lastError, url);
+}
+
+// A request that never reached the provider is not the provider answering, and
+// "fetch failed" told as a key problem sends you to the wrong page.
+function asProviderError(error: unknown, url: string): ProviderRequestError {
+  const cause = error instanceof Error ? error : new Error(String(error));
+  if (cause instanceof ProviderRequestError) return cause;
+  const aborted = cause.name === "AbortError" || cause.name === "TimeoutError";
+  return new ProviderRequestError({
+    code: aborted ? "timeout" : "upstream_unavailable",
+    message: aborted
+      ? `No answer within ${Math.round(requestTimeoutMs() / 1000)}s, so nothing was read.`
+      : `Could not reach ${hostOf(url)}: ${cause.message}.`,
+    cause,
+  });
+}
+
+function hostOf(url: string): string {
+  try {
+    return new URL(url).host;
+  } catch {
+    return "the provider";
+  }
 }

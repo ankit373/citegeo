@@ -43,7 +43,7 @@ export interface TaskInput {
 
 /** The words for a failure code. An unmapped code is printed as itself rather
  * than folded into "other", which would hide a code nobody has seen yet. */
-const FAILURE_WORDS: Record<string, string> = {
+export const FAILURE_WORDS: Record<string, string> = {
   unavailable: "a browser surface that could not be reached or was asking to sign in",
   no_answer: "a surface that returned nothing to read",
   unreadable: "an answer that could not be read back",

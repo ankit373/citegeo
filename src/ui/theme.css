@@ -321,6 +321,9 @@
 .section-card.is-folding > summary:hover h2 { color: var(--accent); }
 .section-card.is-folding[open] > summary { padding-bottom: 0; }
 .section-card.is-folding[open] { padding-bottom: clamp(16px,1.8vw,24px); }
+/* A card nested in a shut fold stayed on screen, because the display this
+   sheet sets on it beats the one the browser hides it with. */
+.section-card.is-folding:not([open]) > :not(summary) { display: none; }
 
 /* Five amber boxes between a heading and its page is two screens of warning
    before any content. One line, which opens to all of them. */
@@ -366,6 +369,13 @@
 .mtable::-webkit-scrollbar { height: 7px; }
 .mtable::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 4px; }
 .mtable::-webkit-scrollbar-track { background: transparent; }
+
+/* At phone width the fixed figure columns took 280px and left the name 72px,
+   which is backwards: the name is what says which row this is. */
+@media (max-width: 560px) {
+  .mhead, .mrow { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .mhead > :first-child, .mrow > .mname { grid-column: 1 / -1; }
+}
 
 @utility mhead {
   @apply grid items-center gap-4 border-b border-line px-2 py-[10px] text-[10px] font-semibold uppercase tracking-[.09em] text-weak;

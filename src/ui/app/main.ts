@@ -2943,12 +2943,18 @@ export function boot(): void {
         ? '<ul class="protocol-list">' + data.openings.slice(0, 8).map((row: any) => '<li><strong>' + html(row.domain) + '</strong><br><span class="subtle">won "' + html(row.prompt) + '"</span><br><span class="mono">' + html(row.url) + '</span></li>').join("") + '</ul>'
         : '<p class="subtle">No page won a question you were absent from.</p>';
 
+      // Four tables stacked under one heading was five screens. What the page
+      // is for stays open; each table folds.
       return '<p class="subtle">' + data.answersWithCitations + ' of ' + data.answersConsidered + ' answers carried a source.</p>'
         + renderDecomposition(data.decomposition)
-        + '<h3 style="margin-top:16px">Pages of yours the models reached for</h3>' + own
-        + '<h3 style="margin-top:20px">Every domain cited</h3>' + rivals
-        + '<h3 style="margin-top:20px">Pages that won a question you are absent from</h3>' + openings
-        + '<h3 style="margin-top:20px">Pages that stopped being cited</h3>' + renderCitationHistory();
+        + foldCard("sources-own", "Pages of yours the models reached for",
+          "The pages that did the work, so you know which ones to keep.", own)
+        + foldCard("sources-domains", "Every domain cited",
+          "Who else is in the answer, and how often without you.", rivals)
+        + foldCard("sources-openings", "Pages that won a question you are absent from",
+          "A question somebody else answered. This is the shortest list to act on.", openings)
+        + foldCard("sources-history", "Pages that stopped being cited",
+          "A page cited before and not now, which is a change rather than a level.", renderCitationHistory());
     }
 
     function sharePct(value: any) { return value === null || value === undefined ? null : (Math.round(value * 1000) / 10) + "%"; }
@@ -2975,17 +2981,17 @@ export function boot(): void {
       if (act.notRequested) parts.push(act.notRequested + (act.notRequested === 1 ? ' was' : ' were') + ' never asked to');
       if (act.unknown) parts.push(act.unknown + ' could have searched and nothing says whether they did, which is unknown rather than a no');
       const band = parts.length > 1 ? '<p class="subtle">' + parts.join(', ') + '.</p>' : '';
-      return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>Searching, then being cited</h3>'
-        + '<p class="subtle">' + html(report.caveat) + '</p></div></div>'
-        + '<p>' + searched + '. ' + cited + ' ' + overall + '</p>'
-        + band
-        + '<p class="subtle">' + html(act.caveat) + '</p>' + taskCta("activation-unknown") + '</div>';
+      // The one thing this page decides, so it is the one card that stays open.
+      return section({ id: "sources-searching", title: "Searching, then being cited", blurb: report.caveat, wide: true,
+        body: '<p>' + searched + '. ' + cited + ' ' + overall + '</p>'
+          + band
+          + '<p class="subtle">' + html(act.caveat) + '</p>' + taskCta("activation-unknown") });
     }
 
     function renderStability(report: any) {
       if (!report) return '';
       if (!report.measured) {
-        return trustCard("trust-stability", "How much the answer moves",
+        return foldCard("trust-stability", "How much the answer moves",
           "Every question here was asked once, so nothing can be said about how much of an answer is the question and how much is the day.",
           taskCta("asked-once"));
       }
@@ -3014,7 +3020,7 @@ export function boot(): void {
         + '<span class="mcell">' + row.sourcesAlways + ' of ' + row.sourcesEver + '</span>'
         + '<span class="mcell">' + (row.sourceOverlap === null ? 'No sources' : sharePct(row.sourceOverlap)) + '</span>'
         + '<span class="mcell subtle">' + (row.spanHours === null ? 'Unknown span' : row.spanHours < 1 ? 'Minutes apart' : row.spanHours < 48 ? Math.round(row.spanHours) + 'h apart' : Math.round(row.spanHours / 24) + 'd apart') + '</span></div>').join("");
-      return trustCard("trust-stability", "How much the answer moves", report.caveat, ''
+      return foldCard("trust-stability", "How much the answer moves", report.caveat, ''
         + '<p>' + overall + ' ' + naming + '</p>'
         + '<div class="mtable"><div class="mhead mcols-stability"><span>Question</span><span>Named you</span><span>Sources every pass</span><span>Overlap</span><span>Span</span></div>'
         + rows + '</div>'
@@ -3082,7 +3088,7 @@ export function boot(): void {
     function renderPhrasing(report: any) {
       if (!report) return '';
       if (!report.measured) {
-        return trustCard("trust-phrasing", "How much the wording decides",
+        return foldCard("trust-phrasing", "How much the wording decides",
           "Every question here is written down one way, so nothing says whether you are visible for what was asked or for the exact words it was asked in. Add a rewording to a question and the next run compares them.",
           '<div class="inline-actions">' + button({ label: "Open questions", kind: "quiet", on: { "data-page": "prompts" } }) + '</div>');
       }
@@ -3106,7 +3112,7 @@ export function boot(): void {
         + '<span class="mcell ' + (row.naming === "always" ? "state-ok" : row.naming === "split" ? "state-bad" : "subtle") + '">'
         + (row.naming === "always" ? "Every wording" : row.naming === "split" ? row.namedIn + ' of ' + row.wordings.length : "No wording") + '</span>'
         + '<span class="mcell">' + (row.spread === null ? "Not measurable" : sharePct(row.spread)) + '</span></div>').join("");
-      return trustCard("trust-phrasing", "How much the wording decides", report.caveat, ''
+      return foldCard("trust-phrasing", "How much the wording decides", report.caveat, ''
         + '<p>' + html(lead + naming + named) + '</p>'
         + '<div class="mtable"><div class="mhead mcols-phrasing"><span>Question and its wordings</span><span>Named you</span><span>Widest gap</span></div>'
         + rows + '</div>');
@@ -3117,7 +3123,7 @@ export function boot(): void {
     function renderDecoys(report: any) {
       if (!report) return '';
       if (!report.decoys.length) {
-        return trustCard("trust-decoys", "A brand that should never appear",
+        return foldCard("trust-decoys", "A brand that should never appear",
           "Nothing here measures how often this product finds a name that is not there. Declare a brand you know is irrelevant to these questions and every run carries it, so the share it turns up in becomes the figure yours has to beat.",
           '<div class="inline-actions">' + button({ label: "Add a decoy", kind: "quiet", on: { "data-add-decoy": "true" } }) + '</div>');
       }
@@ -3137,7 +3143,7 @@ export function boot(): void {
         + '<span class="mcell">' + row.namedIn + ' of ' + report.considered + '</span>'
         + '<span class="mcell ' + (row.namedIn ? "state-flag" : "state-ok") + '">' + (row.share === null ? '\u2014' : sharePct(row.share)) + '</span>'
         + '<span class="mcell">' + (row.high === null ? '\u2014' : sharePct(row.high)) + '</span></div>').join("");
-      return trustCard("trust-decoys", "A brand that should never appear", report.caveat, ''
+      return foldCard("trust-decoys", "A brand that should never appear", report.caveat, ''
         + '<p><strong>Anything under ' + floor + ' is not a finding.</strong> ' + html(verdict) + '</p>' + errors
         + '<div class="mtable"><div class="mhead mcols-decoy"><span>Decoy</span><span>Named in</span><span>Share</span><span>Consistent with up to</span></div>'
         + rows + '</div>' + add);
@@ -3149,7 +3155,7 @@ export function boot(): void {
     function renderVariance(report: any) {
       if (!report || !report.answers) return '';
       if (report.flat) {
-        return trustCard("trust-variance", "What decides whether you appear",
+        return foldCard("trust-variance", "What decides whether you appear",
           "Every answer said the same thing about you, so nothing here varies and nothing can explain it. That is a finding about the brand rather than a gap in the measurement.", '');
       }
       const measured = report.factors.filter((row: any) => row.share !== null);
@@ -3169,7 +3175,7 @@ export function boot(): void {
       const nothing = unvaried.length
         ? '<p class="subtle">' + unvaried.map((row: any) => html(row.label)).join(", ") + ' took one value, so nothing varied for them to explain.</p>'
         : '';
-      return trustCard("trust-variance", "What decides whether you appear", report.caveat, few
+      return foldCard("trust-variance", "What decides whether you appear", report.caveat, few
         + '<div class="mtable"><div class="mhead mcols-variance"><span>Factor</span><span>Values</span><span>Goes with</span><span></span></div>' + rows + '</div>'
         + nothing);
     }
@@ -3179,7 +3185,7 @@ export function boot(): void {
     function renderFraming(report: any) {
       if (!report) return '';
       if (!report.measured) {
-        return trustCard("trust-framing", "How steady the framing is",
+        return foldCard("trust-framing", "How steady the framing is",
           'No question named you more than once under identical conditions, so nothing says whether the way you are described holds still. Published work puts framing flipping about '
           + report.publishedRatio + ' times as often as whether you are named at all, so this is the half of the score most likely to be moving.', '');
       }
@@ -3193,7 +3199,7 @@ export function boot(): void {
         + '<span class="mono">' + html(row.modelId) + ' \u00b7 named in ' + row.named + ' passes</span></div>'
         + '<span class="mcell ' + (row.steady ? "state-ok" : "state-bad") + '">' + (row.steady ? "Steady" : row.framings.length + ' ways') + '</span>'
         + '<span class="mcell subtle">' + html(row.framings.join(", ")) + '</span></div>').join("");
-      return trustCard("trust-framing", "How steady the framing is", report.caveat, ''
+      return foldCard("trust-framing", "How steady the framing is", report.caveat, ''
         + '<p>' + html(lead + against) + '</p>'
         + '<div class="mtable"><div class="mhead mcols-framing"><span>Question</span><span>Framing</span><span>Called it</span></div>' + rows + '</div>');
     }
@@ -3226,7 +3232,7 @@ export function boot(): void {
         + TIERS.map(([value, label]) => '<option value="' + value + '"' + (report.tier === value ? " selected" : "") + '>' + html(label) + '</option>').join("")
         + '</select></label>';
       if (!report.baseline) {
-        return trustCard("trust-tier", "Against brands like yours",
+        return foldCard("trust-tier", "Against brands like yours",
           "A visibility figure on its own answers nothing. The same number is poor for a household name and ordinary for a brand nobody has heard of. Say which this is and the figure gets something to be read against.",
           '', '<div class="inline-actions">' + picker + '</div>');
       }
@@ -3241,7 +3247,7 @@ export function boot(): void {
             ? ' That is clear of the ' + sharePct(report.baseline.rate) + ' brands of this kind tended to get.'
             : ' That falls short of the ' + sharePct(report.baseline.rate) + ' brands of this kind tended to get.';
       const ink = report.standing === "above" ? "state-ok" : report.standing === "below" ? "state-bad" : "state-flag";
-      return trustCard("trust-tier", "Against brands like yours", report.caveat, ''
+      return foldCard("trust-tier", "Against brands like yours", report.caveat, ''
         + '<div class="countstrip"><span class="count ' + ink + '"><strong>' + (report.presence.rate === null ? '\u2014' : sharePct(report.presence.rate)) + '</strong>yours</span>'
         + '<span class="count"><strong>' + sharePct(report.baseline.rate) + '</strong>' + html(report.baseline.label) + '</span></div>'
         + '<p>' + html(yours + verdict) + '</p>', '<div class="inline-actions">' + picker + '</div>');
@@ -3363,7 +3369,7 @@ export function boot(): void {
       const blind = report.unconfirmed.length
         ? '<p class="subtle">' + report.unconfirmed.map((id: string) => html(id)).join(", ") + ' never named a version, so a change there cannot be seen. That is unconfirmed, not steady.</p>'
         : '';
-      return trustCard("trust-versions", "Was it you, or did the model ship", report.caveat, ''
+      return foldCard("trust-versions", "Was it you, or did the model ship", report.caveat, ''
         + '<p>' + html(lead) + '</p>'
         + (rows ? '<div class="mtable"><div class="mhead mcols-version"><span>Change</span><span>Presence moved</span><span>Reading</span></div>' + rows + '</div>' : '')
         + blind);
@@ -3393,7 +3399,18 @@ export function boot(): void {
       const retryButton = state.lastRun && state.lastRun.answersFailed && !state.liveRun
         ? '<div class="inline-actions">' + button({ label: (state.promptRunState === "running" ? "Asking\u2026" : "Ask the " + state.lastRun.answersFailed + " that failed again"), kind: "quiet", disabled: state.promptRunState === "running", on: { "data-retry-run": state.lastRun.id } }) + '</div>'
         : '';
-      const failedNote = data.answersFailed ? '<div class="warning-box">' + data.answersFailed + ' answer(s) failed and are excluded. They are not counted as answers that did not name you.' + taskCta("answers-failed") + retryButton + '</div>' : '';
+      // Two codes can share one wording, and printing both reads as a bug.
+      const byWords = new Map<string, number>();
+      for (const reason of data.failureReasons || []) {
+        if (reason.count > 0) byWords.set(reason.label, (byWords.get(reason.label) || 0) + reason.count);
+      }
+      const causes = [...byWords.entries()].map(([label, count]) => ({ label, count })).sort((left, right) => right.count - left.count);
+      const causeList = causes.length
+        ? '<details class="technical-details"><summary>What failed, and why (' + causes.length + ')</summary><ul class="protocol-list">'
+          + causes.map((reason) => '<li>' + reason.count + ' to ' + html(reason.label) + '</li>').join("")
+          + '</ul></details>'
+        : '';
+      const failedNote = data.answersFailed ? '<div class="warning-box">' + data.answersFailed + ' answer(s) failed and are excluded. They are not counted as answers that did not name you.' + causeList + taskCta("answers-failed") + retryButton + '</div>' : '';
       // A question you retired is one you said is not your business. Its old
       // answers stay archived and stop supplying the figures, and the reader
       // is told rather than left wondering where the count went.
@@ -3491,9 +3508,9 @@ export function boot(): void {
         + card("rival-model", "By AI assistant", "The models you picked in Choose models, each answering the same questions. These are who was asked, not who you compete with.", renderModelRows(data.byModel));
     }
 
-    // Eight cards nested inside a ninth, none of which could fold and none of
-    // which closed its own div. Each is a card of its own now, on the module.
-    function trustCard(id: string, title: string, blurb: string, body: string, aside = "") {
+    // Cards nested inside a card, none of which could fold. Each is a card of
+    // its own now, on the module that already knows how to fold one.
+    function foldCard(id: string, title: string, blurb: string, body: string, aside = "") {
       return section({ id, title, blurb, body, aside, wide: true, folded: state.panelOpen.indexOf(id) < 0 });
     }
 
@@ -3511,9 +3528,9 @@ export function boot(): void {
         + renderStability(data.stability)
         + renderPhrasing(data.phrasing)
         + renderFraming(data.framing)
-        + trustCard("trust-check", "Check the machine", "Every figure here rests on a model classifying what another model wrote. Judge a few yourself and the agreement rate becomes the confidence in the whole column.", renderHumanCheck())
-        + trustCard("trust-experiments", "Did your change do anything", "Everything else here watches. This tests. Change something, leave a comparable set of questions alone, and whatever moved for both is subtracted rather than claimed.", renderExperiments())
-        + trustCard("trust-schedule", "Keep it running", "A tracker that is run by hand is a snapshot.", renderSchedule())
+        + foldCard("trust-check", "Check the machine", "Every figure here rests on a model classifying what another model wrote. Judge a few yourself and the agreement rate becomes the confidence in the whole column.", renderHumanCheck())
+        + foldCard("trust-experiments", "Did your change do anything", "Everything else here watches. This tests. Change something, leave a comparable set of questions alone, and whatever moved for both is subtracted rather than claimed.", renderExperiments())
+        + foldCard("trust-schedule", "Keep it running", "A tracker that is run by hand is a snapshot.", renderSchedule())
       );
     }
 
