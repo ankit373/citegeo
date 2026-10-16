@@ -19,7 +19,7 @@ import {
 import { postJsonWithRetry } from "./http.js";
 import { makeSearchExecution } from "./search-execution.js";
 import { extractPerplexityWebQueries } from "./web-query-extractors.js";
-import { failureCodeForStatus, ProviderRequestError } from "./provider-error.js";
+import { failureCodeForStatus, modelWithdrawn, ProviderRequestError } from "./provider-error.js";
 
 export interface OpenAICompatibleNativeWebSearchVerification {
   providerExecutionConfirmed: boolean;
@@ -221,8 +221,10 @@ export class OpenAICompatibleProvider implements AnswerProvider {
     const raw = response.data;
     if (!response.ok || error) {
       const message = typeof error?.message === "string" ? error.message : `Provider ${this.definition.id} failed with HTTP ${response.status}`;
+      // A withdrawn model answers 404 for ever, which is not the provider
+      // refusing one request.
       throw new ProviderRequestError({
-        code: failureCodeForStatus(response.status),
+        code: modelWithdrawn(message) ? "model_unavailable" : failureCodeForStatus(response.status),
         message: `${message} (HTTP ${response.status})`,
         status: response.status,
       });

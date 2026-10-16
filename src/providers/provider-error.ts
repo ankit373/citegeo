@@ -5,6 +5,7 @@ export type ProviderFailureCode =
   | "timeout"
   | "upstream_unavailable"
   | "unsupported_capability"
+  | "model_unavailable"
   | "empty_answer"
   | "invalid_response"
   | "unknown";
@@ -19,6 +20,31 @@ export class ProviderRequestError extends Error {
     this.code = input.code;
     this.status = input.status ?? null;
   }
+}
+
+const WITHDRAWN = ["unavailable for free", "no endpoints found for", "only available through the batch api"];
+
+/** A model the provider will not serve on this account however often it is
+ * asked. Retrying burns the run; the only lever is the model list. */
+export function modelWithdrawn(message: string): boolean {
+  const said = message.toLocaleLowerCase();
+  for (const marker of WITHDRAWN) {
+    if (said.indexOf(marker) >= 0) return true;
+  }
+  return false;
+}
+
+const SLUG_MARKER = "use this slug instead: ";
+
+/** The replacement the provider named, so the fix is the slug rather than a
+ * search. Absent when it only says no. */
+export function replacementSlug(message: string): string | null {
+  const at = message.indexOf(SLUG_MARKER);
+  if (at < 0) return null;
+  const rest = message.slice(at + SLUG_MARKER.length).trim();
+  const end = rest.indexOf(" ");
+  const slug = (end > 0 ? rest.slice(0, end) : rest).trim();
+  return slug || null;
 }
 
 export function failureCodeForStatus(status: number): ProviderFailureCode {

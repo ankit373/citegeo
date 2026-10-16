@@ -3400,14 +3400,22 @@ export function boot(): void {
         ? '<div class="inline-actions">' + button({ label: (state.promptRunState === "running" ? "Asking\u2026" : "Ask the " + state.lastRun.answersFailed + " that failed again"), kind: "quiet", disabled: state.promptRunState === "running", on: { "data-retry-run": state.lastRun.id } }) + '</div>'
         : '';
       // Two codes can share one wording, and printing both reads as a bug.
-      const byWords = new Map<string, number>();
+      const byWords = new Map<string, { count: number; models: string[] }>();
       for (const reason of data.failureReasons || []) {
-        if (reason.count > 0) byWords.set(reason.label, (byWords.get(reason.label) || 0) + reason.count);
+        if (!reason.count) continue;
+        const held = byWords.get(reason.label) || { count: 0, models: [] };
+        held.count += reason.count;
+        for (const name of reason.models || []) {
+          if (!held.models.includes(name)) held.models.push(name);
+        }
+        byWords.set(reason.label, held);
       }
-      const causes = [...byWords.entries()].map(([label, count]) => ({ label, count })).sort((left, right) => right.count - left.count);
+      const causes = [...byWords.entries()].map(([label, held]) => ({ label, ...held })).sort((left, right) => right.count - left.count);
       const causeList = causes.length
         ? '<details class="technical-details"><summary>What failed, and why (' + causes.length + ')</summary><ul class="protocol-list">'
-          + causes.map((reason) => '<li>' + reason.count + ' to ' + html(reason.label) + '</li>').join("")
+          + causes.map((reason) => '<li>' + reason.count + ' to ' + html(reason.label)
+            + (reason.models.length ? '<br><span class="subtle">' + html(reason.models.slice(0, 3).join(", ")) + '</span>' : '')
+            + '</li>').join("")
           + '</ul></details>'
         : '';
       const failedNote = data.answersFailed ? '<div class="warning-box">' + data.answersFailed + ' answer(s) failed and are excluded. They are not counted as answers that did not name you.' + causeList + taskCta("answers-failed") + retryButton + '</div>' : '';
