@@ -51,15 +51,15 @@
   },
   "dependencies": {
     "cheerio": "^1.2.0",
-    "cron-parser": "^5.10.1",
+    "cron-parser": "^5.10.2",
     "linkify-it": "^6.1.0",
-    "marked": "^18.0.14",
-    "nodemailer": "^10.0.12"
+    "marked": "^18.1.1",
+    "nodemailer": "^10.1.0"
   },
   "devDependencies": {
-    "@playwright/test": "^1.63.0",
+    "@playwright/test": "^1.64.0",
     "@tailwindcss/cli": "^4.3.3",
-    "@types/node": "^24.19.0",
+    "@types/node": "^24.19.2",
     "@types/nodemailer": "^8.0.2",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.23.15",
