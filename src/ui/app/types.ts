@@ -231,6 +231,9 @@ export interface InsightsShape {
   answersFailed: number;
   /** Answers to questions since retired, left out of every figure here. */
   answersRetired: number;
+  /** Every cause with its count, so a failure is accounted for rather than
+   * totalled and left for the reader to go and find. */
+  failureReasons?: Array<{ code: string; count: number; label: string; models: string[] }> | undefined;
   overall: ScoreShape;
   rank: number | null;
   /** The objective and limits are absent on an archive scored before they were

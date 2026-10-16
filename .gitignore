@@ -17,3 +17,20 @@ docs/assets/demo-frames/
 .codex/
 .DS_Store
 npm-debug.log*
+
+# Design notes carried over from the fork. Kept locally for reference, not
+# published: nothing links them and none describes the product as it is.
+docs/AUDIT_EXECUTION_BOUNDARY.md
+docs/BRAND_QUESTION_TAXONOMY.md
+docs/CHART_MEANING_SYSTEM.md
+docs/DELIVERY_DISCIPLINE.md
+docs/EXTERNAL_SEO_METRICS_AND_CORRELATION.md
+docs/INTENT_RESULT_LAYER.md
+docs/KEYWORD_AUDIT_ARCHITECTURE.md
+docs/LONG_TERM_MONITORING_ARCHITECTURE.md
+docs/MODEL_WEB_SEARCH_CAPABILITIES.md
+docs/NATIVE_WEB_SEARCH.md
+docs/PROVIDER_NATIVE_SEARCH.md
+docs/RELEASE_LAYOUT.md
+docs/UI_DESIGN.md
+docs/WORKBENCH_V2_ARCHITECTURE.md

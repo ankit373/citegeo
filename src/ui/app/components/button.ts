@@ -13,6 +13,8 @@ export type ButtonKind =
   | "quiet"
   /** Reads as text, behaves as a button. For an action inside a sentence. */
   | "link"
+  /** A row's name, which opens the row. Leads its row; never a sibling of it. */
+  | "title"
   /** Square, holds one glyph, needs a label for anyone not seeing it. */
   | "icon";
 
@@ -52,6 +54,7 @@ const KIND: Record<ButtonKind, string> = {
   secondary: "btn",
   quiet: "btn btn-quiet",
   link: "linklike",
+  title: "rowtitle",
   icon: "btn btn-icon",
 };
 
@@ -61,7 +64,8 @@ const SIZE: Record<ButtonSize, string> = { sm: "btn-sm", md: "" };
 function classFor(input: ButtonInput): string {
   const kind = input.kind || "secondary";
   const base = KIND[kind];
-  if (kind === "link") return base;
+  if (kind === "title") return base;
+  if (kind === "link") return [base, input.tone === "danger" ? "is-danger" : ""].filter(Boolean).join(" ");
   const step = SIZE[input.size || (kind === "quiet" ? "sm" : "md")];
   return [base, step, input.tone === "danger" ? "btn-danger" : ""].filter(Boolean).join(" ");
 }

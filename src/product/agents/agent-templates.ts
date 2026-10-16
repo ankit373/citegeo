@@ -46,7 +46,7 @@ function groundFrom(prompt: PromptStanding, page: PageLookup): { lines: string[]
     sources.push({
       kind: "citation",
       reference: cited.url,
-      detail: `cited by ${cited.answers} answer(s) to this question${read.namesYou ? ", and names the brand" : ""}`,
+      detail: `cited by ${cited.answers} answer(s)${read.namesYou ? ", names the brand" : ""}`,
     });
   }
   if (unread) {
@@ -140,7 +140,7 @@ function missingAnswer(insights: TopicInsights, page: PageLookup): TemplateBrief
       ...prompt.ahead.slice(0, 5).map((row): DraftSource => ({
         kind: "entity",
         reference: row.domain || row.name,
-        detail: `named in ${row.appearances} answer(s) on this question`,
+        detail: `named in ${row.appearances} answer(s)`,
       })),
       ...ground.sources,
     ],

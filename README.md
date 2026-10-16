@@ -304,6 +304,7 @@ topics that are not yours. It does not ask a model to invent advice.
 - [How it works](docs/how-it-works.md) · [Architecture](docs/ARCHITECTURE.md)
 - [Measurement methodology](docs/measurement-methodology.md) · [Sources and evidence](docs/evidence-model.md)
 - [Raising your standing](docs/ranking-process.md) · [Prompt volume](docs/prompt-demand.md)
+- [Reading the surfaces buyers use](docs/browser-engines.md)
 - [Deployment](docs/deployment/docker.md) · [Backups and upgrades](docs/upgrade.md)
 - [Known issues](docs/known-issues.md) · [Limitations](docs/limitations.md)
 - [Design system](DESIGN.md) · [Brand](docs/brand.md)

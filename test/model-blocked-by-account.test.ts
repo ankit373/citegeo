@@ -17,19 +17,19 @@ const FREE = { providerId: "openrouter" as const, modelId: "vendor/a-model:free"
 test("a paid model on an account with no credit is not asked", () => {
   // It answers HTTP 402 to every question, so asking it files one provider
   // error per question and measures nothing.
-  const blocked = modelsBlockedByAccount([PAID], [status({ balance: { purchased: 0, used: 1.06, remaining: -1.06, paidModelsRunnable: false } })]);
+  const blocked = modelsBlockedByAccount([PAID], [status({ balance: { purchased: 0, used: 1.06, remaining: -1.06, keyRemaining: null, paidModelsRunnable: false } })]);
   assert.equal(blocked.length, 1);
   assert.ok(blocked[0]?.reason.includes("no credit"));
   assert.ok(blocked[0]?.reason.includes("402"));
 });
 
 test("a free model on the same account still runs", () => {
-  const blocked = modelsBlockedByAccount([FREE], [status({ balance: { purchased: 0, used: 1.06, remaining: -1.06, paidModelsRunnable: false } })]);
+  const blocked = modelsBlockedByAccount([FREE], [status({ balance: { purchased: 0, used: 1.06, remaining: -1.06, keyRemaining: null, paidModelsRunnable: false } })]);
   assert.deepEqual(blocked, []);
 });
 
 test("credit left blocks nothing", () => {
-  const blocked = modelsBlockedByAccount([PAID, FREE], [status({ balance: { purchased: 10, used: 1, remaining: 9, paidModelsRunnable: true } })]);
+  const blocked = modelsBlockedByAccount([PAID, FREE], [status({ balance: { purchased: 10, used: 1, remaining: 9, keyRemaining: null, paidModelsRunnable: true } })]);
   assert.deepEqual(blocked, []);
 });
 

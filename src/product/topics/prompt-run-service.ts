@@ -211,7 +211,9 @@ export class PromptRunService {
     return this.store.listAnswers(projectId, runId);
   }
 
-  async start(input: StartPromptRunInput): Promise<PromptRun> {
+  /** The run record, and the work it still has to do. The record exists the
+   * moment this resolves, so a caller can answer and let the asking carry on. */
+  async begin(input: StartPromptRunInput): Promise<{ run: PromptRun; done: Promise<PromptRun> }> {
     const project = await this.projects.get(input.projectId);
     if (!project) throw new PromptRunUnavailableError(`Project ${input.projectId} does not exist.`);
 
@@ -313,6 +315,7 @@ export class PromptRunService {
     };
     await this.store.saveRun(run);
 
+    const done = (async (): Promise<PromptRun> => {
     let stopped = false;
     // One question at a time per provider, and every provider at once. Asking
     // a provider twice at once risks its rate limit; waiting on one while the
@@ -389,6 +392,15 @@ export class PromptRunService {
     run.completedAt = nowIso();
     await this.store.saveRun(run);
     return run;
+    })();
+    return { run, done };
+  }
+
+  /** Waits for the whole run. The interface uses begin, which answers as soon
+   * as the record is written; this is for a caller that wants the result. */
+  async start(input: StartPromptRunInput): Promise<PromptRun> {
+    const begun = await this.begin(input);
+    return begun.done;
   }
 
   /** The engines the request named, or the ones the project saved. An engine

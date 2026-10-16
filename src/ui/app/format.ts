@@ -24,3 +24,14 @@ export function shortDate(value: string | null | undefined): string {
 export function seconds(milliseconds: number | null | undefined): string {
   return milliseconds === null || milliseconds === undefined ? "no timing" : `${Math.round(milliseconds / 100) / 10}s`;
 }
+
+// How much longer, read from what has already landed. Nothing landed yet is no
+// rate to read, so it returns null rather than a number it cannot stand behind.
+export function remaining(done: number, total: number, elapsedMs: number): string | null {
+  if (done <= 0 || total <= done || elapsedMs <= 0) return null;
+  const left = Math.round(elapsedMs / done * (total - done) / 1000);
+  if (left < 45) return "under a minute left";
+  const minutes = Math.round(left / 60);
+  if (minutes < 90) return `about ${minutes} min left`;
+  return `about ${Math.round(minutes / 60)} hr left`;
+}

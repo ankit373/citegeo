@@ -1,5 +1,5 @@
 import { html, join } from "../dom.js";
-import { button } from "../components/button.js";
+import { button, buttons } from "../components/button.js";
 import { cell, nameCell, row, section, table, tiles } from "../components/primitives.js";
 
 /** Mirrors the server shapes. The types stay local so every import stays inside
@@ -94,11 +94,11 @@ export function marketerView(memo: AimMemo | null): string {
     ? table({
       layout: "mcols-task",
       columns: ["What to do", "Runs as"],
-      rows: memo.tasks.map((task) => row("mcols-task", [
+      rows: memo.tasks.map((task, index) => row("mcols-task", [
         nameCell(html(task.title), html(task.detail)),
         // A task no workflow can do says so rather than offering the nearest.
         cell(task.workflow
-          ? button({ label: "Draft it", on: { "data-aim-run": task.workflow } })
+          ? button({ label: "Draft it", kind: index === 0 ? "primary" : "secondary", on: { "data-aim-run": task.workflow } })
           : '<span class="state-flag">a change to the site, not a draft</span>'),
       ])),
     })
@@ -116,17 +116,41 @@ export function marketerView(memo: AimMemo | null): string {
   ]);
 }
 
+/** Every row of a draft's evidence is about the one question, so the phrase
+ * saying so was printed a dozen times. Drafts already stored still carry it. */
+function trimRepeated(detail: string): string {
+  for (const tail of [" on this question", " to this question"]) {
+    if (detail.endsWith(tail)) return detail.slice(0, detail.length - tail.length);
+  }
+  return detail;
+}
+
+/** The host and the path it sits under. A cited address runs long enough to
+ * wrap twice and bury the count that follows it. */
+function shortUrl(value: string): string {
+  let shown = value;
+  try {
+    const parsed = new URL(value);
+    shown = parsed.pathname === "/" ? parsed.host : `${parsed.host}${parsed.pathname}`;
+  } catch { /* not an address this can shorten, so show what was stored */ }
+  return shown.length > 52 ? `${shown.slice(0, 51)}\u2026` : shown;
+}
+
 /** What a draft was built from, laid out so a reader can disagree with the
  * draft and still check the observation under it. */
 function draftSources(draft: DraftRow): string {
   if (!draft.sources.length) return '<span class="subtle">No evidence was recorded for this draft.</span>';
   const rows = draft.sources.map((source) => {
     const what = source.kind === "citation"
-      ? `<a href="${html(source.reference)}" target="_blank" rel="noreferrer">${html(source.reference)}</a>`
+      ? `<a href="${html(source.reference)}" title="${html(source.reference)}" target="_blank" rel="noreferrer">${html(shortUrl(source.reference))}</a>`
       : html(source.reference);
-    return `<li><span class="state-flag">${html(source.kind)}</span>${what} <span class="subtle">${html(source.detail)}</span></li>`;
+    // The kind is its own column. Sharing one colour and one weight made a
+    // prompt, a rival and a cited page read as the same sort of thing.
+    return `<li><span class="skind is-${html(source.kind)}">${html(source.kind)}</span>`
+      + `<span class="sref">${what} <span class="subtle">${html(trimRepeated(source.detail))}</span></span></li>`;
   });
-  return `<details class="sources"><summary>What this was built from</summary><ul class="sourcelist">${rows.join("")}</ul></details>`;
+  return `<details class="sources"><summary>${draft.sources.length} source(s) this was built from</summary>`
+    + `<ul class="sourcelist">${rows.join("")}</ul></details>`;
 }
 
 /** Approved is not the end of it. Until somebody says where a draft went live
@@ -134,7 +158,7 @@ function draftSources(draft: DraftRow): string {
 function draftState(draft: DraftRow): string {
   if (draft.status === "awaiting_review") {
     return join([
-      button({ label: "Approve", on: { "data-review": `${draft.id}:approved` } }),
+      button({ label: "Approve", kind: "primary", size: "sm", on: { "data-review": `${draft.id}:approved` } }),
       button({ label: "Reject", kind: "quiet", tone: "danger", on: { "data-review": `${draft.id}:rejected` } }),
     ]);
   }
@@ -142,7 +166,7 @@ function draftState(draft: DraftRow): string {
   if (!draft.publishedUrl) {
     return join([
       '<span class="state-ok">approved</span>',
-      button({ label: "Mark it live", on: { "data-publish-draft": draft.id } }),
+      button({ label: "Mark it live", kind: "quiet", on: { "data-publish-draft": draft.id } }),
     ]);
   }
   // The path, not the whole address. A tracked question's URL is long enough
@@ -178,14 +202,14 @@ export function draftsView(input: { offers: TemplateOffer[]; drafts: DraftRow[] 
 
   const drafts = table({
     layout: "mcols-draft",
-    columns: ["Draft", "Built from", "State"],
+    columns: ["Draft", "Sources", "State"],
     empty: "Nothing drafted yet. Every draft waits for a decision before it is anything.",
     rows: input.drafts.map((draft) => row("mcols-draft", [
       // The evidence sits beside the name rather than inside it: every child of
       // a name cell is laid out as a block, which put each source on three lines.
       `<div class="draftcell">${nameCell(html(draft.title), html(draft.rationale))}${draftSources(draft)}</div>`,
-      cell(`<span class="subtle">${html(String(draft.sources.length))} source(s)</span>`),
-      cell(join([draftState(draft), button({ label: "Copy", kind: "quiet", on: { "data-copy-draft": draft.id } })])),
+      cell(`<span class="subtle">${html(String(draft.sources.length))}</span>`),
+      cell(buttons([draftState(draft), button({ label: "Copy", kind: "quiet", on: { "data-copy-draft": draft.id } })])),
     ])),
   });
 
@@ -196,14 +220,12 @@ export function draftsView(input: { offers: TemplateOffer[]; drafts: DraftRow[] 
 }
 
 /** Claims the answers made about the brand, settled against the brand's pages. */
-const CHECK_CLAIMS = button({ label: "Check claims now", on: { "data-run-factcheck": true } });
-
 export function claimsView(report: FactCheckView | null): string {
   if (!report) {
     return section({
       title: "Claims",
       blurb: "Reads what the archived answers assert about you and settles each against your own pages.",
-      body: join([empty("No claim check has been run for this project yet."), `<div class="inline-actions">${CHECK_CLAIMS}</div>`]),
+      body: empty("No claim check has been run for this project yet."),
     });
   }
   const group = (rows: ClaimGroup[], what: string) => table({
@@ -223,7 +245,6 @@ export function claimsView(report: FactCheckView | null): string {
     section({
       title: "Claims",
       blurb: `Settled against the pages at ${report.domain}. Nothing here calls a claim false; it reports disagreement with those pages.`,
-      aside: CHECK_CLAIMS,
       body: tiles([
         { label: "Supported", value: String(report.tally.supported), note: "the pages say it", fraction: null },
         { label: "Contradicted", value: String(report.tally.contradicted), note: "the pages say otherwise", fraction: null },
@@ -237,14 +258,12 @@ export function claimsView(report: FactCheckView | null): string {
 }
 
 /** What a buying answer named, with the limit of the reading stated. */
-const READ_BUYING = button({ label: "Read buying answers", on: { "data-run-shopping": true } });
-
 export function buyingView(report: ShoppingView | null): string {
   if (!report) {
     return section({
       title: "Buying",
       blurb: "Reads which products, brands and retailers your archived buying answers actually named.",
-      body: join([empty("No buying answer has been read for this project yet."), `<div class="inline-actions">${READ_BUYING}</div>`]),
+      body: empty("No buying answer has been read for this project yet."),
     });
   }
 
@@ -274,7 +293,6 @@ export function buyingView(report: ShoppingView | null): string {
     section({
       title: "Buying",
       blurb: report.caveat,
-      aside: READ_BUYING,
       body: tiles([
         { label: "Answers naming you", value: report.namedRate === null ? "not asked" : `${Math.round(report.namedRate * 100)}%`, note: "of buying answers", fraction: report.namedRate },
         { label: "Named nothing", value: String(report.genericAnswers), note: "stayed generic", fraction: null },
@@ -308,10 +326,14 @@ export function conversationsView(rows: ExplorationRow[]): string {
         layout: "mcols-question",
         columns: ["Asked", "Trying to", "Tracked"],
         empty: "No question to show.",
+        // A question nothing measures was a dead end. It now carries itself
+        // to the form that can track it.
         rows: exploration.questions.map((question) => row("mcols-question", [
           nameCell(html(question.text)),
           cell(`<span class="subtle">${html(question.intent.split("_").join(" "))}</span>`),
-          cell(question.coveredBy ? '<span class="state-ok">yes</span>' : '<span class="state-flag">no</span>'),
+          cell(question.coveredBy
+            ? '<span class="state-ok">yes</span>'
+            : button({ label: "Track it", kind: "quiet", on: { "data-track-question": question.text } })),
         ])),
       }),
       `<p class="field-help">${html(exploration.caveat)}</p>`,
@@ -322,12 +344,11 @@ export function conversationsView(rows: ExplorationRow[]): string {
 
 /** What corroborates this brand from outside its own control. */
 export function entityView(alignment: EntityView | null, llms: { text: string; listed: number } | null): string {
-  const probe = button({ label: "Probe the site now", on: { "data-probe-signals": true } });
   if (!alignment) {
     return section({
       title: "Entity",
       blurb: "Reads what the live site publishes about who owns it.",
-      body: join([empty("This project's site has not been probed yet, so nothing is known about what resolves it."), `<div class="inline-actions">${probe}</div>`]),
+      body: empty("This project's site has not been probed yet, so nothing is known about what resolves it."),
     });
   }
   const anchors = table({
@@ -346,7 +367,6 @@ export function entityView(alignment: EntityView | null, llms: { text: string; l
     section({
       title: "Entity",
       blurb: `Whether a model can resolve ${alignment.domain} to a stable entity.`,
-      aside: probe,
       body: tiles([
         { label: "Corroborated by", value: String(alignment.corroborated), note: "anchors outside your control", fraction: null },
         { label: "Anchors in total", value: String(alignment.anchors.length), note: "most of them your own", fraction: null },
