@@ -44,6 +44,7 @@ async function startProductServer(): Promise<void> {
       PRODUCT_DATA_DIR: temporaryRoot,
       RUNS_DIR: join(temporaryRoot, "runs"),
       MONITORING_DATA_DIR: join(temporaryRoot, "monitoring"),
+      SKIP_DOTENV: "1",
     },
     stdio: "ignore",
   });
@@ -88,7 +89,7 @@ async function createProject(page: Page, domain: string, name: string): Promise<
 }
 
 async function openModels(page: Page): Promise<void> {
-  await page.getByRole("button", { name: "AI models", exact: true }).click();
+  await page.getByRole("button", { name: "Models and surfaces", exact: true }).click();
   await expect(page.getByTestId("model-search")).toBeVisible();
   await expect(page.getByTestId("catalog-model").first()).toBeVisible();
 }
@@ -329,7 +330,7 @@ test("Phase 2 configuration uses the real product UI, actual catalog, immutable 
       await route.continue();
     });
     await page.reload();
-    await page.getByRole("button", { name: "AI models", exact: true }).click();
+    await page.getByRole("button", { name: "Models and surfaces", exact: true }).click();
     await expect(page.getByText("Model catalog unavailable", { exact: true })).toBeVisible();
     await expect(page.getByText("The model catalog is temporarily unavailable. Try again shortly.", { exact: true })).toBeVisible();
     await expect(page.getByTestId("catalog-model")).toHaveCount(0);
