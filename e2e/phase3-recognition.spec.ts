@@ -42,6 +42,7 @@ async function startProductServer(): Promise<void> {
       PRODUCT_DATA_DIR: temporaryRoot,
       RUNS_DIR: join(temporaryRoot, "runs"),
       MONITORING_DATA_DIR: join(temporaryRoot, "monitoring"),
+      SKIP_DOTENV: "1",
     },
     stdio: "ignore",
   });
@@ -84,7 +85,7 @@ async function createProject(page: Page, input: { domain: string; name: string }
 }
 
 async function configureProject(page: Page, modelIds: Array<{ id: string; mode: "off" | "provider_native" }>): Promise<void> {
-  await page.getByRole("button", { name: "AI models", exact: true }).click();
+  await page.getByRole("button", { name: "Models and surfaces", exact: true }).click();
   await expect(page.getByTestId("catalog-model").first()).toBeVisible();
   for (const model of modelIds) {
     const checkbox = page.locator(`[data-model-checkbox="${model.id}"]`);

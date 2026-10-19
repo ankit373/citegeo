@@ -43,7 +43,9 @@ export function renderProductPhase2AppHtml(): string {
     .theme-toggle:hover { color:var(--text); border-color:var(--line-strong); }
     .crumb strong { color:var(--text); }
     /* The failed colour reports an evidence state; chrome must not borrow it. */
-    .content { max-width:1280px; margin:0 auto; padding-top:clamp(24px,3vw,40px); }
+    /* The workspace is a flex column, and an auto side margin there turns off
+       stretch, so a page light on content shrank to its text and centred. */
+    .content { width:100%; max-width:1280px; margin:0 auto; padding-top:clamp(24px,3vw,40px); }
     /* No entrance animation: a view is static content, not a state change. */
     h1 { margin:0; font-size:clamp(26px,2.6vw,34px); letter-spacing:-0.03em; font-weight:650; }
     h2 { margin:0; font-size:16px; font-weight:600; letter-spacing:-0.015em; }
@@ -121,6 +123,18 @@ export function renderProductPhase2AppHtml(): string {
     .sk-head { display:grid; gap:8px; margin-bottom:6px; }
     .sk-wrap { display:block; }
     .visually-hidden { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+    /* The outcome, at the bottom of the screen the reader is on, rather than
+       under a heading five screens above the thing they clicked. */
+    .toasts { position:fixed; left:50%; bottom:22px; transform:translateX(-50%); z-index:12; display:grid; gap:8px; width:min(430px,calc(100vw - 32px)); pointer-events:none; }
+    .toasts > [data-live] { display:contents; }
+    .toast { pointer-events:auto; display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:start; gap:10px; padding:11px 11px 11px 14px; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); box-shadow:var(--shadow); font-size:var(--type-sm); line-height:1.45; color:var(--text); animation:toastin var(--motion-normal) var(--ease-standard); }
+    .toast.is-success { box-shadow:inset 2px 0 0 var(--confirmed-text), var(--shadow); }
+    .toast.is-error { box-shadow:inset 2px 0 0 var(--failed-text), var(--shadow); }
+    .toast.is-going { opacity:0; transition:opacity var(--motion-fast) var(--ease-standard); }
+    .toast-shut { border:0; background:transparent; color:var(--weak); cursor:pointer; font-size:15px; line-height:1; padding:2px 4px; border-radius:4px; }
+    .toast-shut:hover, .toast-shut:focus-visible { color:var(--text); }
+    @keyframes toastin { from { opacity:0; transform:translateY(9px); } }
+    @media (prefers-reduced-motion:reduce) { .toast { animation:none; } }
     @keyframes sheen { to { transform:translateX(100%); } }
     @media (prefers-reduced-motion:reduce) { .sk-line::after { animation:none; } }
     .headaside { display:flex; align-items:center; gap:14px; flex-wrap:wrap; justify-content:flex-end; margin-left:auto; }
@@ -178,7 +192,7 @@ export function renderProductPhase2AppHtml(): string {
     .evidence { border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); overflow:hidden; }
     .evidence-head { display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center; padding:11px 15px; border-bottom:1px solid var(--line); background:var(--raised); font-size:12px; color:var(--muted); }
     .evidence-text { padding:15px; font-size:13px; line-height:1.62; white-space:pre-wrap; max-height:300px; overflow:auto; }
-    .evidence-text mark { background:var(--accent-wash); color:var(--accent); padding:0 2px; border-radius:3px; font-weight:600; }
+    .evidence-text mark { background:var(--accent-wash); color:var(--accent-hover); padding:0 2px; border-radius:3px; font-weight:600; }
     .evidence-foot { padding:11px 15px; border-top:1px solid var(--line); font-size:12px; color:var(--weak); display:grid; gap:5px; }
     .evidence-foot a { overflow-wrap:anywhere; }
     .evidence.is-live { border-color:var(--accent); background:var(--accent-wash); }
@@ -198,7 +212,7 @@ export function renderProductPhase2AppHtml(): string {
     .runpane-progress .bar { margin:0; }
     .runfield > span:first-child { font-size:10px; letter-spacing:.09em; text-transform:uppercase; color:var(--weak); font-weight:600; padding-top:2px; }
     .runtext { margin:0; font-size:13px; line-height:1.6; white-space:pre-wrap; max-height:220px; overflow:auto; }
-    .runtext mark { background:var(--accent-wash); color:var(--accent); padding:0 2px; border-radius:3px; font-weight:600; }
+    .runtext mark { background:var(--accent-wash); color:var(--accent-hover); padding:0 2px; border-radius:3px; font-weight:600; }
     .namechips { display:flex; flex-wrap:wrap; gap:6px; }
     .namechip { display:inline-flex; align-items:baseline; gap:5px; border:1px solid var(--line); border-radius:999px; padding:2px 9px; font-size:12px; color:var(--muted); }
     .namechip b { font-family:var(--font-mono); font-size:10px; color:var(--weak); font-weight:500; }
@@ -225,8 +239,19 @@ export function renderProductPhase2AppHtml(): string {
     .scorebig { font-family:var(--font-display); font-size:clamp(44px,5.4vw,66px); font-weight:500; line-height:.92; letter-spacing:-0.035em; font-variant-numeric:tabular-nums; color:var(--text); }
     .stat span { font-size:11px; letter-spacing:.07em; text-transform:uppercase; color:var(--weak); font-weight:600; }
     .stat strong { font-family:var(--font-display); font-size:25px; font-weight:500; letter-spacing:-0.018em; line-height:1.15; }
+    /* Six figures at one size gave the eye nowhere to land. The first is what
+       the panel is about; the rest step down and read as its context. */
+    .statgrid > .stat:not(:first-child) strong { font-size:19px; color:var(--muted); }
+    .statgrid > .stat:first-child { box-shadow: inset 2px 0 0 var(--accent); }
     .stat small { font-size:12px; color:var(--weak); }
     .bar > i { display:block; height:100%; background:var(--accent); border-radius:2px; transition:width var(--motion-normal) var(--ease-standard); }
+    /* A slow model holds the bar still for minutes. The stripe past the filled
+       part keeps saying "in flight" when the number cannot. */
+    .bar.is-live { overflow:hidden; }
+    .bar.is-live > i { position:relative; overflow:visible; }
+    .bar.is-live > i::after { content:""; position:absolute; left:100%; top:0; bottom:0; width:34px; border-radius:2px; background:linear-gradient(90deg,var(--accent),transparent); animation:barflight 1.6s var(--ease-standard) infinite; }
+    @keyframes barflight { 0% { opacity:.12; transform:translateX(-10px); } 50% { opacity:.7; } 100% { opacity:.12; transform:translateX(16px); } }
+    @media (prefers-reduced-motion:reduce) { .bar.is-live > i::after { animation:none; opacity:.4; } }
     .inline-form { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
     .inline-form input,.inline-form select { flex:1 1 180px; min-width:0; padding:8px 10px; border-radius:6px; border:1px solid var(--line); background:var(--sunken); color:var(--text); font:inherit; font-size:13px; }
     .inline-form input { flex:3 1 320px; }

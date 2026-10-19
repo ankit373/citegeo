@@ -505,7 +505,9 @@ export function rivalRuns(series: RivalSeries[], domain: string): string {
   const first = drawn[0];
   if (!first || first.points.length < 2) return "";
   const ordered = rivalStandings(drawn);
-  const columns = `grid-template-columns:minmax(0,1.5fr) repeat(${first.points.length},minmax(58px,1fr))`;
+  // A floor, not 0: past ten runs the shares claim every pixel, 1.5fr of
+  // nothing is a zero-wide track, and the names paint over the first column.
+  const columns = `grid-template-columns:minmax(150px,1.5fr) repeat(${first.points.length},minmax(58px,1fr))`;
   // Every run is in the table, including the ones the chart left out, with the
   // answer count that decides whether its column says anything.
   const heads = first.points.map((point) => {
@@ -523,7 +525,7 @@ export function rivalRuns(series: RivalSeries[], domain: string): string {
   const thin = first.points.filter((point) => point.readable === false).length;
   return join([
     '<h3 class="panel-section">Every run, in figures</h3>',
-    `<div class="mtable"><div class="mhead" style="${columns}"><span>Brand</span>${heads}</div>${body}</div>`,
+    `<div class="mtable mscroll"><div class="mscroll-in"><div class="mhead" style="${columns}"><span>Brand</span>${heads}</div>${body}</div></div>`,
     thin ? `<p class="mlegend">The figure under each date is how many answers that run produced. ${thin} of them asked too few for a share to mean anything, and are greyed.</p>` : "",
   ]);
 }
@@ -841,12 +843,11 @@ export function topicMatrix(data: MatrixData, open: string[] = []): string {
     const verdict = rowVerdict(row.shares, data.columns);
     const cells = row.shares.map((share, index) => {
       const target = data.columns[index]?.isTarget;
-      // Mixed in oklab so the steps are even to the eye, and started at 10 so a
-      // small share still reads as a value rather than as an empty cell.
-      const mix = share === null || share === 0 ? 0 : Math.round(10 + share * 62);
+      // Mixed in oklab so the steps are even to the eye, started at 10 so a small
+      // share still reads, and capped where the figure on top stays legible.
+      const mix = share === null || share === 0 ? 0 : Math.round(10 + share * 42);
       const fill = mix === 0 ? "" : ` style="background:color-mix(in oklab, var(--accent) ${mix}%, transparent)"`;
-      const dark = mix >= 52 ? " is-strong" : "";
-      return `<span class="mxcell${target ? " is-you" : ""}${dark}"${fill}>`
+      return `<span class="mxcell${target ? " is-you" : ""}"${fill}>`
         + (share === null ? '<span class="mxnone" title="Never named under this topic">&middot;</span>' : percent(share))
         + "</span>";
     }).join("");
@@ -905,6 +906,11 @@ function regionCells(rows: Split[]): RegionCell[] {
   }));
 }
 
+/* Three layers, after the published pattern: a summary, then the panels that
+   explain it, then everything else on demand. Fourteen panels open at once is
+   the data dump the pattern exists to prevent. */
+export const DECISION_PANELS = ["moves", "trend", "topics", "named"];
+
 export function dashboardPanels(data: DashboardData): Panel[] {
   const every = Number.MAX_SAFE_INTEGER;
   const matrix = data.matrix || { columns: [], rows: [] };
@@ -938,7 +944,7 @@ function panelTools(id: string, span: number): string {
     + `<button type="button" class="ptool is-drop" data-panel-hide="${html(id)}" title="Take this off the board">Remove</button></div>`;
 }
 
-export function dashboardBody(held: Loadable<DashboardData>, editing = false, views: Record<string, PanelView> = {}): string {
+export function dashboardBody(held: Loadable<DashboardData>, editing = false, views: Record<string, PanelView> = {}, opened: string[] = []): string {
   return match(held, {
     loading: () => dashboardSkeleton(),
     error: (error) => `<div class="warning-box">${html(error)}</div>`,
@@ -955,6 +961,7 @@ export function dashboardBody(held: Loadable<DashboardData>, editing = false, vi
         const span = layout.spans[id] ?? (panel.wide ? 0 : 1);
         const view: PanelView = views[id] === "table" ? "table" : "chart";
         const toggle = panelToggle(panel, view);
+        const diagnostic = !editing && !DECISION_PANELS.includes(id);
         return section({
           id: panel.id,
           title: panel.title,
@@ -962,6 +969,7 @@ export function dashboardBody(held: Loadable<DashboardData>, editing = false, vi
           body: panelBody(panel, view),
           span,
           off: layout.hidden.includes(id),
+          ...(diagnostic ? { folded: !(opened || []).includes(id) } : {}),
           ...(editing
             ? { aside: panelTools(id, span) }
             : { open: panel.id, ...(toggle ? { aside: toggle } : {}) }),

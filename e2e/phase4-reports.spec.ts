@@ -37,7 +37,7 @@ async function startServer(): Promise<void> {
   temporaryRoot = await mkdtemp(join(tmpdir(), "citegeo-phase4-browser-"));
   server = spawn(process.execPath, [join(process.cwd(), "node_modules", "tsx", "dist", "cli.mjs"), "test/fixtures/phase4-product-server-v2.ts"], {
     cwd: process.cwd(),
-    env: { ...process.env, PORT: String(port), PRODUCT_DATA_DIR: temporaryRoot, RUNS_DIR: join(temporaryRoot, "runs"), MONITORING_DATA_DIR: join(temporaryRoot, "monitoring") },
+    env: { ...process.env, PORT: String(port), PRODUCT_DATA_DIR: temporaryRoot, RUNS_DIR: join(temporaryRoot, "runs"), MONITORING_DATA_DIR: join(temporaryRoot, "monitoring"), SKIP_DOTENV: "1" },
     stdio: "ignore",
   });
   baseUrl = `http://127.0.0.1:${port}`;
@@ -68,7 +68,7 @@ async function startRealArchiveServer(): Promise<void> {
   const port = await freePort();
   realArchiveServer = spawn(process.execPath, [join(process.cwd(), "node_modules", "tsx", "dist", "cli.mjs"), "src/product/product-server.ts"], {
     cwd: process.cwd(),
-    env: { ...process.env, PORT: String(port), PRODUCT_DATA_DIR: join(realArchiveRoot, "product-data"), RUNS_DIR: join(realArchiveRoot, "runs"), MONITORING_DATA_DIR: join(realArchiveRoot, "monitoring") },
+    env: { ...process.env, PORT: String(port), PRODUCT_DATA_DIR: join(realArchiveRoot, "product-data"), RUNS_DIR: join(realArchiveRoot, "runs"), MONITORING_DATA_DIR: join(realArchiveRoot, "monitoring"), SKIP_DOTENV: "1" },
     stdio: "ignore",
   });
   realArchiveBaseUrl = `http://127.0.0.1:${port}`;
@@ -102,7 +102,7 @@ async function createProject(page: Page, domain: string, name: string): Promise<
 }
 
 async function configure(page: Page, selected: Array<{ id: string; mode: "off" | "provider_native" }>): Promise<void> {
-  await page.getByRole("button", { name: "AI models", exact: true }).click();
+  await page.getByRole("button", { name: "Models and surfaces", exact: true }).click();
   await expect(page.getByTestId("catalog-model").first()).toBeVisible();
   for (const model of selected) {
     await page.locator(`[data-model-checkbox="${model.id}"]`).check();
