@@ -125,6 +125,9 @@ export function boot(): void {
     const NOTICES = ["promptNotice", "recognitionNotice", "modelNotice", "monitoringNotice",
       "credentialNotice", "crawlerNotice", "externalMetricsNotice", "marketerNotice"];
     const announced = new Map<string, unknown>();
+    // The page that owns one of these prints it in its own live region, so a
+    // toast would put the same sentence on screen and read it out twice.
+    const PRINTED_INLINE: Record<string, string> = { modelNotice: "models", recognitionNotice: "recognition" };
 
     function announce(): void {
       for (const channel of NOTICES) {
@@ -133,7 +136,7 @@ export function boot(): void {
         // sentence raised twice running where comparing the text would not.
         if (!raised || announced.get(channel) === raised) continue;
         announced.set(channel, raised);
-        if (raised.text) toast({ text: String(raised.text), kind: raised.kind === "error" ? "error" : "success" });
+        if (raised.text && PRINTED_INLINE[channel] !== state.page) toast({ text: String(raised.text), kind: raised.kind === "error" ? "error" : "success" });
       }
     }
 
@@ -145,7 +148,9 @@ export function boot(): void {
     const modeText = (mode: string) => mode === "provider_native" ? "Provider Native web search" : "Offline";
     const statusText = (status: string) => status === "draft" ? "Draft" : status === "active" ? "Running" : status === "archived" ? "Archived" : "Deleted";
     function setSelectedProject(projectId: string) { if (projectId !== state.selectedId) { state.liveRun = null; state.lastRun = null; state.insights = null; state.insightsState = "idle"; state.plan = null; state.planState = "idle"; state.rankPlan = null; state.rankPlanState = "idle"; state.engines = null; state.enginesState = "idle"; state.actions = []; state.actionsState = "idle"; state.outreach = null; state.outreachState = "idle"; state.paste = null; state.pasteState = "idle"; state.uptake = null; state.uptakeState = "idle"; state.interference = null; state.interferenceState = "idle"; state.concentration = null; state.concentrationState = "idle"; state.shape = null; state.shapeState = "idle"; state.kinds = null; state.kindsState = "idle"; state.experiments = null; state.experimentsState = "idle"; state.check = null; state.checkState = "idle"; state.credit = null; state.creditState = "idle"; state.reach = null; state.reachState = "idle"; state.searchDemand = null; state.searchDemandState = "idle"; state.personas = null; state.personasState = "idle"; state.priority = null; state.priorityState = "idle"; state.referrals = null; state.referralsState = "idle"; state.crawlers = null; state.crawlersState = "idle"; state.signals = null; state.signalsState = "idle"; state.externalMetrics = null; state.externalMetricsState = "idle"; state.externalMetricsPulling = ""; state.externalMetricsNotice = { text:"", kind:"" }; } state.selectedId = projectId || ""; if (state.selectedId) localStorage.setItem("citegeo.product.projectId", state.selectedId); else localStorage.removeItem("citegeo.product.projectId"); const next = new URL(window.location.href); if (state.selectedId) next.searchParams.set("projectId", state.selectedId); else next.searchParams.delete("projectId"); window.history.replaceState({ projectId:state.selectedId }, "", next); }
-    function setDrawer(open: boolean) { document.body.classList.toggle("drawer-open", open); element("project-drawer").setAttribute("aria-hidden", String(!open)); }
+    // A shut drawer sits off screen but kept five tab stops, so a keyboard
+    // reader fell into a form they could not see. Inert takes it out.
+    function setDrawer(open: boolean) { document.body.classList.toggle("drawer-open", open); const drawer = element("project-drawer"); drawer.setAttribute("aria-hidden", String(!open)); drawer.toggleAttribute("inert", !open); }
     function openDrawer() { state.drawerSession += 1; setFormStatus("", ""); setDrawer(true); window.setTimeout(() => element("project-domain").focus(), 0); }
     function closeDrawer() { state.drawerSession += 1; setDrawer(false); }
     function setFormStatus(message: string, kind: string) { const target = element("form-status"); target.textContent = message || ""; target.className = kind ? "form-status " + kind : "form-status"; }
@@ -3382,11 +3387,11 @@ export function boot(): void {
       if (!selected) return '<section class="view"><div class="empty"><div class="empty-copy"><h2>Select a project first</h2></div></div></section>';
       if (state.answerEngineState === "idle") { loadAnswerEngine(); loadLiveRun(); }
       if (state.answerEngineState !== "ready") {
-        return '<section class="view"><div class="heading"><div><h1>Answer engine</h1><p class="subtle">How the models answer the questions your buyers ask.</p></div></div><div class="empty"><div class="empty-copy"><h2>' + (state.answerEngineState === "error" ? "Could not read the answers" : "Reading the archived answers") + '</h2></div></div></section>';
+        return '<section class="view"><div class="heading"><div><h1>' + html(title) + '</h1><p class="subtle">' + html(subtitle) + '</p></div></div><div class="empty"><div class="empty-copy"><h2>' + (state.answerEngineState === "error" ? "Could not read the answers" : "Reading the archived answers") + '</h2></div></div></section>';
       }
       const data = state.answerEngine;
       if (!data || data.answers === 0) {
-        return '<section class="view"><div class="heading"><div><h1>Answer engine</h1><p class="subtle">How the models answer the questions your buyers ask.</p></div><div class="inline-actions">' + button({ label: "Set up prompts", kind: "primary", on: { "data-page": "prompts" } }) + '</div></div>'
+        return '<section class="view"><div class="heading"><div><h1>' + html(title) + '</h1><p class="subtle">' + html(subtitle) + '</p></div><div class="inline-actions">' + button({ label: "Set up prompts", kind: "primary", on: { "data-page": "prompts" } }) + '</div></div>'
           + '<div class="empty"><div class="empty-copy"><h2>No answers yet</h2><p class="subtle">Generate a prompt set, activate the questions worth tracking, then run them. Every number on this page traces back to an archived answer.</p></div></div></section>';
       }
       const weights = data.weights || { prominenceFloor: 0, sentimentFloor: 0 };
@@ -4322,6 +4327,7 @@ export function boot(): void {
 
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape" && state.panel) { closeEvidence(); return; }
+      if (event.key === "Escape" && document.body.classList.contains("drawer-open")) { closeDrawer(); return; }
       if (event.key !== "Enter" && event.key !== " ") return;
       const row = el(event.target) ? (el(event.target) as any).closest("[data-evidence]") : null;
       if (!row) return;

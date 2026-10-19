@@ -497,7 +497,7 @@ export function renderProductPhase2AppHtml(): string {
 <body>
   <div id="app"></div>
   <div id="drawer-backdrop" class="drawer-backdrop"></div>
-  <aside id="project-drawer" class="drawer" aria-label="New project" aria-hidden="true" data-testid="project-drawer">
+  <aside id="project-drawer" class="drawer" aria-label="New project" aria-hidden="true" inert data-testid="project-drawer">
     <div class="drawer-head"><div><h2>New project</h2><p class="subtle">Just enter a domain. The project is saved as a draft first, and models are configured in the next step.</p></div><button id="close-drawer" type="button" class="close" aria-label="Close">×</button></div>
     <form id="project-form" class="form" autocomplete="off">
       <div class="field"><label for="project-domain">Primary domain</label><input id="project-domain" name="domain" placeholder="example.com" required><p class="field-help">A normalized domain can be bound to only one project that has not been deleted.</p></div>
