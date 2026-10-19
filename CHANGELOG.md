@@ -4,6 +4,66 @@
 
 Nothing yet.
 
+## 0.6.0 - 2026-10-20
+
+Four merges. The last release joined what the product measured to what it
+advised. This one is about the product being usable and honest on the screen:
+pages that say which page they are, a drawer a keyboard can leave, a report
+that had not drawn since the app became a module, and a browser suite that
+tests the product that actually ships rather than the one it used to be.
+
+### Added
+
+- **A tab row for the machine pages.** Results and Configuration had no way in.
+  The only control that reached Results rendered on Results, and nothing reached
+  Configuration at all. Models and surfaces, Results, Current report and
+  Configuration now reach each other the way Act's five pages already did.
+- **Asking for a browser by name.** The engines route probed for a debuggable
+  browser on every read, so opening a settings page attached a debugger to
+  whatever was listening on the local debug port. It reports "Not checked" until
+  a "Check for a browser" button is pressed.
+
+### Changed
+
+- **Site marks are stored, not hot linked.** The icon service kept each rival's
+  address, so drawing your own dashboard fetched an image from every competitor
+  on it and told each one you had looked. The server reads the mark once and
+  keeps the bytes, capped at 32KB. A record from an older build is read again
+  rather than drawn.
+- **One primary action per page, and one archive.** Pages opened with a warning
+  and offered several equally weighted buttons. Each now leads with the one
+  action it is for, and the two separate archives are folded into one.
+- **The run request answers when the run starts.** It had waited for the whole
+  run to finish, so the page sat still while work was already happening. A run
+  also says how long it has left.
+
+### Fixed
+
+- **A page named itself after a different page.** Trust and Sources both printed
+  "Answer engine" while loading, on error, and with no answers, and a project
+  with no answers said it permanently.
+- **A shut drawer kept the keyboard.** Five controls inside an `aria-hidden`
+  drawer stayed tabbable and one of them took focus and typing. The shut drawer
+  is `inert`, and Escape closes it.
+- **Save project did nothing.** The handler looked for an element HTML does not
+  have, so the request was never sent, the field reverted, and nothing said no.
+- **The current report had not drawn since the app became a module.** It read a
+  global set by a deferred module from a classic block, so its only run was
+  always too early, and the shell it drew for itself carried the navigation from
+  before the rail was cut to six destinations. It renders as a page in the
+  current shell.
+- **One save, said twice.** A page that prints a notice in its own live region
+  no longer also raises a toast with the same sentence.
+- **A retired model is told apart from a refused request,** and a key's own
+  budget is read rather than only the account's credits.
+- **Dark palettes and table floors.** Every dark token has a dark value, the
+  brand column no longer collapses, and a column with nothing in it says "never
+  named" rather than leaving the cell blank.
+
+### Removed
+
+- Fork design notes that were being published with the documentation.
+
 ## 0.5.0 - 2026-10-12
 
 Fifteen merges. The product could already say what was wrong and could already
