@@ -1,11 +1,14 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { cp, mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 
 const validationRoot = join(process.cwd(), "validation", "rebuild-phase-4-2026-09-07");
+// Written by a Phase 3 run into validation/, which is not in the repository.
+const archiveReference = join(process.cwd(), "validation", "rebuild-phase-3-2026-09-06", "acmecloud-live-current-path.txt");
 const screenshots = join(validationRoot, "screenshots");
 const results: Array<{ id: string; status: string; screenshot: string; assertions: number }> = [];
 const networkAttempts: Array<{ url: string; method: string; external: boolean }> = [];
@@ -37,7 +40,7 @@ async function startServer(): Promise<void> {
   temporaryRoot = await mkdtemp(join(tmpdir(), "citegeo-phase4-browser-"));
   server = spawn(process.execPath, [join(process.cwd(), "node_modules", "tsx", "dist", "cli.mjs"), "test/fixtures/phase4-product-server-v2.ts"], {
     cwd: process.cwd(),
-    env: { ...process.env, PORT: String(port), PRODUCT_DATA_DIR: temporaryRoot, RUNS_DIR: join(temporaryRoot, "runs"), MONITORING_DATA_DIR: join(temporaryRoot, "monitoring") },
+    env: { ...process.env, PORT: String(port), PRODUCT_DATA_DIR: temporaryRoot, RUNS_DIR: join(temporaryRoot, "runs"), MONITORING_DATA_DIR: join(temporaryRoot, "monitoring"), SKIP_DOTENV: "1" },
     stdio: "ignore",
   });
   baseUrl = `http://127.0.0.1:${port}`;
@@ -61,14 +64,14 @@ async function stopServer(): Promise<void> {
 }
 
 async function startRealArchiveServer(): Promise<void> {
-  const referencePath = (await readFile(join(process.cwd(), "validation", "rebuild-phase-3-2026-09-06", "acmecloud-live-current-path.txt"), "utf8")).trim();
+  const referencePath = (await readFile(archiveReference, "utf8")).trim();
   const sourceData = join(referencePath, "product-data");
   realArchiveRoot = await mkdtemp(join(tmpdir(), "citegeo-phase4-real-archive-"));
   await cp(sourceData, join(realArchiveRoot, "product-data"), { recursive: true });
   const port = await freePort();
   realArchiveServer = spawn(process.execPath, [join(process.cwd(), "node_modules", "tsx", "dist", "cli.mjs"), "src/product/product-server.ts"], {
     cwd: process.cwd(),
-    env: { ...process.env, PORT: String(port), PRODUCT_DATA_DIR: join(realArchiveRoot, "product-data"), RUNS_DIR: join(realArchiveRoot, "runs"), MONITORING_DATA_DIR: join(realArchiveRoot, "monitoring") },
+    env: { ...process.env, PORT: String(port), PRODUCT_DATA_DIR: join(realArchiveRoot, "product-data"), RUNS_DIR: join(realArchiveRoot, "runs"), MONITORING_DATA_DIR: join(realArchiveRoot, "monitoring"), SKIP_DOTENV: "1" },
     stdio: "ignore",
   });
   realArchiveBaseUrl = `http://127.0.0.1:${port}`;
@@ -102,7 +105,7 @@ async function createProject(page: Page, domain: string, name: string): Promise<
 }
 
 async function configure(page: Page, selected: Array<{ id: string; mode: "off" | "provider_native" }>): Promise<void> {
-  await page.getByRole("button", { name: "AI models", exact: true }).click();
+  await page.locator('.sidebar [data-page="models"]').first().click();
   await expect(page.getByTestId("catalog-model").first()).toBeVisible();
   for (const model of selected) {
     await page.locator(`[data-model-checkbox="${model.id}"]`).check();
@@ -115,7 +118,7 @@ async function configure(page: Page, selected: Array<{ id: string; mode: "off" |
 }
 
 async function createRun(page: Page): Promise<void> {
-  await page.getByRole("button", { name: "Domain recognition", exact: true }).click();
+  await page.getByRole("button", { name: "Results", exact: true }).click();
   await page.getByTestId("start-recognition").click();
   await expect(page.getByTestId("recognition-model-run").first()).not.toContainText("Calling", { timeout: 8_000 });
 }
@@ -212,7 +215,7 @@ test("B05 preserves the first report after a single-model retry produces a new r
   await configure(page, [{ id: "fixture/model-analysis-failed", mode: "off" }]);
   await createRun(page);
   await openReport(page);
-  await expect(page.getByText("Answer received, parsing failed", { exact: true })).toBeVisible();
+  await expect(page.getByText("Recognition: Answer received, parsing failed", { exact: true })).toBeVisible();
   const retryResponse = page.waitForResponse((response) => response.request().method() === "POST" && response.url().includes("/retry"));
   await page.getByRole("button", { name: "Retry this model", exact: true }).click();
   expect((await retryResponse).status()).toBe(202);
@@ -239,8 +242,10 @@ test("B06 keeps project report data isolated and keeps all browser requests loca
 });
 
 test("B07 opens a copied Phase 3 real-provider archive without a new provider call", async ({ page }) => {
+  test.skip(!existsSync(archiveReference), "No Phase 3 archive on this machine, and validation/ is not in the repository.");
   await startRealArchiveServer();
   await page.goto(realArchiveBaseUrl);
+  await page.locator('.sidebar [data-page="models"]').first().click();
   await page.getByRole("button", { name: "Current report", exact: true }).click();
   await expect(page.getByTestId("recognition-report")).toBeVisible({ timeout: 8_000 });
   await expect(page.getByTestId("report-model-card")).toHaveCount(1);

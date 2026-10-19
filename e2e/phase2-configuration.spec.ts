@@ -36,7 +36,7 @@ async function unusedPort(): Promise<number> {
 async function startProductServer(): Promise<void> {
   const port = await unusedPort();
   temporaryRoot = await mkdtemp(join(tmpdir(), "citegeo-phase2-browser-"));
-  server = spawn(process.execPath, [join(process.cwd(), "node_modules", "tsx", "dist", "cli.mjs"), "src/server.ts"], {
+  server = spawn(process.execPath, [join(process.cwd(), "node_modules", "tsx", "dist", "cli.mjs"), "src/product/product-server.ts"], {
     cwd: process.cwd(),
     env: {
       ...process.env,
@@ -44,6 +44,10 @@ async function startProductServer(): Promise<void> {
       PRODUCT_DATA_DIR: temporaryRoot,
       RUNS_DIR: join(temporaryRoot, "runs"),
       MONITORING_DATA_DIR: join(temporaryRoot, "monitoring"),
+      SKIP_DOTENV: "1",
+      // Named rather than read out of a .env, so the fixture stays hermetic
+      // and this suite still gets the real catalogue it is written against.
+      OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY || "",
     },
     stdio: "ignore",
   });
@@ -75,6 +79,8 @@ async function screenshot(page: Page, name: string): Promise<void> {
 }
 
 async function createProject(page: Page, domain: string, name: string): Promise<string> {
+  // The app opens on the dashboard; the saved record lives on Projects.
+  await page.locator('.sidebar [data-page="overview"]').first().click();
   await page.getByTestId("new-project").click();
   await expect(page.getByTestId("project-drawer")).toHaveAttribute("aria-hidden", "false");
   await page.locator("#project-domain").fill(domain);
@@ -83,12 +89,12 @@ async function createProject(page: Page, domain: string, name: string): Promise<
   await expect(page.getByTestId("selected-project-title")).toHaveText(name);
   const id = await page.getByTestId("selected-project-id").textContent();
   if (!id) throw new Error("The project UI did not display an opaque project id.");
-  await page.getByLabel("Close").click();
+  await expect(page.getByTestId("project-drawer")).toHaveAttribute("aria-hidden", "true");
   return id;
 }
 
 async function openModels(page: Page): Promise<void> {
-  await page.getByRole("button", { name: "AI models", exact: true }).click();
+  await page.locator('.sidebar [data-page="models"]').first().click();
   await expect(page.getByTestId("model-search")).toBeVisible();
   await expect(page.getByTestId("catalog-model").first()).toBeVisible();
 }
@@ -109,7 +115,9 @@ async function catalogRows(page: Page): Promise<CatalogRow[]> {
 
 async function chooseModel(page: Page, modelId: string, mode: "off" | "provider_native"): Promise<void> {
   await page.getByTestId("model-search").fill(modelId);
-  const row = page.getByTestId("catalog-model");
+  // The search is a substring, and a live catalogue grows variants of a name,
+  // so the row is the one carrying this exact id rather than the only one.
+  const row = page.getByTestId("catalog-model").filter({ has: page.locator(`[data-model-checkbox="${modelId}"]`) });
   await expect(row).toHaveCount(1);
   const checkbox = row.locator('input[type="checkbox"]');
   await checkbox.check();
@@ -131,6 +139,10 @@ test.afterAll(async () => {
 });
 
 test("Phase 2 configuration uses the real product UI, actual catalog, immutable baselines, and isolated projects", async ({ page }) => {
+  // This one is written against the live catalogue. Without a key the product
+  // correctly reports no models, which is not a failure of the product.
+  const listed = await (await page.request.get(`${baseUrl}/api/provider-models`)).json() as { models: unknown[] };
+  test.skip(listed.models.length === 0, "No provider key, so there is no catalogue to search.");
   let alphaProjectId = "";
   let betaProjectId = "";
   let firstNativeModel = "";
@@ -329,7 +341,7 @@ test("Phase 2 configuration uses the real product UI, actual catalog, immutable 
       await route.continue();
     });
     await page.reload();
-    await page.getByRole("button", { name: "AI models", exact: true }).click();
+    await page.locator('.sidebar [data-page="models"]').first().click();
     await expect(page.getByText("Model catalog unavailable", { exact: true })).toBeVisible();
     await expect(page.getByText("The model catalog is temporarily unavailable. Try again shortly.", { exact: true })).toBeVisible();
     await expect(page.getByTestId("catalog-model")).toHaveCount(0);

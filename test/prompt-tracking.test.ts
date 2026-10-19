@@ -231,10 +231,8 @@ test("a failing run is recorded on the schedule rather than thrown away", async 
 });
 
 test("a retired question's answers stop deciding who your rivals are", () => {
-  // ninethirty.ai was generated once against the wrong category, run, and then
-  // regenerated against the right one. The first set was retired and its twelve
-  // answers went on supplying the whole leaderboard, so a stock screener's
-  // rivals read as Profound, Peec AI and Otterly.AI.
+  // A set generated against the wrong category was retired, and its twelve
+  // answers went on supplying the whole leaderboard with rivals from it.
   const set: TopicSet = {
     projectId: "p", generatedAt: null, updatedAt: "",
     topics: [

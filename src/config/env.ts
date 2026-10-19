@@ -19,6 +19,9 @@ const PROVIDER_ENV_KEYS: Record<string, string[]> = {
 };
 
 export function loadDotEnv(cwd = process.cwd()): void {
+  // A browser suite that reads the developer's .env is not hermetic, and an
+  // AUTH_PASSWORD there gated every fixture server into a sign-in page.
+  if (process.env.SKIP_DOTENV === "1") return;
   const envPath = join(cwd, ".env");
   if (!existsSync(envPath)) return;
   const lines = splitLines(readFileSync(envPath, "utf8"));

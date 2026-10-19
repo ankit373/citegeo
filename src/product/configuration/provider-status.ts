@@ -130,7 +130,12 @@ function detailFor(access: ProviderAccess, state: {
     return `${head}, so every paid model answers HTTP 402 and no run can finish.${fallback} Native web search is only sold on paid models.`;
   }
   if (state.balance) {
-    return `${money(state.balance.remaining)} of credit left. ${access.cost_note}`;
+    // A key budget spends where account credit does not, so naming the credit
+    // alone reported "0.00 of credit left" on a key that was paying fine.
+    const left = state.balance.remaining > 0
+      ? `${money(state.balance.remaining)} of credit left`
+      : `${money(state.balance.keyRemaining || 0)} left on this key's budget`;
+    return `${left}. ${access.cost_note}`;
   }
   return `${access.cost_note} ${searchNote(access)}`;
 }

@@ -15,7 +15,9 @@ export function brandIcon(name: string, icon?: string | null, ink?: string): str
   for (let at = 0; at < name.length; at += 1) sum = (sum + name.charCodeAt(at) * (at + 1)) % 360;
   const ring = ink ? ` style="border-color:${ink}"` : "";
   const mark = icon ? `<img src="${html(icon)}" alt="" loading="lazy" decoding="async">` : "";
-  return `<span class="bicon"${ring}><i style="background:hsl(${sum} 42% 46%);color:hsl(${sum} 44% 96%)">${html(letter)}</i>${mark}</span>`;
+  // 46% lightness is bright at the yellow end of the wheel, where the letter on
+  // top fell to 2.4:1. 30% holds above 5:1 at every hue the hash can produce.
+  return `<span class="bicon"${ring}><i style="background:hsl(${sum} 42% 30%);color:hsl(${sum} 44% 96%)">${html(letter)}</i>${mark}</span>`;
 }
 
 export function pill(text: string, tone: Tone = ""): string {
@@ -42,14 +44,17 @@ export interface TileInput {
 /** One row of figures. The utilities are the styling; there is no .dtile rule
  * behind this any more, so nothing can style it from a distance. */
 export function tiles(rows: TileInput[]): string {
-  const shell = "grid auto-rows-min gap-1 bg-surface px-[17px] py-[15px]";
   const caption = "text-[10px] font-semibold uppercase tracking-[.09em] text-weak";
-  const figure = "font-display text-[26px] font-medium leading-[1.1] tracking-[-0.02em]";
-  // The column count follows the tile count. auto-fit left empty cells,
-  // and the separator background showed through them as a grey block.
-  return `<div class="tilegrid" style="--tile-columns:${rows.length}">${rows.map((row) => join([
-    `<div class="${shell}"><span class="${caption}">`, html(row.label), "</span>",
-    `<strong class="${figure} ${html(row.tone || "")}">`, html(row.value), "</strong>",
+  const lead = "font-display text-[26px] font-medium leading-[1.1] tracking-[-0.02em]";
+  const rest = "font-display text-[20px] font-medium leading-[1.2] tracking-[-0.02em] text-muted";
+  // The first figure is what the panel is about. Six at one size gave the eye
+  // nowhere to land, so the rest step down and read as its context.
+  const ranked = rows.length > 2;
+  // auto-fit collapses the tracks it does not use, so no count is passed and
+  // no empty cell is left for the separator behind to show through.
+  return `<div class="tilegrid">${rows.map((row, at) => join([
+    `<div class="tile${ranked && at === 0 ? " is-lead" : ""}"><span class="${caption}">`, html(row.label), "</span>",
+    `<strong class="${ranked && at > 0 ? rest : lead} ${html(row.tone || "")}">`, html(row.value), "</strong>",
     `<small class="text-xs leading-[1.45] text-weak">`, html(row.note), "</small>",
     bar(row.fraction),
     "</div>",
@@ -92,6 +97,9 @@ export interface SectionInput {
   /** Stable name for this panel, so a reader can rearrange the dashboard
    * and have the arrangement survive the next render. */
   id?: string;
+  /** Folded away until a reader asks for it. The decision layer of a page
+   * stays open; everything under it is there to be opened, not scrolled past. */
+  folded?: boolean;
   /** Panel to open on a click anywhere that is not already a control. */
   open?: string;
   /** Tracks this card spans: 1, 2, or 0 for the whole row. */
@@ -101,19 +109,36 @@ export interface SectionInput {
 }
 
 export function section(input: SectionInput): string {
-  return join([
-    `<section class="section-card${input.wide || input.span === 0 ? " is-wide" : ""}${input.span === 2 ? " is-two" : ""}`
-      + `${input.open ? " is-openable" : ""}${input.off ? " is-off" : ""}"`,
-    input.id ? ` data-panel="${html(input.id)}" draggable="true"` : "",
-    input.open ? ` data-expand-panel="${html(input.open)}"` : "",
-    `><div class="section-head"><div class="headmain">`,
-    input.open
+  const head = join([
+    `<div class="section-head"><div class="headmain">`,
+    input.open && !input.folded
       ? `<h2><button type="button" class="panel-open" data-expand-panel="${html(input.open)}">${html(input.title)}</button></h2>`
       : `<h2>${html(input.title)}</h2>`,
     input.blurb ? `<p class="subtle">${html(input.blurb)}</p>` : "",
     "</div>",
     input.aside ? `<div class="headaside">${input.aside}</div>` : "",
     "</div>",
+  ]);
+  // A fold is a details element, so the keyboard and a screen reader get the
+  // open and shut for free rather than from a handler that has to be written.
+  if (input.folded !== undefined) {
+    return join([
+      `<details class="section-card is-folding${input.wide || input.span === 0 ? " is-wide" : ""}`
+        + `${input.span === 2 ? " is-two" : ""}${input.off ? " is-off" : ""}"`,
+      input.id ? ` data-panel="${html(input.id)}" data-fold="${html(input.id)}"` : "",
+      input.folded ? "" : " open",
+      `><summary>${head}</summary>`,
+      input.body,
+      "</details>",
+    ]);
+  }
+  return join([
+    `<section class="section-card${input.wide || input.span === 0 ? " is-wide" : ""}${input.span === 2 ? " is-two" : ""}`
+      + `${input.open ? " is-openable" : ""}${input.off ? " is-off" : ""}"`,
+    input.id ? ` data-panel="${html(input.id)}" draggable="true"` : "",
+    input.open ? ` data-expand-panel="${html(input.open)}"` : "",
+    `>`,
+    head,
     input.body,
     "</section>",
   ]);

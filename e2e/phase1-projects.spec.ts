@@ -29,7 +29,7 @@ async function unusedPort(): Promise<number> {
 async function startProductServer(): Promise<void> {
   const port = await unusedPort();
   temporaryRoot = await mkdtemp(join(tmpdir(), "citegeo-phase1-browser-"));
-  server = spawn(process.execPath, [join(process.cwd(), "node_modules", "tsx", "dist", "cli.mjs"), "src/server.ts"], {
+  server = spawn(process.execPath, [join(process.cwd(), "node_modules", "tsx", "dist", "cli.mjs"), "src/product/product-server.ts"], {
     cwd: process.cwd(),
     env: {
       ...process.env,
@@ -37,6 +37,7 @@ async function startProductServer(): Promise<void> {
       PRODUCT_DATA_DIR: temporaryRoot,
       RUNS_DIR: join(temporaryRoot, "runs"),
       MONITORING_DATA_DIR: join(temporaryRoot, "monitoring"),
+      SKIP_DOTENV: "1",
     },
     stdio: "ignore",
   });
@@ -94,6 +95,7 @@ test.afterAll(async () => {
 test("Phase 1 project lifecycle uses the real product UI and API", async ({ page }) => {
   await test.step("A. empty state", async () => {
     await page.goto(baseUrl);
+    await page.locator('.sidebar [data-page="overview"]').first().click();
     await expect(page.getByTestId("empty-state")).toBeVisible();
     await expect(page.getByTestId("project-card")).toHaveCount(0);
     await screenshot(page, "01-empty-state.png");
@@ -104,7 +106,7 @@ test("Phase 1 project lifecycle uses the real product UI and API", async ({ page
 
   await test.step("B. create and persist a draft", async () => {
     firstProjectId = await createProject(page, "example.com", "Example Com");
-    await page.getByLabel("Close").click();
+    await expect(page.getByTestId("project-drawer")).toHaveAttribute("aria-hidden", "true");
     await page.reload();
     await expect(page.getByTestId("selected-project-title")).toHaveText("Example Com");
     await expect(page.getByTestId("selected-project-domain")).toHaveText("example.com");
@@ -114,7 +116,7 @@ test("Phase 1 project lifecycle uses the real product UI and API", async ({ page
 
   await test.step("C. switch, edit, archive and restore two projects", async () => {
     secondProjectId = await createProject(page, "example.org", "Example Org");
-    await page.getByLabel("Close").click();
+    await expect(page.getByTestId("project-drawer")).toHaveAttribute("aria-hidden", "true");
     await page.selectOption("[data-testid=project-select]", firstProjectId);
     await expect(page.getByTestId("selected-project-title")).toHaveText("Example Com");
     await expect(page.getByTestId("selected-project-domain")).toHaveText("example.com");
@@ -146,13 +148,15 @@ test("Phase 1 project lifecycle uses the real product UI and API", async ({ page
     await page.locator("#project-domain").fill("https://www.example.net/");
     await page.getByTestId("save-draft").click();
     await expect(page.locator("#form-status")).toHaveClass("form-status error");
-    await expect(page.locator("#form-status")).toContainText("This domain is already used by another project.");
+    await expect(page.locator("#form-status")).toContainText("already uses example.net");
     await expect(page.getByTestId("project-card")).toHaveCount(2);
     await screenshot(page, "04-domain-conflict.png");
   });
 
   await test.step("E. deleting the current project navigates and survives refresh", async () => {
+    // The conflict above left the drawer open on purpose, so this one closes it.
     await page.getByLabel("Close").click();
+    await expect(page.getByTestId("project-drawer")).toHaveAttribute("aria-hidden", "true");
     page.once("dialog", (dialog) => dialog.accept());
     await page.getByTestId("delete-project").click();
     await expect(page.getByTestId("selected-project-title")).toHaveText("Example Net");

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { html, join } from "../src/ui/app/dom.js";
-import { percent, rank, score, seconds } from "../src/ui/app/format.js";
+import { percent, rank, remaining, score, seconds } from "../src/ui/app/format.js";
 import { cell, emptyState, nameCell, pill, row, section, table, tiles } from "../src/ui/app/components/primitives.js";
 import { skeletonTable, skeletonTiles, loading } from "../src/ui/app/components/skeleton.js";
 import { productAppSource } from "../src/ui/app-source.js";
@@ -23,6 +23,15 @@ test("a null figure reads as not measurable, never as a zero", () => {
   assert.equal(score(0), "0");
   assert.equal(rank(null), "Not named");
   assert.equal(seconds(null), "no timing");
+});
+
+test("a run with nothing landed gives no estimate, rather than a guessed one", () => {
+  assert.equal(remaining(0, 100, 60000), null);
+  assert.equal(remaining(10, 10, 60000), null);
+  assert.equal(remaining(5, 100, 0), null);
+  assert.equal(remaining(50, 100, 60000), "about 1 min left");
+  assert.equal(remaining(99, 100, 60000), "under a minute left");
+  assert.equal(remaining(1, 400, 60000), "about 7 hr left");
 });
 
 test("an empty table says so rather than drawing a head over nothing", () => {

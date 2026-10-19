@@ -261,17 +261,26 @@ export async function handleTopicApi(input: {
     const modelIds = stringList(body.modelIds);
     const retryOf = typeof body.retryOf === "string" && body.retryOf ? body.retryOf : undefined;
     const repetitions = typeof body.repetitions === "number" ? body.repetitions : undefined;
-    await guard(() => runs.start({
-      projectId,
-      ...(repetitions === undefined ? {} : { repetitions }),
-      ...(retryOf ? { retryOf } : {}),
-      modelIds: modelIds.length ? modelIds : undefined,
-      promptIds: promptIds.length ? promptIds : undefined,
-      regionIds: regionIds.length ? regionIds : undefined,
-      languageIds: languageIds.length ? languageIds : undefined,
-      engineIds: engineIds.length ? engineIds : undefined,
-      personaIds: personaIds.length ? personaIds : undefined,
-    }));
+    // Answered the moment the record is written, not when the asking is done.
+    // A run of 28 questions held this request open for minutes, so the button
+    // that started it had nothing to say until it was already over.
+    await guard(async () => {
+      const begun = await runs.begin({
+        projectId,
+        ...(repetitions === undefined ? {} : { repetitions }),
+        ...(retryOf ? { retryOf } : {}),
+        modelIds: modelIds.length ? modelIds : undefined,
+        promptIds: promptIds.length ? promptIds : undefined,
+        regionIds: regionIds.length ? regionIds : undefined,
+        languageIds: languageIds.length ? languageIds : undefined,
+        engineIds: engineIds.length ? engineIds : undefined,
+        personaIds: personaIds.length ? personaIds : undefined,
+      });
+      // The run record carries the outcome, so a failure here is recorded
+      // rather than thrown into a request nobody is holding any more.
+      begun.done.catch(() => undefined);
+      return begun.run;
+    });
     return true;
   }
 

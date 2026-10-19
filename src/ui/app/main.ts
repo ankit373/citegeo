@@ -4,7 +4,10 @@ import { buyingView, claimsView, conversationsView, draftsView, entityView, mark
 import { exportName, filterSummary, matchesQuery, panelCsv } from "./components/panel-tools.js";
 import { emptyState, notice, section } from "./components/primitives.js";
 import { button } from "./components/button.js";
-import { navScrim, navToggle, sidebar, wireNav } from "./components/nav.js";
+import { remaining } from "./format.js";
+import { loading, skeletonCard, skeletonTable, skeletonText, skeletonTiles } from "./components/skeleton.js";
+import { clearToasts, toast } from "./components/toast.js";
+import { DESTINATIONS, navScrim, navToggle, sidebar, wireNav } from "./components/nav.js";
 import { hasPanelOrder, resetPanelOrder, setPanelSpan, togglePanelHidden, wirePanelDrag } from "./components/reorder.js";
 import { wireChartHover } from "./components/chart-hover.js";
 import { setupView, type CredentialRow, type IntegrationRow, type ProviderRow, type SetupData, type StorageCheck, type StorageSettings } from "./pages/setup-view.js";
@@ -105,14 +108,39 @@ export function boot(): void {
     panelViews: Record<string, "chart" | "table">;
     /** Rival columns switched off in the matrix, kept in this browser. */
     matrixHidden: string[];
+    /** Folded panels a reader opened, so a re-render does not shut them. */
+    panelOpen: string[];
+    /** True until the first read lands. The shell paints before it, so the
+     * reader sees the product rather than a blank page for a second. */
+    booting: boolean;
   }
 
-    const state: State = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", crawlerUploading:false, crawlerNotice:{ text:"", kind:"" }, plan:null, planState:"idle", marketer:null, drafts:null, claims:null, buying:null, conversations:null, entity:null, marketerState:"idle", marketerNotice:{ text:"", kind:"" }, signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, integrations:[], integrationsState:"idle", externalMetrics:null, externalMetricsState:"idle", externalMetricsPulling:"", externalMetricsNotice:{text:"",kind:""}, digest:null, digestState:"idle", demand:null, demandState:"idle", repetitions:Number(savedPreference("repetitions", "1")) || 1, runLanguageId:savedPreference("runLanguage", "en"), dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", promptFilters:{ query:"", topicId:"", intent:"", status:"" }, promptSelection:[], answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", history:null, historyState:"idle", rivals:null, rivalsState:"idle", segments:null, segmentsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, lastRun:null, runPollTimer:0, runFeed:[], runFeedState:"idle", runFeedTimer:0, rankPlan:null, rankPlanState:"idle", brief:null, briefState:"idle", outreach:null, outreachState:"idle", harvesting:false, paste:null, pasteState:"idle", pasteCount:Number(savedPreference("pasteCount", "2")) || 2, uptake:null, uptakeState:"idle", interference:null, interferenceState:"idle", concentration:null, concentrationState:"idle", shape:null, shapeState:"idle", kinds:null, kindsState:"idle", experiments:null, experimentsState:"idle", check:null, checkState:"idle", credit:null, creditState:"idle", reach:null, reachState:"idle", searchDemand:null, searchDemandState:"idle", pulling:false, personas:null, personasState:"idle", priority:null, priorityState:"idle", promptSort:"topic", referrals:null, referralsState:"idle", pullingReferrals:false, engines:null, enginesState:"idle", actions:[], actionsState:"idle", matrixOpen:[], editingBoard:false, brandIcons:{}, panelViews:savedJson("panelViews"), matrixHidden:savedList("matrixHidden") };
+    const state: State = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", crawlerUploading:false, crawlerNotice:{ text:"", kind:"" }, plan:null, planState:"idle", marketer:null, drafts:null, claims:null, buying:null, conversations:null, entity:null, marketerState:"idle", marketerNotice:{ text:"", kind:"" }, signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, integrations:[], integrationsState:"idle", externalMetrics:null, externalMetricsState:"idle", externalMetricsPulling:"", externalMetricsNotice:{text:"",kind:""}, digest:null, digestState:"idle", demand:null, demandState:"idle", repetitions:Number(savedPreference("repetitions", "1")) || 1, runLanguageId:savedPreference("runLanguage", "en"), dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", promptFilters:{ query:"", topicId:"", intent:"", status:"" }, promptSelection:[], answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", history:null, historyState:"idle", rivals:null, rivalsState:"idle", segments:null, segmentsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, lastRun:null, runPollTimer:0, runFeed:[], runFeedState:"idle", runFeedTimer:0, rankPlan:null, rankPlanState:"idle", brief:null, briefState:"idle", outreach:null, outreachState:"idle", harvesting:false, paste:null, pasteState:"idle", pasteCount:Number(savedPreference("pasteCount", "2")) || 2, uptake:null, uptakeState:"idle", interference:null, interferenceState:"idle", concentration:null, concentrationState:"idle", shape:null, shapeState:"idle", kinds:null, kindsState:"idle", experiments:null, experimentsState:"idle", check:null, checkState:"idle", credit:null, creditState:"idle", reach:null, reachState:"idle", searchDemand:null, searchDemandState:"idle", pulling:false, personas:null, personasState:"idle", priority:null, priorityState:"idle", promptSort:"topic", referrals:null, referralsState:"idle", pullingReferrals:false, engines:null, enginesState:"idle", actions:[], actionsState:"idle", matrixOpen:[], editingBoard:false, brandIcons:{}, panelViews:savedJson("panelViews"), matrixHidden:savedList("matrixHidden"), panelOpen:savedList("panelOpen"), booting:true };
     const app = document.getElementById("app") as HTMLElement;
     let renderOverride: (() => void) | null = null;
     // render() was a hoisted declaration that a later line reassigned. A
     // module forbids that, and a let would put earlier calls in the dead zone.
-    function render(): void { if (renderOverride) renderOverride(); else phase2RenderImpl(); }
+    // Every page prints its outcome in a box under its heading, up to five
+    // screens from the click. The same sentence goes where the reader is.
+    const NOTICES = ["promptNotice", "recognitionNotice", "modelNotice", "monitoringNotice",
+      "credentialNotice", "crawlerNotice", "externalMetricsNotice", "marketerNotice"];
+    const announced = new Map<string, unknown>();
+    // The page that owns one of these prints it in its own live region, so a
+    // toast would put the same sentence on screen and read it out twice.
+    const PRINTED_INLINE: Record<string, string> = { modelNotice: "models", recognitionNotice: "recognition" };
+
+    function announce(): void {
+      for (const channel of NOTICES) {
+        const raised = (state as any)[channel];
+        // Each setter writes a fresh object, so identity catches the same
+        // sentence raised twice running where comparing the text would not.
+        if (!raised || announced.get(channel) === raised) continue;
+        announced.set(channel, raised);
+        if (raised.text && PRINTED_INLINE[channel] !== state.page) toast({ text: String(raised.text), kind: raised.kind === "error" ? "error" : "success" });
+      }
+    }
+
+    function render(): void { announce(); if (renderOverride) renderOverride(); else phase2RenderImpl(); }
     const element = (id: string) => document.getElementById(id) as any;
     const html = (value: unknown) => String(value).split("&").join("&amp;").split("<").join("&lt;").split(">").join("&gt;").split('"').join("&quot;").split("'").join("&#39;");
     const project = () => state.currentProjects.find((item) => item.id === state.selectedId) || null;
@@ -120,7 +148,9 @@ export function boot(): void {
     const modeText = (mode: string) => mode === "provider_native" ? "Provider Native web search" : "Offline";
     const statusText = (status: string) => status === "draft" ? "Draft" : status === "active" ? "Running" : status === "archived" ? "Archived" : "Deleted";
     function setSelectedProject(projectId: string) { if (projectId !== state.selectedId) { state.liveRun = null; state.lastRun = null; state.insights = null; state.insightsState = "idle"; state.plan = null; state.planState = "idle"; state.rankPlan = null; state.rankPlanState = "idle"; state.engines = null; state.enginesState = "idle"; state.actions = []; state.actionsState = "idle"; state.outreach = null; state.outreachState = "idle"; state.paste = null; state.pasteState = "idle"; state.uptake = null; state.uptakeState = "idle"; state.interference = null; state.interferenceState = "idle"; state.concentration = null; state.concentrationState = "idle"; state.shape = null; state.shapeState = "idle"; state.kinds = null; state.kindsState = "idle"; state.experiments = null; state.experimentsState = "idle"; state.check = null; state.checkState = "idle"; state.credit = null; state.creditState = "idle"; state.reach = null; state.reachState = "idle"; state.searchDemand = null; state.searchDemandState = "idle"; state.personas = null; state.personasState = "idle"; state.priority = null; state.priorityState = "idle"; state.referrals = null; state.referralsState = "idle"; state.crawlers = null; state.crawlersState = "idle"; state.signals = null; state.signalsState = "idle"; state.externalMetrics = null; state.externalMetricsState = "idle"; state.externalMetricsPulling = ""; state.externalMetricsNotice = { text:"", kind:"" }; } state.selectedId = projectId || ""; if (state.selectedId) localStorage.setItem("citegeo.product.projectId", state.selectedId); else localStorage.removeItem("citegeo.product.projectId"); const next = new URL(window.location.href); if (state.selectedId) next.searchParams.set("projectId", state.selectedId); else next.searchParams.delete("projectId"); window.history.replaceState({ projectId:state.selectedId }, "", next); }
-    function setDrawer(open: boolean) { document.body.classList.toggle("drawer-open", open); element("project-drawer").setAttribute("aria-hidden", String(!open)); }
+    // A shut drawer sits off screen but kept five tab stops, so a keyboard
+    // reader fell into a form they could not see. Inert takes it out.
+    function setDrawer(open: boolean) { document.body.classList.toggle("drawer-open", open); const drawer = element("project-drawer"); drawer.setAttribute("aria-hidden", String(!open)); drawer.toggleAttribute("inert", !open); }
     function openDrawer() { state.drawerSession += 1; setFormStatus("", ""); setDrawer(true); window.setTimeout(() => element("project-domain").focus(), 0); }
     function closeDrawer() { state.drawerSession += 1; setDrawer(false); }
     function setFormStatus(message: string, kind: string) { const target = element("form-status"); target.textContent = message || ""; target.className = kind ? "form-status " + kind : "form-status"; }
@@ -403,7 +433,7 @@ export function boot(): void {
       if (!ids.length) return;
       state.promptSelection = [];
       loadLiveRun();
-      await postPrompts("/prompt-runs", { promptIds: ids }, "running", "The run finished. Every answer is archived.");
+      await postPrompts("/prompt-runs", { promptIds: ids }, "running", "The run has started. Watch it below, or leave the page and come back.");
       loadLiveRun();
     }
 
@@ -1018,6 +1048,30 @@ export function boot(): void {
       ["entity", "Entity"],
     ];
 
+    const MACHINE_PAGES: Array<[string, string]> = [
+      ["models", "Models and surfaces"],
+      ["recognition", "Results"],
+      ["reports", "Current report"],
+      ["configuration", "Configuration"],
+    ];
+
+    // Results and Configuration had no way in: the only tab that reached them
+    // rendered on Results itself. Each of the three reaches the other two now.
+    function machineTabs(): string {
+      return '<div class="toolbar">' + MACHINE_PAGES.map(([page, label]) =>
+        '<button type="button" class="filter ' + (state.page === page ? "active" : "")
+        + '" data-page="' + html(page) + '"' + (state.page === page ? ' aria-current="page"' : '')
+        + '>' + html(label) + '</button>').join("") + '</div>';
+    }
+
+    // The report has its own module, but it is a page in this shell like any
+    // other, so the rail it used to draw for itself cannot come back.
+    function renderReport(): string {
+      const module = (window as any).__citegeoPhase4;
+      if (module && typeof module.body === "function") return String(module.body());
+      return '<section class="view"><div class="heading"><div><h1>Current report</h1><p class="subtle">Built from the stored evidence of a finished run.</p></div></div>' + machineTabs() + '<div class="empty"><div class="empty-copy"><h2>The report is still loading</h2><p class="subtle">Nothing has been asked of any model.</p></div></div></section>';
+    }
+
     function actTabs(): string {
       return '<div class="toolbar">' + ACT_PAGES.map(([page, label]) =>
         '<button type="button" class="filter ' + (state.page === page ? "active" : "")
@@ -1025,15 +1079,18 @@ export function boot(): void {
         + '>' + html(label) + '</button>').join("") + '</div>';
     }
 
-    function marketerPage(title: string, blurb: string, body: () => string) {
+    // The one action this page is for, beside its name. It used to sit grey
+    // inside the body, under whatever the page happened to be showing.
+    function marketerPage(title: string, blurb: string, body: () => string, action?: string) {
       if (state.marketerState === "idle") { loadMarketer(); }
       const inner = state.marketerState === "error"
         ? '<p class="subtle">Could not read this project.</p>'
-        : state.marketerState !== "ready" ? '<p class="subtle">Reading what has been measured…</p>' : body();
+        : state.marketerState !== "ready" ? loading("this page", skeletonTiles(3) + skeletonCard({ rows: 4 })) : body();
       const notice = state.marketerNotice.text
         ? '<div class="' + (state.marketerNotice.kind === "success" ? "success-box" : "warning-box") + '">' + html(state.marketerNotice.text) + '</div>'
         : '';
-      return '<section class="view"><div class="heading"><div><h1>' + html(title) + '</h1><p class="subtle">' + html(blurb) + '</p></div></div>' + actTabs() + notice + inner + '</section>';
+      const head = action ? '<div class="inline-actions">' + action + '</div>' : '';
+      return '<section class="view"><div class="heading"><div><h1>' + html(title) + '</h1><p class="subtle">' + html(blurb) + '</p></div>' + head + '</div>' + actTabs() + notice + inner + '</section>';
     }
 
     function renderMarketer() {
@@ -1043,16 +1100,20 @@ export function boot(): void {
       return marketerPage("Drafts", "Pages drafted from a measured gap. Every one waits for your decision.", () => draftsView(state.drafts));
     }
     function renderClaims() {
-      return marketerPage("Claims", "What the answers assert about you, settled against your own pages.", () => claimsView(state.claims));
+      return marketerPage("Claims", "What the answers assert about you, settled against your own pages.", () => claimsView(state.claims),
+        button({ label: "Check claims now", kind: "primary", on: { "data-run-factcheck": true } }));
     }
     function renderBuying() {
-      return marketerPage("Buying", "Which products and retailers a buying answer actually named.", () => buyingView(state.buying));
+      return marketerPage("Buying", "Which products and retailers a buying answer actually named.", () => buyingView(state.buying),
+        button({ label: "Read buying answers", kind: "primary", on: { "data-run-shopping": true } }));
     }
     function renderConversations() {
-      return marketerPage("Conversations", "Real demand, and which of it nothing here measures.", () => conversationsView(state.conversations || []));
+      return marketerPage("Conversations", "Real demand, and which of it nothing here measures.", () => conversationsView(state.conversations || []),
+        button({ label: "Open questions", on: { "data-page": "prompts" } }));
     }
     function renderEntity() {
-      return marketerPage("Entity", "What corroborates this brand from outside its own control.", () => entityView(state.entity?.alignment || null, state.entity?.llms || null));
+      return marketerPage("Entity", "What corroborates this brand from outside its own control.", () => entityView(state.entity?.alignment || null, state.entity?.llms || null),
+        button({ label: "Probe the site now", kind: "primary", on: { "data-probe-signals": true } }));
     }
 
     function renderActionPlan() {
@@ -1280,7 +1341,7 @@ export function boot(): void {
         : '';
       const prom = overAppearances(score, score.prominence, 'Full marks means always named first.');
       const sent = overAppearances(score, score.sentiment, 'Full marks means always recommended.');
-      return '<div class="statgrid" style="--tile-columns:3">'
+      return '<div class="statgrid">'
         + stat("Presence", pct(score.presenceRate), presenceNote, score.presenceRate)
         + stat("Prominence", prom.value, score.prominence === null && !score.namedIn ? 'No answer gave a readable order' : prom.note, prom.fraction)
         + stat("Sentiment", sent.value, sent.note, sent.fraction)
@@ -1352,7 +1413,7 @@ export function boot(): void {
     function renderSchedule() {
       if (state.scheduleState === "idle") { loadSchedule(); }
       const schedule = state.schedule;
-      if (!schedule) return '<p class="subtle">Reading the schedule.</p>';
+      if (!schedule) return loading("the schedule", skeletonText(2));
       const options = ["daily", "weekly", "monthly"].map((value) => '<option value="' + value + '"' + (schedule.rule.frequency === value ? " selected" : "") + '>' + value.charAt(0).toUpperCase() + value.slice(1) + '</option>').join("");
       const markets = (state.regions || []).map((row) => '<label class="checkline"><input type="checkbox" name="regionIds" value="' + html(row.id) + '"' + (schedule.regionIds.indexOf(row.id) >= 0 ? " checked" : "") + '> ' + html(row.label) + '</label>').join("");
       const next = schedule.enabled && schedule.nextRunAt ? 'Next run ' + html(schedule.nextRunAt.slice(0, 16).replace("T", " ")) + ' UTC.' : 'Not scheduled.';
@@ -1395,16 +1456,22 @@ export function boot(): void {
       if (!run) return "";
       const done = run.answersCompleted + run.answersFailed;
       const pctDone = run.answersRequested ? Math.round(done / run.answersRequested * 100) : 0;
+      const since = Date.parse(run.startedAt || "");
+      // Until one answer lands there is no rate to read, so the run says it is
+      // still working that out rather than printing a number nothing supports.
+      const left = run.status === "cancelling" || !since ? null : remaining(done, run.answersRequested, Date.now() - since);
+      const eta = run.status === "cancelling" ? "" : (left || (done ? "" : "working out how long this takes"));
       const doing = run.currentPromptText
         ? 'Asking ' + html(run.currentModelId || "a model") + ': \u201c' + html(run.currentPromptText) + '\u201d'
         : "Starting up";
       return '<div class="liverun is-clickable" data-open-run="' + html(run.id) + '" role="button" tabindex="0"><div class="liverun-top"><strong>' + (run.status === "cancelling" ? "Stopping" : "Running") + '</strong>'
         + '<span>' + done + ' of ' + run.answersRequested + ' answers</span>'
+        + (eta ? '<span class="subtle">' + html(eta) + '</span>' : '')
         + '<span class="spacer"></span>'
         + (run.status === "cancelling"
           ? '<span class="subtle">Finishing the answer in flight.</span>'
           : button({ label: "Stop", tone: "danger", on: { "data-stop-run": true } }))
-        + '</div><div class="bar"><i style="width:' + pctDone + '%"></i></div>'
+        + '</div><div class="bar is-live"><i style="width:' + pctDone + '%"></i></div>'
         + '<p class="subtle">' + doing + '. Open this to watch each question and answer as it lands.</p></div>';
     }
 
@@ -1600,8 +1667,10 @@ export function boot(): void {
       }
       const done = run.answersCompleted + run.answersFailed;
       const share = run.answersRequested ? Math.round(done / run.answersRequested * 100) : 0;
-      return '<span>' + done + ' of ' + run.answersRequested + ' answers · ' + run.answersFailed + ' failed</span>'
-        + '<div class="bar"><i style="width:' + share + '%"></i></div>';
+      const since = Date.parse(run.startedAt || "");
+      const left = run.status === "cancelling" || !since ? null : remaining(done, run.answersRequested, Date.now() - since);
+      return '<span>' + done + ' of ' + run.answersRequested + ' answers · ' + run.answersFailed + ' failed' + (left ? ' · ' + html(left) : '') + '</span>'
+        + '<div class="bar is-live"><i style="width:' + share + '%"></i></div>';
     }
 
     function mentionChips(answer: AnswerRow) {
@@ -1645,7 +1714,7 @@ export function boot(): void {
     }
 
     function runFeedBody() {
-      if (state.runFeedState === "loading" && !state.runFeed.length) return '<p class="subtle">Reading what this run has archived so far.</p>';
+      if (state.runFeedState === "loading" && !state.runFeed.length) return loading("what this run has archived", skeletonText(3) + skeletonText(4));
       if (state.runFeedState === "error") return '<p class="subtle">Could not read this run.</p>';
       const cards = state.runFeed.map(runAnswerCard).join("");
       const flight = runInFlightCard();
@@ -1773,7 +1842,7 @@ export function boot(): void {
     }
 
     function renderBrief() {
-      if (state.briefState === "loading") return '<p class="subtle">Reading what the models credited here.</p>';
+      if (state.briefState === "loading") return loading("what the models credited", skeletonText(3));
       if (state.briefState === "error" || !state.brief) return '';
       const brief = state.brief;
       if (!brief.answers) return '<div class="brief"><p class="why">' + html(brief.verdict) + '</p></div>';
@@ -2369,7 +2438,7 @@ export function boot(): void {
           + tracked.map((row: any) => '<div class="mrow mcols-persona">'
             + '<div class="mname"><strong>' + html(row.label) + '</strong></div>'
             + '<span class="mcell">' + html(row.describedAs) + '</span>'
-            + '<span class="mcell">' + button({ label: "Stop asking", kind: "link", on: { "data-retire-persona": row.id } }) + '</span></div>').join("")
+            + '<span class="mcell">' + button({ label: "Stop asking", kind: "link", tone: "danger", on: { "data-retire-persona": row.id } }) + '</span></div>').join("")
           + '</div>'
         : '<p class="subtle">No persona yet, so every question is asked on nobody\u2019s behalf. That is a real answer and stays comparable with every run so far.</p>';
       return rows
@@ -2461,7 +2530,7 @@ export function boot(): void {
           + '<div class="panel-body">' + String(state.panel.body || "") + '</div></aside>';
       }
       const body = state.panelState === "loading"
-        ? '<p class="subtle">Reading the archived answers.</p>'
+        ? loading("the archived answers", skeletonText(4) + skeletonText(3))
         : state.panelState === "error"
           ? '<p class="subtle">Could not read the answers for this question.</p>'
           : !state.panelAnswers.length
@@ -2689,7 +2758,7 @@ export function boot(): void {
       if (state.demandState === "idle") { loadDemand(); }
       const head = '<section class="section-card"><div class="section-head"><div class="headmain"><h2>Prompt volume</h2>'
         + '<p class="subtle">How often anyone asked something like each tracked question, in an openly licensed corpus of real conversations.</p></div></div>';
-      if (state.demandState === "loading") return head + '<p class="subtle">Reading the corpus report.</p></section>';
+      if (state.demandState === "loading") return head + loading("the corpus report", skeletonTiles(3) + skeletonTable({ rows: 4 })) + '</section>';
       const report = state.demand;
       if (!report || !report.prompts) {
         // Not built is not zero demand, and the difference matters here.
@@ -2727,7 +2796,9 @@ export function boot(): void {
       if (state.rankPlanState === "idle") { loadRankingPlan(); }
       const heading = '<section class="view"><div class="heading"><div class="headmain"><h1>Rivals</h1>'
         + '<p class="subtle">Who the models name instead of you, and where. Counted once per answer however often a name appears in it, and how often anyone asks.</p></div>'
-        + '<div class="inline-actions">' + button({ label: "Full report", on: { "data-page": "answer-engine" } }) + runActionButton("Run prompts") + '</div></div>';
+        // A page that offers a run has to show the run, or starting one from
+        // here looked like nothing happened.
+        + '<div class="inline-actions">' + button({ label: "Full report", on: { "data-page": "answer-engine" } }) + runActionButton("Run prompts") + '</div></div>' + renderLiveRun();
       const view = dashboardView();
       if (!view) return heading + dashboardBody({ status: "loading" }) + '</section>';
       const wanted = ["trend", "named", "described", "sources"];
@@ -2789,7 +2860,7 @@ export function boot(): void {
 
       const digest = state.digest;
       const changed = state.digestState === "loading"
-        ? '<p class="subtle">Reading what changed.</p>'
+        ? loading("what changed", skeletonText(3))
         : digest && digest.lines.length
           ? '<p class="changed-headline">' + html(digest.headline) + '</p><ul class="protocol-list">'
             + digest.lines.map((line: string) => '<li>' + html(line) + '</li>').join("") + '</ul>'
@@ -2812,7 +2883,7 @@ export function boot(): void {
             + '<div class="mname"><strong>' + html(row.name) + '</strong><span class="mono">' + html(row.domain || "no domain") + '</span></div>'
             + '<span class="mcell ' + (row.appearances ? "" : "state-bad") + '">' + row.appearances + '</span>'
             + '<span class="mcell">' + pct(row.shareOfAnswers) + '</span>'
-            + '<span class="mcell">' + button({ label: "Stop tracking", kind: "link", on: { "data-retire-rival": declaredIdFor(row.name) } }) + '</span></div>').join("") + '</div>'
+            + '<span class="mcell">' + button({ label: "Stop tracking", kind: "link", tone: "danger", on: { "data-retire-rival": declaredIdFor(row.name) } }) + '</span></div>').join("") + '</div>'
         : '<p class="subtle">No rival is tracked yet. Adopt the ones your site and your answers already name, or add one by hand.</p>';
       return body
         + '<div class="inline-actions" style="margin-top:14px">' + button({ label: "Adopt the ones already named", on: { "data-adopt-rivals": true } }) + '</div>'
@@ -2850,7 +2921,8 @@ export function boot(): void {
     // Pages that stopped being cited, which is a claim no single run can make.
     function renderCitationHistory() {
       if (state.historyState === "idle") { loadHistory(); }
-      if (state.historyState !== "ready" || !state.history) return '<p class="subtle">Reading what each page did over time.</p>';
+      if (state.historyState === "error") return '<p class="subtle">Could not read what each page did over time.</p>';
+      if (state.historyState !== "ready" || !state.history) return loading("the citation history", skeletonTable({ rows: 4, columns: "minmax(0,1fr) 96px 110px 96px" }));
       const data = state.history as any;
       if (data.measurableRuns < 2) {
         return '<p class="subtle">' + data.measurableRuns + ' run(s) carried a citation. Two are needed before a page can be shown to have changed either way.</p>';
@@ -2872,7 +2944,8 @@ export function boot(): void {
 
     function renderCitedPages() {
       if (state.citedState === "idle") { loadCited(); }
-      if (state.citedState !== "ready" || !state.cited) return '<p class="subtle">Reading the archived sources.</p>';
+      if (state.citedState === "error") return '<p class="subtle">Could not read the archived sources.</p>';
+      if (state.citedState !== "ready" || !state.cited) return loading("the archived sources", skeletonTable({ rows: 5, columns: "minmax(0,1fr) 96px 82px 90px" }));
       const data = state.cited;
       if (data.unavailable) {
         return '<div class="warning-box">No answer carried a source, so there are no pages to analyse. That is a property of the models you ran, not evidence that nobody cites you.</div>';
@@ -2899,12 +2972,18 @@ export function boot(): void {
         ? '<ul class="protocol-list">' + data.openings.slice(0, 8).map((row: any) => '<li><strong>' + html(row.domain) + '</strong><br><span class="subtle">won "' + html(row.prompt) + '"</span><br><span class="mono">' + html(row.url) + '</span></li>').join("") + '</ul>'
         : '<p class="subtle">No page won a question you were absent from.</p>';
 
+      // Four tables stacked under one heading was five screens. What the page
+      // is for stays open; each table folds.
       return '<p class="subtle">' + data.answersWithCitations + ' of ' + data.answersConsidered + ' answers carried a source.</p>'
         + renderDecomposition(data.decomposition)
-        + '<h3 style="margin-top:16px">Pages of yours the models reached for</h3>' + own
-        + '<h3 style="margin-top:20px">Every domain cited</h3>' + rivals
-        + '<h3 style="margin-top:20px">Pages that won a question you are absent from</h3>' + openings
-        + '<h3 style="margin-top:20px">Pages that stopped being cited</h3>' + renderCitationHistory();
+        + foldCard("sources-own", "Pages of yours the models reached for",
+          "The pages that did the work, so you know which ones to keep.", own)
+        + foldCard("sources-domains", "Every domain cited",
+          "Who else is in the answer, and how often without you.", rivals)
+        + foldCard("sources-openings", "Pages that won a question you are absent from",
+          "A question somebody else answered. This is the shortest list to act on.", openings)
+        + foldCard("sources-history", "Pages that stopped being cited",
+          "A page cited before and not now, which is a change rather than a level.", renderCitationHistory());
     }
 
     function sharePct(value: any) { return value === null || value === undefined ? null : (Math.round(value * 1000) / 10) + "%"; }
@@ -2931,18 +3010,19 @@ export function boot(): void {
       if (act.notRequested) parts.push(act.notRequested + (act.notRequested === 1 ? ' was' : ' were') + ' never asked to');
       if (act.unknown) parts.push(act.unknown + ' could have searched and nothing says whether they did, which is unknown rather than a no');
       const band = parts.length > 1 ? '<p class="subtle">' + parts.join(', ') + '.</p>' : '';
-      return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>Searching, then being cited</h3>'
-        + '<p class="subtle">' + html(report.caveat) + '</p></div></div>'
-        + '<p>' + searched + '. ' + cited + ' ' + overall + '</p>'
-        + band
-        + '<p class="subtle">' + html(act.caveat) + '</p>' + taskCta("activation-unknown") + '</div>';
+      // The one thing this page decides, so it is the one card that stays open.
+      return section({ id: "sources-searching", title: "Searching, then being cited", blurb: report.caveat, wide: true,
+        body: '<p>' + searched + '. ' + cited + ' ' + overall + '</p>'
+          + band
+          + '<p class="subtle">' + html(act.caveat) + '</p>' + taskCta("activation-unknown") });
     }
 
     function renderStability(report: any) {
       if (!report) return '';
       if (!report.measured) {
-        return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>How much the answer moves</h3>'
-          + '<p class="subtle">Every question here was asked once, so nothing can be said about how much of an answer is the question and how much is the day.</p></div></div>' + taskCta("asked-once") + '</div>';
+        return foldCard("trust-stability", "How much the answer moves",
+          "Every question here was asked once, so nothing can be said about how much of an answer is the question and how much is the day.",
+          taskCta("asked-once"));
       }
       // The overlap is a mean over the questions that cited anything, and most
       // of these cited nothing. Printing it against the larger number claims a
@@ -2969,12 +3049,11 @@ export function boot(): void {
         + '<span class="mcell">' + row.sourcesAlways + ' of ' + row.sourcesEver + '</span>'
         + '<span class="mcell">' + (row.sourceOverlap === null ? 'No sources' : sharePct(row.sourceOverlap)) + '</span>'
         + '<span class="mcell subtle">' + (row.spanHours === null ? 'Unknown span' : row.spanHours < 1 ? 'Minutes apart' : row.spanHours < 48 ? Math.round(row.spanHours) + 'h apart' : Math.round(row.spanHours / 24) + 'd apart') + '</span></div>').join("");
-      return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>How much the answer moves</h3>'
-        + '<p class="subtle">' + html(report.caveat) + '</p></div></div>'
+      return foldCard("trust-stability", "How much the answer moves", report.caveat, ''
         + '<p>' + overall + ' ' + naming + '</p>'
         + '<div class="mtable"><div class="mhead mcols-stability"><span>Question</span><span>Named you</span><span>Sources every pass</span><span>Overlap</span><span>Span</span></div>'
         + rows + '</div>'
-        + (taskCta("naming-unstable") || taskCta("sources-turn-over") || taskCta("asked-once")) + '</div>';
+        + (taskCta("naming-unstable") || taskCta("sources-turn-over") || taskCta("asked-once")));
     }
 
     // One list, two places: the listing at the top of a page and the button
@@ -3038,9 +3117,9 @@ export function boot(): void {
     function renderPhrasing(report: any) {
       if (!report) return '';
       if (!report.measured) {
-        return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>How much the wording decides</h3>'
-          + '<p class="subtle">Every question here is written down one way, so nothing says whether you are visible for what was asked or for the exact words it was asked in. Add a rewording to a question and the next run compares them.</p></div></div>'
-          + '<div class="inline-actions">' + button({ label: "Open questions", kind: "quiet", on: { "data-page": "prompts" } }) + '</div></div>';
+        return foldCard("trust-phrasing", "How much the wording decides",
+          "Every question here is written down one way, so nothing says whether you are visible for what was asked or for the exact words it was asked in. Add a rewording to a question and the next run compares them.",
+          '<div class="inline-actions">' + button({ label: "Open questions", kind: "quiet", on: { "data-page": "prompts" } }) + '</div>');
       }
       const lead = report.spread === null
         ? 'No pair of wordings produced an answer to compare.'
@@ -3062,11 +3141,10 @@ export function boot(): void {
         + '<span class="mcell ' + (row.naming === "always" ? "state-ok" : row.naming === "split" ? "state-bad" : "subtle") + '">'
         + (row.naming === "always" ? "Every wording" : row.naming === "split" ? row.namedIn + ' of ' + row.wordings.length : "No wording") + '</span>'
         + '<span class="mcell">' + (row.spread === null ? "Not measurable" : sharePct(row.spread)) + '</span></div>').join("");
-      return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>How much the wording decides</h3>'
-        + '<p class="subtle">' + html(report.caveat) + '</p></div></div>'
+      return foldCard("trust-phrasing", "How much the wording decides", report.caveat, ''
         + '<p>' + html(lead + naming + named) + '</p>'
         + '<div class="mtable"><div class="mhead mcols-phrasing"><span>Question and its wordings</span><span>Named you</span><span>Widest gap</span></div>'
-        + rows + '</div></div>';
+        + rows + '</div>');
     }
 
     // The error rate every other figure here should be read against. It sits
@@ -3074,9 +3152,9 @@ export function boot(): void {
     function renderDecoys(report: any) {
       if (!report) return '';
       if (!report.decoys.length) {
-        return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>A brand that should never appear</h3>'
-          + '<p class="subtle">Nothing here measures how often this product finds a name that is not there. Declare a brand you know is irrelevant to these questions and every run carries it, so the share it turns up in becomes the figure yours has to beat.</p></div></div>'
-          + '<div class="inline-actions">' + button({ label: "Add a decoy", kind: "quiet", on: { "data-add-decoy": "true" } }) + '</div></div>';
+        return foldCard("trust-decoys", "A brand that should never appear",
+          "Nothing here measures how often this product finds a name that is not there. Declare a brand you know is irrelevant to these questions and every run carries it, so the share it turns up in becomes the figure yours has to beat.",
+          '<div class="inline-actions">' + button({ label: "Add a decoy", kind: "quiet", on: { "data-add-decoy": "true" } }) + '</div>');
       }
       const floor = sharePct(report.noiseFloor);
       const verdict = report.clearsFloor === null
@@ -3094,11 +3172,10 @@ export function boot(): void {
         + '<span class="mcell">' + row.namedIn + ' of ' + report.considered + '</span>'
         + '<span class="mcell ' + (row.namedIn ? "state-flag" : "state-ok") + '">' + (row.share === null ? '\u2014' : sharePct(row.share)) + '</span>'
         + '<span class="mcell">' + (row.high === null ? '\u2014' : sharePct(row.high)) + '</span></div>').join("");
-      return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>A brand that should never appear</h3>'
-        + '<p class="subtle">' + html(report.caveat) + '</p></div></div>'
+      return foldCard("trust-decoys", "A brand that should never appear", report.caveat, ''
         + '<p><strong>Anything under ' + floor + ' is not a finding.</strong> ' + html(verdict) + '</p>' + errors
         + '<div class="mtable"><div class="mhead mcols-decoy"><span>Decoy</span><span>Named in</span><span>Share</span><span>Consistent with up to</span></div>'
-        + rows + '</div>' + add + '</div>';
+        + rows + '</div>' + add);
     }
 
     // Published work decomposing what decides a recommendation put the product's
@@ -3107,8 +3184,8 @@ export function boot(): void {
     function renderVariance(report: any) {
       if (!report || !report.answers) return '';
       if (report.flat) {
-        return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>What decides whether you appear</h3>'
-          + '<p class="subtle">Every answer said the same thing about you, so nothing here varies and nothing can explain it. That is a finding about the brand rather than a gap in the measurement.</p></div></div></div>';
+        return foldCard("trust-variance", "What decides whether you appear",
+          "Every answer said the same thing about you, so nothing here varies and nothing can explain it. That is a finding about the brand rather than a gap in the measurement.", '');
       }
       const measured = report.factors.filter((row: any) => row.share !== null);
       if (!measured.length) return '';
@@ -3127,10 +3204,9 @@ export function boot(): void {
       const nothing = unvaried.length
         ? '<p class="subtle">' + unvaried.map((row: any) => html(row.label)).join(", ") + ' took one value, so nothing varied for them to explain.</p>'
         : '';
-      return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>What decides whether you appear</h3>'
-        + '<p class="subtle">' + html(report.caveat) + '</p></div></div>' + few
+      return foldCard("trust-variance", "What decides whether you appear", report.caveat, few
         + '<div class="mtable"><div class="mhead mcols-variance"><span>Factor</span><span>Values</span><span>Goes with</span><span></span></div>' + rows + '</div>'
-        + nothing + '</div>';
+        + nothing);
     }
 
     // The more volatile half of the score, and the half that had no stability
@@ -3138,9 +3214,9 @@ export function boot(): void {
     function renderFraming(report: any) {
       if (!report) return '';
       if (!report.measured) {
-        return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>How steady the framing is</h3>'
-          + '<p class="subtle">No question named you more than once under identical conditions, so nothing says whether the way you are described holds still. Published work puts framing flipping about '
-          + report.publishedRatio + ' times as often as whether you are named at all, so this is the half of the score most likely to be moving.</p></div></div></div>';
+        return foldCard("trust-framing", "How steady the framing is",
+          'No question named you more than once under identical conditions, so nothing says whether the way you are described holds still. Published work puts framing flipping about '
+          + report.publishedRatio + ' times as often as whether you are named at all, so this is the half of the score most likely to be moving.', '');
       }
       const lead = report.flipped
         ? report.flipped + ' of ' + report.measured + ' question(s) described you more than one way across passes that all named you.'
@@ -3152,10 +3228,9 @@ export function boot(): void {
         + '<span class="mono">' + html(row.modelId) + ' \u00b7 named in ' + row.named + ' passes</span></div>'
         + '<span class="mcell ' + (row.steady ? "state-ok" : "state-bad") + '">' + (row.steady ? "Steady" : row.framings.length + ' ways') + '</span>'
         + '<span class="mcell subtle">' + html(row.framings.join(", ")) + '</span></div>').join("");
-      return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>How steady the framing is</h3>'
-        + '<p class="subtle">' + html(report.caveat) + '</p></div></div>'
+      return foldCard("trust-framing", "How steady the framing is", report.caveat, ''
         + '<p>' + html(lead + against) + '</p>'
-        + '<div class="mtable"><div class="mhead mcols-framing"><span>Question</span><span>Framing</span><span>Called it</span></div>' + rows + '</div></div>';
+        + '<div class="mtable"><div class="mhead mcols-framing"><span>Question</span><span>Framing</span><span>Called it</span></div>' + rows + '</div>');
     }
 
     const TIERS = [["unstated", "Not said"], ["household", "Global household name"], ["mid_market", "Mid-market or regional"], ["niche", "Niche or small"]];
@@ -3186,9 +3261,9 @@ export function boot(): void {
         + TIERS.map(([value, label]) => '<option value="' + value + '"' + (report.tier === value ? " selected" : "") + '>' + html(label) + '</option>').join("")
         + '</select></label>';
       if (!report.baseline) {
-        return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>Against brands like yours</h3>'
-          + '<p class="subtle">A visibility figure on its own answers nothing. The same number is poor for a household name and ordinary for a brand nobody has heard of. Say which this is and the figure gets something to be read against.</p></div>'
-          + '<div class="inline-actions">' + picker + '</div></div></div>';
+        return foldCard("trust-tier", "Against brands like yours",
+          "A visibility figure on its own answers nothing. The same number is poor for a household name and ordinary for a brand nobody has heard of. Say which this is and the figure gets something to be read against.",
+          '', '<div class="inline-actions">' + picker + '</div>');
       }
       const yours = report.presence.rate === null
         ? 'Nothing answered yet, so there is nothing of yours to compare.'
@@ -3201,11 +3276,10 @@ export function boot(): void {
             ? ' That is clear of the ' + sharePct(report.baseline.rate) + ' brands of this kind tended to get.'
             : ' That falls short of the ' + sharePct(report.baseline.rate) + ' brands of this kind tended to get.';
       const ink = report.standing === "above" ? "state-ok" : report.standing === "below" ? "state-bad" : "state-flag";
-      return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>Against brands like yours</h3>'
-        + '<p class="subtle">' + html(report.caveat) + '</p></div><div class="inline-actions">' + picker + '</div></div>'
+      return foldCard("trust-tier", "Against brands like yours", report.caveat, ''
         + '<div class="countstrip"><span class="count ' + ink + '"><strong>' + (report.presence.rate === null ? '\u2014' : sharePct(report.presence.rate)) + '</strong>yours</span>'
         + '<span class="count"><strong>' + sharePct(report.baseline.rate) + '</strong>' + html(report.baseline.label) + '</span></div>'
-        + '<p>' + html(yours + verdict) + '</p></div>';
+        + '<p>' + html(yours + verdict) + '</p>', '<div class="inline-actions">' + picker + '</div>');
     }
 
     // Everything else here is an observation. This is the only thing that can
@@ -3324,11 +3398,10 @@ export function boot(): void {
       const blind = report.unconfirmed.length
         ? '<p class="subtle">' + report.unconfirmed.map((id: string) => html(id)).join(", ") + ' never named a version, so a change there cannot be seen. That is unconfirmed, not steady.</p>'
         : '';
-      return '<div class="section-card" style="margin-top:16px"><div class="section-head"><div><h3>Was it you, or did the model ship</h3>'
-        + '<p class="subtle">' + html(report.caveat) + '</p></div></div>'
+      return foldCard("trust-versions", "Was it you, or did the model ship", report.caveat, ''
         + '<p>' + html(lead) + '</p>'
         + (rows ? '<div class="mtable"><div class="mhead mcols-version"><span>Change</span><span>Presence moved</span><span>Reading</span></div>' + rows + '</div>' : '')
-        + blind + '</div>';
+        + blind);
     }
 
     // One shell for the three pages built on the same archive: the loading,
@@ -3338,11 +3411,11 @@ export function boot(): void {
       if (!selected) return '<section class="view"><div class="empty"><div class="empty-copy"><h2>Select a project first</h2></div></div></section>';
       if (state.answerEngineState === "idle") { loadAnswerEngine(); loadLiveRun(); }
       if (state.answerEngineState !== "ready") {
-        return '<section class="view"><div class="heading"><div><h1>Answer engine</h1><p class="subtle">How the models answer the questions your buyers ask.</p></div></div><div class="empty"><div class="empty-copy"><h2>' + (state.answerEngineState === "error" ? "Could not read the answers" : "Reading the archived answers") + '</h2></div></div></section>';
+        return '<section class="view"><div class="heading"><div><h1>' + html(title) + '</h1><p class="subtle">' + html(subtitle) + '</p></div></div><div class="empty"><div class="empty-copy"><h2>' + (state.answerEngineState === "error" ? "Could not read the answers" : "Reading the archived answers") + '</h2></div></div></section>';
       }
       const data = state.answerEngine;
       if (!data || data.answers === 0) {
-        return '<section class="view"><div class="heading"><div><h1>Answer engine</h1><p class="subtle">How the models answer the questions your buyers ask.</p></div><div class="inline-actions">' + button({ label: "Set up prompts", kind: "primary", on: { "data-page": "prompts" } }) + '</div></div>'
+        return '<section class="view"><div class="heading"><div><h1>' + html(title) + '</h1><p class="subtle">' + html(subtitle) + '</p></div><div class="inline-actions">' + button({ label: "Set up prompts", kind: "primary", on: { "data-page": "prompts" } }) + '</div></div>'
           + '<div class="empty"><div class="empty-copy"><h2>No answers yet</h2><p class="subtle">Generate a prompt set, activate the questions worth tracking, then run them. Every number on this page traces back to an archived answer.</p></div></div></section>';
       }
       const weights = data.weights || { prominenceFloor: 0, sentimentFloor: 0 };
@@ -3355,7 +3428,26 @@ export function boot(): void {
       const retryButton = state.lastRun && state.lastRun.answersFailed && !state.liveRun
         ? '<div class="inline-actions">' + button({ label: (state.promptRunState === "running" ? "Asking\u2026" : "Ask the " + state.lastRun.answersFailed + " that failed again"), kind: "quiet", disabled: state.promptRunState === "running", on: { "data-retry-run": state.lastRun.id } }) + '</div>'
         : '';
-      const failedNote = data.answersFailed ? '<div class="warning-box">' + data.answersFailed + ' answer(s) failed and are excluded. They are not counted as answers that did not name you.' + taskCta("answers-failed") + retryButton + '</div>' : '';
+      // Two codes can share one wording, and printing both reads as a bug.
+      const byWords = new Map<string, { count: number; models: string[] }>();
+      for (const reason of data.failureReasons || []) {
+        if (!reason.count) continue;
+        const held = byWords.get(reason.label) || { count: 0, models: [] };
+        held.count += reason.count;
+        for (const name of reason.models || []) {
+          if (!held.models.includes(name)) held.models.push(name);
+        }
+        byWords.set(reason.label, held);
+      }
+      const causes = [...byWords.entries()].map(([label, held]) => ({ label, ...held })).sort((left, right) => right.count - left.count);
+      const causeList = causes.length
+        ? '<details class="technical-details"><summary>What failed, and why (' + causes.length + ')</summary><ul class="protocol-list">'
+          + causes.map((reason) => '<li>' + reason.count + ' to ' + html(reason.label)
+            + (reason.models.length ? '<br><span class="subtle">' + html(reason.models.slice(0, 3).join(", ")) + '</span>' : '')
+            + '</li>').join("")
+          + '</ul></details>'
+        : '';
+      const failedNote = data.answersFailed ? '<div class="warning-box">' + data.answersFailed + ' answer(s) failed and are excluded. They are not counted as answers that did not name you.' + causeList + taskCta("answers-failed") + retryButton + '</div>' : '';
       // A question you retired is one you said is not your business. Its old
       // answers stay archived and stop supplying the figures, and the reader
       // is told rather than left wondering where the count went.
@@ -3370,8 +3462,9 @@ export function boot(): void {
         ? '<div class="warning-box"><strong>What the model said it named, checked against what it wrote.</strong> '
           + corr.measured + ' of ' + corr.reported + ' mentions were found in the answer and their position measured from it'
           + (corr.absentFromAnswer ? ', and ' + corr.absentFromAnswer + ' named nothing the answer actually contains' : '')
-          + '. ' + (corr.quotesChecked ? corr.quotesFound + ' of ' + corr.quotesChecked + ' quoted lines are really in the answer. ' : '')
-          + html(corr.caveat) + taskCta("quotes-not-found") + taskCta("mentions-absent") + '</div>'
+          + '. ' + (corr.quotesChecked ? corr.quotesFound + ' of ' + corr.quotesChecked + ' quoted lines are really in the answer.' : '')
+          + '<details class="technical-details"><summary>What that does and does not prove</summary><p>' + html(corr.caveat) + '</p></details>'
+          + taskCta("quotes-not-found") + taskCta("mentions-absent") + '</div>'
         : '';
       // Naming the cause matters more than naming the symptom. Telling somebody
       // to get a provider with web search is wrong when they have one, switched off.
@@ -3388,53 +3481,82 @@ export function boot(): void {
         ? '<div class="warning-box">No answer carried a citation, so there are no sources to analyse. That is a property of the models you ran, not evidence that nobody cites you. '
           + html(citationCause) + citationFix + '</div>'
         : '';
+      // An action stays where it can be taken. An explanation folds, because
+      // five amber boxes above a page is two screens before any content.
+      const notes = [identityNote, failedNote, retiredNote, citationNote, corroborationNote].filter(Boolean);
+      const acts = notes.filter((note) => note.indexOf("task-cta") >= 0 || note.indexOf("data-retry-run") >= 0);
+      const explains = notes.filter((note) => acts.indexOf(note) < 0);
+      const caveats = explains.length
+        ? '<details class="caveats" data-fold="answer-caveats"' + (state.panelOpen.indexOf("answer-caveats") >= 0 ? " open" : "")
+          + '><summary>What these numbers do and do not cover (' + explains.length + ')</summary>' + explains.join("") + '</details>'
+        : '';
       return '<section class="view"><div class="heading"><div><h1>' + html(title) + '</h1>'
-        + '<p class="subtle">' + html(subtitle) + '</p></div>' + runActionButton("Ask the questions") + '</div>'
+        + '<p class="subtle">' + html(subtitle) + '</p></div><div class="inline-actions">' + runActionButton("Ask the questions") + '</div></div>'
         + renderLiveRun()
-        + identityNote + failedNote + retiredNote + citationNote + corroborationNote
+        + acts.join("") + caveats
         + body(data, { objective, weights })
         + '</section>';
     }
 
+    // What the page answers stays open. The eight cards that explain it fold.
+    const SOURCE_LEAD = ["source-pages", "source-uptake"];
+
     function renderAnswerEngine() {
-      return answerPage("Sources", "What the answers cited, and whether the answer used it. A citation is an address until the page behind it is read.", (data) => ''
-        + '<section class="section-card"><div class="section-head"><div><h2>Sources</h2><p class="subtle">A domain says you are cited. A page says which one to write more of.</p></div></div>' + renderCitedPages() + '</section>'
-        + '<section class="section-card"><div class="section-head"><div><h2>What people search for</h2><p class="subtle">Search Console, joined to the questions you track. Not AI prompt volume, but real demand for the same subject.</p></div></div>' + renderSearchDemand() + '</section>'
-        + '<section class="section-card"><div class="section-head"><div><h2>Who arrived from an assistant</h2><p class="subtle">Analytics sessions by referring assistant. Being named is one claim; somebody arriving because of it is another.</p></div></div>' + renderReferrals() + '</section>'
-        + '<section class="section-card"><div class="section-head"><div><h2>Cited, or actually used</h2><p class="subtle">A citation says a page was listed. This says how much of the answer came from it. A page cited and used for nothing is the finding worth having.</p></div></div>' + renderUptake() + '</section>'
-        + '<section class="section-card"><div class="section-head"><div><h2>Who gets the credit</h2><p class="subtle">Where a page was cited against how much of the answer it actually accounts for. A page credited first that the answer took nothing from was credited for something other than its content.</p></div></div>' + renderCredit() + '</section>'
-        + '<section class="section-card"><div class="section-head"><div><h2>What kind of page gets cited</h2><p class="subtle">The ranked best-of listicle was the most cited format in published work, at about a fifth of everything. What wins here is a different question, and this is the answer to it.</p></div></div>' + renderKinds() + '</section>'
-        + '<section class="section-card"><div class="section-head"><div><h2>How the pages that beat you are built</h2><p class="subtle">The same facts rendered as structure instead of prose were measured to take citation credit from the page that stayed prose. This is the one lever here with a causal test behind it.</p></div></div>' + renderShape() + '</section>'
-        + '<section class="section-card"><div class="section-head"><div><h2>Who supplies these answers</h2><p class="subtle">A category where a handful of domains account for most citations is one where getting onto those domains is the whole game. A long tail is one where a new page can still get in.</p></div></div>' + renderConcentration() + '</section>'
-        + '<section class="section-card"><div class="section-head"><div><h2>Someone else is working on this answer</h2><p class="subtle">A document rewritten to match what an engine likes to cite stays factually consistent with the original, so nothing that checks facts will catch one. What is left is shape.</p></div></div>' + renderInterference() + '</section>'
-        + '<section class="section-card"><div class="section-head"><div><h2>Pages the models read</h2><p class="subtle">Each cited page, fetched and read back: who is on it, in what order, and whether you are. A page cited on a question you lose, without you on it, is the most specific thing here.</p></div></div>' + renderOutreach() + '</section>'
+      const card = (id: string, title: string, blurb: string, body: string) => section({
+        id, title, blurb, body, wide: true,
+        ...(SOURCE_LEAD.includes(id) ? {} : { folded: !state.panelOpen.includes(id) }),
+      });
+      return answerPage("Sources", "What the answers cited, and whether the answer used it. A citation is an address until the page behind it is read.", () => ''
+        + card("source-pages", "Sources", "A domain says you are cited. A page says which one to write more of.", renderCitedPages())
+        + card("source-uptake", "Cited, or actually used", "A citation says a page was listed. This says how much of the answer came from it. A page cited and used for nothing is the finding worth having.", renderUptake())
+        + card("source-outreach", "Pages the models read", "Each cited page, fetched and read back: who is on it, in what order, and whether you are. A page cited on a question you lose, without you on it, is the most specific thing here.", renderOutreach())
+        + card("source-demand", "What people search for", "Search Console, joined to the questions you track. Not AI prompt volume, but real demand for the same subject.", renderSearchDemand())
+        + card("source-referrals", "Who arrived from an assistant", "Analytics sessions by referring assistant. Being named is one claim; somebody arriving because of it is another.", renderReferrals())
+        + card("source-credit", "Who gets the credit", "Where a page was cited against how much of the answer it actually accounts for. A page credited first that the answer took nothing from was credited for something other than its content.", renderCredit())
+        + card("source-kinds", "What kind of page gets cited", "The ranked best-of listicle was the most cited format in published work, at about a fifth of everything. What wins here is a different question, and this is the answer to it.", renderKinds())
+        + card("source-shape", "How the pages that beat you are built", "The same facts rendered as structure instead of prose were measured to take citation credit from the page that stayed prose. This is the one lever here with a causal test behind it.", renderShape())
+        + card("source-concentration", "Who supplies these answers", "A category where a handful of domains account for most citations is one where getting onto those domains is the whole game. A long tail is one where a new page can still get in.", renderConcentration())
+        + card("source-interference", "Someone else is working on this answer", "A document rewritten to match what an engine likes to cite stays factually consistent with the original, so nothing that checks facts will catch one. What is left is shape.", renderInterference())
       );
     }
 
     /** The detail behind the board: who was named, under which topic, and
      * which questions never named you at all. */
+    // What the page answers stays open. The eight cards that explain it fold.
+    const RIVAL_LEAD = ["rival-plan", "rival-leaderboard"];
+
     function rivalDetail() {
       const data = state.answerEngine;
       if (state.answerEngineState !== "ready" || !data || !data.answers) return '';
+      const card = (id: string, title: string, blurb: string, body: string) => section({
+        id, title, blurb, body, wide: true,
+        ...(RIVAL_LEAD.includes(id) ? {} : { folded: !state.panelOpen.includes(id) }),
+      });
       return ''
-        + '<section class="section-card"><div class="section-head"><div><h2>What would move this</h2><p class="subtle">Read off the archived answers, strongest lever first. None of it is an opinion about your marketing.</p></div></div>' + renderRankingPlan() + '</section>'
-        + '<section class="section-card"><div class="section-head"><div><h2>Competitors named in the answers</h2><p class="subtle">Organisations the assistants named while answering your questions. Not the assistants themselves. Ranked by how many answers named them, then by how early.</p></div></div>' + renderLeaderboard(data.leaderboard) + '</section>'
-        + '<section class="section-card"><div class="section-head"><div><h2>Rivals you name</h2><p class="subtle">Name a competitor here and it is tracked whether or not an answer mentions it. A tracked rival nobody named reads as zero, which is a finding; leaving it out would hide it.</p></div></div>' + renderRivals(data) + '</section>'
-        + '<div class="section-head" style="margin-top:24px"><div><h2>Topics, weakest first</h2><p class="subtle">Where you are losing, in the order worth fixing. Every question opens its answers.</p></div></div>'
-        + renderTopicRows(data.topics)
-        + '<section class="section-card"><div class="section-head"><div><h2>Questions you never appear in</h2><p class="subtle">Answered, and you were not named once. Open one to read what the models credited the winners with, which is the standard that question is answered against.</p></div></div>' + renderAbsent(data.absentFrom) + taskCta("absent-questions") + '</section>'
-        + '<section class="section-card"><div class="section-head"><div><h2>Movement</h2><p class="subtle">One point per run. A run where everything failed is left out rather than drawn as a drop.</p></div></div>' + renderPromptTrend(data.trend) + '</section>'
-        + '<section class="section-card"><div class="section-head"><div><h2>By market</h2><p class="subtle">The same questions, asked for a different buyer.</p></div></div>' + renderRegionRows(data.byRegion, data.regionCaveat) + '</section>'
-        + '<section class="section-card"><div class="section-head"><div><h2>By persona</h2><p class="subtle">The same questions, asked on behalf of someone else. A market says where a buyer is; a persona says what they are, which moves the answer further.</p></div></div>' + renderPersonaRows(data.byPersona) + '</section>'
-        + '<section class="section-card"><div class="section-head"><div><h2>Who is asking</h2><p class="subtle">Add a persona and every run asks on their behalf as well.</p></div></div>' + renderPersonas() + '</section>'
-        + '<section class="section-card"><div class="section-head"><div><h2>By AI assistant</h2><p class="subtle">The models you picked in Choose models, each answering the same questions. These are who was asked, not who you compete with.</p></div></div>' + renderModelRows(data.byModel) + '</section>'
-        ;
+        + card("rival-plan", "What would move this", "Read off the archived answers, strongest lever first. None of it is an opinion about your marketing.", renderRankingPlan())
+        + card("rival-leaderboard", "Competitors named in the answers", "Organisations the assistants named while answering your questions. Not the assistants themselves. Ranked by how many answers named them, then by how early.", renderLeaderboard(data.leaderboard))
+        + card("rival-absent", "Questions you never appear in", "Answered, and you were not named once. Open one to read what the models credited the winners with, which is the standard that question is answered against.", renderAbsent(data.absentFrom) + taskCta("absent-questions"))
+        + card("rival-topics", "Topics, weakest first", "Where you are losing, in the order worth fixing. Every question opens its answers.", renderTopicRows(data.topics))
+        + card("rival-named", "Rivals you name", "Name a competitor here and it is tracked whether or not an answer mentions it. A tracked rival nobody named reads as zero, which is a finding; leaving it out would hide it.", renderRivals(data))
+        + card("rival-trend", "Movement", "One point per run. A run where everything failed is left out rather than drawn as a drop.", renderPromptTrend(data.trend))
+        + card("rival-region", "By market", "The same questions, asked for a different buyer.", renderRegionRows(data.byRegion, data.regionCaveat))
+        + card("rival-persona", "By persona", "The same questions, asked on behalf of someone else. A market says where a buyer is; a persona says what they are, which moves the answer further.", renderPersonaRows(data.byPersona))
+        + card("rival-personas", "Who is asking", "Add a persona and every run asks on their behalf as well.", renderPersonas())
+        + card("rival-model", "By AI assistant", "The models you picked in Choose models, each answering the same questions. These are who was asked, not who you compete with.", renderModelRows(data.byModel));
+    }
+
+    // Cards nested inside a card, none of which could fold. Each is a card of
+    // its own now, on the module that already knows how to fold one.
+    function foldCard(id: string, title: string, blurb: string, body: string, aside = "") {
+      return section({ id, title, blurb, body, aside, wide: true, folded: state.panelOpen.indexOf(id) < 0 });
     }
 
     function renderTrustPage() {
       return answerPage("Trust", "The instrument rather than the brand. Every figure on the other pages is worth what this page says it is.", (data, page) => ''
-        + '<section class="section-card"><div class="section-head"><div><h2>How the score is built</h2><p class="subtle">Presence scaled by where you appear and how you are described.</p></div></div>'
-        + renderScoreBreakdown(data.overall)
+        + section({ id: "trust-score", title: "How the score is built", wide: true,
+          blurb: "Presence scaled by where you appear and how you are described.",
+          body: renderScoreBreakdown(data.overall)
+            + '<details class="technical-details"><summary>The formula, and the judgement in it</summary>' + page.objective + '<p class="subtle">score = presence \u00d7 (' + page.weights.prominenceFloor + ' + ' + (1 - page.weights.prominenceFloor).toFixed(1) + ' \u00d7 prominence) \u00d7 (' + page.weights.sentimentFloor + ' + ' + (1 - page.weights.sentimentFloor).toFixed(1) + ' \u00d7 sentiment) \u00d7 100.</p><p class="subtle">The two floors are a judgement, not a measurement: being named late and grudgingly is still better than not being named, so prominence and sentiment scale presence rather than replacing it. Every component above is reported separately so you can ignore the composite entirely.</p></details>' })
         + renderTier(data.tier)
         + renderVersions(data.versions)
         + renderDecoys(data.decoys)
@@ -3443,10 +3565,9 @@ export function boot(): void {
         + renderStability(data.stability)
         + renderPhrasing(data.phrasing)
         + renderFraming(data.framing)
-        + '<details class="technical-details"><summary>The formula, and the judgement in it</summary>' + page.objective + '<p class="subtle">score = presence × (' + page.weights.prominenceFloor + ' + ' + (1 - page.weights.prominenceFloor).toFixed(1) + ' × prominence) × (' + page.weights.sentimentFloor + ' + ' + (1 - page.weights.sentimentFloor).toFixed(1) + ' × sentiment) × 100.</p><p class="subtle">The two floors are a judgement, not a measurement: being named late and grudgingly is still better than not being named, so prominence and sentiment scale presence rather than replacing it. Every component above is reported separately so you can ignore the composite entirely.</p></details></section>'
-        + '<section class="section-card"><div class="section-head"><div><h2>Check the machine</h2><p class="subtle">Every figure here rests on a model classifying what another model wrote. Judge a few yourself and the agreement rate becomes the confidence in the whole column.</p></div></div>' + renderHumanCheck() + '</section>'
-        + '<section class="section-card"><div class="section-head"><div><h2>Did your change do anything</h2><p class="subtle">Everything else here watches. This tests. Change something, leave a comparable set of questions alone, and whatever moved for both is subtracted rather than claimed.</p></div></div>' + renderExperiments() + '</section>'
-        + '<section class="section-card"><div class="section-head"><div><h2>Keep it running</h2><p class="subtle">A tracker that is run by hand is a snapshot.</p></div></div>' + renderSchedule() + '</section>'
+        + foldCard("trust-check", "Check the machine", "Every figure here rests on a model classifying what another model wrote. Judge a few yourself and the agreement rate becomes the confidence in the whole column.", renderHumanCheck())
+        + foldCard("trust-experiments", "Did your change do anything", "Everything else here watches. This tests. Change something, leave a comparable set of questions alone, and whatever moved for both is subtracted rather than claimed.", renderExperiments())
+        + foldCard("trust-schedule", "Keep it running", "A tracker that is run by hand is a snapshot.", renderSchedule())
       );
     }
 
@@ -3644,7 +3765,7 @@ export function boot(): void {
       const measuring = tracked.filter((prompt) => prompt.measuresVisibility).length;
       const answered = tracked.filter((prompt) => { const row = standings.get(prompt.id); return Boolean(row) && row.score.answers > 0; }).length;
       const forecast = runForecast(tracked.length);
-      return '<div class="statgrid" style="--tile-columns:6">'
+      return '<div class="statgrid">'
         + stat("Tracked", String(tracked.length), tracked.length ? "asked on every run" : "nothing is being asked", live.length ? tracked.length / live.length : null)
         + stat("Needs review", String(proposed), proposed ? "proposed, never asked until tracked" : "nothing waiting on you", null)
         + stat("Topics", String(liveTopics(set).length),
@@ -3672,8 +3793,12 @@ export function boot(): void {
       const note = thin.length
         ? thin.length + ' topic(s) have nothing tracked: ' + thin.map((topic) => html(topic.name)).join(", ") + '.'
         : 'Every topic has at least one tracked question.';
-      return '<section class="section-card"><div class="section-head"><div><h2>Coverage</h2><p class="subtle">A buyer arrives five ways. An intent with nothing tracked is a blind spot, not a zero.</p></div></div>'
-        + '<div class="coverage">' + chips + '</div><p class="subtle">' + note + '</p></section>';
+      return section({
+        id: "prompt-coverage", title: "Coverage", wide: true,
+        blurb: "A buyer arrives five ways. An intent with nothing tracked is a blind spot, not a zero.",
+        body: '<div class="coverage">' + chips + '</div><p class="subtle">' + note + '</p>',
+        folded: state.panelOpen.indexOf("prompt-coverage") < 0,
+      });
     }
 
     function promptToolbar(set: TopicSetShape, shown: number) {
@@ -3712,7 +3837,7 @@ export function boot(): void {
       const priority = priorityOf(prompt.id);
       const answers = standing ? standing.score.answers : 0;
       const label = answers
-        ? button({ label: prompt.text, kind: "link", on: { "data-evidence": prompt.id, "data-evidence-title": prompt.text } })
+        ? button({ label: prompt.text, kind: "title", on: { "data-evidence": prompt.id, "data-evidence-title": prompt.text } })
         : html(prompt.text);
       const scoreClass = !standing || standing.score.score === null ? "" : standing.score.score > 0 ? "state-ok" : "state-bad";
       return '<div class="mrow mcols-promptrow">'
@@ -3725,7 +3850,7 @@ export function boot(): void {
         + (prompt.variantOf ? '<span class="subtle">a rewording</span>' : button({ label: "Reword it", kind: "link", on: { "data-reword-prompt": prompt.id, "data-reword-text": prompt.text } }))
         + '</span>'
         + '<span class="mcell">' + (prompt.status === "active"
-          ? button({ label: "Stop tracking", kind: "link", on: { "data-retire-prompt": prompt.id } })
+          ? button({ label: "Stop tracking", kind: "link", tone: "danger", on: { "data-retire-prompt": prompt.id } })
           : button({ label: "Track it", kind: "link", on: { "data-activate-prompt": prompt.id } })) + '</span></div>';
     }
 
@@ -3763,15 +3888,27 @@ export function boot(): void {
       if (bulk) bulk.innerHTML = promptBulkInner();
     }
 
-    function promptAddForms(set: TopicSetShape) {
+    function promptAddForms(set: TopicSetShape, folds = true) {
       if (!set.topics.length) return '';
       const topics = set.topics.map((topic) => '<option value="' + html(topic.id) + '">' + html(topic.name) + '</option>').join("");
       const intents = PROMPT_INTENTS.map((intent) => '<option value="' + intent + '">' + intentLabel(intent) + '</option>').join("");
-      return '<section class="section-card"><div class="section-head"><div><h2>Add your own</h2><p class="subtle">A question you know buyers ask. It starts tracked.</p></div></div>'
-        + '<form id="add-prompt-form" class="inline-form"><select name="topicId" aria-label="Topic">' + topics + '</select><input name="text" type="text" placeholder="best stock screener for indian markets" aria-label="Question"><select name="intent" aria-label="Intent">' + intents + '</select>' + button({ label: "Add", submit: true }) + '</form>'
+      const body = ''
+        + '<form id="add-prompt-form" class="inline-form"><select name="topicId" aria-label="Topic">' + topics + '</select><input name="text" type="text" value="' + html(state.promptDraft.text) + '" placeholder="best stock screener for indian markets" aria-label="Question"><select name="intent" aria-label="Intent">' + intents + '</select>' + button({ label: "Add", submit: true }) + '</form>'
         + '<details class="technical-details" style="margin-top:14px"><summary>Paste a list</summary>'
         + '<form id="bulk-prompt-form" class="inline-form"><select name="topicId" aria-label="Topic for the pasted questions">' + topics + '</select><select name="intent" aria-label="Intent for the pasted questions">' + intents + '</select><textarea name="text" rows="6" placeholder="One question per line" aria-label="Questions, one per line"></textarea>' + button({ label: "Add them all", submit: true }) + '</form>'
-        + '<p class="subtle">One question per line, all under the same topic and intent. A question already in the set is skipped rather than added twice.</p></details></section>';
+        + '<p class="subtle">One question per line, all under the same topic and intent. A question already in the set is skipped rather than added twice.</p></details>';
+      return section({
+        id: "prompt-add", title: "Add your own", body, wide: true,
+        blurb: "A question you know buyers ask. It starts tracked.",
+        ...(folds ? { folded: state.panelOpen.indexOf("prompt-add") < 0 } : {}),
+      });
+    }
+
+    /** The first paint, before any read has landed. The page's own name is
+     * known without asking, so only the figures and the table are shadows. */
+    function bootShape() {
+      return '<section class="view"><div class="heading"><div><h1>' + html(DESTINATIONS.find((row) => row.page === state.page || (row.also || []).includes(state.page))?.label || CONFIG.productName) + '</h1></div></div>'
+        + loading("this page", skeletonTiles(4) + skeletonCard({ rows: 5 })) + '</section>';
     }
 
     function renderPrompts() {
@@ -3783,7 +3920,14 @@ export function boot(): void {
       if (state.scheduleState === "idle") { loadSchedule(); }
       if (state.priorityState === "idle") { loadPriority(); }
       if (state.topicState !== "ready") {
-        return '<section class="view"><div class="heading"><div><h1>Questions</h1><p class="subtle">The questions your buyers ask.</p></div></div><div class="empty"><div class="empty-copy"><h2>' + (state.topicState === "error" ? "Could not read the prompt set" : "Loading prompts") + '</h2></div></div></section>';
+        const head = '<section class="view"><div class="heading"><div><h1>Questions</h1><p class="subtle">The questions your buyers ask.</p></div></div>';
+        // An error is a sentence. A wait is the shape of what is coming, which
+        // holds the space the figures and the table are about to take.
+        if (state.topicState === "error") {
+          return head + '<div class="empty"><div class="empty-copy"><h2>Could not read the prompt set</h2></div></div></section>';
+        }
+        return head + loading("the questions", skeletonTiles(6)
+          + skeletonCard({ rows: 6, columns: "minmax(0,1fr) 96px 82px 96px 104px" })) + '</section>';
       }
       const set = state.topicSet || { topics: [], prompts: [] };
       const notice = state.promptNotice.text ? '<div class="' + (state.promptNotice.kind === "error" ? "warning-box" : "success-box") + '">' + html(state.promptNotice.text) + '</div>' : '';
@@ -3792,7 +3936,7 @@ export function boot(): void {
       const head = '<section class="view"><div class="heading"><div><h1>Questions</h1><p class="subtle">The questions buyers type, grouped by topic. Every other number in this tool is these questions, asked and archived.</p></div><div class="inline-actions">' + button({ label: (state.promptRunState === "generating" ? "Proposing…" : "Propose a set"), on: { "data-generate-prompts": true } }) + '' + runActionButton("Run all " + active, active > 0) + '</div></div>' + notice + renderLiveRun();
       if (!live.length) {
         // Retiring the last question must not remove the only way to add one.
-        return head + '<div class="empty"><div class="empty-copy"><h2>Nothing is being asked</h2><p class="subtle">Propose a set and a model will suggest the questions buyers ask about what you do, grouped into topics. Nothing runs until you have read them and chosen which to track, because what buyers ask is not something this tool can observe.</p></div></div>' + promptAddForms(set) + '</section>';
+        return head + '<div class="empty"><div class="empty-copy"><h2>Nothing is being asked</h2><p class="subtle">Propose a set and a model will suggest the questions buyers ask about what you do, grouped into topics. Nothing runs until you have read them and chosen which to track, because what buyers ask is not something this tool can observe.</p></div></div>' + promptAddForms(set, false) + '</section>';
       }
       const standings = promptStandings();
       const rows = filteredPrompts(set, standings);
@@ -3805,12 +3949,19 @@ export function boot(): void {
       const blind = set.generatedWithoutFacts
         ? '<div class="warning-box"><strong>These were proposed without anything established about the business.</strong> The site read returned no description and no category, so the model had the brand name and the domain and guessed from them. Read every one before tracking it, and say what the company does on Setup to propose a better set.</div>'
         : '';
+      // The same rule the answer pages use: what can be acted on stays, what
+      // only explains folds into one line above the list.
+      const said = [blind, grounding(set), review].filter(Boolean);
+      const doable = said.filter((note) => note.indexOf("<button") >= 0);
+      const toldOnly = said.filter((note) => doable.indexOf(note) < 0);
+      const folded = toldOnly.length
+        ? '<details class="caveats" data-fold="prompt-caveats"' + (state.panelOpen.indexOf("prompt-caveats") >= 0 ? " open" : "")
+          + '><summary>How this set was written (' + toldOnly.length + ')</summary>' + toldOnly.join("") + '</details>'
+        : '';
       return head
         + renderPromptStats(set, standings)
+        + doable.join("") + folded
         + renderPromptCoverage(set)
-        + blind
-        + grounding(set)
-        + review
         + promptToolbar(set, rows.length)
         + '<div class="prompt-bulk">' + promptBulkInner() + '</div>'
         + '<div class="prompt-results">' + renderPromptGroups(set, rows, standings, (topicStandings() as any)) + '</div>'
@@ -3834,12 +3985,6 @@ export function boot(): void {
       if (held.corpusQuestions) parts.push(held.corpusQuestions + ' past conversation(s)');
       return '<div class="success-box"><strong>Grounded in ' + held.observed + ' question(s) people really asked</strong>, drawn from ' + parts.join(' and ')
         + '. Those are search and conversation records, not a measure of how often anyone asks an assistant, and a subject missing from them is not a subject nobody asks about.</div>';
-    }
-
-    function resultsSwitch(active: any) {
-      const has = state.recognitionRuns.length > 0;
-      const tab = (page: any, label: any, enabled: any) => '<button type="button" class="filter ' + (active === page ? "active" : "") + '" data-page="' + page + '"' + (enabled ? "" : " disabled") + '>' + label + '</button>';
-      return '<div class="toolbar">' + tab("reports", "Report", has) + tab("recognition", "Run detail", true) + '</div>';
     }
 
     function renderNextSteps(configuration: any) {
@@ -3900,6 +4045,20 @@ export function boot(): void {
         state.enginesState = "ready";
       } catch (error) {
         state.enginesState = "error";
+      }
+      render();
+    }
+
+    // Asked for by name, because reaching into a signed-in browser is not
+    // something opening a settings page should do on the reader's behalf.
+    async function probeEngines(button: any) {
+      if (!state.selectedId) return;
+      try {
+        state.engines = await runAction(button, { loading: "Looking\u2026", success: "Found", error: "Not found" },
+          () => request("/api/projects/" + encodeURIComponent(state.selectedId) + "/engines?probe=true"));
+        state.enginesState = "ready";
+      } catch (error) {
+        state.modelNotice = { text: error instanceof Error ? error.message : String(error), kind: "error" };
       }
       render();
     }
@@ -3971,7 +4130,8 @@ export function boot(): void {
         ? '<p class="subtle">Looked at: ' + (data.looked || []).map((where: string) => '<span class="mono">' + html(where) + '</span>').join(", ") + '.</p>'
         : '';
       const reach = data.reachable === null
-        ? '<div class="warning-box">Not checked yet.</div>'
+        ? '<div class="warning-box"><strong>Not checked.</strong> Nothing here has looked at your browser. '
+          + button({ label: "Check for a browser", id: "probe-engines", testId: "probe-engines" }) + '</div>'
         : data.reachable
           ? '<div class="success-box">' + html(data.detail) + ' <span class="mono">' + html(data.endpoint) + '</span></div>'
           : '<div class="warning-box"><strong>No browser to drive.</strong> ' + html(data.detail)
@@ -3985,12 +4145,14 @@ export function boot(): void {
         + '<p class="subtle">These are the only sources here that search the web by construction, so they are where citations come from. Nothing signs in on your behalf; the answer is whatever your own signed-in session shows.</p>';
     }
 
-    function renderModels() { if (state.providersState === "idle") { loadProviders(); } const selected = project(); if (!selected) return '<section class="view"><div class="empty"><div class="empty-copy"><h2>Select a project first</h2><p class="subtle">A model configuration belongs to a single project.</p></div></div></section>'; const vendors = catalogVendors(); const results = filteredCatalogModels(); const list = state.catalogState === "idle" || state.catalogState === "loading" ? '<p class="subtle">Loading the OpenRouter model catalog…</p>' : state.catalogState === "error" ? '<div class="warning-box"><strong>Model catalog unavailable</strong><p>' + html(state.catalogError) + '</p>' + button({ label: "Retry", id: "retry-catalog", testId: "retry-catalog" }) + '</div>' : results.length === 0 ? '<p class="subtle">No matching models.</p>' : '<p class="catalog-result-summary">' + catalogResultSummary(results.length) + '</p><div class="mtable">' + catalogHead() + '<div class="model-list">' + renderCatalogModelRows(results) + '</div></div>'; const notice = state.modelNotice.text || (state.selectionsDirty ? "Configuration not saved yet" : ""); const noticeClass = state.modelNotice.kind || (state.selectionsDirty ? "warning" : ""); const saveLabel = state.modelActionState === "error" ? "Retry saving model configuration" : "Save model configuration"; const vendorOptions = vendors.map((vendor) => '<option value="' + html(vendor) + '" ' + (state.catalogProvider === vendor ? "selected" : "") + '>' + html(vendor) + '</option>').join(""); const cfg = monitoringConfiguration(); return '<section class="view"><div class="heading"><div><h1>Choose models</h1><p class="subtle">Pick the models to ask, set each one\'s web search mode, then save them as this project\'s configuration. Currently ' + (cfg.currentVersion ? "saved as v" + cfg.currentVersion : "not saved") + '.</p></div><div class="inline-actions">' + button({ label: saveLabel, id: "save-models", testId: "save-models", on: { "data-action-state": state.modelActionState } }) + '' + saveConfigurationButton(cfg, state.selections.length > 0) + '</div></div><div id="models-status" class="form-status ' + noticeClass + '" aria-live="polite">' + html(notice) + '</div><div class="section-stack"><section class="section-card"><div class="section-head"><div><h2>Selected models</h2><p class="subtle">Select one or more models.</p></div><span class="tag">' + selectedRows().length + '  selected</span></div>' + blockedSelectionBanner() + renderSelectedModels() + '</section><section class="section-card"><div class="section-head"><div><h2>Answer surfaces</h2><p class="subtle">The products a buyer actually opens, read through your own browser. The only sources here that search the web.</p></div></div>' + renderEngines() + '</section><section class="section-card"><div class="section-head"><div><h2>Model catalog</h2><p class="subtle">Searchable and multi-select. A provider that is unreachable contributes nothing; no fabricated models are shown.</p></div><span class="tag ' + (state.catalogState === "ready" ? "ready" : state.catalogState === "error" ? "warning" : "") + '">' + (state.catalogState === "ready" ? "Catalog available" : state.catalogState === "error" ? "Catalog error" : "Loading") + '</span></div><input id="model-search" class="model-search" data-testid="model-search" type="search" value="' + html(state.query) + '" placeholder="Search by model name, model ID or vendor"><div class="model-catalog-controls"><label for="model-provider-filter">Model vendor<select id="model-provider-filter" data-testid="model-provider-filter"><option value="">All vendors</option>' + vendorOptions + '</select></label><label for="model-native-search-filter">Web search capability<select id="model-native-search-filter" data-testid="model-native-search-filter"><option value="all" ' + (state.catalogNativeSearch === "all" ? "selected" : "") + '>All</option><option value="supported" ' + (state.catalogNativeSearch === "supported" ? "selected" : "") + '>Supports native web search</option><option value="unsupported" ' + (state.catalogNativeSearch === "unsupported" ? "selected" : "") + '>Does not support native web search</option></select></label><label for="model-catalog-sort">Sort<select id="model-catalog-sort" data-testid="model-catalog-sort"><option value="name" ' + (state.catalogSort === "name" ? "selected" : "") + '>Name A-Z</option><option value="vendor" ' + (state.catalogSort === "vendor" ? "selected" : "") + '>Vendor A-Z</option><option value="newest" ' + (state.catalogSort === "newest" ? "selected" : "") + '>Release date: newest first</option><option value="oldest" ' + (state.catalogSort === "oldest" ? "selected" : "") + '>Release date: oldest first</option></select></label></div>' + list + '</section></div></section>'; }
+    function renderModels() { if (state.providersState === "idle") { loadProviders(); } const selected = project(); if (!selected) return '<section class="view"><div class="empty"><div class="empty-copy"><h2>Select a project first</h2><p class="subtle">A model configuration belongs to a single project.</p></div></div></section>'; const vendors = catalogVendors(); const results = filteredCatalogModels(); const list = state.catalogState === "idle" || state.catalogState === "loading" ? '<p class="subtle">Loading the OpenRouter model catalog…</p>' : state.catalogState === "error" ? '<div class="warning-box"><strong>Model catalog unavailable</strong><p>' + html(state.catalogError) + '</p>' + button({ label: "Retry", id: "retry-catalog", testId: "retry-catalog" }) + '</div>' : results.length === 0 ? '<p class="subtle">No matching models.</p>' : '<p class="catalog-result-summary">' + catalogResultSummary(results.length) + '</p><div class="mtable">' + catalogHead() + '<div class="model-list">' + renderCatalogModelRows(results) + '</div></div>'; const notice = state.modelNotice.text || (state.selectionsDirty ? "Configuration not saved yet" : ""); const noticeClass = state.modelNotice.kind || (state.selectionsDirty ? "warning" : ""); const saveLabel = state.modelActionState === "error" ? "Retry saving model configuration" : "Save model configuration"; const vendorOptions = vendors.map((vendor) => '<option value="' + html(vendor) + '" ' + (state.catalogProvider === vendor ? "selected" : "") + '>' + html(vendor) + '</option>').join(""); const cfg = monitoringConfiguration(); return '<section class="view"><div class="heading"><div><h1>Choose models</h1><p class="subtle">Pick the models to ask, set each one\'s web search mode, then save them as this project\'s configuration. Currently ' + (cfg.currentVersion ? "saved as v" + cfg.currentVersion : "not saved") + '.</p></div><div class="inline-actions">' + button({ label: saveLabel, kind: state.selectionsDirty || state.modelActionState === "error" ? "primary" : "secondary", id: "save-models", testId: "save-models", on: { "data-action-state": state.modelActionState } }) + '' + saveConfigurationButton(cfg, state.selections.length > 0, false) + '</div></div>' + machineTabs() + '<div id="models-status" class="form-status ' + noticeClass + '" aria-live="polite">' + html(notice) + '</div><div class="section-stack"><section class="section-card"><div class="section-head"><div><h2>Selected models</h2><p class="subtle">Select one or more models.</p></div><span class="tag">' + selectedRows().length + '  selected</span></div>' + blockedSelectionBanner() + renderSelectedModels() + '</section><section class="section-card"><div class="section-head"><div><h2>Answer surfaces</h2><p class="subtle">The products a buyer actually opens, read through your own browser. The only sources here that search the web.</p></div></div>' + renderEngines() + '</section><section class="section-card"><div class="section-head"><div><h2>Model catalog</h2><p class="subtle">Searchable and multi-select. A provider that is unreachable contributes nothing; no fabricated models are shown.</p></div><span class="tag ' + (state.catalogState === "ready" ? "ready" : state.catalogState === "error" ? "warning" : "") + '">' + (state.catalogState === "ready" ? "Catalog available" : state.catalogState === "error" ? "Catalog error" : "Loading") + '</span></div><input id="model-search" class="model-search" data-testid="model-search" type="search" value="' + html(state.query) + '" placeholder="Search by model name, model ID or vendor"><div class="model-catalog-controls"><label for="model-provider-filter">Model vendor<select id="model-provider-filter" data-testid="model-provider-filter"><option value="">All vendors</option>' + vendorOptions + '</select></label><label for="model-native-search-filter">Web search capability<select id="model-native-search-filter" data-testid="model-native-search-filter"><option value="all" ' + (state.catalogNativeSearch === "all" ? "selected" : "") + '>All</option><option value="supported" ' + (state.catalogNativeSearch === "supported" ? "selected" : "") + '>Supports native web search</option><option value="unsupported" ' + (state.catalogNativeSearch === "unsupported" ? "selected" : "") + '>Does not support native web search</option></select></label><label for="model-catalog-sort">Sort<select id="model-catalog-sort" data-testid="model-catalog-sort"><option value="name" ' + (state.catalogSort === "name" ? "selected" : "") + '>Name A-Z</option><option value="vendor" ' + (state.catalogSort === "vendor" ? "selected" : "") + '>Vendor A-Z</option><option value="newest" ' + (state.catalogSort === "newest" ? "selected" : "") + '>Release date: newest first</option><option value="oldest" ' + (state.catalogSort === "oldest" ? "selected" : "") + '>Release date: oldest first</option></select></label></div>' + list + '</section></div></section>'; }
     function configurationVisualState(configuration: any) { return state.monitoringSaveState === "idle" ? configuration.status : state.monitoringSaveState; }
     function renderConfigurationDiff(configuration: any) { const diff = configuration.diff; const rows = []; for (const item of diff.addedModels) rows.push("Models added: " + item.displayName); for (const item of diff.removedModels) rows.push("Models removed: " + item.displayName); for (const item of diff.webSearchModeChanges) rows.push("Web search mode change: " + item.displayName + " from \"" + modeText(item.previousMode) + "\" to \"" + modeText(item.currentMode) + "\""); if (diff.protocolVersionChange) rows.push("Protocol version change: " + diff.protocolVersionChange.previous + " → " + diff.protocolVersionChange.current); if (diff.domainChange) rows.push("Domain change: " + diff.domainChange.previous + " → " + diff.domainChange.current); if (diff.languageChange) rows.push("Output language change: " + diff.languageChange.previous + " → " + diff.languageChange.current); if (rows.length === 0) return ""; return '<section class="section-card" data-testid="configuration-diff"><div class="section-head"><div><h2>Changes in this run</h2><p class="subtle">Saving creates a new configuration version.</p></div></div><ul class="protocol-list">' + rows.map((row) => '<li>' + html(row) + '</li>').join("") + '</ul></section>'; }
     function renderConfigurationRows(configuration: any) { if (state.baselines.length === 0) return '<p class="subtle">No past configurations yet.</p>'; const currentId = configuration.currentBaseline ? configuration.currentBaseline.id : ""; return '<div class="baseline-list">' + state.baselines.map((baseline) => '<article class="baseline-row" data-testid="configuration-version-row" data-configuration-id="' + html(baseline.id) + '"><div><strong>config v' + baseline.version + (currentId === baseline.id ? " · Current version" : "") + '</strong><span>' + html(baseline.normalizedDomain) + ' · ' + baseline.modelSnapshots.length + '  models</span><span>' + baseline.modelSnapshots.map((item: any) => html(item.displayName + "（" + modeText(item.webSearchMode) + "）")).join(", ") + '</span></div><span class="tag mono">' + html(formatTime(baseline.createdAt)) + '</span></article>').join("") + '</div>'; }
     function renderTechnicalDetails(configuration: any) { const protocol = configuration.currentProtocol; const capabilities = configuration.currentModelSnapshots.length ? configuration.currentModelSnapshots.map((item: any) => '<li>' + html(item.displayName + " · " + formatTime(item.capabilityCheckedAt)) + '</li>').join("") : '<li>The capability check time is recorded once models are saved.</li>'; return '<details class="technical-details"><summary>Technical details</summary><div class="detail-grid"><div class="detail-cell"><span>Protocol</span><strong>' + html(protocol.protocolId + "/" + protocol.protocolVersion) + '</strong></div><div class="detail-cell"><span>Protocol hash</span><strong>' + html(protocol.promptTemplateHash || "Recorded on first save") + '</strong></div><div class="detail-cell"><span>Input scope</span><strong>Domain only</strong></div><div class="detail-cell"><span>Output language</span><strong>' + html(configuration.currentLanguage) + '</strong></div></div><p class="field-help">Model capability check time</p><ul class="protocol-list">' + capabilities + '</ul></details>'; }
-    function saveConfigurationButton(configuration: any, hasModels: any) { const visual = configurationVisualState(configuration); const disabled = !hasModels || visual === "unchanged" || visual === "saving" || visual === "saved"; const label = visual === "no_version" ? "Save config v1" : visual === "unchanged" ? "✓ Current configuration saved" : visual === "changed" ? "Save as config v" + configuration.nextVersion : visual === "saving" ? "Saving…" : visual === "saved" ? "✓ Saved as v" + configuration.currentVersion : "Save again"; return button({ label: label, kind: "primary", disabled: disabled, id: "save-monitoring-configuration", testId: "save-monitoring-configuration", on: { "data-action-state": visual } }); }
+    // A disabled button reading "✓ saved" is a status wearing the loudest paint
+    // on the page. It stops leading the moment there is nothing to press.
+    function saveConfigurationButton(configuration: any, hasModels: any, lead = true) { const visual = configurationVisualState(configuration); const disabled = !hasModels || visual === "unchanged" || visual === "saving" || visual === "saved"; const label = visual === "no_version" ? "Save config v1" : visual === "unchanged" ? "✓ Current configuration saved" : visual === "changed" ? "Save as config v" + configuration.nextVersion : visual === "saving" ? "Saving…" : visual === "saved" ? "✓ Saved as v" + configuration.currentVersion : "Save again"; return button({ label: label, kind: lead && !disabled ? "primary" : "secondary", disabled: disabled, id: "save-monitoring-configuration", testId: "save-monitoring-configuration", on: { "data-action-state": visual } }); }
     /** The page only draws. Loading stays here, because a view that fetches
      * is a view that cannot be rendered twice. */
     function renderSetup() {
@@ -4019,7 +4181,7 @@ export function boot(): void {
       });
     }
 
-    function renderConfiguration() { const selected = project(); if (!selected) return '<section class="view"><div class="empty"><div class="empty-copy"><h2>Select a project first</h2><p class="subtle">A configuration belongs to a single project.</p></div></div></section>'; if (state.configurationState === "loading") return '<section class="view"><div class="heading"><div><h1>Configuration</h1><p class="subtle">Loading the current configuration…</p></div></div><div class="section-card inline-empty" aria-live="polite">Loading the domain, models and web search modes.</div></section>'; const configuration = monitoringConfiguration(); const hasModels = selectedRows().length > 0; const notice = state.monitoringNotice.text; const noticeKind = state.monitoringNotice.kind; const stateMessage = !hasModels ? "Select at least one available model before saving the configuration." : configuration.status === "no_version" ? "No configuration saved yet. Saving fixes the current domain, language, models and web search modes." : configuration.status === "changed" ? "The models or web search modes have changed. Saving creates a new configuration version." : "The current models and web search modes are saved."; const stateClass = !hasModels || configuration.status === "changed" ? "warning-box" : configuration.status === "unchanged" ? "success-box" : "warning-box"; return '<section class="view"><div class="heading"><div><h1>Configuration</h1><p class="subtle">Save the domain, output language and each model\'s web search mode as reusable monitoring conditions.</p></div>' + saveConfigurationButton(configuration, hasModels) + '</div><div id="monitoring-configuration-status" data-testid="monitoring-configuration-status" class="form-status ' + html(noticeKind) + '" aria-live="polite">' + html(notice) + '</div><div class="section-stack"><section class="section-card"><div class="section-head"><div><h2>Current version</h2><p class="subtle">Target domain: <span class="mono">' + html(selected.normalizedDomain) + '</span></p></div><span class="tag ' + (configuration.status === "unchanged" ? "ready" : "warning") + '">' + (configuration.currentVersion ? "v" + configuration.currentVersion : "Not saved yet") + '</span></div><div class="' + stateClass + '" data-testid="monitoring-configuration-summary">' + html(stateMessage) + '</div></section><section class="section-card"><div class="section-head"><div><h2>Current model configuration</h2><p class="subtle">Each model stores its own web search mode.</p></div>' + button({ label: "Adjust models", on: { "data-page": "models" } }) + '</div>' + renderSelectedModels(true) + '</section>' + renderConfigurationDiff(configuration) + '<section class="section-card"><div class="section-head"><div><h2>Past configurations</h2><p class="subtle">Read-only snapshot. Saving a new version does not overwrite past configurations.</p></div></div>' + renderConfigurationRows(configuration) + '</section>' + renderTechnicalDetails(configuration) + '</div></section>'; }
+    function renderConfiguration() { const selected = project(); if (!selected) return '<section class="view"><div class="empty"><div class="empty-copy"><h2>Select a project first</h2><p class="subtle">A configuration belongs to a single project.</p></div></div></section>'; if (state.configurationState === "loading") return '<section class="view"><div class="heading"><div><h1>Configuration</h1><p class="subtle">Loading the current configuration…</p></div></div>' + machineTabs() + '<div class="section-card inline-empty" aria-live="polite">Loading the domain, models and web search modes.</div></section>'; const configuration = monitoringConfiguration(); const hasModels = selectedRows().length > 0; const notice = state.monitoringNotice.text; const noticeKind = state.monitoringNotice.kind; const stateMessage = !hasModels ? "Select at least one available model before saving the configuration." : configuration.status === "no_version" ? "No configuration saved yet. Saving fixes the current domain, language, models and web search modes." : configuration.status === "changed" ? "The models or web search modes have changed. Saving creates a new configuration version." : "The current models and web search modes are saved."; const stateClass = !hasModels || configuration.status === "changed" ? "warning-box" : configuration.status === "unchanged" ? "success-box" : "warning-box"; return '<section class="view"><div class="heading"><div><h1>Configuration</h1><p class="subtle">Save the domain, output language and each model\'s web search mode as reusable monitoring conditions.</p></div>' + saveConfigurationButton(configuration, hasModels) + '</div>' + machineTabs() + '<div id="monitoring-configuration-status" data-testid="monitoring-configuration-status" class="form-status ' + html(noticeKind) + '" aria-live="polite">' + html(notice) + '</div><div class="section-stack"><section class="section-card"><div class="section-head"><div><h2>Current version</h2><p class="subtle">Target domain: <span class="mono">' + html(selected.normalizedDomain) + '</span></p></div><span class="tag ' + (configuration.status === "unchanged" ? "ready" : "warning") + '">' + (configuration.currentVersion ? "v" + configuration.currentVersion : "Not saved yet") + '</span></div><div class="' + stateClass + '" data-testid="monitoring-configuration-summary">' + html(stateMessage) + '</div></section><section class="section-card"><div class="section-head"><div><h2>Current model configuration</h2><p class="subtle">Each model stores its own web search mode.</p></div>' + button({ label: "Adjust models", on: { "data-page": "models" } }) + '</div>' + renderSelectedModels(true) + '</section>' + renderConfigurationDiff(configuration) + '<section class="section-card"><div class="section-head"><div><h2>Past configurations</h2><p class="subtle">Read-only snapshot. Saving a new version does not overwrite past configurations.</p></div></div>' + renderConfigurationRows(configuration) + '</section>' + renderTechnicalDetails(configuration) + '</div></section>'; }
     const brandMark = CONFIG.brandMark;
     const brandLockup = CONFIG.brandLockup;
     // Says what the page is built from and when, so a tab left open overnight
@@ -4034,11 +4196,11 @@ export function boot(): void {
         + '<span>Every figure here opens the answer it came from.</span></footer>';
     }
 
-    function phase2RenderImpl() { if (window.__citegeoPhase5Active) return; const selected = project(); const options = state.currentProjects.length ? state.currentProjects.map((item) => '<option value="' + html(item.id) + '">' + html(item.name) + ' · ' + html(item.normalizedDomain) + '</option>').join("") : '<option value="">No projects yet</option>'; let view = state.page === "marketer" ? renderMarketer() : state.page === "drafts" ? renderDrafts() : state.page === "claims" ? renderClaims() : state.page === "buying" ? renderBuying() : state.page === "conversations" ? renderConversations() : state.page === "entity" ? renderEntity() : state.page === "models" ? renderModels() : state.page === "configuration" ? renderConfiguration() : state.page === "setup" ? renderSetup() : state.page === "visibility" ? renderVisibility() : state.page === "brand-visibility" ? renderBrandVisibility() : state.page === "trust" ? renderTrustPage() : state.page === "prompts" ? renderPrompts() : state.page === "answer-engine" ? renderAnswerEngine() : state.page === "dashboard" ? renderHome() : renderOverview(); app.innerHTML = renderEvidence() + '<div class="shell">' + navScrim() + '<aside class="sidebar"><button type="button" class="brand" data-page="dashboard" aria-label="Back to the dashboard">' + brandLockup + '</button><div class="project-label">Project</div><select id="project-select" class="project-select" aria-label="Switch project" data-testid="project-select">' + options + '</select>' + sidebar({ page: state.page, options }) + '<div class="sidebar-bottom">Domain recognition</div></aside><main class="workspace"><header class="topbar"><div class="topbar-lead">' + navToggle() + '<div class="crumb"><button type="button" class="crumb-home" data-page="dashboard">' + html(CONFIG.productName) + '</button> / ' + html(selected ? selected.name : "Project") + '</div></div><div class="topbar-actions"><button type="button" class="theme-toggle" data-theme-toggle aria-label="Switch between light and dark">&#9681;</button>' + button({ label: "New project", kind: "primary", id: "new-project", testId: "new-project" }) + '</div></header><section class="content">' + view + '</section>' + renderFooter() + '</main></div>'; const select = element("project-select"); select.value = state.selectedId; document.title = selected ? selected.name + " | " + CONFIG.productTitle + "" : "" + CONFIG.productTitle + ""; }
-    async function setPage(page: any) { state.page = page; savePreference("page", page); if (page === "configuration") { await refreshConfiguration(); return; } if (page === "reports" && window.__citegeoPhase4 && typeof window.__citegeoPhase4.open === "function") { await window.__citegeoPhase4.open(); return; } render(); if (page === "models") { await refreshConfiguration(); await loadCatalog(); } }
+    function phase2RenderImpl() { if (window.__citegeoPhase5Active) return; const selected = project(); const options = state.currentProjects.length ? state.currentProjects.map((item) => '<option value="' + html(item.id) + '">' + html(item.name) + ' · ' + html(item.normalizedDomain) + '</option>').join("") : '<option value="">No projects yet</option>'; let view = state.booting ? bootShape() : state.page === "marketer" ? renderMarketer() : state.page === "drafts" ? renderDrafts() : state.page === "claims" ? renderClaims() : state.page === "buying" ? renderBuying() : state.page === "conversations" ? renderConversations() : state.page === "entity" ? renderEntity() : state.page === "reports" ? renderReport() : state.page === "models" ? renderModels() : state.page === "configuration" ? renderConfiguration() : state.page === "setup" ? renderSetup() : state.page === "visibility" ? renderVisibility() : state.page === "brand-visibility" ? renderBrandVisibility() : state.page === "trust" ? renderTrustPage() : state.page === "prompts" ? renderPrompts() : state.page === "answer-engine" ? renderAnswerEngine() : state.page === "dashboard" ? renderHome() : renderOverview(); app.innerHTML = renderEvidence() + '<div class="shell">' + navScrim() + '<aside class="sidebar"><button type="button" class="brand" data-page="dashboard" aria-label="Back to the dashboard">' + brandLockup + '</button><div class="project-label">Project</div><select id="project-select" class="project-select" aria-label="Switch project" data-testid="project-select">' + options + '</select>' + sidebar({ page: state.page, options }) + '<div class="sidebar-bottom">Domain recognition</div></aside><main class="workspace"><header class="topbar"><div class="topbar-lead">' + navToggle() + '<div class="crumb"><button type="button" class="crumb-home" data-page="dashboard">' + html(CONFIG.productName) + '</button> / ' + html(selected ? selected.name : "Project") + '</div></div><div class="topbar-actions"><button type="button" class="theme-toggle" data-theme-toggle aria-label="Switch between light and dark">&#9681;</button>' + button({ label: "New project", id: "new-project", testId: "new-project" }) + '</div></header><section class="content">' + view + '</section>' + renderFooter() + '</main></div>'; const select = element("project-select"); select.value = state.selectedId; document.title = selected ? selected.name + " | " + CONFIG.productTitle + "" : "" + CONFIG.productTitle + ""; }
+    async function setPage(page: any) { clearToasts(); state.page = page; savePreference("page", page); if (page === "configuration") { await refreshConfiguration(); return; } if (page === "reports" && window.__citegeoPhase4 && typeof window.__citegeoPhase4.open === "function") { await window.__citegeoPhase4.open(); return; } render(); if (page === "models") { await refreshConfiguration(); await loadCatalog(); } }
     async function createDraft(event: any) { event.preventDefault(); const control = element("save-draft"); const session = state.drawerSession; setFormStatus("Creating project draft", "loading"); try { const response = await runAction(control, { loading:"Saving…", success:"Saved", error:"Save failed" }, () => request("/api/projects", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ domain:element("project-domain").value, name:element("project-name").value }) })); state.mode = "current"; state.page = "overview"; setSelectedProject(response.project.id); await refreshProjects(); state.selections = []; state.baselines = []; resetDraftSelections(); setFormStatus("Draft saved", "success"); render(); window.setTimeout(() => { if (state.drawerSession === session) closeDrawer(); }, 850); } catch (error) { setFormStatus(error instanceof Error ? error.message : String(error), "error"); } }
-    async function saveProject(event: any) { event.preventDefault(); const selected = project(); if (!selected) return; const control = event.currentTarget.querySelector('control[type="submit"]'); try { await runAction(control, { loading:"Saving…", success:"Saved", error:"Save failed" }, () => request("/api/projects/" + encodeURIComponent(selected.id), { method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ domain:element("edit-domain").value, name:element("edit-name").value }) })); await refreshProjects(); render(); } catch (error) { window.alert(error instanceof Error ? error.message : String(error)); } }
-    async function projectAction(action: string, projectId: string, button: HTMLElement | null) { if (action === "select") { setSelectedProject(projectId); state.selectionsDirty = false; await refreshConfiguration(); render(); return; } if (action === "delete" && !window.confirm("The project will be removed from the current list.")) return; if (action === "purge" && !window.confirm("A permanent purge cannot be undone.")) return; const path = "/api/projects/" + encodeURIComponent(projectId) + (action === "archive" ? "/archive" : action === "restore" ? "/restore" : action === "purge" ? "/purge" : ""); const method = action === "delete" || action === "purge" ? "DELETE" : "POST"; const labels = action === "archive" ? { loading:"Archiving…", success:"Archived", error:"Archive failed" } : action === "restore" ? { loading:"Restoring…", success:"Restored", error:"Restore failed" } : action === "purge" ? { loading:"Purging…", success:"Purged", error:"Purge failed" } : { loading:"Deleting…", success:"Deleted", error:"Delete failed" }; try { await runAction(button, labels, () => request(path, { method })); if (state.selectedId === projectId && (action === "archive" || action === "delete" || action === "purge")) setSelectedProject(""); if (action === "restore") { state.mode = "current"; setSelectedProject(projectId); } await refreshProjects(); await refreshConfiguration(); render(); } catch (error) { window.alert(error instanceof Error ? error.message : String(error)); } }
+    async function saveProject(event: any) { event.preventDefault(); const selected = project(); if (!selected) return; const control = event.currentTarget.querySelector('button[type="submit"]'); try { await runAction(control, { loading:"Saving…", success:"Saved", error:"Save failed" }, () => request("/api/projects/" + encodeURIComponent(selected.id), { method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ domain:element("edit-domain").value, name:element("edit-name").value }) })); await refreshProjects(); render(); } catch (error) { toast({ text: error instanceof Error ? error.message : String(error), kind: "error" }); } }
+    async function projectAction(action: string, projectId: string, button: HTMLElement | null) { if (action === "select") { setSelectedProject(projectId); state.selectionsDirty = false; await refreshConfiguration(); render(); return; } if (action === "delete" && !window.confirm("The project will be removed from the current list.")) return; if (action === "purge" && !window.confirm("A permanent purge cannot be undone.")) return; const path = "/api/projects/" + encodeURIComponent(projectId) + (action === "archive" ? "/archive" : action === "restore" ? "/restore" : action === "purge" ? "/purge" : ""); const method = action === "delete" || action === "purge" ? "DELETE" : "POST"; const labels = action === "archive" ? { loading:"Archiving…", success:"Archived", error:"Archive failed" } : action === "restore" ? { loading:"Restoring…", success:"Restored", error:"Restore failed" } : action === "purge" ? { loading:"Purging…", success:"Purged", error:"Purge failed" } : { loading:"Deleting…", success:"Deleted", error:"Delete failed" }; try { await runAction(button, labels, () => request(path, { method })); if (state.selectedId === projectId && (action === "archive" || action === "delete" || action === "purge")) setSelectedProject(""); if (action === "restore") { state.mode = "current"; setSelectedProject(projectId); } await refreshProjects(); await refreshConfiguration(); render(); } catch (error) { toast({ text: error instanceof Error ? error.message : String(error), kind: "error" }); } }
     function changeModel(modelId: any, checked: any) { const catalogItem = state.catalog.find((item) => item.modelId === modelId); if (!catalogItem) return; if (!checked) state.draftSelections.delete(modelId); else state.draftSelections.set(modelId, "off"); state.modelNotice = { text:"", kind:"" }; state.modelActionState = "idle"; state.selectionsDirty = true; render(); }
     /** Clears a selection the catalogue no longer offers. changeModel refuses
      * one, so without this the save stays rejected with no way to fix it. */
@@ -4051,8 +4213,8 @@ export function boot(): void {
       if (!clicked || !clicked.closest) return;
       if (clicked.closest("[data-generate-prompts]")) { await postPrompts("/topics/generate", {}, "generating", "A set has been proposed. Read it, then track the questions worth tracking."); return; }
       const retrying = clicked.closest("[data-retry-run]");
-      if (retrying) { loadLiveRun(); await postPrompts("/prompt-runs", { retryOf: retrying.getAttribute("data-retry-run") }, "running", "Asked again. Every answer is archived."); loadLiveRun(); return; }
-      if (clicked.closest("[data-run-prompts]")) { loadLiveRun(); await postPrompts("/prompt-runs", { repetitions: state.repetitions, languageIds: [state.runLanguageId] }, "running", "The run finished. Every answer is archived."); loadLiveRun(); return; }
+      if (retrying) { loadLiveRun(); await postPrompts("/prompt-runs", { retryOf: retrying.getAttribute("data-retry-run") }, "running", "Asking again. Watch it below, or leave the page and come back."); loadLiveRun(); return; }
+      if (clicked.closest("[data-run-prompts]")) { loadLiveRun(); await postPrompts("/prompt-runs", { repetitions: state.repetitions, languageIds: [state.runLanguageId] }, "running", "The run has started. Watch it below, or leave the page and come back."); loadLiveRun(); return; }
       const activate = clicked.closest("[data-activate-prompt]");
       if (activate) { await postPrompts("/prompts/activate", { promptIds:[activate.getAttribute("data-activate-prompt")] }, "saving", "Now tracked."); return; }
       const retire = clicked.closest("[data-retire-prompt]");
@@ -4198,6 +4360,7 @@ export function boot(): void {
 
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape" && state.panel) { closeEvidence(); return; }
+      if (event.key === "Escape" && document.body.classList.contains("drawer-open")) { closeDrawer(); return; }
       if (event.key !== "Enter" && event.key !== " ") return;
       const row = el(event.target) ? (el(event.target) as any).closest("[data-evidence]") : null;
       if (!row) return;
@@ -4251,6 +4414,7 @@ export function boot(): void {
       if (!form || form.id !== "add-prompt-form") return;
       event.preventDefault();
       const data = new FormData(form);
+      state.promptDraft = { topicId: "", text: "", intent: "discovery" };
       await postPrompts("/prompts", { topicId: data.get("topicId"), text: data.get("text"), intent: data.get("intent") }, "saving", "Added and tracked.");
     });
 
@@ -4332,7 +4496,7 @@ export function boot(): void {
       const publishButton = target && target.closest ? target.closest("[data-publish-draft]") : null;
       if (publishButton) { await publishDraft(publishButton, publishButton.getAttribute("data-publish-draft") || ""); return; }
       const probeButton = target && target.closest ? target.closest("[data-probe-signals]") : null;
-      if (probeButton) { await captureSignals(probeButton); state.signalsState = "idle"; loadSignals(); return; } if (!(target instanceof Element)) return; const pageButton = target.closest("[data-page]"); if (pageButton) { await setPage(pageButton.getAttribute("data-page") || "overview"); return; } const listModeButton = target.closest("[data-list-mode]"); if (listModeButton) { state.mode = listModeButton.getAttribute("data-list-mode") || "current"; await refreshProjects(); render(); return; } if (target.id === "new-project" || target.id === "empty-new-project") { openDrawer(); return; } if (target.id === "close-drawer" || target.id === "cancel-draft" || target.id === "drawer-backdrop") { closeDrawer(); return; } if (target.id === "retry-catalog") { state.catalogState = "idle"; await loadCatalog(); return; } const opened = target.closest("[data-matrix-open]"); if (opened) { const key = opened.getAttribute("data-matrix-open") || ""; const at = state.matrixOpen.indexOf(key); if (at >= 0) state.matrixOpen.splice(at, 1); else state.matrixOpen.push(key); render(); return; } const expand = target.closest("[data-expand-panel]"); if (expand && !target.closest("button:not(.panel-open),a,select,input,textarea,label")) { openPanel(expand.getAttribute("data-expand-panel") || ""); return; } if (target.closest("[data-edit-board]")) { state.editingBoard = !state.editingBoard; render(); return; } const span = target.closest("[data-panel-span]"); if (span) { const parts = (span.getAttribute("data-panel-span") || "").split(":"); setPanelSpan(parts[0] || "", Number(parts[1])); render(); return; } const hide = target.closest("[data-panel-hide]"); if (hide) { togglePanelHidden(hide.getAttribute("data-panel-hide") || ""); render(); return; } if (target.closest("[data-reset-panels]")) { resetPanelOrder(); state.editingBoard = false; render(); return; } const brand = target.closest("[data-brand-evidence]"); if (brand) { await openBrandEvidence(brand.getAttribute("data-brand-evidence") || "", brand.getAttribute("data-brand-tone") || ""); return; } const dropped = target.closest("[data-drop-selection]"); if (dropped) { dropSelection(dropped.getAttribute("data-drop-selection") || ""); return; } if (target.id === "save-models") { await saveModels((target as any)); return; } if (target.id === "save-monitoring-configuration") { await saveMonitoringConfiguration(); return; } if (target.id === "archive-project") { const selected = project(); if (selected) await projectAction("archive", selected.id, (target as any)); return; } if (target.id === "delete-project") { const selected = project(); if (selected) await projectAction("delete", selected.id, (target as any)); return; } const action = target.closest("[data-project-action]"); if (action) { const projectId = action.getAttribute("data-project-id"); const name = action.getAttribute("data-project-action"); if (projectId && name) await projectAction(name, projectId, (action as any)); } });
+      if (probeButton) { await captureSignals(probeButton); state.signalsState = "idle"; loadSignals(); return; } if (!(target instanceof Element)) return; const pageButton = target.closest("[data-page]"); if (pageButton) { await setPage(pageButton.getAttribute("data-page") || "overview"); return; } const listModeButton = target.closest("[data-list-mode]"); if (listModeButton) { state.mode = listModeButton.getAttribute("data-list-mode") || "current"; await refreshProjects(); render(); return; } if (target.id === "new-project" || target.id === "empty-new-project") { openDrawer(); return; } if (target.id === "close-drawer" || target.id === "cancel-draft" || target.id === "drawer-backdrop") { closeDrawer(); return; } if (target.id === "retry-catalog") { state.catalogState = "idle"; await loadCatalog(); return; } const opened = target.closest("[data-matrix-open]"); if (opened) { const key = opened.getAttribute("data-matrix-open") || ""; const at = state.matrixOpen.indexOf(key); if (at >= 0) state.matrixOpen.splice(at, 1); else state.matrixOpen.push(key); render(); return; } const expand = target.closest("[data-expand-panel]"); if (expand && !target.closest("button:not(.panel-open),a,select,input,textarea,label")) { openPanel(expand.getAttribute("data-expand-panel") || ""); return; } if (target.closest("[data-edit-board]")) { state.editingBoard = !state.editingBoard; render(); return; } const span = target.closest("[data-panel-span]"); if (span) { const parts = (span.getAttribute("data-panel-span") || "").split(":"); setPanelSpan(parts[0] || "", Number(parts[1])); render(); return; } const folded = target.closest("[data-fold]"); if (folded && target.closest("summary")) { const foldId = folded.getAttribute("data-fold") || ""; const foldAt = state.panelOpen.indexOf(foldId); if (foldAt >= 0) state.panelOpen.splice(foldAt, 1); else state.panelOpen.push(foldId); savePreference("panelOpen", state.panelOpen.join(",")); return; } const hide = target.closest("[data-panel-hide]"); if (hide) { togglePanelHidden(hide.getAttribute("data-panel-hide") || ""); render(); return; } if (target.closest("[data-reset-panels]")) { resetPanelOrder(); state.editingBoard = false; render(); return; } const tracked = target.closest("[data-track-question]"); if (tracked) { state.promptDraft = { topicId: "", text: tracked.getAttribute("data-track-question") || "", intent: "discovery" }; await setPage("prompts"); toast({ text: "Pick a topic for it under Add your own, then add it." }); return; } const brand = target.closest("[data-brand-evidence]"); if (brand) { await openBrandEvidence(brand.getAttribute("data-brand-evidence") || "", brand.getAttribute("data-brand-tone") || ""); return; } const dropped = target.closest("[data-drop-selection]"); if (dropped) { dropSelection(dropped.getAttribute("data-drop-selection") || ""); return; } if (target.id === "probe-engines") { await probeEngines((target as any)); return; }  if (target.id === "save-models") { await saveModels((target as any)); return; } if (target.id === "save-monitoring-configuration") { await saveMonitoringConfiguration(); return; } if (target.id === "archive-project") { const selected = project(); if (selected) await projectAction("archive", selected.id, (target as any)); return; } if (target.id === "delete-project") { const selected = project(); if (selected) await projectAction("delete", selected.id, (target as any)); return; } const action = target.closest("[data-project-action]"); if (action) { const projectId = action.getAttribute("data-project-id"); const name = action.getAttribute("data-project-action"); if (projectId && name) await projectAction(name, projectId, (action as any)); } });
     document.addEventListener("change", async (event) => { const target = el(event.target) as any; if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) return; if (target.id === "project-select") { setSelectedProject(target.value); state.selectionsDirty = false; await refreshConfiguration(); loadLiveRun(); render(); return; } if (target instanceof HTMLInputElement && target.hasAttribute("data-model-checkbox")) { changeModel(target.getAttribute("data-model-checkbox") || "", target.checked); return; } if (target instanceof HTMLSelectElement && target.hasAttribute("data-model-mode")) { changeModelMode(target.getAttribute("data-model-mode") || "", target.value); return; } if (target instanceof HTMLSelectElement && target.hasAttribute("data-selected-model-mode")) { changeModelMode(target.getAttribute("data-selected-model-mode") || "", target.value); return; } });
     document.addEventListener("change", (event) => {
       const target = el(event.target);
@@ -4409,7 +4573,10 @@ export function boot(): void {
 
     document.addEventListener("input", (event) => { const target = el(event.target) as any; if (target instanceof HTMLInputElement && target.id === "model-search") { state.query = target.value; refreshCatalogSearchResults(); return; } if (target instanceof HTMLInputElement && target.id === "prompt-search") { state.promptFilters.query = target.value; refreshPromptResults(); } });
     document.addEventListener("submit", (event) => { const target = el(event.target) as any; if (!(target instanceof HTMLFormElement)) return; if (target.id === "project-form") createDraft(event); if (target.id === "project-edit-form") saveProject(event); });
-    refreshProjects().then(async () => { await refreshConfiguration(); loadLiveRun(); render(); }).catch((error) => { app.innerHTML = '<main class="workspace"><div class="warning-box">' + html(error instanceof Error ? error.message : String(error)) + '</div></main>'; });
+    // Nothing was painted until both of these resolved, so the whole product
+    // was a blank page for as long as the first read took.
+    render();
+    refreshProjects().then(async () => { await refreshConfiguration(); state.booting = false; loadLiveRun(); render(); }).catch((error) => { app.innerHTML = '<main class="workspace"><div class="warning-box">' + html(error instanceof Error ? error.message : String(error)) + '</div></main>'; });
     function recognitionRunStatusText(status: any) { return status === "queued" ? "Waiting to start" : status === "running" ? "Running" : status === "completed" ? "Completed" : status === "partial" ? "Partly complete" : "Execution failed"; }
     function recognitionModelStatusText(status: any) { return status === "queued" ? "Waiting to start" : status === "running" ? "Calling" : status === "response_saved" ? "Answer received" : status === "analysis_failed" ? "Local parse failed" : status === "completed" ? "Completed" : status === "unknown" ? "Model could not confirm" : status === "unsupported" ? "Model does not support it" : "Provider Call failed"; }
     function activeRecognitionRun() { return state.recognitionDetail && (((state.recognitionDetail as any).run.status as any) === "queued" || ((state.recognitionDetail as any).run.status as any) === "running") ? (state.recognitionDetail as any).run : null; }
@@ -4431,13 +4598,13 @@ export function boot(): void {
     function renderRecognitionModel(modelRun: any) { const detail = recognitionDetailFor(modelRun.id); const latest = detail && detail.attempts.length ? detail.attempts[detail.attempts.length - 1] : null; const presentation = detail ? detail.presentation : null; const mode = modelRun.recognitionMode === "native_web_domain_discovery" ? "Provider Native web findings" : "Offline domain recognition"; // Delivery, not recognition outcome. The report shows the other axis.
       const visibleStatus = "Answer: " + (presentation ? presentation.statusLabel : recognitionModelStatusText(modelRun.status)); const tagClass = presentation && presentation.localAnalysis === "complete" ? "ready" : presentation && (presentation.requestExecution === "response_received" || presentation.requestExecution === "running") ? "warning" : modelRun.status === "completed" || modelRun.status === "unknown" ? "ready" : "deleted"; const reanalyzeAction = presentation && presentation.primaryAction === "reanalyze_saved_answer" && latest ? button({ label: "Re-analyze existing answer", kind: "quiet", on: { "data-recognition-reanalyze": modelRun.id, "data-recognition-attempt": latest.id } }) : ''; const retryAction = presentation && presentation.primaryAction === "retry_request" ? button({ label: "Retry this model", kind: "quiet", on: { "data-recognition-retry": modelRun.id } }) : ''; const configurationAction = presentation && presentation.primaryAction === "check_model_configuration" ? button({ label: "Check model configuration", kind: "quiet", on: { "data-page": "models" } }) : ''; const settingsAction = presentation && presentation.primaryAction === "open_provider_settings" ? '<a class="card-action" href="https://openrouter.ai/settings/preferences" target="_blank" rel="noreferrer">Open OpenRouter settings</a>' : ''; const detailText = presentation && presentation.detail ? '<p class="subtle model-run-detail">' + html(presentation.detail) + '</p>' : ''; const technicalError = modelRun.errorMessage ? '<details class="technical-details"><summary>Technical details</summary><p>' + html(modelRun.errorMessage) + '</p></details>' : ''; return '<article class="model-run-card ' + html(modelRun.status) + '" data-testid="recognition-model-run"><div class="model-run-head"><div><h3>' + html(modelRun.modelSnapshot.displayName) + '</h3><p class="subtle">' + html(modelRun.modelSnapshot.modelId) + ' · ' + html(mode) + '</p></div><div class="inline-actions"><span class="tag ' + tagClass + '">' + html(visibleStatus) + '</span>' + reanalyzeAction + retryAction + configurationAction + settingsAction + '</div></div>' + detailText + (detail ? renderRecognitionSummary(detail) + renderRecognitionEvidence(detail, modelRun) : '<p class="subtle">Loading this model\'s archived result.</p>') + technicalError + '</article>'; }
     function renderRecognitionRun(run: any) { const selected = state.recognitionDetail && ((state.recognitionDetail as any).run.id as any) === run.id; const summary = selected ? recognitionRunSummary(state.recognitionDetail) : "Plan " + run.plannedModelRunCount + "  models · open this run to see execution status"; return '<article class="run-row"><div class="run-row-head"><div><h3>Recognition test · ' + html(formatTime(run.createdAt)) + '</h3><p class="subtle">config v' + html(run.baselineVersion) + ' · ' + html(summary) + '</p></div><span class="tag ' + (run.status === "completed" ? "ready" : run.status === "partial" ? "warning" : run.status === "failed" ? "deleted" : "warning") + '">' + html(recognitionRunStatusText(run.status)) + '</span></div><div class="inline-actions">' + (selected ? '<span class="subtle">Viewing</span>' : button({ label: "View this run", kind: "quiet", on: { "data-recognition-run": run.id } })) + '</div></article>'; }
-    function renderRecognitionPage() { const selected = project(); if (!selected) return '<section class="view"><div class="empty"><div class="empty-copy"><h2>Select a project first</h2><p class="subtle">A domain recognition test belongs to a single project.</p></div></div></section>'; const active = activeRecognitionRun(); const canStart = Boolean((selected as any).activeBaselineId) && state.recognitionActionState !== "loading" && !active; const startLabel = state.recognitionActionState === "loading" ? "Creating test…" : active ? "Running" : "Start recognition test"; const current = state.recognitionDetail; const currentRows = current ? '<section class="section-card"><div class="section-head"><div><h2>This run</h2><p class="subtle">Each model is called and archived independently. A model\'s description reflects only its own answer in this run.</p>' + recognitionCountStrip(current) + '</div><span class="tag">' + html(recognitionRunStatusText(((current as any).run.status as any))) + '</span></div><div class="model-run-list">' + ((current as any).modelRuns.map(renderRecognitionModel) as any).join("") + '</div></section>' : '<section class="section-card"><p class="subtle">No recognition test records yet. Save a configuration to start one.</p></section>'; const history = state.recognitionRuns.length ? '<section class="section-card"><div class="section-head"><div><h2>Run records</h2><p class="subtle">Every record keeps its own model execution and evidence.</p></div></div><div class="run-list">' + state.recognitionRuns.map(renderRecognitionRun).join("") + '</div></section>' : ''; const unavailable = !(selected as any).activeBaselineId ? '<div class="warning-box">Save your models as a configuration first, on Choose models.</div>' : ''; return '<section class="view"><div class="heading"><div><h1>Results</h1><p class="subtle">Each model receives only the domain, language, monitoring protocol and its own web search mode. Offline and native-web results are recorded separately.</p></div>' + button({ label: startLabel, kind: "primary", disabled: !canStart, id: "start-recognition", testId: "start-recognition", on: { "data-action-state": state.recognitionActionState } }) + '</div>' + resultsSwitch("recognition") + '<div id="recognition-status" class="form-status ' + html(state.recognitionNotice.kind) + '" aria-live="polite">' + html(state.recognitionNotice.text) + '</div><div class="section-stack">' + unavailable + currentRows + history + '</div></section>'; }
+    function renderRecognitionPage() { const selected = project(); if (!selected) return '<section class="view"><div class="empty"><div class="empty-copy"><h2>Select a project first</h2><p class="subtle">A domain recognition test belongs to a single project.</p></div></div></section>'; const active = activeRecognitionRun(); const canStart = Boolean((selected as any).activeBaselineId) && state.recognitionActionState !== "loading" && !active; const startLabel = state.recognitionActionState === "loading" ? "Creating test…" : active ? "Running" : "Start recognition test"; const current = state.recognitionDetail; const currentRows = current ? '<section class="section-card"><div class="section-head"><div><h2>This run</h2><p class="subtle">Each model is called and archived independently. A model\'s description reflects only its own answer in this run.</p>' + recognitionCountStrip(current) + '</div><span class="tag">' + html(recognitionRunStatusText(((current as any).run.status as any))) + '</span></div><div class="model-run-list">' + ((current as any).modelRuns.map(renderRecognitionModel) as any).join("") + '</div></section>' : '<section class="section-card"><p class="subtle">No recognition test records yet. Save a configuration to start one.</p></section>'; const history = state.recognitionRuns.length ? '<section class="section-card"><div class="section-head"><div><h2>Run records</h2><p class="subtle">Every record keeps its own model execution and evidence.</p></div></div><div class="run-list">' + state.recognitionRuns.map(renderRecognitionRun).join("") + '</div></section>' : ''; const unavailable = !(selected as any).activeBaselineId ? '<div class="warning-box">Save your models as a configuration first, on Choose models.</div>' : ''; return '<section class="view"><div class="heading"><div><h1>Results</h1><p class="subtle">Each model receives only the domain, language, monitoring protocol and its own web search mode. Offline and native-web results are recorded separately.</p></div>' + button({ label: startLabel, kind: "primary", disabled: !canStart, id: "start-recognition", testId: "start-recognition", on: { "data-action-state": state.recognitionActionState } }) + '</div>' + machineTabs() + '<div id="recognition-status" class="form-status ' + html(state.recognitionNotice.kind) + '" aria-live="polite">' + html(state.recognitionNotice.text) + '</div><div class="section-stack">' + unavailable + currentRows + history + '</div></section>'; }
     async function refreshRecognition() { const selected = project(); if (!selected) { state.recognitionRuns = []; state.recognitionDetail = null; state.recognitionModelDetails = {}; return; } const projectId = selected.id; const listed = await request("/api/projects/" + encodeURIComponent(projectId) + "/recognition-runs"); if (projectId !== state.selectedId) return; state.recognitionRuns = listed.runs || []; const runId = state.recognitionSelectedRunId || (state.recognitionRuns[0] ? state.recognitionRuns[0].id : ""); if (!runId) { state.recognitionDetail = null; state.recognitionModelDetails = {}; if (state.page === "recognition") render(); return; } const detail = await request("/api/projects/" + encodeURIComponent(projectId) + "/recognition-runs/" + encodeURIComponent(runId)); if (projectId !== state.selectedId) return; state.recognitionSelectedRunId = (detail as any).run.id; state.recognitionDetail = detail; const pairs = await Promise.all(detail.modelRuns.map(async (modelRun: any) => { try { return [modelRun.id, await request("/api/projects/" + encodeURIComponent(projectId) + "/recognition-runs/" + encodeURIComponent((detail as any).run.id) + "/model-runs/" + encodeURIComponent(modelRun.id))]; } catch { return [modelRun.id, null]; } })); state.recognitionModelDetails = {}; for (const pair of pairs) { if (pair[1]) state.recognitionModelDetails[pair[0]] = pair[1]; } if (state.page === "recognition") render(); if ((detail as any).run.status === "queued" || (detail as any).run.status === "running") { window.clearTimeout(state.recognitionRefreshTimer); state.recognitionRefreshTimer = window.setTimeout(() => { if (state.page === "recognition") refreshRecognition().catch(() => {}); }, 1000); } }
     async function startRecognition() { const selected = project(); if (!selected || activeRecognitionRun() || state.recognitionActionState === "loading") return; const idempotencyKey = crypto.randomUUID(); state.recognitionActionState = "loading"; state.recognitionNotice = { text:"Creating a separate execution record for each model…", kind:"loading" }; render(); try { const response = await request("/api/projects/" + encodeURIComponent(selected.id) + "/recognition-runs", { method:"POST", headers:{ "Idempotency-Key":idempotencyKey } }); state.recognitionSelectedRunId = response.run.id; state.recognitionActionState = "success"; state.recognitionNotice = { text:"Recognition test started. Waiting for models to respond.", kind:"success" }; await refreshRecognition(); window.setTimeout(() => { state.recognitionActionState = "idle"; if (state.page === "recognition") render(); }, 850); } catch (error) { state.recognitionActionState = "error"; state.recognitionNotice = { text: error instanceof Error ? error.message : (expectedErrorText.request_failed || "The request failed."), kind: "error" }; render(); } }
     async function retryRecognition(modelRunId: any, button: HTMLElement | null) { const selected = project(); const detail = state.recognitionDetail; if (!selected || !detail) return; try { await runAction(button, { loading:"Retrying…", success:"Started", error:"Retry failed" }, () => request("/api/projects/" + encodeURIComponent(selected.id) + "/recognition-runs/" + encodeURIComponent(((detail as any).run.id as any)) + "/model-runs/" + encodeURIComponent(modelRunId) + "/retry", { method:"POST" })); state.recognitionNotice = { text:"A new execution attempt was created for this model.", kind:"success" }; await refreshRecognition(); } catch (error) { state.recognitionNotice = { text: error instanceof Error ? error.message : (expectedErrorText.request_failed || "The request failed."), kind: "error" }; render(); } }
     async function reanalyzeRecognition(modelRunId: any, attemptId: any, button: HTMLElement | null) { const selected = project(); const detail = state.recognitionDetail; if (!selected || !detail || !attemptId) return; try { await runAction(button, { loading:"Parsing the saved answer…", success:"Local parse complete", error:"Parsing failed" }, () => request("/api/projects/" + encodeURIComponent(selected.id) + "/recognition-runs/" + encodeURIComponent(((detail as any).run.id as any)) + "/model-runs/" + encodeURIComponent(modelRunId) + "/attempts/" + encodeURIComponent(attemptId) + "/reanalyze", { method:"POST" })); state.recognitionNotice = { text:"A new local parse was generated from the saved raw answer. No model was called.", kind:"success" }; await refreshRecognition(); } catch (error) { state.recognitionNotice = { text: error instanceof Error ? error.message : (expectedErrorText.request_failed || "The request failed."), kind: "error" }; render(); } }
     const phase2Render = phase2RenderImpl;
-    renderOverride = function renderWithRecognition() { if (window.__citegeoPhase5Active) return; if (state.page === "reports" && window.__citegeoPhase4 && typeof window.__citegeoPhase4.render === "function") return window.__citegeoPhase4.render(); if (state.page !== "recognition") return phase2Render(); const selected = project(); const options = state.currentProjects.length ? state.currentProjects.map((item) => '<option value="' + html(item.id) + '">' + html(item.name) + ' · ' + html(item.normalizedDomain) + '</option>').join("") : '<option value="">No projects yet</option>'; app.innerHTML = renderEvidence() + '<div class="shell">' + navScrim() + '<aside class="sidebar"><button type="button" class="brand" data-page="dashboard" aria-label="Back to the dashboard">' + brandLockup + '</button><div class="project-label">Project</div><select id="project-select" class="project-select" aria-label="Switch project" data-testid="project-select">' + options + '</select>' + sidebar({ page: state.page, options }) + '<div class="sidebar-bottom">Domain recognition</div></aside><main class="workspace"><header class="topbar"><div class="topbar-lead">' + navToggle() + '<div class="crumb"><button type="button" class="crumb-home" data-page="dashboard">' + html(CONFIG.productName) + '</button> / ' + html(selected ? selected.name : "Project") + '</div></div><div class="topbar-actions"><button type="button" class="theme-toggle" data-theme-toggle aria-label="Switch between light and dark">&#9681;</button>' + button({ label: "New project", kind: "primary", id: "new-project", testId: "new-project" }) + '</div></header><section class="content">' + renderRecognitionPage() + '</section>' + renderFooter() + '</main></div>'; const select = element("project-select"); if (select) select.value = state.selectedId; document.title = selected ? selected.name + " | " + CONFIG.productTitle + "" : "" + CONFIG.productTitle + ""; };
+    renderOverride = function renderWithRecognition() { if (window.__citegeoPhase5Active) return; if (state.page !== "recognition") return phase2Render(); const selected = project(); const options = state.currentProjects.length ? state.currentProjects.map((item) => '<option value="' + html(item.id) + '">' + html(item.name) + ' · ' + html(item.normalizedDomain) + '</option>').join("") : '<option value="">No projects yet</option>'; app.innerHTML = renderEvidence() + '<div class="shell">' + navScrim() + '<aside class="sidebar"><button type="button" class="brand" data-page="dashboard" aria-label="Back to the dashboard">' + brandLockup + '</button><div class="project-label">Project</div><select id="project-select" class="project-select" aria-label="Switch project" data-testid="project-select">' + options + '</select>' + sidebar({ page: state.page, options }) + '<div class="sidebar-bottom">Domain recognition</div></aside><main class="workspace"><header class="topbar"><div class="topbar-lead">' + navToggle() + '<div class="crumb"><button type="button" class="crumb-home" data-page="dashboard">' + html(CONFIG.productName) + '</button> / ' + html(selected ? selected.name : "Project") + '</div></div><div class="topbar-actions"><button type="button" class="theme-toggle" data-theme-toggle aria-label="Switch between light and dark">&#9681;</button>' + button({ label: "New project", id: "new-project", testId: "new-project" }) + '</div></header><section class="content">' + renderRecognitionPage() + '</section>' + renderFooter() + '</main></div>'; const select = element("project-select"); if (select) select.value = state.selectedId; document.title = selected ? selected.name + " | " + CONFIG.productTitle + "" : "" + CONFIG.productTitle + ""; };
     document.addEventListener("click", async (event) => { const target = el(event.target) as any; if (!(target instanceof Element)) return; if (target.id === "start-recognition") { await startRecognition(); return; } const evidenceButton = target.closest("[data-evidence-target]"); if (evidenceButton) { const card = evidenceButton.closest("[data-testid=recognition-model-run]"); const details = card ? card.querySelector("details.evidence-details") : null; if (details) (details as any).open = true; const evidenceTarget = evidenceButton.getAttribute("data-evidence-target"); window.setTimeout(() => { const marked = evidenceTarget ? element(evidenceTarget) : null; if (marked) marked.scrollIntoView({ block:"center", behavior:"smooth" }); }, 0); return; } const runButton = target.closest("[data-recognition-run]"); if (runButton) { state.recognitionSelectedRunId = runButton.getAttribute("data-recognition-run") || ""; await refreshRecognition(); return; } const reanalyzeButton = target.closest("[data-recognition-reanalyze]"); if (reanalyzeButton) { await reanalyzeRecognition(reanalyzeButton.getAttribute("data-recognition-reanalyze") || "", reanalyzeButton.getAttribute("data-recognition-attempt") || "", (reanalyzeButton as any)); return; } const retryButton = target.closest("[data-recognition-retry]"); if (retryButton) { await retryRecognition(retryButton.getAttribute("data-recognition-retry") || "", (retryButton as any)); return; } const pageButton = target.closest("[data-page]"); if (pageButton && pageButton.getAttribute("data-page") === "recognition") { window.setTimeout(() => refreshRecognition().catch((error) => { state.recognitionNotice = { text: error instanceof Error ? error.message : (expectedErrorText.request_failed || "The request failed."), kind: "error" }; render(); }), 0); } if (pageButton && pageButton.getAttribute("data-page") !== "recognition") window.clearTimeout(state.recognitionRefreshTimer); });
     document.addEventListener("change", (event) => { const target = el(event.target) as any; if (target instanceof HTMLSelectElement && target.id === "project-select") { state.recognitionSelectedRunId = ""; window.setTimeout(() => { if (state.page === "recognition") refreshRecognition().catch(() => {}); }, 0); } });
     wireNav();
@@ -4445,7 +4612,7 @@ export function boot(): void {
     // a drop re-renders from the order it just saved.
     wirePanelDrag(() => render());
     wireChartHover();
-    (window as any).__citegeoPhase2 = { state, app, html, element, project, formatTime, brandMark, brandLockup, request, refreshRecognition, phase2Render, render: () => render() };
+    (window as any).__citegeoPhase2 = { state, app, html, element, project, formatTime, brandMark, brandLockup, request, refreshRecognition, machineTabs, phase2Render, render: () => render() };
 }
 
 // The shell renders the mount point and the configuration, then this runs.
