@@ -1,11 +1,14 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { cp, mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 
 const validationRoot = join(process.cwd(), "validation", "rebuild-phase-4-2026-09-07");
+// Written by a Phase 3 run into validation/, which is not in the repository.
+const archiveReference = join(process.cwd(), "validation", "rebuild-phase-3-2026-09-06", "acmecloud-live-current-path.txt");
 const screenshots = join(validationRoot, "screenshots");
 const results: Array<{ id: string; status: string; screenshot: string; assertions: number }> = [];
 const networkAttempts: Array<{ url: string; method: string; external: boolean }> = [];
@@ -61,7 +64,7 @@ async function stopServer(): Promise<void> {
 }
 
 async function startRealArchiveServer(): Promise<void> {
-  const referencePath = (await readFile(join(process.cwd(), "validation", "rebuild-phase-3-2026-09-06", "acmecloud-live-current-path.txt"), "utf8")).trim();
+  const referencePath = (await readFile(archiveReference, "utf8")).trim();
   const sourceData = join(referencePath, "product-data");
   realArchiveRoot = await mkdtemp(join(tmpdir(), "citegeo-phase4-real-archive-"));
   await cp(sourceData, join(realArchiveRoot, "product-data"), { recursive: true });
@@ -212,7 +215,7 @@ test("B05 preserves the first report after a single-model retry produces a new r
   await configure(page, [{ id: "fixture/model-analysis-failed", mode: "off" }]);
   await createRun(page);
   await openReport(page);
-  await expect(page.getByText("Answer received, parsing failed", { exact: true })).toBeVisible();
+  await expect(page.getByText("Recognition: Answer received, parsing failed", { exact: true })).toBeVisible();
   const retryResponse = page.waitForResponse((response) => response.request().method() === "POST" && response.url().includes("/retry"));
   await page.getByRole("button", { name: "Retry this model", exact: true }).click();
   expect((await retryResponse).status()).toBe(202);
@@ -239,8 +242,10 @@ test("B06 keeps project report data isolated and keeps all browser requests loca
 });
 
 test("B07 opens a copied Phase 3 real-provider archive without a new provider call", async ({ page }) => {
+  test.skip(!existsSync(archiveReference), "No Phase 3 archive on this machine, and validation/ is not in the repository.");
   await startRealArchiveServer();
   await page.goto(realArchiveBaseUrl);
+  await page.locator('.sidebar [data-page="models"]').first().click();
   await page.getByRole("button", { name: "Current report", exact: true }).click();
   await expect(page.getByTestId("recognition-report")).toBeVisible({ timeout: 8_000 });
   await expect(page.getByTestId("report-model-card")).toHaveCount(1);
