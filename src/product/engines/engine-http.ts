@@ -15,6 +15,7 @@ function stringList(value: unknown): string[] {
 export async function handleEngineApi(input: {
   method: string;
   route: string[];
+  url?: URL;
   send: EngineJsonSender;
   engines: EngineService;
   readJson: () => Promise<Record<string, unknown>>;
@@ -38,8 +39,10 @@ export async function handleEngineApi(input: {
 
   if (tail[0] !== "engines") return false;
 
+  // Attaching a debugger to somebody's signed-in browser is an action they
+  // take, not something drawing a page does on their behalf.
   if (method === "GET") {
-    send(200, await engines.status(projectId));
+    send(200, await engines.status(projectId, input.url?.searchParams.get("probe") === "true"));
     return true;
   }
 
