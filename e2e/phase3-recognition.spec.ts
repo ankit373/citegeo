@@ -85,7 +85,7 @@ async function createProject(page: Page, input: { domain: string; name: string }
 }
 
 async function configureProject(page: Page, modelIds: Array<{ id: string; mode: "off" | "provider_native" }>): Promise<void> {
-  await page.getByRole("button", { name: "Models and surfaces", exact: true }).click();
+  await page.locator('.sidebar [data-page="models"]').first().click();
   await expect(page.getByTestId("catalog-model").first()).toBeVisible();
   for (const model of modelIds) {
     const checkbox = page.locator(`[data-model-checkbox="${model.id}"]`);
