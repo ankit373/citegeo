@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { declaredIcons, isPublicHost } from "../src/product/discovery/site-icon.js";
+import { createServer } from "node:http";
+import type { AddressInfo } from "node:net";
+import { declaredIcons, isPublicHost, isStoredMark, readMark, MAX_ICON_BYTES } from "../src/product/discovery/site-icon.js";
 
 test("the mark is the one the site declares, resolved against the page", () => {
   const found = declaredIcons('<link rel="icon" href="/static/mark.png">', "https://example.com/");
@@ -42,4 +44,45 @@ test("a host that is not a public name is never fetched", () => {
   for (const host of ["example.com", "sub.example.co.uk", "screener.in"]) {
     assert.equal(isPublicHost(host), true, `${host} should be allowed`);
   }
+});
+
+test("the mark is kept, not the address it was kept at", async () => {
+  // Measured live: one dashboard load fetched marks from nseindia.com,
+  // zerodha.com, tickertape.in and three more, from the reader's own browser.
+  const png = Buffer.from("89504e470d0a1a0a0000000d49484452", "hex");
+  const server = createServer((request, response) => {
+    if (request.url === "/mark.png") {
+      response.writeHead(200, { "content-type": "image/png" });
+      response.end(png);
+      return;
+    }
+    if (request.url === "/huge.png") {
+      response.writeHead(200, { "content-type": "image/png" });
+      response.end(Buffer.alloc(MAX_ICON_BYTES + 1));
+      return;
+    }
+    response.writeHead(200, { "content-type": "text/html" });
+    response.end("<html></html>");
+  });
+  await new Promise<void>((ready) => server.listen(0, "127.0.0.1", () => ready()));
+  const port = (server.address() as AddressInfo).port;
+  const at = (path: string) => `http://127.0.0.1:${port}${path}`;
+  try {
+    const mark = await readMark(at("/mark.png"), 4000);
+    assert.ok(mark, "the mark was not read");
+    assert.ok(mark.startsWith("data:image/png;base64,"), mark.slice(0, 40));
+    assert.equal(mark.includes("127.0.0.1"), false, "the address leaked into the answer");
+    assert.equal(Buffer.from(mark.split(",")[1] || "", "base64").equals(png), true);
+    assert.equal(await readMark(at("/huge.png"), 4000), null, "a hero image is not a mark");
+    assert.equal(await readMark(at("/page.html"), 4000), null, "a page is not a mark");
+  } finally {
+    await new Promise<void>((closed) => server.close(() => closed()));
+  }
+});
+
+test("an address left by an older build is not drawn, it is read again", () => {
+  assert.equal(isStoredMark("https://rival.example/favicon.ico"), false);
+  assert.equal(isStoredMark("data:image/png;base64,AA"), true);
+  // No mark is an answer and is kept, so it must not look like a stale record.
+  assert.equal(isStoredMark(null), true);
 });
