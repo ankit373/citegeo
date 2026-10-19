@@ -53,19 +53,34 @@ export function isPublicHost(domain: string): boolean {
   return !numeric;
 }
 
-async function head(url: string, timeoutMs: number): Promise<boolean> {
+/** A mark is a few kilobytes. Anything larger is a hero image behind a wrong
+ * rel, and it is not worth carrying in every answer. */
+export const MAX_ICON_BYTES = 32 * 1024;
+
+// The mark itself rather than its address, so drawing a table never sends the
+// reader's browser to a rival's server.
+export async function readMark(url: string, timeoutMs: number): Promise<string | null> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetch(url, { method: "GET", redirect: "follow", signal: controller.signal, headers: { "user-agent": "citegeo-site-read" } });
-    if (!response.ok) return false;
-    const type = response.headers.get("content-type") || "";
-    return type.startsWith("image/");
+    if (!response.ok) return null;
+    const type = ((response.headers.get("content-type") || "").split(";")[0] || "").trim().toLocaleLowerCase();
+    if (!type.startsWith("image/")) return null;
+    const bytes = Buffer.from(await response.arrayBuffer());
+    if (!bytes.length || bytes.length > MAX_ICON_BYTES) return null;
+    return `data:${type};base64,${bytes.toString("base64")}`;
   } catch {
-    return false;
+    return null;
   } finally {
     clearTimeout(timer);
   }
+}
+
+/** A mark this server has already read and kept, told apart from an address
+ * left by an older build that the browser would have to go and fetch. */
+export function isStoredMark(value: string | null): boolean {
+  return value === null || value.startsWith("data:");
 }
 
 /** The icon a domain declares, or null. Null is a real answer: it means the
@@ -90,7 +105,8 @@ export async function readSiteIcon(domain: string, options: { timeoutMs?: number
     clearTimeout(timer);
   }
   for (const candidate of declaredIcons(html, `https://${domain}/`).slice(0, 3)) {
-    if (await head(candidate, timeoutMs)) return candidate;
+    const mark = await readMark(candidate, timeoutMs);
+    if (mark) return mark;
   }
   return null;
 }

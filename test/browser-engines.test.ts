@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { askEngine, type BrowserEngine, type EngineOutcome } from "../src/product/engines/browser-engine.js";
 import { BROWSER_ENGINES, browserEngine, googleAiOverview, perplexityWeb } from "../src/product/engines/engine-registry.js";
+import { handleEngineApi } from "../src/product/engines/engine-http.js";
 test("a browser that is not running is unavailable, never an empty answer", async () => {
   // An empty answer is a measurement. A missing browser is not one.
   const outcome = await askEngine(googleAiOverview, "best screener", { endpoint: "http://127.0.0.1:1" });
@@ -48,4 +49,23 @@ test("google and perplexity read different surfaces", () => {
   assert.notEqual(googleAiOverview.id, perplexityWeb.id);
   assert.ok(googleAiOverview.caveat.toLowerCase().includes("search"));
   assert.ok(perplexityWeb.caveat.toLowerCase().includes("api"));
+});
+
+test("drawing the page does not reach into the reader's browser", async () => {
+  // Measured live: opening Models attached a debugger to the developer's own
+  // signed-in Chrome, once per server process, with nothing asked for.
+  const asked: Array<boolean | undefined> = [];
+  const engines = { status: async (unused: string, probe?: boolean) => { asked.push(probe); return { engines: [] }; } };
+  const call = (search: string) => handleEngineApi({
+    method: "GET",
+    route: ["api", "projects", "p1", "engines"],
+    url: new URL("http://127.0.0.1/api/projects/p1/engines" + search),
+    send: () => undefined,
+    engines: engines as never,
+    readJson: async () => ({}),
+  });
+  assert.equal(await call(""), true);
+  assert.equal(asked[0], false, "a plain read probed the browser");
+  assert.equal(await call("?probe=true"), true);
+  assert.equal(asked[1], true, "asking by name did not probe");
 });

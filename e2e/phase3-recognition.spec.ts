@@ -85,7 +85,7 @@ async function createProject(page: Page, input: { domain: string; name: string }
 }
 
 async function configureProject(page: Page, modelIds: Array<{ id: string; mode: "off" | "provider_native" }>): Promise<void> {
-  await page.getByRole("button", { name: "Models and surfaces", exact: true }).click();
+  await page.locator('.sidebar [data-page="models"]').first().click();
   await expect(page.getByTestId("catalog-model").first()).toBeVisible();
   for (const model of modelIds) {
     const checkbox = page.locator(`[data-model-checkbox="${model.id}"]`);
@@ -103,8 +103,8 @@ async function configureProject(page: Page, modelIds: Array<{ id: string; mode: 
 }
 
 async function openRecognition(page: Page): Promise<void> {
-  await page.getByRole("button", { name: "Domain recognition", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Domain recognition test", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Results", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Results", exact: true })).toBeVisible();
 }
 
 async function waitForRun(page: Page, expectedCards: number): Promise<void> {
@@ -254,7 +254,7 @@ test("E projects remain isolated through the product UI and nested API boundary"
   await waitForRun(page, 1);
   await expect(page.getByTestId("recognition-model-run")).toContainText("Native Fixture");
   await page.getByTestId("project-select").selectOption(firstId);
-  await page.getByRole("button", { name: "Domain recognition", exact: true }).click();
+  await page.getByRole("button", { name: "Results", exact: true }).click();
   await expect(page.getByTestId("project-select")).toHaveValue(firstId);
   await expect(page.getByTestId("recognition-model-run")).toContainText("Recognized Fixture");
   const foreign = await page.request.get(`${baseUrl}/api/projects/${secondId}/recognition-runs/${firstPayload.runs[0]?.id}`);

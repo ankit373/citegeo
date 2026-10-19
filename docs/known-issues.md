@@ -4,7 +4,9 @@ Current, honest state of the tool. If something here matters to you, the issue t
 
 ## Verification gaps
 
-- The Playwright browser suites under `e2e/` have not been run against the current build. They assert on interface text that changed during the rebrand.
+- No Playwright browser suite runs in CI, so a broken click path still ships green. See [#84](https://github.com/ankit373/citegeo/issues/84).
+- `phase4-reports` fails against the current build. It drives the Current report screen, which belongs to the shell this app replaced. See [#199](https://github.com/ankit373/citegeo/issues/199).
+- `phase2-configuration` skips unless a provider key is set, because it is written against the live model catalogue.
 - The Docker image has not been rebuilt or verified since the brand assets changed.
 - Light mode is specified in `DESIGN.md` but not implemented. The generated HTML report still carries a light stylesheet that the dark rules below it fully override, so it is dead code.
 

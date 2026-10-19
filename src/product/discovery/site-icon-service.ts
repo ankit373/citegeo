@@ -1,6 +1,6 @@
 import type { ProductProjectFileStore } from "../projects/project-store.js";
 import { getJson, putJson } from "../storage/object-store.js";
-import { readSiteIcon } from "./site-icon.js";
+import { isStoredMark, readSiteIcon } from "./site-icon.js";
 
 // Marks are read from each site once and kept, because a logo does not move
 // often and nobody should wait on a crawl to draw a table.
@@ -40,7 +40,7 @@ export class SiteIconService {
     const out: Record<string, string | null> = {};
     for (const domain of domains) {
       const held = all[domain];
-      if (held) out[domain] = held.url;
+      if (held && isStoredMark(held.url)) out[domain] = held.url;
     }
     return out;
   }
@@ -51,7 +51,10 @@ export class SiteIconService {
     const cutoff = Date.now() - STALE_AFTER_DAYS * 24 * 60 * 60 * 1000;
     const wanted = domains.filter((domain) => {
       const held = all[domain];
-      return !held || Date.parse(held.readAt) < cutoff;
+      // A record from an older build holds the rival's address, which is the
+      // request this stopped making, so it is read again whatever its age.
+      if (!held || !isStoredMark(held.url)) return true;
+      return Date.parse(held.readAt) < cutoff;
     });
     for (const domain of wanted.slice(0, 12)) {
       // One in flight per domain, so ten tables asking at once read once.
@@ -67,7 +70,7 @@ export class SiteIconService {
     const out: Record<string, string | null> = {};
     for (const domain of domains) {
       const held = all[domain];
-      if (held) out[domain] = held.url;
+      if (held && isStoredMark(held.url)) out[domain] = held.url;
     }
     return out;
   }

@@ -110,8 +110,8 @@ export const DESTINATIONS: Destination[] = [
 ];
 
 const MACHINE: Destination[] = [
-  { page: "models", label: "Models and surfaces", question: "", also: ["recognition", "reports"] },
-  { page: "overview", label: "Projects", question: "", also: ["configuration"] },
+  { page: "models", label: "Models and surfaces", question: "", also: ["recognition", "configuration", "reports"] },
+  { page: "overview", label: "Projects", question: "" },
   { page: "setup", label: "Setup", question: "" },
 ];
 
