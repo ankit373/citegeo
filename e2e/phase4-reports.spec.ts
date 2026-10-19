@@ -115,7 +115,7 @@ async function configure(page: Page, selected: Array<{ id: string; mode: "off" |
 }
 
 async function createRun(page: Page): Promise<void> {
-  await page.getByRole("button", { name: "Domain recognition", exact: true }).click();
+  await page.getByRole("button", { name: "Results", exact: true }).click();
   await page.getByTestId("start-recognition").click();
   await expect(page.getByTestId("recognition-model-run").first()).not.toContainText("Calling", { timeout: 8_000 });
 }
