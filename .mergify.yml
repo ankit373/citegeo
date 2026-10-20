@@ -78,7 +78,7 @@ merge_protections:
       - -draft
       - "#changes-requested-reviews-by = 0"
     success_conditions:
-      - review-threads-resolved
+      - "#review-threads-unresolved = 0"
 
   - name: Interface change was opened in a browser
     description: >
