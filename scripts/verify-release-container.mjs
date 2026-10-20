@@ -51,7 +51,12 @@ try {
   verify("Packaged version", pkg.version, version.slice(1));
   verify("Fresh installation has no seeded projects", (await request("/api/projects")).body.projects, []);
   const html = await (await fetch(base)).text();
-  verify("Product HTML delivered", html.includes("data-testid=\"new-project\"") || html.includes("data-testid='new-project'"), true);
+  verify("Product shell delivered", html.includes('id="app"') && html.includes('data-testid="project-drawer"'), true);
+  // The shell is inert markup until this module loads. It has climbed out of
+  // the tree /app serves before, with every other check still passing.
+  const boot = await fetch(`${base}/app/main.js`, { signal: AbortSignal.timeout(10000) });
+  verify("Boot module served", boot.status, 200);
+  verify("Boot module is JavaScript", (boot.headers.get("content-type") || "").includes("javascript"), true);
   for (const asset of ["citegeo-emblem.svg", "citegeo-lockup.svg"]) {
     const local = await readFile(`assets/brand/${asset}`);
     const response = await fetch(`${base}/assets/brand/${asset}`);
