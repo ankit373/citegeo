@@ -1,10 +1,15 @@
 # GitHub's rulesets protect the branches. This holds the conventions that are
 # written down in CLAUDE.md and docs/ and were enforced by nobody.
 #
-# Each merge_protections entry reports as its own check on the pull request,
-# and only when its "if" matches, so a docs change is not asked about browsers.
+# Mergify reports all merge protections through one "Mergify Merge Protections"
+# check, which names each active rule in its output and in a comment. A rule is
+# active only when its "if" matches, so a docs change is not asked about a browser.
 
 merge_protections_settings:
+  reporting_method: check-runs
+  # One gate check carries all six, so the per-rule verdicts go in a comment
+  # as well, where a reader sees which one they tripped without opening it.
+  post_comment: true
   # Nothing merges itself. A pull request is auto-merged only once a human has
   # put the auto-merge label on it, and only after it would have merged anyway.
   auto_merge_conditions:
