@@ -169,11 +169,6 @@ merge_queue:
   max_parallel_checks: 1
 
 pull_request_rules:
-  - name: Delete the head branch once it has merged
-    conditions:
-      - merged
-    actions:
-      delete_head_branch:
 
   - name: Say so when a pull request stops merging cleanly
     conditions:
