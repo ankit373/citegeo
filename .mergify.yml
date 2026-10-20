@@ -7,8 +7,8 @@
 
 merge_protections_settings:
   reporting_method: check-runs
-  # One gate check carries all six, so the per-rule verdicts go in a comment
-  # as well, where a reader sees which one they tripped without opening it.
+  # One gate check carries all of these, so the per-rule verdicts go in a
+  # comment as well, where a reader sees which one they tripped.
   post_comment: true
   # Nothing merges itself. A pull request is auto-merged only once a human has
   # put the auto-merge label on it, and only after it would have merged anyway.
@@ -16,6 +16,17 @@ merge_protections_settings:
     - label = auto-merge
 
 merge_protections:
+  - name: Qualifying jobs are green
+    description: >
+      One aggregating check rather than each job named by string. The ruleset
+      named the matrix jobs individually, and moving the matrix left it
+      requiring a job that could never report, with no bypass actor.
+    if:
+      - -draft
+    success_conditions:
+      - check-success = PR Gate
+      - check-success = Check the CLA signature
+
   - name: Links an issue
     description: >
       Every pull request names the issue it closes, so the board reflects the
@@ -26,6 +37,15 @@ merge_protections:
       - -head ~= ^chore/(release|main-back-into-develop)
     success_conditions:
       - body ~= (?i)\b(close[sd]?|fix(e[sd])?|resolve[sd]?|part of)\s+#\d+
+
+  - name: Title says what kind of change this is
+    description: >
+      The history is read as a changelog source. A title that does not say
+      whether it is a fix, a feature or a chore costs a reader the diff.
+    if:
+      - -author = dependabot[bot]
+    success_conditions:
+      - title ~= ^(feat|fix|chore|docs|test|refactor|perf|ci|build|revert)(\(.+\))?!?:\s.+
 
   - name: No assistant attribution
     description: >
@@ -42,13 +62,23 @@ merge_protections:
 
   - name: Plain prose
     description: >
-      No em dashes, in the title or the description. The repository writes
-      plain technical prose and the rule is easier to keep than to undo later.
+      No em dashes, in the title or the description. The character is written
+      here as an escape so this file does not break its own rule.
     if:
       - -author = dependabot[bot]
     success_conditions:
       - -title ~= —
       - -body ~= —
+
+  - name: Review threads are resolved
+    description: >
+      An unresolved thread on an approved pull request is a question nobody
+      answered. It has silently dropped approved work out of a queue before.
+    if:
+      - -draft
+      - "#changes-requested-reviews-by = 0"
+    success_conditions:
+      - "#review-threads-unresolved = 0"
 
   - name: Interface change was opened in a browser
     description: >
@@ -65,6 +95,48 @@ merge_protections:
           - label = browser-checked
           - body ~= (?i)browser
 
+  - name: Product change reaches the tests
+    description: >
+      A change under src/product with no test beside it is a behaviour nothing
+      holds. Label it no-test-needed if the change really cannot be observed.
+    if:
+      - -author = dependabot[bot]
+      - files ~= ^src/product/
+    success_conditions:
+      - or:
+          - files ~= ^test/
+          - files ~= ^e2e/
+          - label = no-test-needed
+
+  - name: The lockfile keeps step
+    description: >
+      A package.json moved without its lockfile is an install that resolves
+      differently on the next machine than it did on this one.
+    if:
+      - files = package.json
+    success_conditions:
+      - files = package-lock.json
+
+  - name: A workflow change reviews the ruleset
+    description: >
+      main's ruleset names required checks by string. A renamed or dropped job
+      leaves it waiting on a check that can never report, and main becomes
+      unmergeable with no bypass. Label ruleset-reviewed once you have looked.
+    if:
+      - files ~= ^\.github/workflows/
+    success_conditions:
+      - label = ruleset-reviewed
+
+  - name: Credential and session code is reviewed
+    description: >
+      src/product/auth holds the credential store, the session, the login
+      throttle and the OAuth state. This tool ships with no authentication and
+      says so, which makes the little it does have worth a second look.
+    if:
+      - files ~= ^src/product/auth/
+    success_conditions:
+      - label = security-reviewed
+
   - name: A release bumps the version
     description: >
       main only moves through a release. A promotion that forgets the bump
@@ -78,34 +150,23 @@ merge_protections:
       - files = deploy/helm/citegeo/Chart.yaml
       - files = deploy/kubernetes/citegeo.yaml
 
-  - name: Green on everything main requires
-    description: >
-      The same six checks main's ruleset names, asserted on the way into
-      develop too, where the ruleset requires nothing at all.
-    if:
-      - -draft
-    success_conditions:
-      - check-success = Build and test (Node 22)
-      - check-success = Build and test (Node 26)
-      - check-success = Helm chart
-      - check-success = Docker image builds
-      - check-success = Check the CLA signature
-
 queue_rules:
   - name: default
     # A merge commit, never a squash. The release flow compares ancestry
     # between main and develop, and a squash loses it.
     merge_method: merge
     update_method: merge
+    batch_size: 1
     queue_conditions:
       - -draft
       - -conflict
+      - check-success = PR Gate
     merge_conditions:
-      - check-success = Build and test (Node 22)
-      - check-success = Build and test (Node 26)
-      - check-success = Helm chart
-      - check-success = Docker image builds
+      - check-success = PR Gate
       - check-success = Check the CLA signature
+
+merge_queue:
+  max_parallel_checks: 1
 
 pull_request_rules:
   - name: Delete the head branch once it has merged
@@ -124,8 +185,8 @@ pull_request_rules:
           - conflict
       comment:
         message: >
-          This no longer merges cleanly into `{{base}}`. Rebase or merge the
-          base branch in, and the label clears itself.
+          This no longer merges cleanly into `{{base}}`. Merge the base branch
+          in, and the label clears itself.
 
   - name: Clear the conflict label once it merges cleanly again
     conditions:
@@ -135,3 +196,88 @@ pull_request_rules:
       label:
         remove:
           - conflict
+
+  - name: Mark a pull request that has fallen behind
+    conditions:
+      - -closed
+      - -draft
+      - "#commits-behind > 0"
+    actions:
+      label:
+        add:
+          - needs-rebase
+
+  - name: Clear the rebase label once it is level again
+    conditions:
+      - "#commits-behind = 0"
+      - label = needs-rebase
+    actions:
+      label:
+        remove:
+          - needs-rebase
+
+  - name: Hand a pull request back to its author after a review
+    conditions:
+      - -closed
+      - "#changes-requested-reviews-by > 0"
+    actions:
+      label:
+        add:
+          - needs-author
+
+  - name: Take the label back once the review is addressed
+    conditions:
+      - "#changes-requested-reviews-by = 0"
+      - label = needs-author
+    actions:
+      label:
+        remove:
+          - needs-author
+
+  - name: Label the interface
+    conditions:
+      - files ~= ^src/ui/
+    actions:
+      label:
+        add:
+          - area/interface
+
+  - name: Label the product
+    conditions:
+      - files ~= ^src/product/
+    actions:
+      label:
+        add:
+          - area/product
+
+  - name: Label the providers
+    conditions:
+      - files ~= ^src/providers/
+    actions:
+      label:
+        add:
+          - area/providers
+
+  - name: Label the documentation
+    conditions:
+      - files ~= ^(docs/|README\.md|CHANGELOG\.md)
+    actions:
+      label:
+        add:
+          - area/docs
+
+  - name: Label the deployment
+    conditions:
+      - files ~= ^deploy/
+    actions:
+      label:
+        add:
+          - area/deploy
+
+  - name: Label the pipeline
+    conditions:
+      - files ~= ^(\.github/|scripts/|\.mergify\.yml)
+    actions:
+      label:
+        add:
+          - area/ci
