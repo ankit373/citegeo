@@ -2,7 +2,7 @@ import { defineConfig } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./e2e",
-  testMatch: "phase3-recognition.spec.ts",
+  testMatch: "recognition.spec.ts",
   outputDir: "validation/rebuild-phase-3-2026-09-06/traces",
   reporter: [
     ["list"],

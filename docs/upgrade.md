@@ -2,7 +2,7 @@
 
 Markdown cases can be read directly, with no second service required. Retiring the case-specific preview never changes the regular product's data, run API, reports, or charts, and it does not mean any old case archive is deleted.
 
-Applies to: the current product candidate **v0.2.0-rc.1, UNPUBLISHED**. rc4 has been built and its backup read verified, along with verifying that the backup copy reopens in the previous local candidate; no image has been publicly released. The final mapping is in the local `release-manifest.json` (a local private record, not public: `../validation/release-v0.2.0-rc.1/release-manifest.json`); that private path is not a public download address. See [Docker deployment](deployment/docker.md) for image preparation.
+Applies to the published images. Each release is tagged and its image is published from that tag, so an upgrade moves between two tags rather than between local build candidates. See [Docker deployment](deployment/docker.md) for image preparation.
 
 ## Copy restoration already performed
 
@@ -20,7 +20,7 @@ The current product entry point is `src/product/product-server.ts`, with default
 
 When upgrading from the old alpha, keep the old image/source, the old directory, and its run configuration, and use a separate `product-v2` directory for the new product. Do not rename an old `audit.json` into a new run, and do not generate a D/K observation that never happened just to fill in a new field. The old CLI's `import-runs`/`monitor-worker` must never be assumed, by name alone, to be the new product's migration/scheduling tool.
 
-Existing `product-v2` data needs the relationship between project, configuration, raw text, and derived results kept intact as a whole. See [architecture](ARCHITECTURE.md) for the storage layout in detail. The current file read is mainly JSON parsing plus a parent-ID check; it does not include a framework that automatically migrates every historical schema.
+Existing `product-v2` data needs the relationship between project, configuration, raw text, and derived results kept intact as a whole. See [architecture](architecture.md) for the storage layout in detail. The current file read is mainly JSON parsing plus a parent-ID check; it does not include a framework that automatically migrates every historical schema.
 
 ## What to record before upgrading
 

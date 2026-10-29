@@ -1,6 +1,6 @@
 # Brand and documentation visual standards
 
-Applies to: Phase 6 documentation, the site, and the candidate product, planned for version **v0.2.0-rc.1, UNPUBLISHED**. This page governs how the current brand assets are used. It is not a claim that light/dark themes, browser screenshots, or the candidate image assets have passed acceptance.
+Applies to the documentation, the site, and the product. This page governs how the current brand assets are used. It is not a claim that light/dark themes, browser screenshots, or the candidate image assets have passed acceptance.
 
 ## Name and narrative
 
@@ -50,9 +50,9 @@ Success, unknown, failure, partial coverage, and missing data are all distinguis
 
 ## Motion
 
-Follows the existing [Motion Design System](MOTION_DESIGN_SYSTEM.md), [motion-runtime.ts](../src/ui/motion-runtime.ts), and [workbench-style.ts](../src/ui/workbench-style.ts). Common durations: 80ms for press feedback, 140ms for hover/focus, 160ms for content entry, 200ms for a drawer, 300ms for a chart update, 650ms for a line's first draw, and 800ms for success feedback.
+Follows the existing [Motion Design System](motion-design-system.md), [motion-runtime.ts](../src/ui/motion-runtime.ts), and [workbench-style.ts](../src/ui/workbench-style.ts). Common durations: 80ms for press feedback, 140ms for hover/focus, 160ms for content entry, 200ms for a drawer, 300ms for a chart update, 650ms for a line's first draw, and 800ms for success feedback.
 
-This describes the established interaction spec; it is not a claim that every new page already fully reuses the shared runtime. The current Phase 5 pages also have some local CSS/motion implementation; check reduced-motion, keyboard operation, loading/failure states, and the actual code path before accepting it. Motion never generates data, hides a failure, or delays the user's access to the original text.
+This describes the established interaction spec; it is not a claim that every new page already fully reuses the shared runtime. The current measurement pages also have some local CSS/motion implementation; check reduced-motion, keyboard operation, loading/failure states, and the actual code path before accepting it. Motion never generates data, hides a failure, or delays the user's access to the original text.
 
 ## Screenshots and public cases
 
