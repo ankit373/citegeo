@@ -104,6 +104,6 @@ Never include `.env`, generated reports, private domains or prompts, or local ru
 
 ## Documentation to update alongside code
 
-- Changing report behaviour: `docs/REPORT_STANDARD.md`, `docs/CAPABILITY_MATRIX.md`, `README.md`
+- Changing report behaviour: `docs/report-standard.md`, `docs/capability-matrix.md`, `README.md`
 - Changing provider behaviour: document the source label and the key boundary
 - Changing anything visual: `DESIGN.md` and `docs/brand.md`

@@ -267,7 +267,6 @@ export class MetricsEngine {
         .map((run) => run.analysis?.mentions.find((mention) => mention.entityId === entity.id))
         .filter((mention): mention is Mention => Boolean(mention));
       const mentioned = mentions.filter((mention) => mention.isMentioned);
-      const occurrences = mentions.reduce((sum, mention) => sum + mention.count, 0);
       const competitorRanks = mentions.map((mention) => mention.rankPosition).filter((rank): rank is number => typeof rank === "number");
       const citations = allCitations(completed).filter((citation) => citation.entityId === entity.id);
       return {

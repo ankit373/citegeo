@@ -5,7 +5,6 @@ import { SCORE_WEIGHTS } from "../src/product/topics/visibility-score.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { buildHomeSummary } from "../src/product/alerts/home-summary.js";
-import { renderProductPhase2AppHtml } from "../src/ui/product-phase2-app.js";
 import { productAppSource } from "../src/ui/app-source.js";
 import { summariseCorroboration } from "../src/product/topics/mention-corroboration.js";
 import type { TopicInsights } from "../src/product/topics/topic-insights.js";

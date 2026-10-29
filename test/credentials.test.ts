@@ -272,10 +272,12 @@ test("what the product can connect to is readable without a password", async () 
   });
   assert.equal(handled, true);
   assert.equal(sent[0]?.status, 200);
-  const rows = (sent[0]?.body as { integrations: Array<Record<string, unknown>> }).integrations;
+  const first = sent[0];
+  assert.ok(first, "nothing was sent");
+  const rows = (first.body as { integrations: Array<Record<string, unknown>> }).integrations;
   const google = rows.find((row) => row.providerId === "google");
   assert.ok(google, "Search Console is not offered");
-  assert.equal((google?.settings as Array<{ key: string }>)[0]?.key, "siteUrl");
+  assert.equal((google.settings as Array<{ key: string }>)[0]?.key, "siteUrl");
   // Neither a key nor its last four characters may appear here.
   assert.equal(JSON.stringify(rows).includes("last4"), false);
   assert.equal(JSON.stringify(rows).includes("source"), false);

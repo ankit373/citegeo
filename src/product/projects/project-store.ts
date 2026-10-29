@@ -89,15 +89,24 @@ export class ProductProjectFileStore {
       }
       throw error;
     }
-    try {
-      return await operation();
-    } finally {
+    // Releasing from a finally meant a failed unlink replaced the operation's
+    // own error, so the caller was told about the lock instead of the failure.
+    const release = async () => {
       await handle.close();
       try {
         await unlink(path);
       } catch (error) {
         if (!isNotFound(error)) throw error;
       }
+    };
+    let result: T;
+    try {
+      result = await operation();
+    } catch (error) {
+      await release().catch(() => undefined);
+      throw error;
     }
+    await release();
+    return result;
   }
 }
