@@ -41,7 +41,7 @@ test("one name first in most answers, against a short field, is a settled questi
 test("a long tail behind a reliable leader is still a settled question", () => {
   const contest = buildQuestionContest({
     prompt: PROMPT,
-    answers: Array.from({ length: 7 }, (unused, index) => answer([
+    answers: Array.from({ length: 7 }, (_unused, index) => answer([
       mention("Screener.in", 0),
       mention(`One-off ${index}`, 30),
       mention(`One-off ${index}b`, 60),

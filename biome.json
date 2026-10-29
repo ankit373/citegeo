@@ -1,0 +1,63 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.6.4/schema.json",
+  "files": {
+    "includes": [
+      "src/**/*.ts",
+      "test/**/*.ts",
+      "e2e/**/*.ts",
+      "scripts/**/*.mjs",
+      "scripts/**/*.ts"
+    ]
+  },
+  "formatter": {
+    "enabled": false
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "style": {
+        "recommended": false
+      },
+      "complexity": {
+        "recommended": false
+      },
+      "performance": {
+        "recommended": false
+      },
+      "nursery": {
+        "recommended": false
+      },
+      "correctness": {
+        "recommended": true,
+        "noVoidTypeReturn": "off",
+        "noUnusedImports": "error",
+        "noUnusedVariables": "error",
+        "usePlaywrightValidDescribeCallback": "off"
+      },
+      "suspicious": {
+        "recommended": true,
+        "noExplicitAny": "off",
+        "noAssignInExpressions": "off",
+        "noImplicitAnyLet": "off"
+      }
+    }
+  },
+  "overrides": [
+    {
+      "includes": [
+        "src/ui/app/main.ts",
+        "src/ui/*-app.ts",
+        "src/ui/workbench-*.ts",
+        "src/server.ts"
+      ],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "noUnusedVariables": "off"
+          }
+        }
+      }
+    }
+  ]
+}

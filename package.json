@@ -44,11 +44,12 @@
     "check:scripts": "node scripts/check-emitted-scripts.mjs",
     "check:docs": "node scripts/check-doc-links.mjs",
     "check:theme": "node scripts/check-theme-tokens.mjs",
-    "check:all": "npm run self-check && npm run check:scripts && npm run check:docs && npm run check:theme",
+    "check:all": "npm run lint && npm run self-check && npm run check:scripts && npm run check:docs && npm run check:theme",
     "build:site": "npm run build && node scripts/build-site.mjs",
     "demand:index": "npm run build && node scripts/index-demand-corpus.mjs",
     "build:css": "tailwindcss -i src/ui/theme.css -o dist/src/ui/app/app.css --minify",
-    "demand:explore": "npm run build && node scripts/explore-conversations.mjs"
+    "demand:explore": "npm run build && node scripts/explore-conversations.mjs",
+    "lint": "biome lint src test e2e scripts"
   },
   "dependencies": {
     "cheerio": "^1.2.0",
@@ -58,6 +59,7 @@
     "nodemailer": "^10.1.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.6.4",
     "@playwright/test": "^1.64.0",
     "@tailwindcss/cli": "^4.3.3",
     "@types/node": "^24.19.2",

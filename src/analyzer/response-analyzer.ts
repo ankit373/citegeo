@@ -70,7 +70,7 @@ function classifyMention(context: string | null, hasCitationOnly: boolean): Ment
   return "ordinary";
 }
 
-function sentimentFor(context: string | null): Sentiment {
+function sentimentFor(_context: string | null): Sentiment {
   return "neutral";
 }
 

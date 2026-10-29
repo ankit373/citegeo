@@ -26,7 +26,7 @@ function stringValues(value: unknown): string[] {
 }
 
 function hasOwn(object: Record<string, unknown> | null, key: string): boolean {
-  return object ? Object.prototype.hasOwnProperty.call(object, key) : false;
+  return object ? Object.hasOwn(object, key) : false;
 }
 
 function protocol(parameters: string[], nativeWebSearchPriced: boolean): OpenRouterSearchProtocol {

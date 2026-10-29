@@ -49,7 +49,7 @@ function set(isOpen: boolean): void {
     // phone would cover the page on the next visit.
     try {
       localStorage.setItem(REMEMBERED, isOpen ? "open" : "closed");
-    } catch (error) {
+    } catch {
       /* the choice just will not persist */
     }
   }
@@ -60,7 +60,7 @@ function set(isOpen: boolean): void {
 export function wireNav(): void {
   try {
     if (localStorage.getItem(REMEMBERED) === "closed") document.body.classList.add("nav-closed");
-  } catch (error) {
+  } catch {
     /* no stored preference is the same as the default */
   }
 

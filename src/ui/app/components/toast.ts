@@ -77,5 +77,5 @@ export function clearToasts(): void {
   const found = document.getElementById(HOST);
   if (!found) return;
   const all = found.querySelectorAll(".toast");
-  all.forEach((node) => node.remove());
+  all.forEach((node) => { node.remove(); });
 }

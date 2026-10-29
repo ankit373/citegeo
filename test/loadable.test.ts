@@ -1,12 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { failed, isReady, match, needsLoad, ready, valueOf, type Loadable } from "../src/ui/app/loadable.js";
+import { failed, isReady, match, needsLoad, ready, readyValue, type Loadable } from "../src/ui/app/loadable.js";
 
 test("not loaded and loaded-and-empty are different states, not one falsy value", () => {
   const notYet: Loadable<string[]> = { status: "idle" };
   const empty = ready<string[]>([]);
-  assert.equal(valueOf(notYet), null);
-  assert.deepEqual(valueOf(empty), []);
+  assert.equal(readyValue(notYet), null);
+  assert.deepEqual(readyValue(empty), []);
   assert.equal(isReady(notYet), false);
   assert.equal(isReady(empty), true, "an empty list has loaded, and that is a finding");
 });

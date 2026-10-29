@@ -10,7 +10,7 @@ import { clearToasts, toast } from "./components/toast.js";
 import { DESTINATIONS, navScrim, navToggle, sidebar, wireNav } from "./components/nav.js";
 import { hasPanelOrder, resetPanelOrder, setPanelSpan, togglePanelHidden, wirePanelDrag } from "./components/reorder.js";
 import { wireChartHover } from "./components/chart-hover.js";
-import { setupView, type CredentialRow, type IntegrationRow, type ProviderRow, type SetupData, type StorageCheck, type StorageSettings } from "./pages/setup-view.js";
+import { setupView, type CredentialRow, type IntegrationRow, type ProviderRow, type StorageCheck, type StorageSettings } from "./pages/setup-view.js";
 import { selectedModelTable, webSearchModeControl } from "./components/model-picker.js";
 
 /** What moved since the previous run, in sentences. Only built when
@@ -154,7 +154,7 @@ export function boot(): void {
     function openDrawer() { state.drawerSession += 1; setFormStatus("", ""); setDrawer(true); window.setTimeout(() => element("project-domain").focus(), 0); }
     function closeDrawer() { state.drawerSession += 1; setDrawer(false); }
     function setFormStatus(message: string, kind: string) { const target = element("form-status"); target.textContent = message || ""; target.className = kind ? "form-status " + kind : "form-status"; }
-    const expectedErrorText: Record<string, string | undefined> = { invalid_project_input:"Invalid project input. Check the domain and name.", project_not_found:"The project does not exist or has been deleted.", project_domain_conflict:"This domain is already used by another project.", project_state_conflict:"The project\'s current status does not allow this action.", project_endpoint_not_found:"The requested project action does not exist.", configuration_invalid:"Invalid configuration. Check the models and their web search modes.", baseline_unchanged:"The current configuration is already saved.", baseline_not_found:"That configuration version does not exist.", model_catalog_unavailable:"The model catalog is temporarily unavailable. Try again shortly.", configuration_operation_failed:"Could not save the configuration. Try again.", recognition_invalid:"The recognition test cannot start. Check the configuration, or wait for the running test to finish.", recognition_run_not_found:"That recognition test record does not exist.", recognition_model_run_not_found:"That model execution record does not exist.", recognition_operation_failed:"The recognition test action failed. Try again.", project_operation_failed:"The project action failed. Try again.", request_failed:"The request did not complete. Check your network and try again." };
+    const expectedErrorText: Record<string, string | undefined> = { invalid_project_input:"Invalid project input. Check the domain and name.", project_not_found:"The project does not exist or has been deleted.", project_domain_conflict:"This domain is already used by another project.", project_state_conflict:"The project's current status does not allow this action.", project_endpoint_not_found:"The requested project action does not exist.", configuration_invalid:"Invalid configuration. Check the models and their web search modes.", baseline_unchanged:"The current configuration is already saved.", baseline_not_found:"That configuration version does not exist.", model_catalog_unavailable:"The model catalog is temporarily unavailable. Try again shortly.", configuration_operation_failed:"Could not save the configuration. Try again.", recognition_invalid:"The recognition test cannot start. Check the configuration, or wait for the running test to finish.", recognition_run_not_found:"That recognition test record does not exist.", recognition_model_run_not_found:"That model execution record does not exist.", recognition_operation_failed:"The recognition test action failed. Try again.", project_operation_failed:"The project action failed. Try again.", request_failed:"The request did not complete. Check your network and try again." };
     function requestError(code: string, detail?: string): any {
       // The server names the model or the field at fault. The generic line for
       // a code does not, and a save that fails without saying which row is why.
@@ -195,7 +195,6 @@ export function boot(): void {
     function renderProjectCards() { const rows = currentList(); if (rows.length === 0) { const title = state.mode === "current" ? "No projects yet" : state.mode === "archived" ? "No archived projects" : "No recently deleted projects"; const copy = state.mode === "current" ? "Once you enter a domain, the project is saved as a draft immediately." : "Project lifecycle records are kept here."; return '<div class="empty"><div class="empty-copy" data-testid="empty-state"><h2>' + title + '</h2><p class="subtle">' + copy + '</p>' + (state.mode === "current" ? button({ label: "New project", kind: "primary", id: "empty-new-project" }) : '') + '</div></div>'; }
       return '<div class="mtable" data-testid="project-list"><div class="mhead mcols-project"><span>Project</span><span>Domain</span><span>Status</span><span>Updated</span><span></span></div>' + rows.map((item) => '<div class="mrow mcols-project ' + (item.id === state.selectedId ? "is-selected" : "") + '" data-testid="project-card" data-project-id="' + html(item.id) + '"><button type="button" class="rowlink" data-project-action="select" data-project-id="' + html(item.id) + '" data-testid="project-title">' + html(item.name) + '</button><span class="mcell mono" data-testid="project-domain">' + html(item.normalizedDomain) + '</span><span class="tag ' + html(item.status) + '">' + statusText(item.status) + '</span><span class="mcell mono">' + html(formatTime((item.updatedAt as any))) + '</span>' + cardActions(item) + '</div>').join("") + '</div>'; }
     function monitoringConfiguration() { return state.monitoringConfiguration || { status:"no_version", currentVersion:null, nextVersion:1, currentBaseline:null, currentProtocol:{ protocolId:"domain-recognition", protocolVersion:"v1", inputType:"domain_only", requestedFields:[], promptTemplateHash:"" }, currentDomain:"", currentLanguage:"zh", currentModelSnapshots:[], diff:{ addedModels:[], removedModels:[], webSearchModeChanges:[], protocolVersionChange:null, domainChange:null, languageChange:null } }; }
-    function activeBaseline() { return monitoringConfiguration().currentBaseline; }
     async function loadProviders() {
       if (state.providersState === "loading") return;
       state.providersState = "loading";
@@ -360,9 +359,6 @@ export function boot(): void {
       return parts.length ? "?" + parts.join("&") : "";
     }
 
-    function filtersApplied() {
-      return ["modelId", "regionId", "languageId", "topicId"].filter((key) => state.filters[key]).length;
-    }
 
     /** The mark each rival's own site declares, read once by the server and
      * kept. A domain with no mark is remembered as having none. */
@@ -930,16 +926,6 @@ export function boot(): void {
     function savePreference(key: string, value: any) {
       try { window.localStorage.setItem("citegeo." + key, value); } catch (error) { return; }
     }
-    function rangeCutoff(range: string) {
-      if (range === "all") return null;
-      const days = range === "7d" ? 7 : 30;
-      return Date.now() - days * 24 * 60 * 60 * 1000;
-    }
-    function trendInRange(trend: any, range: string) {
-      const cutoff = rangeCutoff(range);
-      if (cutoff === null) return trend;
-      return trend.filter((point: any) => Date.parse(point.at) >= cutoff);
-    }
     // A line chart drawn by hand. Points with no score leave a gap rather than
     // dropping to zero, because a run that parsed nothing is not 0% visibility.
     function trendChart(points: any[], label?: string) {
@@ -973,67 +959,6 @@ export function boot(): void {
       const gridY = [0, max / 2, max];
       const grid = gridY.map((value) => '<line x1="' + left + '" x2="' + width + '" y1="' + y(value).toFixed(1) + '" y2="' + y(value).toFixed(1) + '" class="chart-grid"/><text x="0" y="' + (y(value) + 4).toFixed(1) + '" class="chart-axis">' + html(points[0].format(value)) + '</text>').join("");
       return '<svg class="trend" viewBox="0 0 ' + width + ' ' + height + '" role="img" aria-label="' + html(label) + ' over time">' + grid + '<path d="' + path + '" class="chart-line"/>' + dots + '</svg>';
-    }
-    function dashboardSeries(data: any, metric: string) {
-      const core = data.insights;
-      if (metric === "citations") {
-        const total = core.citations.answersWithCitations || 0;
-        return {
-          label: "answers carrying a citation",
-          points: data.trend.map((point: any) => ({ at:point.at, value:null, display:"", format:(v: any) => String(Math.round(v)) })),
-          headline: total + " of " + core.answered,
-          empty: "Citations arrive once a run has web search enabled.",
-        };
-      }
-      if (metric === "voice") {
-        const share = core.shareOfVoice.target.share;
-        return {
-          label: "share of voice",
-          points: [],
-          headline: share === null ? "not comparable" : Math.round(share * 100) + "%",
-          empty: "Share of voice needs an answer that names a competitor.",
-        };
-      }
-      return {
-        label: "visibility",
-        points: data.trend.map((point: any) => ({
-          at: point.at,
-          value: point.score === null ? null : point.score * 100,
-          display: point.recognized + " of " + point.answered,
-          axisMax: 100,
-          format: (v: any) => Math.round(v) + "%",
-        })),
-        headline: core.visibility.score === null ? "n/a" : Math.round(core.visibility.score * 100) + "%",
-        empty: "No parsed answers yet.",
-      };
-    }
-    function renderDashboard() {
-      if (state.insightsState === "idle") { loadInsights(); }
-      const selected = project();
-      if (!selected) return '<section class="view"><div class="empty"><div class="empty-copy"><h2>Create a project first</h2><p class="subtle">A dashboard reports on one domain.</p></div></div></section>';
-      if (state.insightsState !== "ready" || !state.insights) {
-        return '<section class="view"><div class="heading"><div><h1>Dashboard</h1><p class="subtle">How models answer about ' + html(selected.normalizedDomain) + '.</p></div></div><div class="empty"><div class="empty-copy"><h2>' + (state.insightsState === "error" ? "Could not read the evidence" : "Reading every archived answer") + '</h2></div></div></section>';
-      }
-      const data = state.insights;
-      const core = data.insights;
-      const metric = state.dashMetric;
-      const range = state.dashRange;
-      const series = dashboardSeries(data, metric);
-      const points = trendInRange(series.points, range);
-      const rangeButton = (value: any, label: any) => '<button type="button" class="filter ' + (range === value ? "active" : "") + '" data-dash-range="' + value + '">' + label + '</button>';
-      const metricButton = (value: any, label: any) => '<button type="button" class="filter ' + (metric === value ? "active" : "") + '" data-dash-metric="' + value + '">' + label + '</button>';
-      const modelRows = core.visibility.byModel.map((row: any) => '<div class="mrow mcols-rank"><div class="mname"><strong>' + html(row.displayName) + '</strong><span class="mono">' + html(row.modelId) + '</span></div><span class="mcell">' + row.recognized + ' / ' + row.answered + '</span><span class="mcell ' + (row.score ? "state-ok" : "state-flag") + '">' + (row.score === null ? "n/a" : Math.round(row.score * 100) + "%") + '</span></div>').join("");
-      const criticals = (state.plan && state.plan.actions ? state.plan.actions : []).filter((action: any) => action.severity === "critical");
-      const alert = criticals.length
-        ? '<div class="warning-box"><strong>' + criticals.length + ' critical finding(s).</strong> ' + html(criticals[0].title) + '. ' + button({ label: "See what to do", kind: "link", on: { "data-page": "visibility" } }) + '</div>'
-        : '';
-      return '<section class="view"><div class="heading"><div><h1>Dashboard</h1><p class="subtle">Pooled from ' + data.runsConsidered + ' run(s) and ' + core.answered + ' parsed answer(s) for ' + html(data.domain) + '.</p></div><div class="inline-actions">' + button({ label: "Run a test", on: { "data-page": "recognition" } }) + '</div></div>'
-        + '<div class="toolbar">' + rangeButton("7d", "7 days") + rangeButton("30d", "30 days") + rangeButton("all", "All time") + '</div>'
-        + alert
-        + '<div class="countstrip"><span class="count"><strong>' + html(series.headline) + '</strong>' + html(series.label) + '</span><span class="count"><strong>' + core.visibility.recognized + '</strong>Recognised</span><span class="count"><strong>' + core.answered + '</strong>Answers</span><span class="count"><strong>' + core.citations.targetCitedIn + '</strong>Citing you</span><span class="count"><strong>' + data.citationGap.length + '</strong>Citation gaps</span></div>'
-        + '<section class="section-card"><div class="section-head"><div><h2>Movement</h2><p class="subtle">Each point is one complete run. A run that parsed nothing leaves a gap rather than dropping to zero.</p></div><div class="toolbar">' + metricButton("visibility", "Visibility") + metricButton("voice", "Share of voice") + metricButton("citations", "Citations") + '</div></div>'
-        + '<div class="dash-split"><div>' + (points.length ? trendChart(points, series.label) : '<p class="subtle">' + html(series.empty) + '</p>') + '</div>'
-        + '<div><div class="mtable"><div class="mhead mcols-rank"><span>Model</span><span>Recognised</span><span>Visibility</span></div>' + (modelRows || '<div class="mrow mcols-rank"><span class="mcell">No answers yet.</span></div>') + '</div></div></div></section></section>';
     }
     /** One shell for every marketer page, so each one loads the same way and
      * an empty one says what is absent rather than showing nothing. */
@@ -1475,67 +1400,9 @@ export function boot(): void {
         + '<p class="subtle">' + doing + '. Open this to watch each question and answer as it lands.</p></div>';
     }
 
-    function renderHero(data: any) {
-      const rank = data.rank === null ? "Not named" : "#" + data.rank + " of " + data.leaderboard.length;
-      const heroProm = overAppearances(data.overall, data.overall.prominence, 'how early you appear');
-      const heroSent = overAppearances(data.overall, data.overall.sentiment, 'recommended or listed');
-      const leader = data.leaderboard.find((row: any) => !row.isTarget);
-      return '<div class="hero">'
-        + '<div class="hero-figure"><span class="scorebig">' + scoreText(data.overall.score) + '</span>'
-        + '<span class="hero-sub">' + deltaPill(data.trend) + '<span>' + html(rank) + '</span></span>'
-        + '<span class="hero-spark">' + sparkline(data.trend.points, 150, 26) + '</span></div>'
-        + '<div class="hero-stats">'
-        + '<div class="hero-stat"><span>Presence</span><strong>' + pct(data.overall.presenceRate) + '</strong><small>' + data.overall.appearances + ' of ' + data.overall.answers + ' answers</small></div>'
-        + '<div class="hero-stat"><span>Prominence</span><strong>' + heroProm.value + '</strong><small>' + html(heroProm.note) + '</small></div>'
-        + '<div class="hero-stat"><span>Sentiment</span><strong>' + heroSent.value + '</strong><small>' + html(heroSent.note) + '</small></div>'
-        + '<div class="hero-stat"><span>Ahead of you</span><strong>' + (leader ? html(leader.name) : "—") + '</strong><small>' + (leader ? leader.appearances + ' answers' : 'nobody named') + '</small></div>'
-        + '</div></div>';
-    }
 
-    function option(value: any, label: string, selected: unknown) {
-      return '<option value="' + html(value) + '"' + (selected === value ? " selected" : "") + '>' + html(label) + '</option>';
-    }
-
-    function renderSavedViews() {
-      if (state.segmentsState === "idle") { loadSegments(); }
-      const saved = state.segments ? state.segments.segments : [];
-      if (!saved.length && !filtersApplied()) return "";
-      const chips = saved.map((row: any) => '<button type="button" class="filter" data-segment="' + html(row.id) + '">' + html(row.name) + ' <span class="chev" data-segment-remove="' + html(row.id) + '">\u00d7</span></button>').join("");
-      const save = filtersApplied() ? '<button type="button" class="filter" data-save-segment>+ Save this view</button>' : '';
-      return '<div class="toolbar" style="margin:0 0 4px">' + chips + save + '</div>';
-    }
-
-    function renderSegment(data: any) {
-      const models = [option("", "All models", state.filters.modelId)].concat(data.byModel.map((row: any) => option(row.modelId, row.displayName, state.filters.modelId)));
-      const topics = [option("", "All topics", state.filters.topicId)].concat(data.topics.map((row: any) => option(row.topicId, row.name, state.filters.topicId)));
-      const markets = [option("", "All markets", state.filters.regionId)].concat((state.regions || []).map((row) => option(row.id, row.label, state.filters.regionId)));
-      const tongues = [option("", "All languages", state.filters.languageId)].concat((state.languages || []).map((row) => option(row.id, row.label, state.filters.languageId)));
-      const applied = filtersApplied();
-      // A dashed edge means nothing is chosen, a solid one means something is,
-      // so the bar says what it is filtering by without a badge or a count.
-      const set = (value: any) => value ? ' class="is-set"' : '';
-      return '<div class="segment">'
-        + '<select data-filter="topicId" aria-label="Topic"' + set(state.filters.topicId) + '>' + topics.join("") + '</select>'
-        + '<select data-filter="modelId" aria-label="Model"' + set(state.filters.modelId) + '>' + models.join("") + '</select>'
-        + '<select data-filter="regionId" aria-label="Market"' + set(state.filters.regionId) + '>' + markets.join("") + '</select>'
-        + '<select data-filter="languageId" aria-label="Language"' + set(state.filters.languageId) + '>' + tongues.join("") + '</select>'
-        + (applied ? '<button type="button" class="linklike applied" data-clear-filters>Clear ' + applied + '</button>' : '')
-        + '<span class="spacer"></span>'
-        + exportMenu() + '</div>';
-    }
-
-    const AGGREGATE_EXPORTS = [["scores", "Scores by question"], ["leaderboard", "Who was named"], ["topics", "Topics"], ["models", "By assistant"], ["markets", "By market"], ["trend", "Movement"], ["absent", "Absent from"]];
-    const ANSWER_EXPORTS = [["answers", "Every answer"], ["mentions", "Every name in every answer"], ["citations", "Every source"]];
 
     // The filters travel with the file, so an export is the slice on screen.
-    function exportMenu() {
-      const link = (base: any, name: any, label: any) => '<a href="/api/projects/' + html(state.selectedId) + '/' + base + '/' + name + '.csv' + filterQuery() + '">' + label + '</a>';
-      return '<details class="exportmenu"><summary class="button">Export CSV</summary><div class="exportlist">'
-        + '<strong>Aggregates</strong>' + AGGREGATE_EXPORTS.map((row) => link("prompt-export", row[0], row[1])).join("")
-        + '<strong>One row per answer</strong>' + ANSWER_EXPORTS.map((row) => link("answer-export", row[0], row[1])).join("")
-        + '<span class="subtle">Every aggregate in this tool is built from the answer rows, so exporting them is how a number here gets checked rather than taken.</span>'
-        + '</div></details>';
-    }
 
     function renderLeaderboard(rows: any[]) {
       if (!rows || !rows.length) return '<p class="subtle">No organisation was named in any answer yet.</p>';
@@ -4206,7 +4073,7 @@ export function boot(): void {
      * one, so without this the save stays rejected with no way to fix it. */
     function dropSelection(modelId: any) { state.draftSelections.delete(modelId); state.modelNotice = { text:"", kind:"" }; state.modelActionState = "idle"; state.selectionsDirty = true; render(); }
     function changeModelMode(modelId: any, mode: any) { const catalogItem = state.catalog.find((item) => item.modelId === modelId); if (!catalogItem || !state.draftSelections.has(modelId)) return; if (mode === "provider_native" && !catalogItem.nativeWebSearchSupported) return; state.modelNotice = { text:"", kind:"" }; state.modelActionState = "idle"; state.draftSelections.set(modelId, mode); state.selectionsDirty = true; render(); }
-    async function saveModels(button: HTMLElement | null) { const selected = project(); if (!selected) return; const selections = Array.from(state.draftSelections.entries()).map(([modelId, webSearchMode]) => ({ modelId, webSearchMode })); state.modelNotice = { text:"Saving each model\'s own web search mode…", kind:"loading" }; try { const response = await runAction(button, { loading:"Saving…", success:"Saved", error:"Save failed" }, () => request("/api/projects/" + encodeURIComponent(selected.id) + "/models", { method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ selections }) })); state.selections = response.selections; resetDraftSelections(); state.modelNotice = { text:"Model configuration saved", kind:"success" }; state.modelActionState = "success"; render(); window.setTimeout(() => { state.modelActionState = "idle"; if (state.page === "models") render(); }, 850); } catch (error) { state.modelNotice = { text:error instanceof Error ? error.message : String(error), kind:"error" }; state.modelActionState = "error"; render(); } }
+    async function saveModels(button: HTMLElement | null) { const selected = project(); if (!selected) return; const selections = Array.from(state.draftSelections.entries()).map(([modelId, webSearchMode]) => ({ modelId, webSearchMode })); state.modelNotice = { text:"Saving each model's own web search mode…", kind:"loading" }; try { const response = await runAction(button, { loading:"Saving…", success:"Saved", error:"Save failed" }, () => request("/api/projects/" + encodeURIComponent(selected.id) + "/models", { method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ selections }) })); state.selections = response.selections; resetDraftSelections(); state.modelNotice = { text:"Model configuration saved", kind:"success" }; state.modelActionState = "success"; render(); window.setTimeout(() => { state.modelActionState = "idle"; if (state.page === "models") render(); }, 850); } catch (error) { state.modelNotice = { text:error instanceof Error ? error.message : String(error), kind:"error" }; state.modelActionState = "error"; render(); } }
     async function saveMonitoringConfiguration() { const selected = project(); const configuration = monitoringConfiguration(); if (!selected || configuration.status === "unchanged" || state.monitoringSaveState === "saving") return; if (selectedRows().length === 0) { state.monitoringNotice = { text:"Select at least one available model before saving the configuration.", kind:"error" }; state.monitoringSaveState = "failed"; render(); return; } state.monitoringSaveState = "saving"; state.monitoringNotice = { text:"Saving the current domain, language, models and web search modes…", kind:"loading" }; render(); try { const response = await request("/api/projects/" + encodeURIComponent(selected.id) + "/baselines", { method:"POST", headers:{"Content-Type":"application/json"}, body:"{}" }); state.currentProjects = state.currentProjects.map((item) => item.id === response.project.id ? response.project : item); state.projects = state.projects.map((item) => item.id === response.project.id ? response.project : item); await refreshConfiguration(); const version = response.baseline.version; state.monitoringSaveState = "saved"; state.monitoringNotice = { text:"Saved as config v" + version, kind:"success" }; render(); window.setTimeout(() => { state.monitoringSaveState = "idle"; if (state.page === "configuration") render(); }, 850); } catch (error) { if (errorCode(error) === "baseline_unchanged") { await refreshConfiguration(); state.monitoringSaveState = "idle"; state.monitoringNotice = { text:"The current configuration is already saved", kind:"success" }; render(); return; } state.monitoringSaveState = "failed"; state.monitoringNotice = { text: error instanceof Error ? error.message : (expectedErrorText.request_failed || "The request failed."), kind: "error" }; render(); } }
     document.addEventListener("click", async (event) => {
       const clicked = el(event.target) as any;

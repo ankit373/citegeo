@@ -45,8 +45,10 @@ test("starting a flow needs a session, because it is an action", async () => {
 test("with no client saved, the flow says what to save rather than failing at Google", async () => {
   const h = harness({ path: "/api/google/authorize", stored: null });
   await h.run();
-  assert.equal(h.sent[0]?.status, 400);
-  assert.ok(String((h.sent[0]?.body as { error: string }).error).includes("client of your own"));
+  const first = h.sent[0];
+  assert.ok(first, "nothing was sent");
+  assert.equal(first.status, 400);
+  assert.ok(String((first.body as { error: string }).error).includes("client of your own"));
 });
 
 test("the consent redirect carries the client id and never the secret", async () => {
