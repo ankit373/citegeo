@@ -1,6 +1,7 @@
 name: CLA
 
-on:
+# pull_request_target is safe here: no step checks out or runs the pull request code.
+on:  # zizmor: ignore[dangerous-triggers]
   issue_comment:
     types: [created]
   pull_request_target:
@@ -27,7 +28,8 @@ jobs:
     steps:
       # Signatures are stored in this repository, so no external service and no
       # paid plan is involved. The branch keeps them out of main's history.
-      - uses: contributor-assistant/github-action@v2.6.1
+      # Archived upstream but still working; pinned by commit so it cannot change.
+      - uses: contributor-assistant/github-action@ca4a40a7d1004f18d9960b404b97e5f30a505a08  # v2.6.1  # zizmor: ignore[archived-uses]
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:

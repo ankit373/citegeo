@@ -34,7 +34,12 @@ merge_protections:
     if:
       - base = develop
       - -author = dependabot[bot]
-      - -head ~= ^chore/(release|main-back-into-develop)
+      # Anyone can name a branch, so the exemption also needs the owner's own branch.
+      - not:
+          and:
+            - head ~= ^chore/(release|main-back-into-develop)
+            - author = ankit373
+            - -from-fork
     success_conditions:
       - body ~= (?i)\b(close[sd]?|fix(e[sd])?|resolve[sd]?|part of)\s+#\d+
 
@@ -117,14 +122,18 @@ merge_protections:
     success_conditions:
       - files = package-lock.json
 
-  - name: A workflow change reviews the ruleset
+  - name: A workflow change is reviewed by the owner
     description: >
-      main's ruleset names required checks by string. A renamed or dropped job
-      leaves it waiting on a check that can never report, and main becomes
-      unmergeable with no bypass. Label ruleset-reviewed once you have looked.
+      A workflow runs with the repository's token once it lands, so anyone
+      else's edit needs the owner's approval. main's ruleset also names checks
+      by string, so a renamed job strands it: label ruleset-reviewed once looked.
     if:
       - files ~= ^\.github/workflows/
     success_conditions:
+      - or:
+          - author = ankit373
+          - author = dependabot[bot]
+          - approved-reviews-by = ankit373
       - label = ruleset-reviewed
 
   - name: Credential and session code is reviewed
@@ -157,24 +166,23 @@ queue_rules:
     merge_method: merge
     update_method: merge
     batch_size: 1
+    # About three times the slowest green CI run; a hung runner dequeues instead of holding the queue.
+    checks_timeout: 30 min
+    # Checked on the pull request itself. Separate merge conditions run on a draft
+    # that Mergify authors, and the CLA check would judge Mergify, not the author.
     queue_conditions:
       - -draft
       - -conflict
       - check-success = PR Gate
-    merge_conditions:
-      - check-success = PR Gate
       - check-success = Check the CLA signature
+    merge_conditions: []
 
 merge_queue:
   max_parallel_checks: 1
+  # One comment with the result: merged, or dequeued and why.
+  status_comments: outcomes
 
 pull_request_rules:
-  - name: Delete the head branch once it has merged
-    conditions:
-      - merged
-    actions:
-      delete_head_branch:
-
   - name: Say so when a pull request stops merging cleanly
     conditions:
       - conflict
@@ -281,3 +289,9 @@ pull_request_rules:
       label:
         add:
           - area/ci
+
+# Queueing is the merge button, so only the owner may press it.
+commands_restrictions:
+  queue:
+    conditions:
+      - sender = ankit373
