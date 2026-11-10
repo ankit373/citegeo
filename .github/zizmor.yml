@@ -1,0 +1,9 @@
+rules:
+  unpinned-uses:
+    config:
+      # GitHub's own actions follow their major tag; anything else is pinned by
+      # commit so a moved tag cannot change what runs. Dependabot bumps both.
+      policies:
+        actions/*: ref-pin
+        github/*: ref-pin
+        "*": hash-pin
