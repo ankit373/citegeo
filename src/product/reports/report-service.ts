@@ -30,7 +30,7 @@ import {
   type ReportSourceAttempt,
   type ReportSourceRecordHash,
 } from "./report-schema.js";
-import { RecognitionReportEvidenceIntegrityError, RecognitionReportInputError, RecognitionReportNotFoundError, RecognitionReportSnapshotChangedError } from "./report-errors.js";
+import { RecognitionReportInputError, RecognitionReportNotFoundError, RecognitionReportSnapshotChangedError } from "./report-errors.js";
 import { RecognitionReportFileStore } from "./report-store.js";
 
 type SourceModel = {

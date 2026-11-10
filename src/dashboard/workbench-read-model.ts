@@ -197,7 +197,7 @@ function metricChangeKinds(metricId: MonitoringMetricId): ObservationChange["kin
   return ["official_citation_added", "official_citation_removed"];
 }
 
-function metricChangeSummary(delta: number | null, comparable: boolean, language: string): string {
+function metricChangeSummary(delta: number | null, comparable: boolean, _language: string): string {
   if (!comparable || delta === null) return "No comparable change";
   if (delta === 0) return "No change";
   return `${delta > 0 ? "+" : ""}${delta}`;

@@ -138,7 +138,7 @@ test.afterAll(async () => {
   await stopProductServer();
 });
 
-test("Phase 2 configuration uses the real product UI, actual catalog, immutable baselines, and isolated projects", async ({ page }) => {
+test("Configuration uses the real interface, the live catalogue, immutable baselines, and isolated projects", async ({ page }) => {
   // This one is written against the live catalogue. Without a key the product
   // correctly reports no models, which is not a failure of the product.
   const listed = await (await page.request.get(`${baseUrl}/api/provider-models`)).json() as { models: unknown[] };

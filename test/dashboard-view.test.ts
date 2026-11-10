@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   arrivalsPanel, dashboardBody, demandPanel, heroStats, leaderboardBars, matrixColumnPicker, movesList, narrowMatrix, panelBody, panelToggle, reachPanel, sourcesPanel, splitRows, summaryTiles,
   rivalChart,
-  rivalPanel, rivalRanks, rivalStandings, withTarget,
+  rivalPanel, rivalRanks, rivalStandings, 
   topicMatrix, rowVerdict,
   dashboardPanels,
   type DashboardData,
@@ -251,7 +251,7 @@ test("a brand nobody named still takes its place in the order, at nought", () =>
 });
 
 test("opening a panel carries what the card had to leave out", () => {
-  const many = Array.from({ length: 14 }, (unused, index) => ({
+  const many = Array.from({ length: 14 }, (_unused, index) => ({
     name: `Brand ${index}`, isTarget: index === 0, appearances: 14 - index, shareOfAnswers: (14 - index) / 14,
   }));
   const panels = dashboardPanels(data({ leaderboard: many }));

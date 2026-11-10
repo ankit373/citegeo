@@ -25,13 +25,6 @@ interface UserKeywordSeed {
   phrase: string;
 }
 
-interface AnalyzedKeywordRow {
-  phrase: string;
-  userSeedId?: string | undefined;
-  relevance: number;
-  evidenceIds: string[];
-}
-
 export interface KeywordAnalysisResult {
   keywords: KeywordCandidate[];
   clusters: KeywordCluster[];

@@ -110,7 +110,7 @@ function exchange(): Exchange {
 
 test("the layers run outside in and unwind inside out", async () => {
   const order: string[] = [];
-  const layer = (name: string): Middleware => async (unused, next) => {
+  const layer = (name: string): Middleware => async (_unused, next) => {
     order.push(`>${name}`);
     await next();
     order.push(`<${name}`);
@@ -128,7 +128,7 @@ test("a layer that does not call next ends the exchange", async () => {
 });
 
 test("calling next twice is refused, because the rest would run twice", async () => {
-  const twice: Middleware = async (unused, next) => { await next(); await next(); };
+  const twice: Middleware = async (_unused, next) => { await next(); await next(); };
   await assert.rejects(
     () => compose([twice, async () => undefined])(exchange()),
     (error: Error) => error.message.includes("more than once"),

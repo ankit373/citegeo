@@ -25,7 +25,7 @@ function stored(): PanelLayout {
       spans: object.spans && typeof object.spans === "object" ? object.spans : {},
       hidden: Array.isArray(object.hidden) ? object.hidden : [],
     };
-  } catch (error) {
+  } catch {
     return empty;
   }
 }
@@ -33,7 +33,7 @@ function stored(): PanelLayout {
 function remember(layout: PanelLayout): void {
   try {
     localStorage.setItem(REMEMBERED, JSON.stringify(layout));
-  } catch (error) {
+  } catch {
     /* the arrangement just will not persist */
   }
 }
@@ -74,7 +74,7 @@ export function togglePanelHidden(id: string): void {
 export function resetPanelOrder(): void {
   try {
     localStorage.removeItem(REMEMBERED);
-  } catch (error) {
+  } catch {
     /* nothing was stored */
   }
 }
@@ -82,7 +82,7 @@ export function resetPanelOrder(): void {
 export function hasPanelOrder(): boolean {
   try {
     return Boolean(localStorage.getItem(REMEMBERED));
-  } catch (error) {
+  } catch {
     return false;
   }
 }
@@ -109,7 +109,7 @@ export function wirePanelDrag(onChange: () => void): void {
   document.addEventListener("dragend", () => {
     if (dragging) dragging.classList.remove("is-dragging");
     dragging = null;
-    document.querySelectorAll(".is-drop-target").forEach((node) => node.classList.remove("is-drop-target"));
+    document.querySelectorAll(".is-drop-target").forEach((node) => { node.classList.remove("is-drop-target"); });
   });
 
   document.addEventListener("dragover", (event) => {
@@ -117,7 +117,7 @@ export function wirePanelDrag(onChange: () => void): void {
     const over = event.target instanceof Element ? event.target.closest("[data-panel]") : null;
     if (!over || over === dragging || over.parentElement !== dragging.parentElement) return;
     event.preventDefault();
-    document.querySelectorAll(".is-drop-target").forEach((node) => node.classList.remove("is-drop-target"));
+    document.querySelectorAll(".is-drop-target").forEach((node) => { node.classList.remove("is-drop-target"); });
     over.classList.add("is-drop-target");
   });
 

@@ -158,10 +158,6 @@ function renderStatementList(items: EvidenceStatement[], copy: Copy): string {
     .join("")}</ul>`;
 }
 
-function renderTextList(items: string[]): string {
-  return `<ul class="statement-list">${items.map((item) => `<li><p>${htmlEscape(item)}</p></li>`).join("")}</ul>`;
-}
-
 function renderCompetitors(report: HumanReport, copy: Copy): string {
   const main = report.sections.competitors.length === 0
     ? `<p class="empty">${htmlEscape("Current answers are not enough to identify main competitors.")}</p>`
@@ -290,7 +286,7 @@ function renderCompetitionSection(report: HumanReport, copy: Copy): string {
   </div>`;
 }
 
-function renderMiniList(title: string, items: string[], copy: Copy): string {
+function renderMiniList(title: string, items: string[], _copy: Copy): string {
   if (items.length === 0) return "";
   return `<div class="intent-block">
     <h4>${htmlEscape(title)}</h4>
@@ -298,7 +294,7 @@ function renderMiniList(title: string, items: string[], copy: Copy): string {
   </div>`;
 }
 
-function taskStatusLabel(status: string, copy: Copy): string {
+function taskStatusLabel(status: string, _copy: Copy): string {
   if (status === "completed") return "Completed";
   if (status === "partial") return "Partial";
   if (status === "missing") return "Missing";

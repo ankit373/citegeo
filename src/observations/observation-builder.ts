@@ -1,4 +1,4 @@
-import type { AuditRun, Citation, Mention, MonitoringPrompt, PromptAuditCategory, PromptRun } from "../core/types.js";
+import type { AuditRun, Citation, Mention, MonitoringPrompt, PromptAuditCategory, } from "../core/types.js";
 import { sha256 } from "../utils/hash.js";
 import type { Observation, ObservationBuildInput, ObservationEvidenceSummary } from "./observation-schema.js";
 import { buildObservationAnalysisResult } from "./analysis-qualification.js";

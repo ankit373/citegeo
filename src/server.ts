@@ -9,7 +9,6 @@ import { AuditRunner } from "./runner/audit-runner.js";
 import { AuditPlanner } from "./runner/audit-planner.js";
 import { entityFromInput } from "./utils/domain.js";
 import type { AuditPlan, Entity, KeywordMode, MonitoringPrompt, PromptAuditCategory, PromptType, ProviderTarget, WebSearchRequestMode } from "./core/types.js";
-import { renderAppHtml } from "./ui/app-html.js";
 import { sha256 } from "./utils/hash.js";
 import { ANALYSIS_RULES_VERSION, PROMPT_SET_VERSION } from "./core/version.js";
 import { ProjectFileStore } from "./projects/project-store.js";

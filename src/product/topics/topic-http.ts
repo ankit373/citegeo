@@ -1,4 +1,4 @@
-import { buildTopicInsights, type TopicInsights } from "./topic-insights.js";
+import { buildTopicInsights, } from "./topic-insights.js";
 import { buildHomeSummary } from "../alerts/home-summary.js";
 import { buildAnswerDigest } from "../alerts/answer-digest.js";
 import { buildCitationAnalysis } from "./citation-analysis.js";

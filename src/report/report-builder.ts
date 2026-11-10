@@ -11,13 +11,13 @@ function completedCitations(audit: AuditRun): Citation[] {
     .flatMap((run) => run.analysis?.citations || run.result?.citations || []);
 }
 
-function answerLink(indexes: number[], locale: HumanReport["locale"]): string {
+function answerLink(indexes: number[], _locale: HumanReport["locale"]): string {
   if (indexes.length === 0) return "";
   const label = "View the supporting AI answer";
   return `[${label}](#answer-${indexes[0]})`;
 }
 
-function sourceLink(urls: string[], locale: HumanReport["locale"]): string {
+function sourceLink(urls: string[], _locale: HumanReport["locale"]): string {
   if (urls.length === 0) return "";
   const label = "View the supporting AI answer";
   return `[${label}](${urls[0]})`;
@@ -30,10 +30,6 @@ function renderEvidence(item: EvidenceStatement, locale: HumanReport["locale"]):
 
 function renderStatementList(items: EvidenceStatement[], locale: HumanReport["locale"]): string[] {
   return items.flatMap((item) => [`- ${mdEscape(item.text)}`, ...renderEvidence(item, locale)]);
-}
-
-function renderTextList(items: string[]): string[] {
-  return items.map((item) => `- ${mdEscape(item)}`);
 }
 
 function section(title: string, lines: string[]): string[] {
@@ -82,13 +78,13 @@ function renderModelComparisons(report: HumanReport): string[] {
   ];
 }
 
-function sourceStatusLabel(source: SourceStory, report: HumanReport): string {
+function sourceStatusLabel(source: SourceStory, _report: HumanReport): string {
   if (source.relevance === "related") return "Related";
   if (source.relevance === "possible") return "Possibly related";
   return "Excluded";
 }
 
-function renderSources(title: string, sources: SourceStory[], report: HumanReport): string[] {
+function renderSources(title: string, sources: SourceStory[], _report: HumanReport): string[] {
   if (sources.length === 0) return [`### ${title}`, "", "This run did not return usable sources.", ""];
   return [
     `### ${title}`,
@@ -131,7 +127,7 @@ function renderAllSources(report: HumanReport): string[] {
   ];
 }
 
-function statusLabel(status: string, report: HumanReport): string {
+function statusLabel(status: string, _report: HumanReport): string {
   if (status === "completed") return "Completed";
   if (status === "partial") return "Partial";
   if (status === "missing") return "Missing";

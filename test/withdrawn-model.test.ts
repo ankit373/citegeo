@@ -16,7 +16,7 @@ const DEFINITION: ProviderDefinition = {
 const RETIRED = "This model is unavailable for free. The paid version is available now - use this slug instead: qwen/qwen3.8-27b";
 
 async function askStub(status: number, message: string): Promise<unknown> {
-  const server = createServer((request, response) => {
+  const server = createServer((_request, response) => {
     response.writeHead(status, { "content-type": "application/json" });
     response.end(JSON.stringify({ error: { message } }));
   });

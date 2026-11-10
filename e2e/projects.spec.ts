@@ -92,7 +92,7 @@ test.afterAll(async () => {
   await stopProductServer();
 });
 
-test("Phase 1 project lifecycle uses the real product UI and API", async ({ page }) => {
+test("The project lifecycle runs through the real product interface and API", async ({ page }) => {
   await test.step("A. empty state", async () => {
     await page.goto(baseUrl);
     await page.locator('.sidebar [data-page="overview"]').first().click();

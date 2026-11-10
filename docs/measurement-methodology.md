@@ -2,7 +2,7 @@
 
 The real run found 7 conflicts over a unique first position across R06, R07, R10, R11, and R19. The related rankings, and any aggregate depending on that field, are excluded from comparisons for now; see [per-item evidence](known-issues.md). This round only discloses the issue and changes no original value or algorithm; arithmetic being recomputable does not mean the semantic judgment is correct.
 
-Applies to: the current `src/product` working tree, planned for release as **v0.2.0-rc.1, UNPUBLISHED**. What follows describes the actual computation as read from source; it is not a claim that real D/K sampling, scheduling, or chart acceptance is complete. The authoritative computation entry point is [measurement-stats.ts](../src/product/measurements/measurement-stats.ts); field definitions are in [measurement-schema.ts](../src/product/measurements/measurement-schema.ts).
+Applies to the current `src/product` working tree. What follows describes the actual computation as read from source; it is not a claim that real D/K sampling, scheduling, or chart acceptance is complete. The authoritative computation entry point is [measurement-stats.ts](../src/product/measurements/measurement-stats.ts); field definitions are in [measurement-schema.ts](../src/product/measurements/measurement-schema.ts).
 
 ## This round's frozen plan and actual execution
 

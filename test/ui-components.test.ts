@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { html, join } from "../src/ui/app/dom.js";
 import { percent, rank, remaining, score, seconds } from "../src/ui/app/format.js";
-import { cell, emptyState, nameCell, pill, row, section, table, tiles } from "../src/ui/app/components/primitives.js";
+import { cell, emptyState, nameCell, pill, row, section, table, } from "../src/ui/app/components/primitives.js";
 import { skeletonTable, skeletonTiles, loading } from "../src/ui/app/components/skeleton.js";
 import { productAppSource } from "../src/ui/app-source.js";
 import { footer, header, panel, sidebar } from "../src/ui/app/components/layout.js";

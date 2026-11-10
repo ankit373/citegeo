@@ -8,7 +8,7 @@ import { load } from "cheerio";
 export function declaredIcons(html: string, pageUrl: string): string[] {
   const document = load(html);
   const found: Array<{ href: string; weight: number; size: number }> = [];
-  document("link[rel]").each((unused, node) => {
+  document("link[rel]").each((_unused, node) => {
     const rel = (document(node).attr("rel") || "").toLocaleLowerCase();
     const href = (document(node).attr("href") || "").trim();
     if (!href) return;

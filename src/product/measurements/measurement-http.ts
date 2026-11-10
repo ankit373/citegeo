@@ -31,7 +31,7 @@ export async function handleMeasurementApi(input: {
   measurements: ProductMeasurementRunService;
   stats: ProductMeasurementStatsService;
 }): Promise<boolean> {
-  const { method, route, readJson, send, projects, watchSets, measurements, stats } = input;
+  const { method, route, readJson, send, watchSets, measurements, stats } = input;
   try {
     if (route.length < 4 || route[0] !== "api" || route[1] !== "projects") return false;
     const projectId = route[2];

@@ -1,4 +1,4 @@
-import type { AnswerSourceId, ProductProviderId } from "../configuration/provider-id.js";
+import type { AnswerSourceId, } from "../configuration/provider-id.js";
 import type { DiscoveryRecommendation, FirstPositionState } from "../measurements/measurement-schema.js";
 import type { PromptIntent } from "./topic-schema.js";
 import type { WebSearchUsedMode } from "../../core/types.js";

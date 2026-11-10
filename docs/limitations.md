@@ -1,6 +1,6 @@
 # Known limitations and items still to verify
 
-Applies to: the current `src/product` working tree, checked 2026-09-08, planned for release as **v0.2.0-rc.1, UNPUBLISHED**. What follows is source-code behavior and its gaps; it is not a claim that regression testing or container acceptance has run. A later fix should carry its own verification before this scope is updated.
+Applies to the current `src/product` working tree, read 2026-09-08. What follows is source-code behavior and its gaps; it is not a claim that regression testing or container acceptance has run. A later fix should carry its own verification before this scope is updated.
 
 ## Release and real data
 
@@ -73,4 +73,4 @@ The Phase 6 case path has a separate StudyBudgetExecutor, wrapping the same real
 
 ## How this is handled and reported
 
-Keep the raw attempts, tasks, costs, and old snapshots that a known issue involves, rather than masking a gap by swapping in replacement data. A public figure should carry its actual samples and sources; a metric that cannot be rechecked is marked "needs recheck"; verification that has not run is stated plainly as unverified. After a fix, add verification for the affected boundary and update [architecture](ARCHITECTURE.md), [methodology](measurement-methodology.md), [evidence](evidence-model.md), and the release record to match.
+Keep the raw attempts, tasks, costs, and old snapshots that a known issue involves, rather than masking a gap by swapping in replacement data. A public figure should carry its actual samples and sources; a metric that cannot be rechecked is marked "needs recheck"; verification that has not run is stated plainly as unverified. After a fix, add verification for the affected boundary and update [architecture](architecture.md), [methodology](measurement-methodology.md), [evidence](evidence-model.md), and the release record to match.

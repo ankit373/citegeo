@@ -1,6 +1,6 @@
 # How it works: from domain to evidence
 
-Applies to the current `src/product` implementation; planned version **v0.2.0-rc.1, UNPUBLISHED**. This document explains how the product obtains and processes answers; it is not a claim that Phase 6's real calls, screenshots, or release acceptance are complete.
+Applies to the current `src/product` implementation. This document explains how the product obtains and processes answers; it is not a claim that Phase 6's real calls, screenshots, or release acceptance are complete.
 
 **Open the SEO / GEO reporting black box, and put the evidence back in the user's hands.** This measures AI answers and citations today; it does not provide traditional search-ranking monitoring.
 
@@ -88,4 +88,4 @@ A chart's time axis uses the actual run's start time; the current long-range fil
 
 A recheck reads existing raw text, parameters, citation paths, hashes, and formulas; a re-measurement requests the model again — the two should always be labeled separately. Reading a report, building local statistics, and re-analyzing a stored answer all need no model inference, but building a report/statistics does write a derived file, and reading the model catalog can still reach the public internet.
 
-When public case data is missing, any formula demo should keep an empty state rather than filling in a sample value in place of a real measurement. See [architecture](ARCHITECTURE.md) for technical placement, and [Docker deployment](deployment/docker.md) for installation and cost boundaries.
+When public case data is missing, any formula demo should keep an empty state rather than filling in a sample value in place of a real measurement. See [architecture](architecture.md) for technical placement, and [Docker deployment](deployment/docker.md) for installation and cost boundaries.

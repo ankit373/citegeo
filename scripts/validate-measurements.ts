@@ -8,7 +8,7 @@ const validationRoot = join(root, "validation", "rebuild-phase-5-2026-09-07");
 const phaseFourRoot = join(root, "validation", "rebuild-phase-4-2026-09-07");
 const sourceRoots = [
   "package.json",
-  "docs/PHASE5_MEASUREMENT_ARCHITECTURE.md",
+  "docs/measurement-architecture.md",
   "src/product/measurements",
   "src/product/scheduling",
   "src/product/product-server.ts",

@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+
 import { sha256 } from "../../utils/hash.js";
 import { ProductProjectService } from "../projects/project-service.js";
 import { ProductMeasurementFileStore } from "./measurement-store.js";
@@ -70,7 +70,6 @@ function firstAttempt(detail: import("./measurement-schema.js").MeasurementProbe
   return detail.attempts.find((attempt) => attempt.id === detail.probe.firstAttemptId) || null;
 }
 
-function simpleKey(parts: string[]): string { return parts.join("|"); }
 
 export class ProductMeasurementStatsService {
   constructor(private readonly projects: ProductProjectService, private readonly store: ProductMeasurementFileStore) {}

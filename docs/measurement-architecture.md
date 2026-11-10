@@ -1,8 +1,8 @@
-# Phase 5 Measurement Architecture
+# Measurement architecture
 
 ## Boundary
 
-Phase 5 measures two independent observation protocols.
+The measurement workbench measures two independent observation protocols.
 
 `domain-recognition/v1` receives exactly one domain. It records what one
 model says it can establish about that domain. It never receives website

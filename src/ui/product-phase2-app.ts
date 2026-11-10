@@ -1,5 +1,5 @@
 import { PRODUCT_NAME, PRODUCT_TITLE, renderCiteGeoLockupInline, renderCiteGeoMarkSvg } from "./brand.js";
-import { THEME_BASE, THEME_FONT_LINKS, THEME_TOKENS } from "./theme.js";
+import { THEME_FONT_LINKS, } from "./theme.js";
 
 export function renderProductPhase2AppHtml(): string {
   return `<!doctype html>
