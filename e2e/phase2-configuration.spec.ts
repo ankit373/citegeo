@@ -80,7 +80,8 @@ async function screenshot(page: Page, name: string): Promise<void> {
 
 async function createProject(page: Page, domain: string, name: string): Promise<string> {
   // The app opens on the dashboard; the saved record lives on Projects.
-  await page.locator('.sidebar [data-page="overview"]').first().click();
+  await page.locator(".appmore summary").click();
+  await page.locator('.appmore [data-route="projects"]').click();
   await page.getByTestId("new-project").click();
   await expect(page.getByTestId("project-drawer")).toHaveAttribute("aria-hidden", "false");
   await page.locator("#project-domain").fill(domain);
@@ -94,7 +95,8 @@ async function createProject(page: Page, domain: string, name: string): Promise<
 }
 
 async function openModels(page: Page): Promise<void> {
-  await page.locator('.sidebar [data-page="models"]').first().click();
+  await page.locator(".appmore summary").click();
+  await page.locator('.appmore [data-route="models"]').click();
   await expect(page.getByTestId("model-search")).toBeVisible();
   await expect(page.getByTestId("catalog-model").first()).toBeVisible();
 }
@@ -341,7 +343,8 @@ test("Phase 2 configuration uses the real product UI, actual catalog, immutable 
       await route.continue();
     });
     await page.reload();
-    await page.locator('.sidebar [data-page="models"]').first().click();
+    await page.locator(".appmore summary").click();
+    await page.locator('.appmore [data-route="models"]').click();
     await expect(page.getByText("Model catalog unavailable", { exact: true })).toBeVisible();
     await expect(page.getByText("The model catalog is temporarily unavailable. Try again shortly.", { exact: true })).toBeVisible();
     await expect(page.getByTestId("catalog-model")).toHaveCount(0);

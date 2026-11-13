@@ -105,7 +105,8 @@ async function createProject(page: Page, domain: string, name: string): Promise<
 }
 
 async function configure(page: Page, selected: Array<{ id: string; mode: "off" | "provider_native" }>): Promise<void> {
-  await page.locator('.sidebar [data-page="models"]').first().click();
+  await page.locator(".appmore summary").click();
+  await page.locator('.appmore [data-route="models"]').click();
   await expect(page.getByTestId("catalog-model").first()).toBeVisible();
   for (const model of selected) {
     await page.locator(`[data-model-checkbox="${model.id}"]`).check();
@@ -245,7 +246,8 @@ test("B07 opens a copied Phase 3 real-provider archive without a new provider ca
   test.skip(!existsSync(archiveReference), "No Phase 3 archive on this machine, and validation/ is not in the repository.");
   await startRealArchiveServer();
   await page.goto(realArchiveBaseUrl);
-  await page.locator('.sidebar [data-page="models"]').first().click();
+  await page.locator(".appmore summary").click();
+  await page.locator('.appmore [data-route="models"]').click();
   await page.getByRole("button", { name: "Current report", exact: true }).click();
   await expect(page.getByTestId("recognition-report")).toBeVisible({ timeout: 8_000 });
   await expect(page.getByTestId("report-model-card")).toHaveCount(1);
