@@ -1,10 +1,10 @@
 import { CONFIG } from "./config.js";
-import { dashboardBody, dashboardPanels, heroStats, type DashboardData } from "./pages/dashboard-view.js";
+import { boardStatus, dashboardBody, dashboardPanels, headline, heroStats, type DashboardData } from "./pages/dashboard-view.js";
 import { buyingView, claimsView, conversationsView, draftsView, entityView, marketerView } from "./pages/marketer-view.js";
 import { exportName, filterSummary, matchesQuery, panelCsv } from "./components/panel-tools.js";
 import { emptyState, notice, section } from "./components/primitives.js";
 import { button } from "./components/button.js";
-import { remaining } from "./format.js";
+import { archived, remaining } from "./format.js";
 import { loading, skeletonCard, skeletonTable, skeletonText, skeletonTiles } from "./components/skeleton.js";
 import { clearToasts, toast } from "./components/toast.js";
 import { DESTINATIONS, navScrim, navToggle, sidebar, wireNav } from "./components/nav.js";
@@ -2620,8 +2620,9 @@ export function boot(): void {
     function dashboardView(): DashboardData | null {
       const selected = project();
       const home = state.home;
-      if (!selected || !home) return null;
       const data = state.answerEngine;
+      if (!selected || !home || !data || boardStatus(state.homeState, state.answerEngineState) !== "ready") return null;
+      const reading = headline(data);
       const outreach = state.outreach;
       const plan = state.rankPlan;
       const questions = data ? data.topics.reduce((total: number, topic: any) => total + topic.prompts.length, 0) : 0;
@@ -2667,9 +2668,9 @@ export function boot(): void {
           };
         })(),
         domain: String(home.domain || selected.normalizedDomain),
-        score: home.score ?? null,
-        change: home.change ?? null,
-        rank: home.rank ?? null,
+        score: reading.standing.score,
+        change: reading.change,
+        rank: reading.rank,
         overall: data ? data.overall : { score: null, presenceRate: null, prominence: null, sentiment: null, answers: 0, appearances: 0, namedIn: 0, tooFewAppearances: true },
         leaderboard: data ? (data.leaderboard as any[]).map((row: any) => ({
           name: row.name,
@@ -2695,7 +2696,8 @@ export function boot(): void {
         assistants: data ? data.byModel.filter((row: any) => row.score.answers > 0).length : 0,
         assistantsConfigured: data ? data.byModel.length : 0,
         assistantsNaming: data ? data.byModel.filter((row: any) => row.score.appearances > 0).length : 0,
-        moves: plan ? (plan.moves as any[]).filter((m: any) => m.effect === "raises_visibility") : [],
+        moves: plan && state.rankPlanState === "ready" ? (plan.moves as any[]).filter((m: any) => m.effect === "raises_visibility")
+          : state.rankPlanState === "error" ? [] : null,
         citationsUnavailable: data ? data.citationsUnavailable : false,
         citedPages: outreach ? outreach.cited : null,
         missingFrom: outreach ? (outreach.targets as any[]).filter((t: any) => !t.namesYou).length : null,
@@ -2799,6 +2801,7 @@ export function boot(): void {
         // A page that offers a run has to show the run, or starting one from
         // here looked like nothing happened.
         + '<div class="inline-actions">' + button({ label: "Full report", on: { "data-page": "answer-engine" } }) + runActionButton("Run prompts") + '</div></div>' + renderLiveRun();
+      if (state.answerEngineState === "error") return heading + notice("Could not read this project.", "error") + '</section>';
       const view = dashboardView();
       if (!view) return heading + dashboardBody({ status: "loading" }) + '</section>';
       const wanted = ["trend", "named", "described", "sources"];
@@ -2846,13 +2849,15 @@ export function boot(): void {
         return heading('<section class="section-card"><div class="mtable"><div class="mhead mcols-step"><span></span><span>Step</span><span></span></div>' + steps + '</div></section>');
       }
 
+      if (state.answerEngineState === "error") return heading(notice("Could not read this project.", "error"));
       const view = dashboardView();
-      if (!view) return heading(dashboardBody({ status: "loading" }));
-      const data = state.answerEngine;
-      const hero = '<div class="hero"><div class="hero-figure"><span class="scorebig">' + scoreText(home.score) + '</span>'
-        + '<span class="hero-sub">' + deltaPill(data ? data.trend : { change: home.change }) + '<span>'
-        + (home.rank === null || home.rank === undefined ? "Not named" : "#" + home.rank + " of " + ((home.rivals || 0) + 1)) + '</span></span>'
-        + '<span class="hero-spark">' + view.spark + '</span></div>' + heroStats(view.overall, view.position) + '</div>';
+      if (!view || !state.answerEngine) return heading(dashboardBody({ status: "loading" }));
+      const reading = headline(state.answerEngine);
+      const rankText = reading.rank === null ? "Not named" : "#" + reading.rank + (reading.at ? "" : " of " + ((home.rivals || 0) + 1));
+      const hero = '<div class="hero"><div class="hero-figure"><span class="scorebig">' + scoreText(reading.standing.score) + '</span>'
+        + '<span class="hero-sub">' + deltaPill({ change: reading.change }) + '<span>' + html(rankText) + '</span>'
+        + (reading.at ? '<span>run of ' + html(reading.at.slice(0, 10)) + '</span>' : '') + '</span>'
+        + '<span class="hero-spark">' + view.spark + '</span></div>' + heroStats(reading.standing, view.position) + '</div>';
 
       const alerts = (home.alerts as any[]).length
         ? '<div class="alertlist">' + (home.alerts as any[]).map((alert: any) => '<div class="alertrow"><span class="pill ' + alertPill(alert.severity) + '">' + html(alert.severity) + '</span><div><strong>' + html(alert.headline) + '</strong><p class="subtle">' + html(alert.detail) + '</p></div></div>').join("") + '</div>'
@@ -4187,11 +4192,13 @@ export function boot(): void {
     // Says what the page is built from and when, so a tab left open overnight
     // is recognisable as stale rather than read as current.
     function renderFooter() {
+      // Every page carries the footer, and most never asked for the summary it reads.
+      if (state.homeState === "idle" && state.selectedId) { loadHome(); }
       const home = state.home;
       const answers = home && typeof home.answers === "number" ? home.answers : null;
       const run = home && home.lastRun ? String(home.lastRun.at) : "";
       return '<footer class="appfoot">'
-        + '<span>' + (answers === null ? 'Nothing archived yet' : answers + ' archived answer(s)')
+        + '<span>' + html(archived(state.homeState, answers))
         + (run ? ' \u00b7 last run ' + html(run.slice(0, 16).replace("T", " ")) : '') + '</span>'
         + '<span>Every figure here opens the answer it came from.</span></footer>';
     }
