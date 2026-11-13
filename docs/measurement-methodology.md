@@ -131,3 +131,32 @@ Plotting groups by `modelId` + `webSearchMode` + fingerprint. A non-null `partia
 6. Only describe a change across at least two observations that share the same scope with complete evidence; even three observations do not automatically produce statistical significance.
 
 This round's R02 data is still pending, with no real number here to recompute from it yet. Phase 6's 20 domains are a targeted set of software/internet products, not a random market sample, and do not support an industry-wide conclusion. A competitor or keyword not listed does not mean it does not exist in reality; an offline-versus-web-enabled difference is not an independent experiment about which model is better; a change does not prove a causal effect from a GEO action. See [limitations](limitations.md) for the current execution and cost gaps.
+
+## Page types per topic
+
+`GET /api/projects/<id>/page-types` types every cited address on completed
+answers and splits the count per topic and per run. It takes the same filters as
+the other answer routes. The types and their rules are defined once, in
+[page-type.ts](../src/product/citations/page-type.ts), and the response carries
+them as `definitions`.
+
+A citation is one page in one answer: the same page cited twice in an answer
+counts once, after tracking parameters are stripped. The type is read off the
+address only, never the page behind it, and the first matching rule wins:
+
+1. A known video, community, social or reference host.
+2. A comparison or review word anywhere in the path (`vs`, `best`, `review`).
+3. A docs, help, forum, news or blog subdomain.
+4. The leftmost path segment that names a section (`docs`, `forum`, `news`,
+   `pricing`, `blog`).
+5. Your domain or a tracked rival's, which reads as a vendor page. Decoys are
+   left out.
+6. A last segment of four or more words, which reads as an article.
+7. Otherwise `unknown`.
+
+A run that cited nothing on a topic has a `null` share, not zero, and the
+change between the last two runs is `null` unless both cited something.
+
+To check a figure, open the topic's page list. Each page shows the rule and the
+word or host that matched. A wrong type is fixed by changing a list in
+`page-type.ts` and adding the address to `test/page-type.test.ts`.

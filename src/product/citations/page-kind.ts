@@ -34,12 +34,12 @@ export const MIN_PAGES_FOR_SHARE = 20;
 
 export const KIND_CAVEAT = "Read off the pages these answers cited, from the address, the title and the shape of the markup. A page can be a comparison and a listicle at once and only its strongest signal is kept, so the split is a reading rather than a census. A site counts as a company's only where an answer named a brand at that domain, so a company nobody named reads as a publisher here. The baselines come from published studies, on their prompts and their engines.";
 
-const VIDEO_HOSTS = ["youtube.com", "youtu.be", "vimeo.com", "dailymotion.com"];
-const COMMUNITY_HOSTS = ["reddit.com", "quora.com", "stackexchange.com", "stackoverflow.com", "ycombinator.com", "discourse.org"];
-const SOCIAL_HOSTS = ["linkedin.com", "twitter.com", "x.com", "facebook.com", "instagram.com", "tiktok.com", "threads.net", "pinterest.com"];
-const REFERENCE_HOSTS = ["wikipedia.org", "wikidata.org", "britannica.com", "investopedia.com"];
+export const VIDEO_HOSTS = ["youtube.com", "youtu.be", "vimeo.com", "dailymotion.com"];
+export const COMMUNITY_HOSTS = ["reddit.com", "quora.com", "stackexchange.com", "stackoverflow.com", "ycombinator.com", "discourse.org"];
+export const SOCIAL_HOSTS = ["linkedin.com", "twitter.com", "x.com", "facebook.com", "instagram.com", "tiktok.com", "threads.net", "pinterest.com"];
+export const REFERENCE_HOSTS = ["wikipedia.org", "wikidata.org", "britannica.com", "investopedia.com"];
 
-function isOn(host: string, hosts: string[]): boolean {
+export function isOn(host: string, hosts: string[]): boolean {
   const lower = host.trim().toLocaleLowerCase();
   return hosts.some((known) => lower === known || lower.endsWith("." + known));
 }
