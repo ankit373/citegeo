@@ -34,7 +34,7 @@ Preserve the SVG's original paths, viewBox, transform, fill rules, whitespace, a
 
 ## Light and dark themes
 
-The site keeps the warm charcoal background `#14120F` and uses the `#F2EEE4` source assets. GitHub's theme is chosen by the reader; the README must not force a black background via CSS. The light theme must use a dark-fill version of the same geometric paths, the dark theme uses the current white version, selected via GitHub's supported picture/source or theme-image markup.
+Page colours for the site and the app come from [DESIGN.md](../DESIGN.md), light first. GitHub's theme is chosen by the reader; the README must not force a black background via CSS. The light theme must use a dark-fill version of the same geometric paths, the dark theme uses the current white version, selected via GitHub's supported picture/source or theme-image markup.
 
 A theme variant may only change the visible fill color. Before it is formally referenced, confirm the actual file exists and that its path, viewBox, and transform are unchanged; do not fill in a Markdown reference to a theme file that has not been generated yet. This document does not create the asset variants; light/dark visibility needs to be accepted separately in the final README and in a real browser.
 
@@ -44,7 +44,7 @@ Superseded logo files were removed; the four files in the table above are the co
 
 The primary visual language is black and white, geometric shapes, and generous whitespace. Documentation is organized with headings, paragraphs, a small number of badges, readable tables, Mermaid diagrams, and real product screenshots; it must not depend on JavaScript, external fonts, arbitrary CSS, or autoplay to be legible. Technical IDs go in evidence entry points, not crowded into marketing headlines.
 
-Color follows [DESIGN.md](../DESIGN.md) and is spent on two jobs that never overlap. Evidence state uses `confirmed` `#7FA06E`, `unknown` `#C9973E`, and `failed` `#B2503B`, and those three appear only to report a state, never to decorate chrome. Chart series identity uses `series-1` through `series-6` (`#6B8CAE`, `#8B7FBF`, `#B98A5E`, `#6FA88A`, `#A6748F`, `#7A94A0`), assigned from the model ID by the character-index mapping in [measurement-workbench-app.ts](../src/ui/measurement-workbench-app.ts). That mapping can collide, and the model name and search mode must still stay readable; colors must never be reassigned to make a screenshot look better or to flatter a result.
+Color follows [DESIGN.md](../DESIGN.md): colour carries meaning only (your brand, up, down, check, failed), and chart series use its fixed rival slots, keyed by identity. A mapping from an ID to a slot can collide, and the model name and search mode must still stay readable; colors must never be reassigned to make a screenshot look better or to flatter a result.
 
 Success, unknown, failure, partial coverage, and missing data are all distinguished with text or shape as well as color, never by color alone. Per the [methodology](measurement-methodology.md), keep the denominator, raw timestamp, protocol, and search condition visible; show a genuine empty state when there is no data, never a decorative trend line.
 
