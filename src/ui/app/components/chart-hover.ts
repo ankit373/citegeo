@@ -30,7 +30,8 @@ export function wireChartHover(): void {
 
     // The crosshair is in the svg's own coordinates; the tooltip is in the
     // page's, so each is placed in the space it lives in.
-    const centre = Number(hit.getAttribute("x") || 0) + Number(hit.getAttribute("width") || 0) / 2;
+    const at = hit.getAttribute("data-x");
+    const centre = at !== null ? Number(at) : Number(hit.getAttribute("x") || 0) + Number(hit.getAttribute("width") || 0) / 2;
     if (cross) {
       cross.setAttribute("x1", String(centre));
       cross.setAttribute("x2", String(centre));
@@ -41,7 +42,8 @@ export function wireChartHover(): void {
     tip.removeAttribute("hidden");
 
     const box = svg.getBoundingClientRect();
-    const scale = box.width / 760;
+    const drawn = (svg as SVGSVGElement).viewBox ? (svg as SVGSVGElement).viewBox.baseVal.width : 0;
+    const scale = drawn ? box.width / drawn : 1;
     const left = centre * scale;
     // Flip to the other side near the right edge rather than overflow.
     (tip as HTMLElement).style.left = left > box.width * 0.6 ? "auto" : `${Math.round(left + 14)}px`;

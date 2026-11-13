@@ -25,6 +25,14 @@
   --color-failed: #A32C32;
   --color-failed-text: #90272C;
   --color-failed-wash: rgba(163,44,50,.10);
+  /* Chart series, from design/tokens.css. The mark is your brand and nothing else. */
+  --color-mark: #EEF25C;
+  --color-mark-ink: #171717;
+  --color-mark-line: rgba(226,232,60,.75);
+  --color-rival-1: #2F6FB8;
+  --color-rival-2: #C0612B;
+  --color-rival-3: #0B9A8E;
+  --color-rival-other: #9E9E9E;
   --color-skeleton: #E7EBF0;
   --color-skeleton-sheen: rgba(255,255,255,.70);
   /* Behind a drawer or a panel, so the page reads as out of reach. */
@@ -102,6 +110,13 @@
   --failed: var(--color-failed);
   --failed-text: var(--color-failed-text);
   --failed-wash: var(--color-failed-wash);
+  --mark: var(--color-mark);
+  --mark-ink: var(--color-mark-ink);
+  --mark-line: var(--color-mark-line);
+  --rival-1: var(--color-rival-1);
+  --rival-2: var(--color-rival-2);
+  --rival-3: var(--color-rival-3);
+  --rival-other: var(--color-rival-other);
   --skeleton: var(--color-skeleton);
   --skeleton-sheen: var(--color-skeleton-sheen);
   --scrim: var(--color-scrim);
@@ -173,6 +188,20 @@
     --failed-text: #EC8D93;
     --color-failed-wash: rgba(228,116,123,.14);
     --failed-wash: rgba(228,116,123,.14);
+    --color-mark: #4D5015;
+    --mark: #4D5015;
+    --color-mark-ink: #F4F7B0;
+    --mark-ink: #F4F7B0;
+    --color-mark-line: rgba(220,226,70,.45);
+    --mark-line: rgba(220,226,70,.45);
+    --color-rival-1: #4C8BE0;
+    --rival-1: #4C8BE0;
+    --color-rival-2: #D9692F;
+    --rival-2: #D9692F;
+    --color-rival-3: #18A88C;
+    --rival-3: #18A88C;
+    --color-rival-other: #6E6E6E;
+    --rival-other: #6E6E6E;
     --color-skeleton: #2C2B28;
     --skeleton: #2C2B28;
     --color-skeleton-sheen: rgba(255,255,255,.06);
@@ -234,6 +263,20 @@
     --failed-text: #EC8D93;
     --color-failed-wash: rgba(228,116,123,.14);
     --failed-wash: rgba(228,116,123,.14);
+    --color-mark: #4D5015;
+    --mark: #4D5015;
+    --color-mark-ink: #F4F7B0;
+    --mark-ink: #F4F7B0;
+    --color-mark-line: rgba(220,226,70,.45);
+    --mark-line: rgba(220,226,70,.45);
+    --color-rival-1: #4C8BE0;
+    --rival-1: #4C8BE0;
+    --color-rival-2: #D9692F;
+    --rival-2: #D9692F;
+    --color-rival-3: #18A88C;
+    --rival-3: #18A88C;
+    --color-rival-other: #6E6E6E;
+    --rival-other: #6E6E6E;
     --color-skeleton: #2C2B28;
     --skeleton: #2C2B28;
     --color-skeleton-sheen: rgba(255,255,255,.06);
@@ -940,7 +983,7 @@ select.filter { max-width: 180px; }
 }
 
 @utility ch {
-  @apply block h-[230px] w-full;
+  @apply block max-w-full;
 }
 
 @utility ch-legend {
@@ -956,8 +999,8 @@ select.filter { max-width: 180px; }
   /* A hairline for the baseline, lighter still for the rest. */
   .ch-axis { stroke: var(--line-strong); stroke-width: 1; }
   .ch-grid { stroke: var(--line); stroke-width: 1; opacity: .55; }
-  .ch-tick { fill: var(--weak); font-size: 10px; font-variant-numeric: tabular-nums; }
-  .ch-name { font-size: 11px; }
+  .ch-tick { fill: var(--weak); font-size: var(--type-sm); font-variant-numeric: tabular-nums; }
+  .ch-name { fill: var(--text); font-size: var(--type-sm); font-variant-numeric: tabular-nums; }
   .ch-name.is-you { font-weight: 650; }
   .ch-value { fill: var(--muted); font-variant-numeric: tabular-nums; }
   .ch-key i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
@@ -1078,7 +1121,7 @@ select.filter { max-width: 180px; }
   .ch-cross { stroke: var(--line-strong); stroke-width: 1; stroke-dasharray: 3 3; opacity: 0; }
   .ch-hit { fill: transparent; }
   .ch-tip[hidden] { display: none; }
-  .ch-tip-when { display: block; margin-bottom: 3px; font-size: 11px; color: var(--muted); }
+  .ch-tip-when { display: block; margin-bottom: 3px; font-size: var(--type-sm); color: var(--muted); }
   .ch-tip-row { display: grid; grid-template-columns: 9px minmax(0, 1fr) auto; align-items: center; gap: 7px; }
   .ch-tip-row.is-you { font-weight: 650; }
   .ch-tip-row i { width: 9px; height: 9px; border-radius: 50%; }
@@ -1226,3 +1269,65 @@ select.filter { max-width: 180px; }
     word-break: break-word;
   }
 }
+
+/* The overview. Structure only, on the shared tokens, so a visual layer can
+   replace it without touching the markup. */
+@layer components {
+  .s-you { stroke: var(--text); stroke-width: 2.5; }
+  .s-r1 { stroke: var(--rival-1); stroke-width: 1.75; }
+  .s-r2 { stroke: var(--rival-2); stroke-width: 1.75; }
+  .s-r3 { stroke: var(--rival-3); stroke-width: 1.75; }
+  .s-other { stroke: var(--rival-other); stroke-width: 1.5; }
+  .ch-you-band { fill: none; stroke: var(--mark-line); stroke-width: 10; stroke-linecap: round; stroke-linejoin: round; }
+  .ch-you-mark { fill: var(--mark); }
+  .ch-name.is-you { fill: var(--mark-ink); }
+  .ch-range { fill: var(--raised); }
+  .ch-end { fill: var(--text); stroke: var(--surface); stroke-width: 2; }
+  .ch-hatch { stroke: var(--line-strong); stroke-width: 2; }
+  .ch-track { fill: var(--raised); }
+  .ch-track.is-failed { fill: var(--failed-wash); }
+  .ch-bar { fill: var(--weak); }
+  .ch-bar.is-failed { fill: var(--failed); }
+
+  .ov-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: var(--space-md); }
+  .ov-grid > * { margin: 0; min-width: 0; }
+  .ov-grid > [data-panel="health"] { grid-column: 1 / -1; }
+  .ov-grid > [data-panel="score"] { grid-column: span 4; }
+  .ov-grid > [data-panel="share"] { grid-column: span 8; }
+  .ov-grid > [data-panel="lose"] { grid-column: span 7; }
+  .ov-grid > [data-panel="pages"] { grid-column: span 5; }
+  .ov-grid > .ov-health-slot { grid-column: 1 / -1; }
+  @media (max-width: 900px) {
+    .ov-grid > [data-panel], .ov-grid > * { grid-column: 1 / -1; }
+  }
+  .ov-health { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-lg); align-items: center; }
+  @media (max-width: 900px) { .ov-health { grid-template-columns: minmax(0, 1fr); } }
+  .ov-sentence { margin: 0; font-size: var(--type-base); }
+  .ov-sentence.is-failed { color: var(--failed-text); }
+  .ov-callout { margin: var(--space-md) 0 0; padding: var(--space-sm) var(--space-md); border-radius: var(--radius-sm); background: var(--unknown-wash); font-size: var(--type-sm); }
+  .ov-callout b { color: var(--unknown-text); margin-right: var(--space-sm); }
+  .ov-figure { display: flex; align-items: baseline; gap: var(--space-md); margin: 0; }
+  .ov-figure strong { font-family: var(--font-display); font-size: var(--type-hero); line-height: 1; font-variant-numeric: tabular-nums; }
+  .ov-delta { font-size: var(--type-base); color: var(--muted); font-variant-numeric: tabular-nums; }
+  .ov-delta.is-up { color: var(--confirmed-text); }
+  .ov-delta.is-down { color: var(--failed-text); }
+  .ov-note { margin: var(--space-xs) 0 var(--space-md); color: var(--muted); font-size: var(--type-sm); }
+  .ov-link { background: none; border: 0; padding: var(--space-sm) 0; color: var(--text); text-decoration: underline; font-size: var(--type-sm); cursor: pointer; }
+  .ov-table { width: 100%; border-collapse: collapse; font-size: var(--type-md); font-variant-numeric: tabular-nums; }
+  .ov-table th { text-align: left; font-weight: 500; color: var(--muted); border-bottom: 1px solid var(--line-strong); padding: 0 var(--space-sm) var(--space-xs) 0; }
+  .ov-table td { border-bottom: 1px solid var(--line); padding: var(--space-sm) var(--space-sm) var(--space-sm) 0; vertical-align: top; }
+  .ov-table tr:last-child td { border-bottom: 0; }
+  .ov-table .num { text-align: right; white-space: nowrap; }
+  .ov-table .is-down { color: var(--failed-text); }
+  .ov-of { color: var(--muted); white-space: nowrap; }
+  .ov-url { overflow-wrap: anywhere; }
+  .ov-scroll { overflow-x: auto; }
+  .ov-url a { color: var(--text); text-decoration: none; }
+  .ov-url a:hover { text-decoration: underline; }
+  mark.you { background: var(--mark); color: var(--mark-ink); padding: 0 .2em; border-radius: var(--radius-xs); }
+  [data-panel="score"] .hero-stats { margin-top: var(--space-md); }
+}
+
+/* Outside the layer, because the shell's own unlayered rule sets these. */
+[data-panel="score"] .hero-stat span { font-size: var(--type-sm); letter-spacing: 0; text-transform: none; }
+[data-panel="score"] .hero-stat small { font-size: var(--type-sm); }
