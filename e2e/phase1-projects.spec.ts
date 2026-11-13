@@ -95,7 +95,8 @@ test.afterAll(async () => {
 test("Phase 1 project lifecycle uses the real product UI and API", async ({ page }) => {
   await test.step("A. empty state", async () => {
     await page.goto(baseUrl);
-    await page.locator('.sidebar [data-page="overview"]').first().click();
+    await page.locator(".appmore summary").click();
+    await page.locator('.appmore [data-route="projects"]').click();
     await expect(page.getByTestId("empty-state")).toBeVisible();
     await expect(page.getByTestId("project-card")).toHaveCount(0);
     await screenshot(page, "01-empty-state.png");

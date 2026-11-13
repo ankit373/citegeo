@@ -5,7 +5,8 @@ import { percent, rank, remaining, score, seconds } from "../src/ui/app/format.j
 import { cell, emptyState, nameCell, pill, row, section, table, tiles } from "../src/ui/app/components/primitives.js";
 import { skeletonTable, skeletonTiles, loading } from "../src/ui/app/components/skeleton.js";
 import { productAppSource } from "../src/ui/app-source.js";
-import { footer, header, panel, sidebar } from "../src/ui/app/components/layout.js";
+import { footer, panel, shell } from "../src/ui/app/components/layout.js";
+import { appbar } from "../src/ui/app/components/nav.js";
 import { selectedModelTable } from "../src/ui/app/components/model-picker.js";
 import { externalMetricHistory } from "../src/ui/app/components/external-metric-history.js";
 
@@ -58,21 +59,31 @@ test("a shadow says nothing to a screen reader, so the state is stated too", () 
 test("the frame is one set of pieces, and the closed panel is still rendered", () => {
   assert.ok(panel({ open: false }).includes('aria-hidden="true"'));
   assert.ok(panel({ open: true, title: "Run" }).includes('role="dialog"'));
-  assert.ok(header({ product: "citegeo", project: "P", actions: "" }).includes('data-page="dashboard"'));
   assert.ok(footer({ left: "a", right: "b" }).includes("appfoot"));
+  const frame = shell({ before: "", appbar: "<header>bar</header>", content: "page", footer: "" });
+  assert.ok(frame.indexOf("bar") < frame.indexOf("page"));
 });
 
-test("the brand and the crumb both go home, because both are tried", () => {
-  const rail = sidebar({ brand: "<svg></svg>", projectOptions: "", groups: [], page: "prompts", footer: "" });
-  assert.ok(rail.includes('class="brand" data-page="dashboard"'));
-  assert.ok(header({ product: "citegeo", project: "P", actions: "" }).includes('class="crumb-home" data-page="dashboard"'));
+const BAR = { page: "prompts", projectId: "p1", projectOptions: "", lockup: "<svg></svg>", demo: false, dark: false, actions: "" };
+
+test("every tab is a link to its own address, so it can be opened in a tab or shared", () => {
+  const bar = appbar(BAR);
+  for (const hash of ["#/projects/p1/overview", "#/projects/p1/questions", "#/projects/p1/rivals", "#/projects/p1/sources", "#/projects/p1/runs"]) {
+    assert.ok(bar.includes('href="' + hash + '"'), hash);
+  }
+  assert.ok(bar.includes('class="appbar-lockup" href="#/projects/p1/overview"'));
 });
 
 test("the current page is marked for a screen reader, not only by colour", () => {
-  const rail = sidebar({ brand: "", projectOptions: "", groups: [{ items: [{ page: "prompts", label: "Prompts" }] }], page: "prompts", footer: "" });
-  assert.ok(rail.includes('aria-current="page"'));
-  const other = sidebar({ brand: "", projectOptions: "", groups: [{ items: [{ page: "prompts", label: "Prompts" }] }], page: "dashboard", footer: "" });
-  assert.equal(other.includes('aria-current'), false);
+  assert.equal(appbar(BAR).split('aria-current="page"').length, 2);
+  assert.ok(appbar(BAR).includes('data-route="questions" aria-current="page"'));
+  // A page reached from inside Runs keeps the Runs tab marked.
+  assert.ok(appbar({ ...BAR, page: "models" }).includes('data-route="runs" aria-current="page"'));
+});
+
+test("made-up data is labelled in the bar, and only then", () => {
+  assert.ok(appbar({ ...BAR, demo: true }).includes("Demo data"));
+  assert.equal(appbar(BAR).includes("Demo data"), false);
 });
 
 test("join drops the empty branches, so a conditional leaves no gap", () => {

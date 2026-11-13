@@ -85,7 +85,8 @@ async function createProject(page: Page, input: { domain: string; name: string }
 }
 
 async function configureProject(page: Page, modelIds: Array<{ id: string; mode: "off" | "provider_native" }>): Promise<void> {
-  await page.locator('.sidebar [data-page="models"]').first().click();
+  await page.locator(".appmore summary").click();
+  await page.locator('.appmore [data-route="models"]').click();
   await expect(page.getByTestId("catalog-model").first()).toBeVisible();
   for (const model of modelIds) {
     const checkbox = page.locator(`[data-model-checkbox="${model.id}"]`);

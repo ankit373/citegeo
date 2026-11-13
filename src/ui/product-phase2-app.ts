@@ -20,11 +20,6 @@ export function renderProductPhase2AppHtml(): string {
   </script>
   <link rel="stylesheet" href="/app/app.css">
   <style>
-    /* The sidebar is sticky and one viewport tall, so below the fold its grid
-       column fell back to the page background and the rail appeared to stop. */
-    .brand { display:flex; align-items:center; min-height:40px; margin:0 8px 22px; width:calc(100% - 16px); background:none; border:0; padding:0; cursor:pointer; color:inherit; text-align:left; }
-    .brand:hover,.brand:focus-visible { opacity:.78; }
-    .crumb-home:hover,.crumb-home:focus-visible { color:var(--accent); }
     .brand-lockup-inline { display:inline-flex; align-items:center; gap:8px; color:var(--text); }
     .brand-mark-svg { width:24px; height:24px; display:block; color:var(--accent); }
     .brand-word { font-family:var(--font-display); font-size:20px; font-weight:600; letter-spacing:-0.02em; }
@@ -34,14 +29,8 @@ export function renderProductPhase2AppHtml(): string {
     .brand-title strong { font-size:16px; letter-spacing:0; }
     .brand-title span,.subtle,.field-help,.model-meta { color:var(--muted); }
     .brand-title span { font-size:12px; }
-    .project-select,input,select { width:100%; min-height:34px; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--surface); color:var(--text); padding:0 10px; font-size:13px; transition:border-color var(--motion-fast) var(--ease-standard); }
-    .project-select:hover,input:hover,select:hover { border-color:var(--line-strong); }
-    .nav-item { display:flex; align-items:center; gap:9px; min-height:34px; border:0; border-radius:var(--radius-sm); background:transparent; color:var(--muted); text-align:left; padding:0 10px; font-size:13px; text-decoration:none; transition:background-color var(--motion-fast) var(--ease-standard),color var(--motion-fast) var(--ease-standard); }
-    .nav-item:hover,.nav-item:focus-visible { background:var(--raised); color:var(--text); }
-    .nav-item.active:hover { color:var(--accent); }
-    .nav-item.active { background:var(--accent-wash); color:var(--accent); font-weight:550; }
-    .theme-toggle:hover { color:var(--text); border-color:var(--line-strong); }
-    .crumb strong { color:var(--text); }
+    input,select { width:100%; min-height:34px; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--surface); color:var(--text); padding:0 10px; font-size:13px; transition:border-color var(--motion-fast) var(--ease-standard); }
+    input:hover,select:hover { border-color:var(--line-strong); }
     /* The failed colour reports an evidence state; chrome must not borrow it. */
     /* The workspace is a flex column, and an auto side margin there turns off
        stretch, so a page light on content shrank to its text and centred. */
@@ -393,8 +382,6 @@ export function renderProductPhase2AppHtml(): string {
     .model-run-card.completed,.model-run-card.unknown { border-color:var(--confirmed); }
     .model-run-card.failed,.model-run-card.unsupported { border-color:var(--failed); }
     /* The data is a matrix, so it reads as rows with rule lines. No card-in-card. */
-    .nav-step { display:inline-block; width:16px; color:var(--weak); font-variant-numeric:tabular-nums; }
-    .nav-item.active .nav-step { color:var(--text); }
     .steps { list-style:none; margin:0; padding:0; border-top:1px solid var(--line); }
     .step { display:grid; grid-template-columns:28px minmax(0,1fr) auto auto auto; align-items:center; gap:14px; padding:12px 0; border-bottom:1px solid var(--line); }
     .step-index { color:var(--weak); font-variant-numeric:tabular-nums; }
@@ -436,8 +423,6 @@ export function renderProductPhase2AppHtml(): string {
     .attempt-row { border-top:1px solid var(--line); padding-top:10px; color:var(--muted); font-size:12px; display:grid; gap:5px; }
     @keyframes spin { to { transform:rotate(360deg); } }
     @media (max-width:840px) {
-      /* Hiding the sidebar here left no way to navigate at all on a phone. */
-      .brand { margin:0 0 14px; }
       /* anywhere, not break-word: only this variant lowers min-content, and a
          domain in a heading was setting the width of the whole page. */
       .workspace { overflow-wrap:anywhere; }
