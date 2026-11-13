@@ -2,6 +2,7 @@ import { buildTopicInsights, type TopicInsights } from "./topic-insights.js";
 import { buildHomeSummary } from "../alerts/home-summary.js";
 import { buildAnswerDigest } from "../alerts/answer-digest.js";
 import { buildCitationAnalysis } from "./citation-analysis.js";
+import { buildPageTypeReport } from "./page-type-split.js";
 import { citationStanding, positionReport } from "./position-metrics.js";
 import { sliceByWindow, windowFor } from "./period-window.js";
 import { buildRankingPlan, type RankingPlan } from "./ranking-plan.js";
@@ -435,6 +436,28 @@ export async function handleTopicApi(input: {
       // Computed here so the rank the dashboard draws and the rank an export
       // carries come from one place rather than two readings of the domains.
       return { ...analysis, standing: citationStanding(analysis) };
+    }, 404);
+    return true;
+  }
+
+  if (method === "GET" && tail.length === 1 && tail[0] === "page-types") {
+    await guard(async () => {
+      const [set, answers, runList, identity, rivals] = await Promise.all([
+        topics.get(projectId),
+        runs.listAnswers(projectId),
+        runs.listRuns(projectId),
+        topics.targetIdentity(projectId).catch(() => null),
+        competitors.get(projectId).catch(() => null),
+      ]);
+      // A decoy is declared irrelevant, so its site is not a vendor in this category.
+      const rivalDomains = (rivals?.competitors || [])
+        .flatMap((rival) => rival.domain && rival.source !== DECOY_SOURCE ? [rival.domain] : []);
+      return buildPageTypeReport({
+        answers: sliced(answers, url),
+        topics: set.topics,
+        runs: runList,
+        companyDomains: identity ? [identity.host, ...rivalDomains] : rivalDomains,
+      });
     }, 404);
     return true;
   }
