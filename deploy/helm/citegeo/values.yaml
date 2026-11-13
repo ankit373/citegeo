@@ -4,7 +4,7 @@ replicaCount: 1
 
 image:
   repository: ghcr.io/ankit373/citegeo
-  tag: ""            # defaults to .Chart.AppVersion
+  tag: ""            # defaults to v<appVersion>, the tag releases publish
   pullPolicy: IfNotPresent
 imagePullSecrets: []
 
