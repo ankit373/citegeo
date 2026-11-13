@@ -1,16 +1,18 @@
 # Docker deployment
 
-## CiteGEO v0.2.0
+## Running the published image
 
-The formal image is `ghcr.io/ankit373/citegeo:v0.2.0`, supporting Linux amd64 and arm64. Set `OPENROUTER_API_KEY` in the host environment first, then run:
+Images are published to `ghcr.io/ankit373/citegeo` for Linux amd64 and arm64. Each release is tagged `vX.Y.Z`, and `latest` follows the newest stable release. Pin a version from the [releases page](https://github.com/ankit373/citegeo/releases) for anything you upgrade deliberately; the commands below use `latest`.
+
+Set `OPENROUTER_API_KEY` in the host environment first, then run:
 
 ```bash
-docker pull ghcr.io/ankit373/citegeo:v0.2.0
+docker pull ghcr.io/ankit373/citegeo:latest
 docker run -d --name citegeo \
   -p 127.0.0.1:8787:8787 \
   -e OPENROUTER_API_KEY \
   -v citegeo-data:/app/data/product-v2 \
-  ghcr.io/ankit373/citegeo:v0.2.0
+  ghcr.io/ankit373/citegeo:latest
 ```
 
 Open <http://localhost:8787>. The named volume `citegeo-data` survives recreating the container; [back up](../upgrade.md) before an upgrade. Never expose the workbench directly to the public internet; remote access needs authentication and TLS configured separately.
@@ -21,11 +23,11 @@ Scheduled monitoring needs an extra worker started, using the same data volume; 
 docker run -d --name citegeo-worker --no-healthcheck \
   -e OPENROUTER_API_KEY \
   -v citegeo-data:/app/data/product-v2 \
-  ghcr.io/ankit373/citegeo:v0.2.0 \
+  ghcr.io/ankit373/citegeo:latest \
   node dist/src/product/scheduling/schedule-worker.js 60
 ```
 
-The public image is built from the commit matching the `v0.2.0` tag. The workflow only writes `:v0.2.0` and `:latest` once the version, source markers, SVGs, project creation, and a persistence check after recreating the container have all passed; a candidate version never updates `latest`. See the [formal release attachment](https://github.com/ankit373/citegeo/releases/tag/v0.2.0) for the actual digest and provenance record. This version's statistics and acceptance gaps are still in the release notes; a historical `blocked` record is never rewritten as `passed`.
+Each image is built from the commit its release tag points at. The publish workflow only writes a version tag and `latest` after the container has passed its checks, and a candidate build never moves `latest`. The digest of each release is in its workflow run.
 
 <details>
 <summary>Historical candidate build record and deployment parameter notes (not the formal image's identity)</summary>
