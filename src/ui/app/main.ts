@@ -4192,6 +4192,8 @@ export function boot(): void {
     // Says what the page is built from and when, so a tab left open overnight
     // is recognisable as stale rather than read as current.
     function renderFooter() {
+      // Every page carries the footer, and most never asked for the summary it reads.
+      if (state.homeState === "idle" && state.selectedId) { loadHome(); }
       const home = state.home;
       const answers = home && typeof home.answers === "number" ? home.answers : null;
       const run = home && home.lastRun ? String(home.lastRun.at) : "";
