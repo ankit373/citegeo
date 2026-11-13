@@ -5,9 +5,10 @@ import {
   rivalChart,
   rivalPanel, rivalRanks, rivalStandings, withTarget,
   topicMatrix, rowVerdict,
-  dashboardPanels,
+  dashboardPanels, boardStatus, headline,
   type DashboardData,
 } from "../src/ui/app/pages/dashboard-view.js";
+import { archived } from "../src/ui/app/format.js";
 
 function data(overrides: Partial<DashboardData> = {}): DashboardData {
   return {
@@ -461,4 +462,64 @@ test("uncited on the blind surfaces reads as not named, not as rank nought", () 
   } }));
   assert.ok(drawn.includes("Not named"));
   assert.equal(drawn.includes("#0"), false);
+});
+
+function insights(points: Array<[string, number | null, boolean]>, change: number | null) {
+  return {
+    overall: { score: 2, presenceRate: 0.05, prominence: null, sentiment: null, answers: 301, appearances: 7 },
+    rank: 42,
+    trend: {
+      change,
+      points: points.map(([at, score, thin], index) => ({
+        at,
+        rank: score ? 40 - index : null,
+        score: { score, presenceRate: score ? 0.1 : 0, prominence: null, sentiment: null, answers: 20, appearances: score ? 2 : 0, tooFewAnswers: thin },
+      })),
+    },
+  };
+}
+
+test("the board waits for the insights read rather than drawing noughts", () => {
+  assert.equal(boardStatus("ready", "loading"), "loading");
+  assert.equal(boardStatus("ready", "idle"), "loading");
+  assert.equal(boardStatus("loading", "ready"), "loading");
+  assert.equal(boardStatus("ready", "error"), "error");
+  assert.equal(boardStatus("ready", "ready"), "ready");
+  const drawn = dashboardBody({ status: boardStatus("ready", "loading") } as never);
+  assert.ok(drawn.includes('role="status"'), "loading looks like loading");
+  assert.equal(drawn.includes(">0<"), false, "and never like a finding of nought");
+});
+
+test("a plan still being built is not a plan with nothing in it", () => {
+  const waiting = movesList(null);
+  assert.ok(waiting.includes('role="status"'));
+  assert.equal(waiting.includes("Nothing in the archived answers"), false);
+});
+
+test("the figure and its move come off the same run", () => {
+  const read = headline(insights([
+    ["2026-10-04T10:00:00Z", 0, false],
+    ["2026-10-04T12:00:00Z", 2.1, false],
+    ["2026-10-12T09:00:00Z", 2.9, false],
+    ["2026-10-13T09:00:00Z", 0, true],
+  ], 2.9));
+  assert.equal(read.standing.score, 2.9, "the move ends at this figure");
+  assert.equal(read.change, 2.9);
+  assert.equal(read.at, "2026-10-12T09:00:00Z", "a run too thin to read is not the figure");
+  assert.equal(read.rank, 38, "the rank is that run's too");
+  assert.equal(read.standing.answers, 20, "and so are the figures it is built from");
+});
+
+test("with no run to read off, the archive is the figure and nothing has moved", () => {
+  const read = headline(insights([["2026-10-13T09:00:00Z", 0, true]], null));
+  assert.equal(read.standing.score, 2);
+  assert.equal(read.change, null);
+  assert.equal(read.rank, 42);
+  assert.equal(read.at, null);
+});
+
+test("the footer says it is reading while the archive loads", () => {
+  assert.equal(archived("loading", null).includes("Nothing archived"), false);
+  assert.ok(archived("ready", null).includes("Nothing archived yet"));
+  assert.ok(archived("ready", 301).includes("301 archived answer(s)"));
 });
