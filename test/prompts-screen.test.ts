@@ -152,10 +152,10 @@ test("prompt volume has a screen, and says so when nothing is indexed", () => {
   assert.equal(html.includes("which is not the same as nobody asking"), true);
 });
 
-test("the brand visibility board collects the panels rather than scattering them", () => {
+test("the rivals page holds every panel the overview left out", () => {
   const html = productAppSource();
   assert.equal(html.includes("function renderBrandVisibility()"), true);
-  assert.equal(html.includes('const wanted = ["trend", "named", "described", "sources"];'), true);
-  // It draws the same panels the dashboard does, not a second copy of them.
-  assert.equal(html.includes("dashboardPanels(view).filter"), true);
+  // The same panels the old board drew, not a second copy of them.
+  assert.equal(html.includes("const panels = dashboardPanels(view);"), true);
+  assert.equal(html.includes("renderSinceLastRun()"), true);
 });

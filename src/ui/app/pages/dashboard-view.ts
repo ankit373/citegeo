@@ -5,6 +5,7 @@ import { loading, skeletonCard, skeletonTiles } from "../components/skeleton.js"
 import { match, type Loadable } from "../loadable.js";
 import { panelLayout } from "../components/reorder.js";
 import { regionMap, type RegionCell } from "./region-map.js";
+import { chartHost, rivalSlots, slotInk } from "./overview-charts.js";
 /** Mirrors the server shapes. A type import is erased, but keeping the view's
  * types local keeps every import inside the tree the app route serves. */
 export interface PositionReport { averagePosition: number | null; ranked: number; unranked: number; best: number | null; worst: number | null }
@@ -25,6 +26,8 @@ export interface CitationStanding { rank: number | null; share: number | null; a
 export interface Standing {
   score: number | null;
   presenceRate: number | null;
+  /** About 95 percent, on presence alone. Absent on an older read. */
+  presenceInterval?: { low: number | null; high: number | null } | undefined;
   prominence: number | null;
   sentiment: number | null;
   answers: number;
@@ -97,6 +100,8 @@ export interface Move {
 }
 
 export interface DashboardData {
+  /** Start times of runs left out of every chart because most of them failed. */
+  failedRuns?: string[] | undefined;
   /** Empty until two runs exist, which the chart reports rather than hides. */
   rivalTrend?: RivalSeries[];
   matrix?: MatrixData | undefined;
@@ -152,6 +157,8 @@ export function boardStatus(home: BoardStatus, insights: BoardStatus): BoardStat
 
 /** One run on the trend, as the insights read carries it. */
 export interface ReadingPoint {
+  /** Absent on a read from before runs were carried, which nothing can leave out. */
+  runId?: string | undefined;
   at: string;
   score: Standing & { tooFewAnswers?: boolean | undefined };
   rank: number | null;
@@ -163,19 +170,28 @@ export interface Headline {
   rank: number | null;
   /** The run the figure was read off, or null for the whole archive. */
   at: string | null;
+  /** The run the change is measured from. */
+  since: string | null;
 }
 
-/** The figure, its move and its rank, all off the run the move ends at. The
- * archive's score beside a run-to-run move put 2 next to a rise of 2.9. */
+/** The figure, its move and its rank, all off the run the move ends at. A run
+ * that mostly failed is in `left`, and neither the figure nor the move uses it. */
 export function headline(insights: {
   overall: Standing;
   rank: number | null;
-  trend: { change: number | null; points: ReadingPoint[] };
-}): Headline {
-  const readable = insights.trend.points.filter((point) => point.score.score !== null && !point.score.tooFewAnswers);
+  trend: { change: number | null; since?: string | null | undefined; points: ReadingPoint[] };
+}, left: ReadonlySet<string> = new Set()): Headline {
+  const readable = insights.trend.points.filter((point) =>
+    point.score.score !== null && !point.score.tooFewAnswers && !(point.runId && left.has(point.runId)));
+  const first = readable[0];
   const last = readable[readable.length - 1];
-  if (!last) return { standing: insights.overall, change: null, rank: insights.rank, at: null };
-  return { standing: last.score, change: insights.trend.change, rank: last.rank, at: last.at };
+  if (!last || !first) return { standing: insights.overall, change: null, rank: insights.rank, at: null, since: null };
+  // With nothing left out the server's change is the same subtraction, so it is kept.
+  const change = !left.size
+    ? insights.trend.change
+    : readable.length > 1 ? Math.round(((last.score.score as number) - (first.score.score as number)) * 10) / 10 : null;
+  const since = change === null ? null : left.size ? first.at : insights.trend.since ?? first.at;
+  return { standing: last.score, change, rank: last.rank, at: last.at, since };
 }
 
 /** The four figures the score is built from, never the composite alone. */
@@ -304,31 +320,9 @@ export interface RivalSeries {
   points: Array<{ at: string; share: number; answers?: number; readable?: boolean }>;
 }
 
-/** Runs a share can be read off. A run is kept where nothing said otherwise,
- * so a caller that does not carry the flag still gets every point. */
-function readableRuns(series: RivalSeries[]): RivalSeries[] {
-  return series.map((row) => ({ ...row, points: row.points.filter((point) => point.readable !== false) }));
-}
-
 /** One rule for a line's colour, so the list beside the chart can key to it. */
-export function seriesInk(isTarget: boolean, index: number): string {
-  return isTarget ? (SERIES_INK[0] as string) : (SERIES_INK[(index % (SERIES_INK.length - 1)) + 1] as string);
-}
-
-const SERIES_INK = ["var(--accent)", "#6B8CAE", "#8B7FBF", "#6FA88A", "#B98A5E", "#A6748F"];
-
-/** Pushes labels apart so two lines ending at the same height do not print
- * on top of each other. */
-function spread(values: number[], gap: number): number[] {
-  const order = values.map((y, index) => ({ y, index })).sort((left, right) => left.y - right.y);
-  let last = -Infinity;
-  for (const item of order) {
-    if (item.y - last < gap) item.y = last + gap;
-    last = item.y;
-  }
-  const out = values.slice();
-  for (const item of order) out[item.index] = item.y;
-  return out;
+export function seriesInk(isTarget: boolean, name: string, series: RivalSeries[]): string {
+  return isTarget ? slotInk("you") : slotInk(rivalSlots(series).get(name) || "other");
 }
 
 function runLabel(at: string): string {
@@ -351,100 +345,23 @@ export interface ChartOptions {
   /** Off when a ranked list beside the chart already names every line, which
    * gives the plot back the width the labels were using. */
   labels?: boolean;
+  /** Start times of runs left out because most of their answers failed. */
+  failed?: string[];
 }
 
 export function rivalChart(series: RivalSeries[], domain: string, options: ChartOptions = {}): string {
-  const named = options.labels !== false;
   // A run of one answer gives every brand a share of nought or one, and a line
   // through those draws how big the runs were rather than who is being named.
   const asked = series[0] ? series[0].points.length : 0;
-  const readable = readableRuns(series);
-  const runs = readable[0] ? readable[0].points.length : 0;
+  const runs = series[0] ? series[0].points.filter((point) => point.readable !== false).length : 0;
   const dropped = asked - runs;
   if (runs < 2) {
     return '<p class="subtle">' + (dropped
       ? `${runs} of ${asked} run(s) asked enough answers for a share to mean anything. Run the set again to see movement.`
       : "One run so far. Run again to see movement.") + "</p>";
   }
-
-  const first = readable[0];
-  if (!first) return '<p class="subtle">Nothing has been named yet.</p>';
-  const drawn = withTarget(readable, domain);
-
-  const width = 760;
-  const height = 230;
-  const pad = { left: 38, right: named ? 168 : 16, top: 14, bottom: 30 };
-  const plot = { w: width - pad.left - pad.right, h: height - pad.top - pad.bottom };
-  const x = (index: number) => pad.left + (runs === 1 ? plot.w : (index * plot.w) / (runs - 1));
-  const y = (share: number) => pad.top + (1 - Math.max(0, Math.min(1, share))) * plot.h;
-
-  const grid = [0, 0.25, 0.5, 0.75, 1].map((value) => {
-    const labelled = value === 0 || value === 0.5 || value === 1;
-    return join([
-      `<line class="ch-grid" x1="${pad.left}" x2="${width - pad.right}" y1="${y(value).toFixed(1)}" y2="${y(value).toFixed(1)}"></line>`,
-      labelled ? `<text class="ch-tick" x="${pad.left - 8}" y="${(y(value) + 3.5).toFixed(1)}" text-anchor="end">${Math.round(value * 100)}%</text>` : "",
-    ]);
-  }).join("");
-
-  const axis = join([
-    `<line class="ch-axis" x1="${pad.left}" x2="${width - pad.right}" y1="${y(0).toFixed(1)}" y2="${y(0).toFixed(1)}"></line>`,
-    first.points.map((point, index) => {
-      const anchor = index === 0 ? "start" : index === runs - 1 ? "end" : "middle";
-      return `<text class="ch-tick" x="${x(index).toFixed(1)}" y="${(height - 10).toFixed(1)}" text-anchor="${anchor}">${html(runLabel(point.at))}</text>`;
-    }).join(""),
-  ]);
-
-  const inkFor = (row: RivalSeries, index: number) => seriesInk(row.isTarget, index);
-  const ends = spread(drawn.map((row) => y(row.points[row.points.length - 1]?.share || 0)), 15);
-
-  const lines = drawn.map((row, index) => {
-    const ink = inkFor(row, index);
-    const path = row.points.map((point, at) => `${at ? "L" : "M"} ${x(at).toFixed(1)} ${y(point.share).toFixed(1)}`).join(" ");
-    // The reader's own line is filled, so it reads as the subject rather than
-    // as one of seven.
-    const fill = row.isTarget
-      ? `<path class="ch-fill" d="${path} L ${x(runs - 1).toFixed(1)} ${y(0).toFixed(1)} L ${x(0).toFixed(1)} ${y(0).toFixed(1)} Z" fill="${ink}"></path>`
-      : "";
-    const dots = row.points.map((point, at) =>
-      `<circle class="ch-dot" data-run="${at}" cx="${x(at).toFixed(1)}" cy="${y(point.share).toFixed(1)}" r="${row.isTarget ? 4 : 3}" fill="${ink}"></circle>`).join("");
-    return `${fill}<path class="ch-line" d="${path}" stroke="${ink}" stroke-width="${row.isTarget ? 2.5 : 1.5}"></path>${dots}`;
-  }).join("");
-
-  const labels = !named ? "" : drawn.map((row, index) => {
-    const now = row.points[row.points.length - 1];
-    const ink = inkFor(row, index);
-    return join([
-      `<text class="ch-name${row.isTarget ? " is-you" : ""}" x="${(width - pad.right + 10).toFixed(1)}" y="${(ends[index] as number + 3.5).toFixed(1)}" fill="${ink}">`,
-      html(row.name.length > 16 ? row.name.slice(0, 15) + "\u2026" : row.name),
-      `<tspan class="ch-value" dx="6">${percent(now ? now.share : null)}</tspan>`,
-      "</text>",
-    ]);
-  }).join("");
-
-  // One target per run, the full height of the plot, so the pointer does not
-  // have to find a three pixel dot.
-  const step = runs > 1 ? plot.w / (runs - 1) : plot.w;
-  const hits = first.points.map((point, index) => {
-    const rows = drawn
-      .map((row, at) => ({ name: row.name, isTarget: row.isTarget, share: row.points[index]?.share || 0, ink: inkFor(row, at) }))
-      .sort((left, right) => right.share - left.share)
-      .map((row) => `${row.isTarget ? "1" : "0"}|${row.ink}|${row.name}|${percent(row.share)}`)
-      .join(";");
-    return join([
-      `<rect class="ch-hit" data-run="${index}" data-when="${html(runLabel(point.at))}" data-rows="${html(rows)}"`,
-      ` x="${(x(index) - step / 2).toFixed(1)}" y="${pad.top}" width="${step.toFixed(1)}" height="${plot.h.toFixed(1)}"></rect>`,
-    ]);
-  }).join("");
-
-  const crosshair = `<line class="ch-cross" x1="0" x2="0" y1="${pad.top}" y2="${(pad.top + plot.h).toFixed(1)}"></line>`;
-
   return join([
-    '<div class="ch-wrap">',
-    `<svg class="ch" viewBox="0 0 ${width} ${height}" role="img" aria-label="Share of the answers across ${runs} runs, one line per brand">`,
-    grid, axis, `${crosshair}${lines}`, labels, hits,
-    "</svg>",
-    '<div class="ch-tip" hidden></div>',
-    "</div>",
+    chartHost("share", { series: withTarget(series, domain), failed: options.failed || [], labels: options.labels !== false }),
     dropped
       ? `<p class="subtle">Drawn over the ${runs} run(s) that asked enough answers for a share to mean anything. ${dropped} more asked too few, and are in the figures below.</p>`
       : "",
@@ -468,7 +385,7 @@ export interface RivalStanding {
  * charted, because a reader wants the order before they want the shape. */
 export function rivalStandings(series: RivalSeries[]): RivalStanding[] {
   const scored = series
-    .map((line, index) => {
+    .map((line) => {
       // The share is the latest run's, readable or not: it is what that run
       // said. The movement is a difference between two runs, and a run of one
       // answer can only report nought or one, so the chart leaves those out
@@ -485,7 +402,7 @@ export function rivalStandings(series: RivalSeries[]): RivalStanding[] {
         isTarget: line.isTarget,
         share: last ? last.share : 0,
         moved: recent && prior ? recent.share - prior.share : null,
-        ink: seriesInk(line.isTarget, index),
+        ink: seriesInk(line.isTarget, line.name, series),
       };
     })
     .sort((left, right) => right.share - left.share);
@@ -521,7 +438,7 @@ export function rivalRanks(standings: RivalStanding[]): string {
 
 /** Chart on the left, standings on the right, in one card. The number a reader
  * came for is printed above the chart rather than left to be read off it. */
-export function rivalPanel(series: RivalSeries[], domain: string): string {
+export function rivalPanel(series: RivalSeries[], domain: string, failed: string[] = []): string {
   const standings = rivalStandings(withTarget(series, domain));
   const mine = standings.find((entry) => entry.isTarget);
   const headline = mine
@@ -530,7 +447,7 @@ export function rivalPanel(series: RivalSeries[], domain: string): string {
     : "";
   return join([
     '<div class="split">',
-    `<div class="split-main">${headline}${rivalChart(series, domain, { labels: false })}</div>`,
+    `<div class="split-main">${headline}${rivalChart(series, domain, { labels: false, failed })}</div>`,
     `<div class="split-side"><h3 class="split-head">Share of voice rank</h3>${rivalRanks(standings)}</div>`,
     "</div>",
   ]);
@@ -958,7 +875,7 @@ export function dashboardPanels(data: DashboardData): Panel[] {
   const rivals = data.rivalTrend || [];
   return [
     { id: "moves", title: "Recommendations", blurb: "The strongest levers, read off the answers.", body: movesList(data.moves), detail: movesList(data.moves, every) },
-    { id: "trend", title: "Share of voice", blurb: "Every brand on one axis, so a gap that is closing looks different from one that is not.", body: rivalPanel(rivals, data.domain), detail: rivalPanel(rivals, data.domain) + rivalRuns(rivals, data.domain), table: rivalRuns(rivals, data.domain), wide: true },
+    { id: "trend", title: "Share of voice", blurb: "Every brand on one axis, so a gap that is closing looks different from one that is not.", body: rivalPanel(rivals, data.domain, data.failedRuns), detail: rivalPanel(rivals, data.domain, data.failedRuns) + rivalRuns(rivals, data.domain), table: rivalRuns(rivals, data.domain), wide: true },
     { id: "topics", title: "Topics by competitor", blurb: "Every topic against every brand the answers named. Open a row for its subtopics and the questions under them.", body: matrixColumnPicker(matrix, data.matrixHidden || []) + topicMatrix(narrowed, data.matrixOpen || []), detail: matrixColumnPicker(matrix, data.matrixHidden || []) + topicMatrix(narrowed, narrowed.rows.map((row) => row.key)), wide: true },
     { id: "named", title: "Brand mentions", blurb: "You against everyone else the answers named.", body: leaderboardBars(data.leaderboard), detail: leaderboardBars(data.leaderboard, every), table: brandsTable(data.leaderboard) },
     { id: "described", title: "Sentiment by brand", blurb: "Where each brand appears in the answer, and how it is spoken about.", body: brandsTable(data.leaderboard), detail: brandsTable(data.leaderboard, every), wide: true },

@@ -101,8 +101,9 @@ One system for the app and the marketing site. The values live in code in
 two disagree, the tokens file is wrong and gets fixed in the same commit.
 
 The app's own stylesheet, `src/ui/theme.css`, still ships the older cool grey and
-teal values. Moving it onto these tokens is the dashboard work (issues 226 and
-227), not this change.
+teal values. The overview took the chart tokens from this file (`--mark`,
+`--mark-line`, `--rival-1` to `--rival-3`, `--rival-other`); the rest of the app
+moves over with the visual layer.
 
 ## Overview
 

@@ -143,12 +143,16 @@ test("one run reports that it is one run rather than drawing a flat line", () =>
 
 test("a brand named in no answer of a run is plotted at zero, not skipped", () => {
   const series = [
-    { name: "Mine", isTarget: true, points: [{ at: "a", share: 0 }, { at: "b", share: 0.4 }] },
-    { name: "Rival", isTarget: false, points: [{ at: "a", share: 1 }, { at: "b", share: 1 }] },
+    { name: "Mine", isTarget: true, points: [{ at: "2026-09-01T10:00:00Z", share: 0 }, { at: "2026-09-08T10:00:00Z", share: 0.4 }] },
+    { name: "Rival", isTarget: false, points: [{ at: "2026-09-01T10:00:00Z", share: 1 }, { at: "2026-09-08T10:00:00Z", share: 1 }] },
   ];
   const html = rivalChart(series, "mine.example");
-  // Two points per line, so four circles, and no gap in either path.
-  assert.equal(html.split("<circle").length - 1, 4);
+  // Two points per line, joined: one move and one line segment, no gap.
+  const marker = 'class="ch-line s-you" d="';
+  const start = html.indexOf(marker) + marker.length;
+  const mine = html.slice(start, html.indexOf('"', start));
+  assert.equal(mine.split("M").length - 1, 1);
+  assert.equal(mine.split("L").length - 1, 1);
 });
 
 test("the chart says when each run happened", () => {
@@ -163,8 +167,8 @@ test("the chart says when each run happened", () => {
 
 test("labels that would land on each other are pushed apart", () => {
   const series = [
-    { name: "A", isTarget: false, points: [{ at: "a", share: 1 }, { at: "b", share: 0.5 }] },
-    { name: "B", isTarget: false, points: [{ at: "a", share: 0 }, { at: "b", share: 0.5 }] },
+    { name: "A", isTarget: false, points: [{ at: "2026-09-01T10:00:00Z", share: 1 }, { at: "2026-09-08T10:00:00Z", share: 0.5 }] },
+    { name: "B", isTarget: false, points: [{ at: "2026-09-01T10:00:00Z", share: 0 }, { at: "2026-09-08T10:00:00Z", share: 0.5 }] },
   ];
   const html = rivalChart(series, "mine.example");
   const ys: number[] = [];

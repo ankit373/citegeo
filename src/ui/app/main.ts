@@ -1,5 +1,7 @@
 import { CONFIG } from "./config.js";
-import { boardStatus, dashboardBody, dashboardPanels, headline, heroStats, type DashboardData } from "./pages/dashboard-view.js";
+import { boardStatus, dashboardBody, dashboardPanels, headline, type DashboardData } from "./pages/dashboard-view.js";
+import { overviewBody, runHealth, type CitedPage, type PromptRow, type RunRecord } from "./pages/overview-view.js";
+import { wireChartFit } from "./pages/overview-charts.js";
 import { buyingView, claimsView, conversationsView, draftsView, entityView, marketerView } from "./pages/marketer-view.js";
 import { exportName, filterSummary, matchesQuery, panelCsv } from "./components/panel-tools.js";
 import { emptyState, notice, section } from "./components/primitives.js";
@@ -8,7 +10,7 @@ import { archived, remaining } from "./format.js";
 import { loading, skeletonCard, skeletonTable, skeletonText, skeletonTiles } from "./components/skeleton.js";
 import { clearToasts, toast } from "./components/toast.js";
 import { DESTINATIONS, navScrim, navToggle, sidebar, wireNav } from "./components/nav.js";
-import { hasPanelOrder, resetPanelOrder, setPanelSpan, togglePanelHidden, wirePanelDrag } from "./components/reorder.js";
+import { resetPanelOrder, setPanelSpan, togglePanelHidden, wirePanelDrag } from "./components/reorder.js";
 import { wireChartHover } from "./components/chart-hover.js";
 import { setupView, type CredentialRow, type IntegrationRow, type ProviderRow, type SetupData, type StorageCheck, type StorageSettings } from "./pages/setup-view.js";
 import { selectedModelTable, webSearchModeControl } from "./components/model-picker.js";
@@ -103,6 +105,8 @@ export function boot(): void {
     actions: Unshaped[]; actionsState: LoadState;
     matrixOpen: string[];
     editingBoard: boolean;
+    /** Every run of the selected project, which run health is read from. */
+    promptRuns: { projectId: string; rows: Unshaped[] | null } | null;
     brandIcons: Record<string, string | null>;
     /** Which panels the reader switched to a table, kept in this browser. */
     panelViews: Record<string, "chart" | "table">;
@@ -115,7 +119,7 @@ export function boot(): void {
     booting: boolean;
   }
 
-    const state: State = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", crawlerUploading:false, crawlerNotice:{ text:"", kind:"" }, plan:null, planState:"idle", marketer:null, drafts:null, claims:null, buying:null, conversations:null, entity:null, marketerState:"idle", marketerNotice:{ text:"", kind:"" }, signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, integrations:[], integrationsState:"idle", externalMetrics:null, externalMetricsState:"idle", externalMetricsPulling:"", externalMetricsNotice:{text:"",kind:""}, digest:null, digestState:"idle", demand:null, demandState:"idle", repetitions:Number(savedPreference("repetitions", "1")) || 1, runLanguageId:savedPreference("runLanguage", "en"), dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", promptFilters:{ query:"", topicId:"", intent:"", status:"" }, promptSelection:[], answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", history:null, historyState:"idle", rivals:null, rivalsState:"idle", segments:null, segmentsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, lastRun:null, runPollTimer:0, runFeed:[], runFeedState:"idle", runFeedTimer:0, rankPlan:null, rankPlanState:"idle", brief:null, briefState:"idle", outreach:null, outreachState:"idle", harvesting:false, paste:null, pasteState:"idle", pasteCount:Number(savedPreference("pasteCount", "2")) || 2, uptake:null, uptakeState:"idle", interference:null, interferenceState:"idle", concentration:null, concentrationState:"idle", shape:null, shapeState:"idle", kinds:null, kindsState:"idle", experiments:null, experimentsState:"idle", check:null, checkState:"idle", credit:null, creditState:"idle", reach:null, reachState:"idle", searchDemand:null, searchDemandState:"idle", pulling:false, personas:null, personasState:"idle", priority:null, priorityState:"idle", promptSort:"topic", referrals:null, referralsState:"idle", pullingReferrals:false, engines:null, enginesState:"idle", actions:[], actionsState:"idle", matrixOpen:[], editingBoard:false, brandIcons:{}, panelViews:savedJson("panelViews"), matrixHidden:savedList("matrixHidden"), panelOpen:savedList("panelOpen"), booting:true };
+    const state: State = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", crawlerUploading:false, crawlerNotice:{ text:"", kind:"" }, plan:null, planState:"idle", marketer:null, drafts:null, claims:null, buying:null, conversations:null, entity:null, marketerState:"idle", marketerNotice:{ text:"", kind:"" }, signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, integrations:[], integrationsState:"idle", externalMetrics:null, externalMetricsState:"idle", externalMetricsPulling:"", externalMetricsNotice:{text:"",kind:""}, digest:null, digestState:"idle", demand:null, demandState:"idle", repetitions:Number(savedPreference("repetitions", "1")) || 1, runLanguageId:savedPreference("runLanguage", "en"), dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", promptFilters:{ query:"", topicId:"", intent:"", status:"" }, promptSelection:[], answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", history:null, historyState:"idle", rivals:null, rivalsState:"idle", segments:null, segmentsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, lastRun:null, runPollTimer:0, runFeed:[], runFeedState:"idle", runFeedTimer:0, rankPlan:null, rankPlanState:"idle", brief:null, briefState:"idle", outreach:null, outreachState:"idle", harvesting:false, paste:null, pasteState:"idle", pasteCount:Number(savedPreference("pasteCount", "2")) || 2, uptake:null, uptakeState:"idle", interference:null, interferenceState:"idle", concentration:null, concentrationState:"idle", shape:null, shapeState:"idle", kinds:null, kindsState:"idle", experiments:null, experimentsState:"idle", check:null, checkState:"idle", credit:null, creditState:"idle", reach:null, reachState:"idle", searchDemand:null, searchDemandState:"idle", pulling:false, personas:null, personasState:"idle", priority:null, priorityState:"idle", promptSort:"topic", referrals:null, referralsState:"idle", pullingReferrals:false, engines:null, enginesState:"idle", actions:[], actionsState:"idle", matrixOpen:[], editingBoard:false, promptRuns:null, brandIcons:{}, panelViews:savedJson("panelViews"), matrixHidden:savedList("matrixHidden"), panelOpen:savedList("panelOpen"), booting:true };
     const app = document.getElementById("app") as HTMLElement;
     let renderOverride: (() => void) | null = null;
     // render() was a hoisted declaration that a later line reassigned. A
@@ -403,6 +407,7 @@ export function boot(): void {
         const had = Boolean(state.liveRun);
         state.liveRun = live || null;
         state.lastRun = rows.length ? rows[0] : null;
+        state.promptRuns = { projectId: state.selectedId, rows };
         window.clearTimeout(state.runPollTimer);
         if (live) state.runPollTimer = window.setTimeout(loadLiveRun, 4000);
         // A start takes a moment to appear, and one missed poll used to leave
@@ -412,6 +417,8 @@ export function boot(): void {
         render();
       } catch (error) {
         state.liveRun = null;
+        state.promptRuns = { projectId: state.selectedId, rows: null };
+        render();
       }
     }
 
@@ -2733,6 +2740,9 @@ export function boot(): void {
           points: (row.points as any[]).map((point: any) => ({ at: point.at, share: point.share, answers: point.answers, readable: point.readable })),
         })) : [],
         alerts: (home.alerts as any[]).length,
+        failedRuns: state.promptRuns && state.promptRuns.projectId === state.selectedId && state.promptRuns.rows
+          ? runHealth(state.promptRuns.rows as RunRecord[]).left.map((run) => run.startedAt)
+          : [],
       };
 
       return view;
@@ -2796,6 +2806,9 @@ export function boot(): void {
       if (state.answerEngineState === "idle") { loadAnswerEngine(); }
       if (state.outreachState === "idle") { loadOutreach(); }
       if (state.rankPlanState === "idle") { loadRankingPlan(); }
+      if (state.digestState === "idle") { loadDigest(); }
+      if (state.searchDemandState === "idle") { loadSearchDemand(); }
+      if (state.referralsState === "idle") { loadReferrals(); }
       const heading = '<section class="view"><div class="heading"><div class="headmain"><h1>Rivals</h1>'
         + '<p class="subtle">Who the models name instead of you, and where. Counted once per answer however often a name appears in it, and how often anyone asks.</p></div>'
         // A page that offers a run has to show the run, or starting one from
@@ -2804,8 +2817,8 @@ export function boot(): void {
       if (state.answerEngineState === "error") return heading + notice("Could not read this project.", "error") + '</section>';
       const view = dashboardView();
       if (!view) return heading + dashboardBody({ status: "loading" }) + '</section>';
-      const wanted = ["trend", "named", "described", "sources"];
-      const panels = dashboardPanels(view).filter((panel) => wanted.includes(panel.id));
+      // Everything the overview left out lives here, in the board's own order.
+      const panels = dashboardPanels(view);
       const body = panels.map((panel) => section({
         id: panel.id,
         title: panel.title,
@@ -2815,8 +2828,29 @@ export function boot(): void {
         open: panel.id,
       })).join("");
       // The board first, then what sits behind it. One destination, one page.
-      return heading + '<div class="dgrid">' + body + '</div>' + renderDemand() + rivalDetail() + '</section>';
+      return heading + '<div class="dgrid">' + body + '</div>' + renderTasks(3) + renderSinceLastRun() + renderDemand() + rivalDetail() + '</section>';
     }
+
+    /** What moved since the run before, and what needs a look because of it. */
+    function renderSinceLastRun() {
+      const home = state.home;
+      if (!home) return '';
+      const alerts = (home.alerts as any[]).length
+        ? '<div class="alertlist">' + (home.alerts as any[]).map((alert: any) => '<div class="alertrow"><span class="pill ' + alertPill(alert.severity) + '">' + html(alert.severity) + '</span><div><strong>' + html(alert.headline) + '</strong><p class="subtle">' + html(alert.detail) + '</p></div></div>').join("") + '</div>'
+        : '<p class="subtle">Nothing moved since the previous run.</p>';
+      const digest = state.digest;
+      const changed = state.digestState === "loading"
+        ? loading("what changed", skeletonText(3))
+        : digest && digest.lines.length
+          ? '<p class="changed-headline">' + html(digest.headline) + '</p><ul class="protocol-list">'
+            + digest.lines.map((line: string) => '<li>' + html(line) + '</li>').join("") + '</ul>'
+          : '<p class="subtle">Nothing has moved since the previous run.</p>';
+      return '<section class="section-card"><div class="section-head"><div class="headmain"><h2>What changed</h2></div></div>' + changed + '</section>'
+        + '<section class="section-card"><div class="section-head"><div class="headmain"><h2>Needs attention</h2></div></div>' + alerts + '</section>';
+    }
+
+    // The run list is read once per project here; a run in flight keeps it fresh.
+    let runsAsked = "";
 
     function renderHome() {
       const selected = project();
@@ -2825,20 +2859,13 @@ export function boot(): void {
       if (state.answerEngineState === "idle") { loadAnswerEngine(); }
       if (state.outreachState === "idle") { loadOutreach(); }
       if (state.rankPlanState === "idle") { loadRankingPlan(); }
-      if (state.digestState === "idle") { loadDigest(); }
-      if (state.searchDemandState === "idle") { loadSearchDemand(); }
-      if (state.referralsState === "idle") { loadReferrals(); }
 
       const heading = (body: string): string => '<section class="view"><div class="heading"><div class="headmain"><h1>'
         + html(selected.name) + '</h1><p class="subtle">' + html(String((state.home && state.home.domain) || selected.normalizedDomain)) + '</p></div>'
-        + '<div class="inline-actions">'
-        + button({ label: state.editingBoard ? "Done arranging" : "Arrange board", kind: state.editingBoard ? "secondary" : "quiet", on: { "data-edit-board": true } })
-        + (hasPanelOrder() ? button({ label: "Reset layout", kind: "quiet", on: { "data-reset-panels": true } }) : '')
-        + button({ label: "Full report", on: { "data-page": "answer-engine" } }) + ''
-        + runActionButton("Run prompts") + '</div></div>' + renderLiveRun() + body + '</section>';
+        + '<div class="inline-actions">' + runActionButton("Run prompts") + '</div></div>' + renderLiveRun() + body + '</section>';
 
       if (state.homeState === "error") return heading(notice("Could not read this project.", "error"));
-      if (state.homeState !== "ready" || !state.home) return heading(dashboardBody({ status: "loading" }));
+      if (state.homeState !== "ready" || !state.home) return heading(overviewBody({ status: "loading" }));
 
       const home = state.home;
       if (home.showSetupOnly) {
@@ -2850,32 +2877,25 @@ export function boot(): void {
       }
 
       if (state.answerEngineState === "error") return heading(notice("Could not read this project.", "error"));
+      const runs = state.promptRuns && state.promptRuns.projectId === state.selectedId ? state.promptRuns : null;
+      if (!runs) { if (runsAsked !== state.selectedId) { runsAsked = state.selectedId; loadLiveRun(); } return heading(overviewBody({ status: "loading" })); }
+      if (!runs.rows) return heading(overviewBody({ status: "error", error: "Could not read this project's runs." }));
       const view = dashboardView();
-      if (!view || !state.answerEngine) return heading(dashboardBody({ status: "loading" }));
-      const reading = headline(state.answerEngine);
-      const rankText = reading.rank === null ? "Not named" : "#" + reading.rank + (reading.at ? "" : " of " + ((home.rivals || 0) + 1));
-      const hero = '<div class="hero"><div class="hero-figure"><span class="scorebig">' + scoreText(reading.standing.score) + '</span>'
-        + '<span class="hero-sub">' + deltaPill({ change: reading.change }) + '<span>' + html(rankText) + '</span>'
-        + (reading.at ? '<span>run of ' + html(reading.at.slice(0, 10)) + '</span>' : '') + '</span>'
-        + '<span class="hero-spark">' + view.spark + '</span></div>' + heroStats(reading.standing, view.position) + '</div>';
-
-      const alerts = (home.alerts as any[]).length
-        ? '<div class="alertlist">' + (home.alerts as any[]).map((alert: any) => '<div class="alertrow"><span class="pill ' + alertPill(alert.severity) + '">' + html(alert.severity) + '</span><div><strong>' + html(alert.headline) + '</strong><p class="subtle">' + html(alert.detail) + '</p></div></div>').join("") + '</div>'
-        : '<p class="subtle">Nothing moved since the previous run.</p>';
-
-      const digest = state.digest;
-      const changed = state.digestState === "loading"
-        ? loading("what changed", skeletonText(3))
-        : digest && digest.lines.length
-          ? '<p class="changed-headline">' + html(digest.headline) + '</p><ul class="protocol-list">'
-            + digest.lines.map((line: string) => '<li>' + html(line) + '</li>').join("") + '</ul>'
-          : '<p class="subtle">Nothing has moved since the previous run.</p>';
-
-      return heading(hero
-        + renderTasks(3)
-        + dashboardBody({ status: "ready", value: view }, state.editingBoard, state.panelViews)
-        + '<section class="section-card"><div class="section-head"><div class="headmain"><h2>What changed</h2><p class="subtle">Read off the archived answers, in the words the evidence supports.</p></div></div>' + changed + '</section>'
-        + '<section class="section-card"><div class="section-head"><div class="headmain"><h2>Needs attention</h2><p class="subtle">Only what moved, and only where both runs could be measured.</p></div></div>' + alerts + '</section>');
+      if (!view || !state.answerEngine) return heading(overviewBody({ status: "loading" }));
+      const data = state.answerEngine as Unshaped;
+      const outreach = state.outreach as Unshaped;
+      return heading(overviewBody({ status: "ready", value: {
+        domain: view.domain,
+        runs: runs.rows as RunRecord[],
+        insights: data,
+        position: view.position,
+        rivalTrend: view.rivalTrend || [],
+        shareView: state.panelViews.trend === "table" ? "table" : "chart",
+        prompts: (data.topics as Unshaped[]).flatMap((topic: Unshaped) => topic.prompts as PromptRow[]),
+        pages: outreach ? (outreach.targets as CitedPage[]) : null,
+        pagesFailed: state.outreachState === "error",
+        citationsUnavailable: Boolean(data.citationsUnavailable),
+      } }));
     }
 
     function renderRivals(data: any) {
@@ -4619,6 +4639,7 @@ export function boot(): void {
     // a drop re-renders from the order it just saved.
     wirePanelDrag(() => render());
     wireChartHover();
+    wireChartFit();
     (window as any).__citegeoPhase2 = { state, app, html, element, project, formatTime, brandMark, brandLockup, request, refreshRecognition, machineTabs, phase2Render, render: () => render() };
 }
 
