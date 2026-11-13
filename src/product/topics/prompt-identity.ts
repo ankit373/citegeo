@@ -48,6 +48,8 @@ const HOST_SUFFIXES = new Set([
   "tech", "site", "online", "store", "cloud", "me", "tv", "gg", "sh", "fm", "to", "info", "biz",
   "au", "ca", "de", "fr", "es", "it", "nl", "jp", "kr", "cn", "br", "sg", "ae", "ch", "se", "pl",
 ]);
+/** Reserved top-level names. Only ever the last part: example.com is a name. */
+const RESERVED_TOP_LEVEL = new Set(["example", "test"]);
 
 // Asked for a brand's domain, a model answers "finance" or "financial data
 // platform" often enough that the field cannot be trusted as a host. Stored
@@ -90,6 +92,7 @@ export function asDomain(value: unknown): string | null {
 export function domainLabel(domain: string): string {
   const parts = domain.trim().toLocaleLowerCase().split(".").filter(Boolean);
   while (parts.length && parts[0] === "www") parts.shift();
+  if (parts.length > 1 && RESERVED_TOP_LEVEL.has(parts[parts.length - 1] || "")) parts.pop();
   // Only from the end, or a suffix-looking word inside the name is lost.
   while (parts.length > 1 && HOST_SUFFIXES.has(parts[parts.length - 1] || "")) parts.pop();
   const label = parts[parts.length - 1] || "";
