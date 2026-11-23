@@ -20,6 +20,7 @@ jobs:
       # The whole range has to be present to read each commit message.
       - uses: actions/checkout@v7
         with:
+          persist-credentials: false
           fetch-depth: 0
 
       - name: Every commit carries a matching Signed-off-by

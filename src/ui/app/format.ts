@@ -21,6 +21,12 @@ export function shortDate(value: string | null | undefined): string {
   return value ? value.slice(0, 16).replace("T", " ") : "";
 }
 
+/** What the footer says the page is built from. */
+export function archived(status: string, answers: number | null): string {
+  if (status !== "ready" && status !== "error") return "Reading the archive";
+  return answers === null ? "Nothing archived yet" : `${answers} archived answer(s)`;
+}
+
 export function seconds(milliseconds: number | null | undefined): string {
   return milliseconds === null || milliseconds === undefined ? "no timing" : `${Math.round(milliseconds / 100) / 10}s`;
 }

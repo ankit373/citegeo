@@ -128,7 +128,8 @@ export interface DashboardData {
   /** Models saved or seen, which is not the same as models that answered. */
   assistantsConfigured?: number;
   assistantsNaming: number;
-  moves: Move[];
+  /** Null while the plan is still being built. */
+  moves: Move[] | null;
   citationsUnavailable: boolean;
   citedPages: number | null;
   missingFrom: number | null;
@@ -138,6 +139,43 @@ export interface DashboardData {
   position?: PositionReport | undefined;
   /** Where the brand's own domain sits among the domains being cited. */
   citation?: CitationStanding | undefined;
+}
+
+export type BoardStatus = "idle" | "loading" | "ready" | "error";
+
+/** Both reads, or the board waits. Drawn off the summary alone, every count
+ * only the insights read carries came out as nought. */
+export function boardStatus(home: BoardStatus, insights: BoardStatus): BoardStatus {
+  if (home === "error" || insights === "error") return "error";
+  return home === "ready" && insights === "ready" ? "ready" : "loading";
+}
+
+/** One run on the trend, as the insights read carries it. */
+export interface ReadingPoint {
+  at: string;
+  score: Standing & { tooFewAnswers?: boolean | undefined };
+  rank: number | null;
+}
+
+export interface Headline {
+  standing: Standing;
+  change: number | null;
+  rank: number | null;
+  /** The run the figure was read off, or null for the whole archive. */
+  at: string | null;
+}
+
+/** The figure, its move and its rank, all off the run the move ends at. The
+ * archive's score beside a run-to-run move put 2 next to a rise of 2.9. */
+export function headline(insights: {
+  overall: Standing;
+  rank: number | null;
+  trend: { change: number | null; points: ReadingPoint[] };
+}): Headline {
+  const readable = insights.trend.points.filter((point) => point.score.score !== null && !point.score.tooFewAnswers);
+  const last = readable[readable.length - 1];
+  if (!last) return { standing: insights.overall, change: null, rank: insights.rank, at: null };
+  return { standing: last.score, change: insights.trend.change, rank: last.rank, at: last.at };
 }
 
 /** The four figures the score is built from, never the composite alone. */
@@ -591,7 +629,9 @@ export function moveEffectLabel(effect: string): string {
   return MOVE_EFFECTS[effect] || effect;
 }
 
-export function movesList(moves: Move[], limit = 3): string {
+export function movesList(moves: Move[] | null, limit = 3): string {
+  // Null is a plan still being built, which is not a plan with nothing in it.
+  if (moves === null) return loading("the plan", skeletonCard({ rows: 3, columns: "minmax(0,1fr)" }));
   if (!moves.length) return '<p class="subtle">Nothing in the archived answers points at a move that would raise the score.</p>';
   return join([
     '<ol class="dmoves">',
