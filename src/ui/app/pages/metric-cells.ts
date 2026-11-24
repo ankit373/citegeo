@@ -1,5 +1,5 @@
 import { html } from "../dom.js";
-import { percent, score as scoreFigure } from "../format.js";
+import { percent, score as scoreText } from "../format.js";
 import type { EntityRow, SplitRow } from "../types.js";
 
 export interface RateReading {
@@ -160,7 +160,7 @@ export function renderPersonaRows(rows: SplitRow[] | null | undefined): string {
   return '<div class="mtable"><div class="mhead mcols-rank"><span>Persona</span><span>Score</span><span>Rank</span></div>'
     + rows.map((row) => '<div class="mrow mcols-rank">'
       + '<div class="mname"><strong>' + html(row.label) + '</strong><span class="subtle">' + row.score.answers + ' answer(s)</span></div>'
-      + '<span class="mcell">' + scoreFigure(row.score.score) + '</span>'
+      + '<span class="mcell">' + scoreText(row.score.score) + '</span>'
       + '<span class="mcell">' + (row.rank === null ? "Not named" : "#" + row.rank) + '</span></div>').join("")
     + '</div>';
 }
