@@ -1,56 +1,39 @@
 import { html } from "../dom.js";
 import { button } from "../components/button.js";
 import { evidenceJump } from "../components/badges.js";
+import type {
+  AnswerMentionedUrl, BrandKeywordRecognition, CompetitorKeywordRecognition, CompetitorRecognition, ProviderCitation,
+  RecognitionAnalysisRevision, RecognitionModelRun, RecognitionModelRunAttempt, RecognitionModelRunPresentation,
+  RecognitionResult, RecognitionRun,
+  AnswerEvidenceLocation, RecognitionFieldIssue,
+} from "../../../product/recognition/recognition-schema.js";
 import { recognitionCountLabels, recognitionModelStatusText, recognitionUrlLabel, type RecognitionCounts } from "../labels.js";
 
-// The parts of the recognition archive this page reads, not the whole record.
-export interface AnswerSpan { start?: number | undefined; end?: number | undefined }
-export interface RecognitionClaim { value: string | null; evidence?: AnswerSpan | null | undefined }
-export interface FieldIssue { field: string; kind: string; detail: string }
+// Only the fields this page reads, picked from the schema the server writes.
+export type RecognitionArchive = {
+  result: Pick<RecognitionResult, "id" | "domainRecognition" | "recognizedBrand" | "businessDescription" | "productCategory" | "detailedDescription" | "fieldIssues">;
+  competitors: Array<Pick<CompetitorRecognition, "id" | "name" | "evidence" | "businessDescription" | "productCategory">>;
+  brandKeywords: Array<Pick<BrandKeywordRecognition, "id" | "keyword" | "evidence">>;
+  competitorKeywords: Array<Pick<CompetitorKeywordRecognition, "id" | "keyword" | "competitorRecognitionId" | "evidence">>;
+  providerCitations: Array<Pick<ProviderCitation, "url" | "title">>;
+  answerMentionedUrls: Array<Pick<AnswerMentionedUrl, "url">>;
+};
 
-export interface RecognitionArchive {
-  result: {
-    id: string;
-    domainRecognition: string | null;
-    recognizedBrand: RecognitionClaim;
-    businessDescription: RecognitionClaim;
-    productCategory: RecognitionClaim;
-    detailedDescription?: RecognitionClaim | undefined;
-    fieldIssues?: FieldIssue[] | undefined;
-  };
-  competitors: Array<{ id: string; name: string; evidence?: AnswerSpan | null | undefined; businessDescription: RecognitionClaim; productCategory: RecognitionClaim }>;
-  brandKeywords: Array<{ id: string; keyword: string; evidence?: AnswerSpan | null | undefined }>;
-  competitorKeywords: Array<{ id: string; keyword: string; competitorRecognitionId: string; evidence?: AnswerSpan | null | undefined }>;
-  providerCitations: Array<{ url: string; title: string }>;
-  answerMentionedUrls: Array<{ url: string }>;
-}
-
-export interface RecognitionAttempt { id: string; attemptNumber: number; status: string; errorMessage?: string | undefined; rawAnswer?: string | undefined }
-
-export interface RecognitionPresentation {
-  requestExecution: string;
-  localAnalysis: string;
-  primaryAction: string;
-  statusLabel: string;
-  detail: string | null;
-}
-
-export interface RecognitionModelDetail {
+export type RecognitionModelDetail = {
   archive?: RecognitionArchive | null | undefined;
-  attempts: RecognitionAttempt[];
-  analysisRevisions?: Array<{ status: string }> | undefined;
-  presentation: RecognitionPresentation;
-}
+  attempts: Array<Pick<RecognitionModelRunAttempt, "id" | "attemptNumber" | "status" | "errorMessage" | "rawAnswer">>;
+  analysisRevisions?: Array<Pick<RecognitionAnalysisRevision, "status">> | undefined;
+  presentation: Pick<RecognitionModelRunPresentation, "requestExecution" | "localAnalysis" | "primaryAction" | "statusLabel" | "detail">;
+};
 
-export interface RecognitionModelRun {
-  id: string;
-  status: string;
-  recognitionMode: string;
-  errorMessage?: string | undefined;
-  modelSnapshot: { displayName: string; modelId: string };
-}
+export type RecognitionModelRunView = Pick<RecognitionModelRun, "id" | "status" | "recognitionMode" | "errorMessage"> & {
+  modelSnapshot: Pick<RecognitionModelRun["modelSnapshot"], "displayName" | "modelId">;
+};
 
-export interface RecognitionRunDetail { run: { id: string; status: string }; modelRuns: RecognitionModelRun[] }
+export type RecognitionRunDetail = {
+  run: Pick<RecognitionRun, "id" | "status">;
+  modelRuns: RecognitionModelRunView[];
+};
 
 interface EvidenceRow { id: string; start: number; end: number }
 
@@ -60,7 +43,7 @@ export function recognitionLink(url: string, label: string): string {
 
 export function recognitionEvidenceRows(archive: RecognitionArchive): EvidenceRow[] {
   const rows: EvidenceRow[] = [];
-  const add = (id: string, evidence: AnswerSpan | null | undefined) => {
+  const add = (id: string, evidence: AnswerEvidenceLocation | null | undefined) => {
     if (evidence && typeof evidence.start === "number" && typeof evidence.end === "number") rows.push({ id, start: evidence.start, end: evidence.end });
   };
   add(archive.result.id + "-brand", archive.result.recognizedBrand.evidence);
@@ -81,7 +64,7 @@ export function evidenceValue(value: string | null | undefined, id: string): str
   return value ? html(value) + evidenceJump(id) : '<span class="state-flag">Unconfirmed</span>';
 }
 
-export function recognitionIssue(archive: RecognitionArchive, field: string): FieldIssue | null {
+export function recognitionIssue(archive: RecognitionArchive, field: string): RecognitionFieldIssue | null {
   return (archive.result.fieldIssues || []).find((item) => item.field === field) || null;
 }
 
@@ -104,7 +87,7 @@ export function highlightedRawAnswer(answer: string, rows: EvidenceRow[]): strin
   return parts.join("");
 }
 
-export function renderRecognitionEvidence(detail: RecognitionModelDetail, modelRun: RecognitionModelRun): string {
+export function renderRecognitionEvidence(detail: RecognitionModelDetail, modelRun: RecognitionModelRunView): string {
   const archive = detail.archive;
   const attempts = detail.attempts || [];
   const latest = attempts.length ? attempts[attempts.length - 1] : null;
@@ -196,7 +179,7 @@ export function recognitionCountStrip(detail: RecognitionRunDetail, modelDetails
     + '</div>';
 }
 
-export function renderRecognitionModel(modelRun: RecognitionModelRun, detail: RecognitionModelDetail | null): string {
+export function renderRecognitionModel(modelRun: RecognitionModelRunView, detail: RecognitionModelDetail | null): string {
   const latest = detail && detail.attempts.length ? detail.attempts[detail.attempts.length - 1] : null;
   const presentation = detail ? detail.presentation : null;
   // Delivery, not recognition outcome. The report shows the other axis.
