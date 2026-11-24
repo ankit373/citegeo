@@ -49,3 +49,5 @@ export function sharePct(value: number | null | undefined): string | null {
 export function uptakePct(value: number | null | undefined): string | null {
   return value === null || value === undefined ? null : Math.round(value * 100) + "%";
 }
+
+export const formatTime = (value: string) => new Date(value).toLocaleString();
