@@ -54,7 +54,6 @@ export function boot(): void {
     externalMetricsPulling: "" | "ahrefs" | "semrush"; externalMetricsNotice: Notice;
     digest: AnswerDigest | null; digestState: LoadState;
     demand: Unshaped; demandState: LoadState;
-    dashMetric: string; dashRange: string;
     catalog: CatalogModel[]; catalogState: LoadState; catalogError: string;
     query: string; catalogProvider: string; catalogNativeSearch: string; catalogSort: string;
     selections: SelectionRow[]; draftSelections: Map<string, string>; selectionsDirty: boolean;
@@ -75,7 +74,6 @@ export function boot(): void {
     home: Unshaped; homeState: LoadState;
     cited: Unshaped; citedState: LoadState;
     rivals: Unshaped; rivalsState: LoadState;
-    segments: Unshaped; segmentsState: LoadState;
     storage: StorageSettings | null; storageState: LoadState;
     storageDraft: Record<string, string>; storageBackend: string; storageCheck: StorageCheck | null;
     filters: Record<string, string>;
@@ -119,7 +117,7 @@ export function boot(): void {
     booting: boolean;
   }
 
-    const state: State = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", crawlerUploading:false, crawlerNotice:{ text:"", kind:"" }, plan:null, planState:"idle", marketer:null, drafts:null, claims:null, buying:null, conversations:null, entity:null, marketerState:"idle", marketerNotice:{ text:"", kind:"" }, signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, integrations:[], integrationsState:"idle", externalMetrics:null, externalMetricsState:"idle", externalMetricsPulling:"", externalMetricsNotice:{text:"",kind:""}, digest:null, digestState:"idle", demand:null, demandState:"idle", repetitions:Number(savedPreference("repetitions", "1")) || 1, runLanguageId:savedPreference("runLanguage", "en"), dashMetric:savedPreference("metric", "visibility"), dashRange:savedPreference("range", "all"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", promptFilters:{ query:"", topicId:"", intent:"", status:"" }, promptSelection:[], answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", history:null, historyState:"idle", rivals:null, rivalsState:"idle", segments:null, segmentsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, lastRun:null, runPollTimer:0, runFeed:[], runFeedState:"idle", runFeedTimer:0, rankPlan:null, rankPlanState:"idle", brief:null, briefState:"idle", outreach:null, outreachState:"idle", harvesting:false, paste:null, pasteState:"idle", pasteCount:Number(savedPreference("pasteCount", "2")) || 2, uptake:null, uptakeState:"idle", interference:null, interferenceState:"idle", concentration:null, concentrationState:"idle", shape:null, shapeState:"idle", kinds:null, kindsState:"idle", experiments:null, experimentsState:"idle", check:null, checkState:"idle", credit:null, creditState:"idle", reach:null, reachState:"idle", searchDemand:null, searchDemandState:"idle", pulling:false, personas:null, personasState:"idle", priority:null, priorityState:"idle", promptSort:"topic", referrals:null, referralsState:"idle", pullingReferrals:false, engines:null, enginesState:"idle", actions:[], actionsState:"idle", matrixOpen:[], editingBoard:false, brandIcons:{}, panelViews:savedJson("panelViews"), matrixHidden:savedList("matrixHidden"), panelOpen:savedList("panelOpen"), booting:true };
+    const state: State = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", crawlerUploading:false, crawlerNotice:{ text:"", kind:"" }, plan:null, planState:"idle", marketer:null, drafts:null, claims:null, buying:null, conversations:null, entity:null, marketerState:"idle", marketerNotice:{ text:"", kind:"" }, signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, integrations:[], integrationsState:"idle", externalMetrics:null, externalMetricsState:"idle", externalMetricsPulling:"", externalMetricsNotice:{text:"",kind:""}, digest:null, digestState:"idle", demand:null, demandState:"idle", repetitions:Number(savedPreference("repetitions", "1")) || 1, runLanguageId:savedPreference("runLanguage", "en"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", promptFilters:{ query:"", topicId:"", intent:"", status:"" }, promptSelection:[], answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", history:null, historyState:"idle", rivals:null, rivalsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, lastRun:null, runPollTimer:0, runFeed:[], runFeedState:"idle", runFeedTimer:0, rankPlan:null, rankPlanState:"idle", brief:null, briefState:"idle", outreach:null, outreachState:"idle", harvesting:false, paste:null, pasteState:"idle", pasteCount:Number(savedPreference("pasteCount", "2")) || 2, uptake:null, uptakeState:"idle", interference:null, interferenceState:"idle", concentration:null, concentrationState:"idle", shape:null, shapeState:"idle", kinds:null, kindsState:"idle", experiments:null, experimentsState:"idle", check:null, checkState:"idle", credit:null, creditState:"idle", reach:null, reachState:"idle", searchDemand:null, searchDemandState:"idle", pulling:false, personas:null, personasState:"idle", priority:null, priorityState:"idle", promptSort:"topic", referrals:null, referralsState:"idle", pullingReferrals:false, engines:null, enginesState:"idle", actions:[], actionsState:"idle", matrixOpen:[], editingBoard:false, brandIcons:{}, panelViews:savedJson("panelViews"), matrixHidden:savedList("matrixHidden"), panelOpen:savedList("panelOpen"), booting:true };
     const app = document.getElementById("app") as HTMLElement;
     let renderOverride: (() => void) | null = null;
     // render() was a hoisted declaration that a later line reassigned. A
@@ -222,36 +220,6 @@ export function boot(): void {
         state.topicState = "error";
       }
       render();
-    }
-
-    async function loadSegments() {
-      if (!state.selectedId || state.segmentsState === "loading") return;
-      state.segmentsState = "loading";
-      try {
-        state.segments = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/segments");
-        state.segmentsState = "ready";
-      } catch (error) {
-        state.segmentsState = "error";
-      }
-      render();
-    }
-
-    function applySegment(filters: Record<string, string>) {
-      state.filters = { modelId:"", regionId:"", languageId:"", topicId:"" };
-      for (const key of ["topicId", "modelId", "regionId", "languageId"]) {
-        if (filters[key]) state.filters[key] = filters[key];
-      }
-      state.answerEngineState = "idle";
-      state.citedState = "idle";
-      loadAnswerEngine();
-    }
-
-    async function saveSegment() {
-      const name = window.prompt("Name this view");
-      if (!name) return;
-      await postPrompts("/segments", { name: name, filters: state.filters }, "saving", "View saved.");
-      state.segmentsState = "idle";
-      loadSegments();
     }
 
     async function loadRivals() {
@@ -357,9 +325,6 @@ export function boot(): void {
       for (const key of ["modelId", "regionId", "languageId", "topicId"]) {
         if (state.filters[key]) parts.push(key + "=" + encodeURIComponent(state.filters[key]));
       }
-      // The range narrowed the chart and nothing else, so a bar reading 7 days
-      // sat above figures counted over the whole archive.
-      if (state.dashRange && state.dashRange !== "all") parts.push("range=" + encodeURIComponent(state.dashRange));
       return parts.length ? "?" + parts.join("&") : "";
     }
 
@@ -4090,20 +4055,6 @@ export function boot(): void {
       const openRun = target.closest("[data-open-run]");
       if (openRun) { openRunPane(openRun.getAttribute("data-open-run") || ""); return; }
       if (target.closest("[data-adopt-rivals]")) { rivalAction("/competitors/adopt", {}, "Adopted."); return; }
-      if (target.closest("[data-save-segment]")) { saveSegment(); return; }
-      const removeSegment = target.closest("[data-segment-remove]");
-      if (removeSegment) {
-        postPrompts("/segments/remove", { segmentIds: [removeSegment.getAttribute("data-segment-remove")] }, "saving", "View removed.")
-          .then(() => { state.segmentsState = "idle"; loadSegments(); });
-        return;
-      }
-      const segment = target.closest("[data-segment]");
-      if (segment) {
-        const saved = state.segments ? state.segments.segments : [];
-        const found = saved.find((row: any) => row.id === segment.getAttribute("data-segment"));
-        if (found) applySegment(found.filters);
-        return;
-      }
       const retirePersona = target.closest("[data-retire-persona]");
       if (retirePersona) { personaAction("/personas/retire", { personaIds: [retirePersona.getAttribute("data-retire-persona")] }, "No longer asked."); return; }
       const retireRival = target.closest("[data-retire-rival]");
@@ -4195,19 +4146,6 @@ export function boot(): void {
         render();
         return;
       }
-      const rangeButton = target && target.closest ? target.closest("[data-dash-range]") : null;
-      if (rangeButton) {
-        state.dashRange = rangeButton.getAttribute("data-dash-range") || "all";
-        savePreference("range", state.dashRange);
-        // The figures are counted server side now, so the range has to refetch
-        // rather than redraw what was already narrowed to something else.
-        state.answerEngineState = "idle";
-        state.citedState = "idle";
-        render();
-        return;
-      }
-      const metricButton = target && target.closest ? target.closest("[data-dash-metric]") : null;
-      if (metricButton) { state.dashMetric = metricButton.getAttribute("data-dash-metric") || "visibility"; savePreference("metric", state.dashMetric); render(); return; }
       const saveCred = target && target.closest ? target.closest("[data-credential-save]") : null;
       if (saveCred) { await saveCredential(saveCred.getAttribute("data-credential-save"), saveCred); return; }
       const clearCred = target && target.closest ? target.closest("[data-credential-clear]") : null;
