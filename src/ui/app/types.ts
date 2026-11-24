@@ -2,6 +2,8 @@
 // from empty literals before, so every array was never[] and every property
 // read off one was an error the compiler could not have reported usefully.
 
+import type { TopicInsights } from "../../product/topics/topic-insights.js";
+import type { PositionReport } from "../../product/topics/position-metrics.js";
 import type { MeasurementTask } from "../../product/topics/next-task.js";
 
 export type LoadState = "idle" | "loading" | "ready" | "error";
@@ -218,55 +220,8 @@ export interface UptakeShape {
   caveat: string;
 }
 
-export interface InsightsShape {
-  /** Computed on the server, so the view never imports the module that holds it. */
-  position?: PositionShape | undefined;
-  answers: number;
-  answersFailed: number;
-  /** Answers to questions since retired, left out of every figure here. */
-  answersRetired: number;
-  /** Every cause with its count, so a failure is accounted for rather than
-   * totalled and left for the reader to go and find. */
-  failureReasons?: Array<{ code: string; count: number; label: string; models: string[] }> | undefined;
-  overall: ScoreShape;
-  rank: number | null;
-  /** The objective and limits are absent on an archive scored before they were
-   * written down, so the page states only what it has. */
-  weights: { prominenceFloor: number; sentimentFloor: number; objective?: string | undefined; limits?: string | undefined };
-  leaderboard: EntityRow[];
-  topics: TopicStandingRow[];
-  byModel: ModelStandingRow[];
-  absentFrom: PromptStandingRow[];
-  citationsUnavailable: boolean;
-  /** Absent on an archive read before activation was split out. */
-  activation?: ActivationShape | undefined;
-  stability?: StabilityShape | undefined;
-  /** Absent on an archive read before wordings were compared. */
-  phrasing?: PhrasingShape | undefined;
-  /** Absent on an archive read before a decoy could be carried. */
-  decoys?: DecoyShape | undefined;
-  /** Absent on an archive read before the factors were compared. */
-  variance?: VarianceShape | undefined;
-  /** Absent on an archive read before framing was compared across passes. */
-  framing?: FramingShape | undefined;
-  /** Absent on an archive read before the tier baselines existed. */
-  tier?: TierShape | undefined;
-  /** Absent on an archive read before the model version was kept. */
-  versions?: VersionShape | undefined;
-  /** Absent on an archive answered before mentions were checked against the
-   * answer text, so nothing is claimed about those. */
-  corroboration?: CorroborationShape | undefined;
-  /** Absent on an archive read before the tasks were derived, so the page
-   * shows the panels without a task list rather than an empty one. */
-  tasks?: TaskShape[] | undefined;
-  trend: TrendShape;
-  byRegion: SplitRow[];
-  byLanguage: SplitRow[];
-  byPersona: SplitRow[];
-  regionCaveat: string;
-  identityCaveat: string | null;
-  trackedRivals: EntityRow[];
-}
+/** What the prompt-insights route answers with: the insights plus the position report it adds. */
+export type InsightsShape = TopicInsights & { position: PositionReport };
 
 export interface AnswerRow {
   id: string;
