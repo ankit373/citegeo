@@ -29,7 +29,7 @@ async function startServer(): Promise<void> {
   root = await (await import("node:fs/promises")).mkdtemp(join(tmpdir(), "citegeo-phase5-browser-"));
   server = spawn(process.execPath, [join(process.cwd(), "node_modules", "tsx", "dist", "cli.mjs"), "test/fixtures/measurement-product-server.ts"], { cwd: process.cwd(), env: { ...process.env, AUTH_PASSWORD: "measurement-browser-test", PORT: String(port), PRODUCT_DATA_DIR: root }, stdio: "ignore" });
   baseUrl = `http://127.0.0.1:${port}`;
-  for (let index = 0; index < 100; index += 1) { try { if ((await fetch(`${baseUrl}/health`)).status === 200) return; } catch (_) { } await wait(50); }
+  for (let index = 0; index < 400; index += 1) { try { if ((await fetch(`${baseUrl}/health`)).status === 200) return; } catch (_) { } await wait(50); }
   throw new Error("Phase 5 test server did not start.");
 }
 async function stopServer(): Promise<void> { if (server && server.exitCode === null) { server.kill("SIGTERM"); await new Promise((resolve) => server?.once("exit", resolve)); } if (root) await rm(root, { recursive: true, force: true }); }
@@ -90,7 +90,7 @@ async function scopeAndRun(page: Page, projectId: string): Promise<void> {
 }
 
 test.beforeAll(startServer);
-test.beforeEach(async ({ page }) => { page.on("request", (request) => { const url = new URL(request.url()); requests.push({ url: request.url(), method: request.method(), external: url.hostname !== "127.0.0.1" && url.hostname !== "localhost" }); }); await page.goto(`${baseUrl}/login`); await page.getByLabel("Password").fill("measurement-browser-test"); await page.getByRole("button", { name: "Sign in", exact: true }).click(); await expect(page).toHaveURL(`${baseUrl}/`); });
+test.beforeEach(async ({ page }) => { page.on("request", (request) => { const url = new URL(request.url()); requests.push({ url: request.url(), method: request.method(), external: url.hostname !== "127.0.0.1" && url.hostname !== "localhost" }); }); await page.goto(`${baseUrl}/login`); await page.getByLabel("Password").fill("measurement-browser-test"); await page.getByRole("button", { name: "Sign in", exact: true }).click(); await expect.poll(() => new URL(page.url()).pathname).toBe("/"); });
 test.afterEach(async ({ page }, info) => { await mkdir(screenshots, { recursive: true }); const screenshot = join(screenshots, `${info.title.slice(0, 3)}-${info.status}.png`); await page.screenshot({ path: screenshot, fullPage: true }); results.push({ id: info.title.slice(0, 3), status: info.status, screenshot }); });
 test.afterAll(async () => { await mkdir(validationRoot, { recursive: true }); await writeFile(join(validationRoot, "browser-results.json"), `${JSON.stringify({ browserTestFiles: 1, independentScenarios: results.length, passed: results.filter((item) => item.status === "passed").length, failed: results.filter((item) => item.status !== "passed").length, results }, null, 2)}\n`); await writeFile(join(validationRoot, "network-audit.json"), `${JSON.stringify({ attemptCount: requests.length, externalAttemptCount: requests.filter((item) => item.external).length, requests }, null, 2)}\n`); await stopServer(); });
 

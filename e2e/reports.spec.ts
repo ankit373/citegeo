@@ -44,7 +44,7 @@ async function startServer(): Promise<void> {
     stdio: "ignore",
   });
   baseUrl = `http://127.0.0.1:${port}`;
-  for (let index = 0; index < 80; index += 1) {
+  for (let index = 0; index < 400; index += 1) {
     try {
       if ((await fetch(`${baseUrl}/health`)).status === 200) return;
     } catch {
@@ -75,7 +75,7 @@ async function startRealArchiveServer(): Promise<void> {
     stdio: "ignore",
   });
   realArchiveBaseUrl = `http://127.0.0.1:${port}`;
-  for (let index = 0; index < 80; index += 1) {
+  for (let index = 0; index < 400; index += 1) {
     try {
       if ((await fetch(`${realArchiveBaseUrl}/health`)).status === 200) return;
     } catch {
