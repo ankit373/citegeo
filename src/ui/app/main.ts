@@ -6,10 +6,13 @@ import { buyingView, claimsView, conversationsView, draftsView, entityView, mark
 import { exportName, filterSummary, matchesQuery, panelCsv } from "./components/panel-tools.js";
 import { emptyState, notice, section } from "./components/primitives.js";
 import { button } from "./components/button.js";
-import { archived, percent, remaining, score as scoreText, sharePct, uptakePct } from "./format.js";
+import { archived, percent, score as scoreText, sharePct, uptakePct } from "./format.js";
 import { alertPill, effectLabel, historyWord, intentLabel, kindWords, reachInk, reachWords, recognitionRunStatusText, urgencyInk, urgencyLabel } from "./labels.js";
 import { deltaPill, demandBadge, fieldBadge } from "./components/badges.js";
 import { bar, creditRows, experimentCard, outreachRow, overAppearances, renderLeaderboard, renderPersonaRows, searchDemandRow, shapeRow, stat, verdictButtons } from "./pages/metric-cells.js";
+import { crawlerUpload, languagePicker, pasteCountPicker, repetitionPicker } from "./components/pickers.js";
+import { blockedSelection, catalogHead, catalogReleasedAt, catalogResultSummary, catalogVendor, providerShortLabel, runsNowCell, selectedRows } from "./components/catalog-rows.js";
+import { mentionChips, paneRun, renderLiveRun, runIsLive, runPaneProgress } from "./pages/run-pane.js";
 import { recognitionCountStrip, recognitionRunSummary, renderRecognitionModel, type RecognitionRunDetail } from "./pages/recognition-view.js";
 import { loading, skeletonCard, skeletonTable, skeletonText, skeletonTiles } from "./components/skeleton.js";
 import { clearToasts, toast } from "./components/toast.js";
@@ -149,6 +152,7 @@ export function boot(): void {
 
     const project = () => state.currentProjects.find((item) => item.id === state.selectedId) || null;
     const formatTime = (value: string) => new Date(value).toLocaleString();
+    const currentPaneRun = () => paneRun(state.panel, state.liveRun, state.lastRun);
     const modeText = (mode: string) => mode === "provider_native" ? "Provider Native web search" : "Offline";
     const statusText = (status: string) => status === "draft" ? "Draft" : status === "active" ? "Running" : status === "archived" ? "Archived" : "Deleted";
     function setSelectedProject(projectId: string) { if (projectId !== state.selectedId) { state.liveRun = null; state.lastRun = null; state.insights = null; state.insightsState = "idle"; state.plan = null; state.planState = "idle"; state.rankPlan = null; state.rankPlanState = "idle"; state.engines = null; state.enginesState = "idle"; state.actions = []; state.actionsState = "idle"; state.outreach = null; state.outreachState = "idle"; state.paste = null; state.pasteState = "idle"; state.uptake = null; state.uptakeState = "idle"; state.interference = null; state.interferenceState = "idle"; state.concentration = null; state.concentrationState = "idle"; state.shape = null; state.shapeState = "idle"; state.kinds = null; state.kindsState = "idle"; state.experiments = null; state.experimentsState = "idle"; state.check = null; state.checkState = "idle"; state.credit = null; state.creditState = "idle"; state.reach = null; state.reachState = "idle"; state.searchDemand = null; state.searchDemandState = "idle"; state.personas = null; state.personasState = "idle"; state.priority = null; state.priorityState = "idle"; state.referrals = null; state.referralsState = "idle"; state.crawlers = null; state.crawlersState = "idle"; state.signals = null; state.signalsState = "idle"; state.externalMetrics = null; state.externalMetricsState = "idle"; state.externalMetricsPulling = ""; state.externalMetricsNotice = { text:"", kind:"" }; } state.selectedId = projectId || ""; if (state.selectedId) localStorage.setItem("citegeo.product.projectId", state.selectedId); else localStorage.removeItem("citegeo.product.projectId"); const next = new URL(window.location.href); if (state.selectedId) next.searchParams.set("projectId", state.selectedId); else next.searchParams.delete("projectId"); window.history.replaceState({ projectId:state.selectedId }, "", next); }
@@ -536,7 +540,7 @@ export function boot(): void {
       // and nothing else, whatever was in the log. What decides is whether
       // there is any activity to show.
       if (!report.activity) {
-        return head + '<div class="warning-box">' + html(report.detail) + '</div>' + crawlerUpload() + '</section>';
+        return head + '<div class="warning-box">' + html(report.detail) + '</div>' + crawlerUpload(state.crawlerUploading, state.crawlerNotice) + '</section>';
       }
       const activity = report.activity;
       const rows = activity.crawlers.map((row: any) => '<div class="mrow mcols-crawler"><div class="mname"><strong>' + html(row.name) + '</strong><span>' + html(row.engine) + ' · ' + html(row.purpose === "live_fetch" ? "fetches when asked" : row.purpose === "training" ? "training crawl" : "search index") + '</span></div><span class="mcell">' + row.fetches + '</span><span class="mcell">' + row.pages + '</span><span class="mcell ' + (row.errorRate ? "state-flag" : "") + '">' + (row.errorRate === null ? "n/a" : Math.round(row.errorRate * 100) + "%") + '</span><span class="mcell mono">' + html(row.lastSeen ? row.lastSeen.slice(0, 10) : "unknown") + '</span></div>').join("");
@@ -560,21 +564,12 @@ export function boot(): void {
         + whose
         + absent
         + insightTable("mcols-crawler", ["Crawler", "Fetches", "Pages", "Errors", "Last seen"], rows ? [rows] : [], "No AI crawler appears in this log.")
-        + orphan + crawlerUpload() + '</section>';
+        + orphan + crawlerUpload(state.crawlerUploading, state.crawlerNotice) + '</section>';
     }
 
     /** The door. The log could only ever be named by an environment variable
      * set where the server runs, so anybody without a shell on that machine
      * could not use this feature at all. */
-    function crawlerUpload() {
-      return '<div class="inline-actions" style="margin-top:14px">'
-        + '<label class="button quiet" for="crawler-log-file">' + (state.crawlerUploading ? "Reading the log\u2026" : "Upload an access log") + '</label>'
-        + '<input type="file" id="crawler-log-file" accept=".log,.txt,text/plain" hidden data-crawler-log>'
-        + '</div>'
-        + (state.crawlerNotice.text ? '<p class="' + (state.crawlerNotice.kind === "bad" ? "warning-box" : "subtle") + '">' + html(state.crawlerNotice.text) + '</p>' : '')
-        + '<p class="mlegend">A combined-format access log, or a CloudFront one with its #Fields header. It is read for crawler user agents and paths and nothing else, and the same file counted twice is counted once.</p>';
-    }
-
     async function uploadCrawlerLog(file: File) {
       const selected = project();
       if (!selected || state.crawlerUploading) return;
@@ -789,12 +784,6 @@ export function boot(): void {
       render();
     }
 
-    function pasteCountPicker() {
-      const options = [1, 2, 3, 5, 10, 20].map((count) =>
-        '<option value="' + count + '"' + (state.pasteCount === count ? " selected" : "") + '>' + count + ' a day</option>').join("");
-      return '<label class="picker"><span class="subtle">How many</span><select data-paste-count>' + options + '</select></label>';
-    }
-
     function pasteFixCard(fix: any) {
       return '<div class="fix"><div class="fix-top"><strong>' + html(fix.title) + '</strong><span class="tag">' + html(fix.language) + '</span>'
         + '<button type="button" class="card-action" data-copy-fix="' + html(fix.id) + '">Copy</button></div>'
@@ -808,7 +797,7 @@ export function boot(): void {
       if (state.pasteState === "idle") { loadPaste(); }
       const head = '<section class="section-card"><div class="section-head"><div><h2>Ready to paste</h2>'
         + '<p class="subtle">Generated from what was observed on your site, so every snippet can be checked against the evidence beside it. Asking for more a day does not invent any.</p></div>'
-        + '<div class="inline-actions">' + pasteCountPicker() + '</div></div>';
+        + '<div class="inline-actions">' + pasteCountPicker(state.pasteCount) + '</div></div>';
       if (state.pasteState !== "ready" || !state.paste) {
         return head + '<p class="subtle">' + (state.pasteState === "error" ? "Could not generate anything." : "Generating from the last site probe.") + '</p></section>';
       }
@@ -1270,30 +1259,6 @@ export function boot(): void {
     // runs that asked enough to read a figure off. A line through a one-answer
     // run is a picture of how big the run was.
 
-    function renderLiveRun() {
-      const run = state.liveRun;
-      if (!run) return "";
-      const done = run.answersCompleted + run.answersFailed;
-      const pctDone = run.answersRequested ? Math.round(done / run.answersRequested * 100) : 0;
-      const since = Date.parse(run.startedAt || "");
-      // Until one answer lands there is no rate to read, so the run says it is
-      // still working that out rather than printing a number nothing supports.
-      const left = run.status === "cancelling" || !since ? null : remaining(done, run.answersRequested, Date.now() - since);
-      const eta = run.status === "cancelling" ? "" : (left || (done ? "" : "working out how long this takes"));
-      const doing = run.currentPromptText
-        ? 'Asking ' + html(run.currentModelId || "a model") + ': \u201c' + html(run.currentPromptText) + '\u201d'
-        : "Starting up";
-      return '<div class="liverun is-clickable" data-open-run="' + html(run.id) + '" role="button" tabindex="0"><div class="liverun-top"><strong>' + (run.status === "cancelling" ? "Stopping" : "Running") + '</strong>'
-        + '<span>' + done + ' of ' + run.answersRequested + ' answers</span>'
-        + (eta ? '<span class="subtle">' + html(eta) + '</span>' : '')
-        + '<span class="spacer"></span>'
-        + (run.status === "cancelling"
-          ? '<span class="subtle">Finishing the answer in flight.</span>'
-          : button({ label: "Stop", tone: "danger", on: { "data-stop-run": true } }))
-        + '</div><div class="bar is-live"><i style="width:' + pctDone + '%"></i></div>'
-        + '<p class="subtle">' + doing + '. Open this to watch each question and answer as it lands.</p></div>';
-    }
-
 
 
     // The filters travel with the file, so an export is the slice on screen.
@@ -1336,30 +1301,14 @@ export function boot(): void {
 
     // Asking twice is the only way to see how much of an answer is the day
     // rather than the question, and every extra pass is another paid call.
-    function repetitionPicker() {
-      const options = [1, 2, 3, 5].map((value) =>
-        '<option value="' + value + '"' + (state.repetitions === value ? ' selected' : '') + '>'
-        + (value === 1 ? 'Ask once' : 'Ask ' + value + ' times') + '</option>').join("");
-      return '<select class="filter" data-repetitions aria-label="How many times to ask each question">' + options + '</select>';
-    }
-
     // The same question in another language is a different question to a model,
     // and until this existed there was no way to ask one from here at all.
-    function languagePicker() {
-      const rows = state.languages || [];
-      if (rows.length < 2) return '';
-      const options = rows.map((row: any) =>
-        '<option value="' + html(row.id) + '"' + (state.runLanguageId === row.id ? ' selected' : '') + '>'
-        + html(row.id === "en" ? "Answer in English" : "Answer in " + row.label) + '</option>').join("");
-      return '<select class="filter" data-run-language aria-label="Which language to answer in">' + options + '</select>';
-    }
-
     // A second run is refused by the server, so the page must not offer one.
     function runActionButton(label: string, enabled?: boolean) {
       if (state.liveRun) return button({ label: "Watch the run", kind: "primary", on: { "data-open-run": state.liveRun.id } });
       const busy = state.promptRunState === "running";
       const last = state.lastRun ? button({ label: "Last run", on: { "data-open-run": state.lastRun.id } }) : '';
-      return last + languagePicker() + repetitionPicker() + button({ label: (busy ? "Starting…" : html(label)), kind: "primary", disabled: busy || enabled === false, on: { "data-run-prompts": true } });
+      return last + languagePicker(state.languages, state.runLanguageId) + repetitionPicker(state.repetitions) + button({ label: (busy ? "Starting…" : html(label)), kind: "primary", disabled: busy || enabled === false, on: { "data-run-prompts": true } });
     }
 
     function openRunPane(runId: string) {
@@ -1384,7 +1333,7 @@ export function boot(): void {
         state.runFeedState = "error";
       }
       window.clearTimeout(state.runFeedTimer);
-      if (runIsLive()) state.runFeedTimer = window.setTimeout(loadRunFeed, 3000);
+      if (runIsLive(currentPaneRun())) state.runFeedTimer = window.setTimeout(loadRunFeed, 3000);
       // Patch in place: a full render would throw away the reader's scroll.
       const body = document.querySelector(".panel-body");
       const head = document.querySelector(".runpane-progress");
@@ -1392,42 +1341,7 @@ export function boot(): void {
       const top = body.scrollTop;
       body.innerHTML = runFeedBody();
       body.scrollTop = top;
-      if (head) head.innerHTML = runPaneProgress();
-    }
-
-    function paneRun() {
-      const open = state.panel;
-      if (!open || open.kind !== "run") return null;
-      if (state.liveRun && state.liveRun.id === open.runId) return state.liveRun;
-      return state.lastRun && state.lastRun.id === open.runId ? state.lastRun : null;
-    }
-
-    function runIsLive() {
-      const run = paneRun();
-      return Boolean(run && (run.status === "running" || run.status === "cancelling"));
-    }
-
-    function runPaneProgress() {
-      const run = paneRun();
-      if (!run) return '<span class="subtle">Every answer below is archived.</span>';
-      if (run.status !== "running" && run.status !== "cancelling") {
-        return '<span>' + html(run.status) + ' · ' + run.answersCompleted + ' answered, ' + run.answersFailed + ' failed, of ' + run.answersRequested + ' asked</span>';
-      }
-      const done = run.answersCompleted + run.answersFailed;
-      const share = run.answersRequested ? Math.round(done / run.answersRequested * 100) : 0;
-      const since = Date.parse(run.startedAt || "");
-      const left = run.status === "cancelling" || !since ? null : remaining(done, run.answersRequested, Date.now() - since);
-      return '<span>' + done + ' of ' + run.answersRequested + ' answers · ' + run.answersFailed + ' failed' + (left ? ' · ' + html(left) : '') + '</span>'
-        + '<div class="bar is-live"><i style="width:' + share + '%"></i></div>';
-    }
-
-    function mentionChips(answer: AnswerRow) {
-      const rows = (answer.mentions || []).slice().sort((left, right) => (left.firstMentionOffset === null ? 1 : 0) - (right.firstMentionOffset === null ? 1 : 0) || (left.firstMentionOffset || 0) - (right.firstMentionOffset || 0));
-      if (!rows.length) return '<span class="subtle">No organisation was named.</span>';
-      return rows.map((row, index) => '<span class="namechip' + (row.isTarget ? ' is-you' : '') + '">'
-        + '<b>' + (index + 1) + '</b>' + html(row.name)
-        + (row.recommendation && row.recommendation !== "unknown" ? ' <i>' + html(row.recommendation) + '</i>' : '')
-        + '</span>').join("");
+      if (head) head.innerHTML = runPaneProgress(currentPaneRun());
     }
 
     function runAnswerCard(answer: AnswerRow) {
@@ -1454,7 +1368,7 @@ export function boot(): void {
     }
 
     function runInFlightCard() {
-      const run = runIsLive() ? paneRun() : null;
+      const run = runIsLive(currentPaneRun()) ? currentPaneRun() : null;
       if (!run || !run.currentPromptText) return "";
       return '<article class="evidence is-live"><div class="evidence-head"><strong>' + html(run.currentModelId || "a model") + '</strong>'
         + '<span class="pill flat">asking now</span><span class="spacer"></span><span>waiting for the answer</span></div>'
@@ -2163,11 +2077,11 @@ export function boot(): void {
 
     function renderRunPane() {
       return '<div class="panel-scrim" data-close-panel></div><aside class="panel" role="dialog" aria-label="Live run">'
-        + '<div class="panel-head"><div><h2>' + (runIsLive() ? "Live run" : "Finished run") + '</h2>'
+        + '<div class="panel-head"><div><h2>' + (runIsLive(currentPaneRun()) ? "Live run" : "Finished run") + '</h2>'
         + '<p class="subtle">What went to each model and what came back, newest first.</p>'
-        + '<div class="runpane-progress">' + runPaneProgress() + '</div></div>'
+        + '<div class="runpane-progress">' + runPaneProgress(currentPaneRun()) + '</div></div>'
         + '<div class="panel-actions">'
-        + (runIsLive() && state.liveRun && state.liveRun.status !== "cancelling" ? button({ label: "Stop", tone: "danger", on: { "data-stop-run": true } }) : '')
+        + (runIsLive(currentPaneRun()) && state.liveRun && state.liveRun.status !== "cancelling" ? button({ label: "Stop", tone: "danger", on: { "data-stop-run": true } }) : '')
         + '<button type="button" class="close" data-close-panel aria-label="Close">×</button></div></div>'
         + '<div class="panel-body">' + runFeedBody() + '</div></aside>';
     }
@@ -2452,7 +2366,7 @@ export function boot(): void {
         + '<p class="subtle">Who the models name instead of you, and where. Counted once per answer however often a name appears in it, and how often anyone asks.</p></div>'
         // A page that offers a run has to show the run, or starting one from
         // here looked like nothing happened.
-        + '<div class="inline-actions">' + button({ label: "Full report", on: { "data-page": "answer-engine" } }) + runActionButton("Run prompts") + '</div></div>' + renderLiveRun();
+        + '<div class="inline-actions">' + button({ label: "Full report", on: { "data-page": "answer-engine" } }) + runActionButton("Run prompts") + '</div></div>' + renderLiveRun(state.liveRun);
       if (state.answerEngineState === "error") return heading + notice("Could not read this project.", "error") + '</section>';
       const view = dashboardView();
       if (!view) return heading + dashboardBody({ status: "loading" }) + '</section>';
@@ -2487,7 +2401,7 @@ export function boot(): void {
         + button({ label: state.editingBoard ? "Done arranging" : "Arrange board", kind: state.editingBoard ? "secondary" : "quiet", on: { "data-edit-board": true } })
         + (hasPanelOrder() ? button({ label: "Reset layout", kind: "quiet", on: { "data-reset-panels": true } }) : '')
         + button({ label: "Full report", on: { "data-page": "answer-engine" } }) + ''
-        + runActionButton("Run prompts") + '</div></div>' + renderLiveRun() + body + '</section>';
+        + runActionButton("Run prompts") + '</div></div>' + renderLiveRun(state.liveRun) + body + '</section>';
 
       if (state.homeState === "error") return heading(notice("Could not read this project.", "error"));
       if (state.homeState !== "ready" || !state.home) return heading(dashboardBody({ status: "loading" }));
@@ -3107,7 +3021,7 @@ export function boot(): void {
         : '';
       return '<section class="view"><div class="heading"><div><h1>' + html(title) + '</h1>'
         + '<p class="subtle">' + html(subtitle) + '</p></div><div class="inline-actions">' + runActionButton("Ask the questions") + '</div></div>'
-        + renderLiveRun()
+        + renderLiveRun(state.liveRun)
         + acts.join("") + caveats
         + body(data, { objective, weights })
         + '</section>';
@@ -3533,7 +3447,7 @@ export function boot(): void {
       const notice = state.promptNotice.text ? '<div class="' + (state.promptNotice.kind === "error" ? "warning-box" : "success-box") + '">' + html(state.promptNotice.text) + '</div>' : '';
       const live = livePrompts(set);
       const active = live.filter((prompt) => prompt.status === "active").length;
-      const head = '<section class="view"><div class="heading"><div><h1>Questions</h1><p class="subtle">The questions buyers type, grouped by topic. Every other number in this tool is these questions, asked and archived.</p></div><div class="inline-actions">' + button({ label: (state.promptRunState === "generating" ? "Proposing…" : "Propose a set"), on: { "data-generate-prompts": true } }) + '' + runActionButton("Run all " + active, active > 0) + '</div></div>' + notice + renderLiveRun();
+      const head = '<section class="view"><div class="heading"><div><h1>Questions</h1><p class="subtle">The questions buyers type, grouped by topic. Every other number in this tool is these questions, asked and archived.</p></div><div class="inline-actions">' + button({ label: (state.promptRunState === "generating" ? "Proposing…" : "Propose a set"), on: { "data-generate-prompts": true } }) + '' + runActionButton("Run all " + active, active > 0) + '</div></div>' + notice + renderLiveRun(state.liveRun);
       if (!live.length) {
         // Retiring the last question must not remove the only way to add one.
         return head + '<div class="empty"><div class="empty-copy"><h2>Nothing is being asked</h2><p class="subtle">Propose a set and a model will suggest the questions buyers ask about what you do, grouped into topics. Nothing runs until you have read them and chosen which to track, because what buyers ask is not something this tool can observe.</p></div></div>' + promptAddForms(set, false) + '</section>';
@@ -3607,24 +3521,14 @@ export function boot(): void {
       return '<section class="section-card"><div class="section-head"><div><h2>Getting a result</h2><p class="subtle">Three steps, in order. Each one unlocks the next.</p></div></div><ol class="steps">' + rows + '</ol></section>';
     }
     function renderOverview() { const selected = project(); if (!selected) return '<section class="view"><div class="heading"><div><h1>Project</h1><p class="subtle">Create a project before configuring AI models and monitoring.</p></div></div>' + renderProjectCards() + '</section>'; const configuration = monitoringConfiguration(); return '<section class="view"><div class="heading"><div><h1>Project overview</h1><p class="subtle">A project is bound to one domain. Save models and web search modes as the fixed configuration for later monitoring.</p></div></div><div class="toolbar"><button type="button" class="filter ' + (state.mode === "current" ? "active" : "") + '" data-list-mode="current">Current</button><button type="button" class="filter ' + (state.mode === "archived" ? "active" : "") + '" data-list-mode="archived">Archived</button><button type="button" class="filter ' + (state.mode === "deleted" ? "active" : "") + '" data-list-mode="deleted">Recently deleted</button></div>' + renderNextSteps(configuration) + renderProjectCards() + '<section class="detail"><div class="card-header"><div><h2 data-testid="selected-project-title">' + html(selected.name) + '</h2><p class="subtle">The saved record for this project.</p></div></div><div class="detail-grid"><div class="detail-cell"><span>Primary domain</span><strong class="mono" data-testid="selected-project-domain">' + html(selected.normalizedDomain) + '</strong></div><div class="detail-cell"><span>Selected models</span><strong>' + state.selections.length + '</strong></div><div class="detail-cell"><span>Current version</span><strong>' + html(configuration.currentVersion ? "v" + configuration.currentVersion : "Not saved yet") + '</strong></div><div class="detail-cell"><span>Project ID</span><strong data-testid="selected-project-id">' + html(selected.id) + '</strong></div></div><form id="project-edit-form" class="form"><h3 class="form-title">Edit this project</h3><div class="field"><label for="edit-domain">Primary domain</label><input id="edit-domain" value="' + html(selected.primaryDomain) + '"></div><div class="field"><label for="edit-name">Project name</label><input id="edit-name" value="' + html(selected.name) + '"></div><div class="actions">' + button({ label: "Save project", kind: "primary", submit: true, testId: "save-project" }) + button({ label: "Archive", id: "archive-project", testId: "archive-project" }) + button({ label: "Delete project", tone: "danger", id: "delete-project", testId: "delete-project" }) + '</div></form></section></section>'; }
-    function selectedRows() { const byId = new Map(state.catalog.map((item) => [item.modelId, item])); return Array.from(state.draftSelections.entries()).map(([modelId, webSearchMode]) => ({ model:byId.get(modelId) || state.selections.find((item) => item.modelId === modelId), inCatalog: state.catalogState !== "ready" || byId.has(modelId), modelId, webSearchMode })).filter((item) => item.model); }
     /** The label lives on the provider row, so a provider added there is named
      * here too. Spelling it out again is how five of them read as "Local". */
-    function providerShortLabel(providerId: any) { const row = state.providers.find((provider) => provider.providerId === providerId); return row ? row.label : String(providerId); }
-    function openRouterOutOfCredit() { return state.providers.some((provider) => provider.providerId === "openrouter" && provider.balance && !provider.balance.paidModelsRunnable); }
-    function modelIsBlocked(model: any, modelId: any) { return Boolean(model) && model.providerId === "openrouter" && !modelId.endsWith(":free") && openRouterOutOfCredit(); }
-    function runsNowCell(model: any, modelId: any) { if (model && model.available === false) return '<span class="mcell state-bad" title="' + html(model.unavailableReason || "") + '">Never</span>'; return modelIsBlocked(model, modelId) ? '<span class="mcell state-flag">No credit</span>' : '<span class="mcell state-ok">Yes</span>'; }
     /** A selection the server will refuse. Its catalogue checkbox is disabled
      * for the same reason, so the row has to offer the only way to clear it. */
-    function blockedSelection(row: any) { return !row.inCatalog || (row.model && row.model.available === false); }
-    function renderSelectedModels(readOnly?: any) { return selectedModelTable({ readOnly, rows: selectedRows().map((row) => ({ modelId: row.modelId, displayName: String((row.model as any).displayName), providerLabel: providerShortLabel((row.model as any).providerId), webSearchMode: row.webSearchMode === "provider_native" ? "provider_native" as const : "off" as const, nativeWebSearchSupported: (row.model as any).nativeWebSearchSupported === true, runnable: row.inCatalog ? runsNowCell(row.model, row.modelId) : "", unavailable: blockedSelection(row) })) }); }
-    function catalogVendor(item: any) { const supplied = typeof item.vendor === "string" ? item.vendor.trim() : ""; if (supplied) return supplied; const name = String(item.displayName || ""); const separator = name.indexOf(":"); if (separator > 0) return name.slice(0, separator).trim(); const modelId = String(item.modelId || ""); const namespaceEnd = modelId.indexOf("/"); return namespaceEnd > 0 ? modelId.slice(0, namespaceEnd) : modelId; }
-    function catalogReleasedAt(item: any) { if (typeof item.releasedAt !== "string" || !item.releasedAt) return null; const timestamp = new Date(item.releasedAt).getTime(); return Number.isFinite(timestamp) ? timestamp : null; }
+    function renderSelectedModels(readOnly?: any) { return selectedModelTable({ readOnly, rows: selectedRows(state.catalog, state.selections, state.draftSelections, state.catalogState).map((row) => ({ modelId: row.modelId, displayName: String((row.model as any).displayName), providerLabel: providerShortLabel(state.providers, (row.model as any).providerId), webSearchMode: row.webSearchMode === "provider_native" ? "provider_native" as const : "off" as const, nativeWebSearchSupported: (row.model as any).nativeWebSearchSupported === true, runnable: row.inCatalog ? runsNowCell(row.model, row.modelId, state.providers) : "", unavailable: blockedSelection(row) })) }); }
     function catalogVendors() { return Array.from(new Set(state.catalog.map((item) => catalogVendor(item)).filter((vendor) => vendor.length > 0))).sort((left, right) => left.localeCompare(right)); }
     function filteredCatalogModels() { const query = state.query.toLocaleLowerCase(); const results = state.catalog.filter((item) => { const vendor = catalogVendor(item); const matchesQuery = item.displayName.toLocaleLowerCase().includes(query) || item.modelId.toLocaleLowerCase().includes(query) || vendor.toLocaleLowerCase().includes(query); const matchesVendor = !state.catalogProvider || vendor === state.catalogProvider; const matchesSearch = state.catalogNativeSearch === "all" || (state.catalogNativeSearch === "supported" ? item.nativeWebSearchSupported : !item.nativeWebSearchSupported); return matchesQuery && matchesVendor && matchesSearch; }); results.sort((left, right) => { const leftVendor = catalogVendor(left); const rightVendor = catalogVendor(right); if (state.catalogSort === "vendor") { const vendorOrder = leftVendor.localeCompare(rightVendor); return vendorOrder || left.displayName.localeCompare(right.displayName); } if (state.catalogSort === "newest" || state.catalogSort === "oldest") { const leftReleasedAt = catalogReleasedAt(left); const rightReleasedAt = catalogReleasedAt(right); if (leftReleasedAt === null && rightReleasedAt === null) return left.displayName.localeCompare(right.displayName); if (leftReleasedAt === null) return 1; if (rightReleasedAt === null) return -1; return state.catalogSort === "newest" ? rightReleasedAt - leftReleasedAt : leftReleasedAt - rightReleasedAt; } return left.displayName.localeCompare(right.displayName); }); return results.slice(0, 80); }
-    function catalogResultSummary(count: number) { return 'Show ' + count + '  models. When sorting by release date, models with no date in the catalog are listed last.'; }
-    function catalogHead() { return '<div class="mhead mcols-catalog"><span></span><span>Model</span><span>Vendor</span><span>Runs now</span><span>Web search</span></div>'; }
-    function renderCatalogModelRows(results: any) { return results.map((item: any) => { const chosen = state.draftSelections.get(item.modelId); const isChosen = chosen !== undefined; const vendor = catalogVendor(item); const releasedAt = catalogReleasedAt(item); const released = releasedAt === null ? ' \u00b7 no release date' : ' \u00b7 ' + new Date(releasedAt).toLocaleDateString(); const releasedTitle = releasedAt === null ? ' title="Catalog does not provide a release date"' : ''; return '<div class="mrow mcols-catalog" data-testid="catalog-model" data-model-id="' + html(item.modelId) + '" data-model-vendor="' + html(vendor) + '" data-model-released-at="' + html(releasedAt === null ? "" : String(releasedAt)) + '" data-native-search="' + String(item.nativeWebSearchSupported) + '"><input type="checkbox" data-model-checkbox="' + html(item.modelId) + '" ' + (isChosen ? "checked" : "") + (item.available ? "" : " disabled") + ' aria-label="Select ' + html(item.displayName) + '"><div class="mname"><strong>' + html(item.displayName) + '</strong><span class="mono"' + releasedTitle + '>' + html(item.modelId) + html(released) + '</span>' + (item.available ? '' : '<span class="state-bad">' + html(item.unavailableReason || "Unavailable") + '</span>') + '</div><span class="mcell">' + html(vendor) + '</span>' + runsNowCell(item, item.modelId) + webSearchModeControl({ modelId:item.modelId, mode:chosen === "provider_native" ? "provider_native" : "off", supported:isChosen && item.nativeWebSearchSupported, attribute:"model-mode" }) + '</div>'; }).join(""); }
+    function renderCatalogModelRows(results: any) { return results.map((item: any) => { const chosen = state.draftSelections.get(item.modelId); const isChosen = chosen !== undefined; const vendor = catalogVendor(item); const releasedAt = catalogReleasedAt(item); const released = releasedAt === null ? ' \u00b7 no release date' : ' \u00b7 ' + new Date(releasedAt).toLocaleDateString(); const releasedTitle = releasedAt === null ? ' title="Catalog does not provide a release date"' : ''; return '<div class="mrow mcols-catalog" data-testid="catalog-model" data-model-id="' + html(item.modelId) + '" data-model-vendor="' + html(vendor) + '" data-model-released-at="' + html(releasedAt === null ? "" : String(releasedAt)) + '" data-native-search="' + String(item.nativeWebSearchSupported) + '"><input type="checkbox" data-model-checkbox="' + html(item.modelId) + '" ' + (isChosen ? "checked" : "") + (item.available ? "" : " disabled") + ' aria-label="Select ' + html(item.displayName) + '"><div class="mname"><strong>' + html(item.displayName) + '</strong><span class="mono"' + releasedTitle + '>' + html(item.modelId) + html(released) + '</span>' + (item.available ? '' : '<span class="state-bad">' + html(item.unavailableReason || "Unavailable") + '</span>') + '</div><span class="mcell">' + html(vendor) + '</span>' + runsNowCell(item, item.modelId, state.providers) + webSearchModeControl({ modelId:item.modelId, mode:chosen === "provider_native" ? "provider_native" : "off", supported:isChosen && item.nativeWebSearchSupported, attribute:"model-mode" }) + '</div>'; }).join(""); }
     // Repaints the rows alone. The whole page is 70KB of markup, so re-rendering
     // it per keystroke is felt; this needs .model-list to wrap only the rows.
     function refreshCatalogSearchResults() { const list = document.querySelector(".model-list"); const summary = document.querySelector(".catalog-result-summary"); if (!list || !summary || state.catalogState !== "ready") { render(); return; } const results = filteredCatalogModels(); summary.textContent = catalogResultSummary(results.length); list.innerHTML = results.length === 0 ? '<p class="subtle">No matching models.</p>' : renderCatalogModelRows(results); }
@@ -3632,7 +3536,7 @@ export function boot(): void {
       if (state.providersState !== "ready") return '';
       const stalled = state.providers.some((provider) => provider.providerId === "openrouter" && provider.balance && !provider.balance.paidModelsRunnable);
       if (!stalled) return '';
-      const rows = selectedRows();
+      const rows = selectedRows(state.catalog, state.selections, state.draftSelections, state.catalogState);
       const blocked = rows.filter((row) => row.model && (row.model as any).providerId === "openrouter" && !row.modelId.endsWith(":free"));
       if (!blocked.length) return '';
       return '<div class="warning-box">' + blocked.length + ' of these ' + rows.length + ' models cannot run right now. This OpenRouter account has no credit, so each one answers HTTP 402 and returns no answer. Models ending in :free still run, and local gateway models cost nothing. Setup shows the full picture.</div>';
@@ -3734,7 +3638,7 @@ export function boot(): void {
         + '<p class="subtle">These are the only sources here that search the web by construction, so they are where citations come from. Nothing signs in on your behalf; the answer is whatever your own signed-in session shows.</p>';
     }
 
-    function renderModels() { if (state.providersState === "idle") { loadProviders(); } const selected = project(); if (!selected) return '<section class="view"><div class="empty"><div class="empty-copy"><h2>Select a project first</h2><p class="subtle">A model configuration belongs to a single project.</p></div></div></section>'; const vendors = catalogVendors(); const results = filteredCatalogModels(); const list = state.catalogState === "idle" || state.catalogState === "loading" ? '<p class="subtle">Loading the OpenRouter model catalog…</p>' : state.catalogState === "error" ? '<div class="warning-box"><strong>Model catalog unavailable</strong><p>' + html(state.catalogError) + '</p>' + button({ label: "Retry", id: "retry-catalog", testId: "retry-catalog" }) + '</div>' : results.length === 0 ? '<p class="subtle">No matching models.</p>' : '<p class="catalog-result-summary">' + catalogResultSummary(results.length) + '</p><div class="mtable">' + catalogHead() + '<div class="model-list">' + renderCatalogModelRows(results) + '</div></div>'; const notice = state.modelNotice.text || (state.selectionsDirty ? "Configuration not saved yet" : ""); const noticeClass = state.modelNotice.kind || (state.selectionsDirty ? "warning" : ""); const saveLabel = state.modelActionState === "error" ? "Retry saving model configuration" : "Save model configuration"; const vendorOptions = vendors.map((vendor) => '<option value="' + html(vendor) + '" ' + (state.catalogProvider === vendor ? "selected" : "") + '>' + html(vendor) + '</option>').join(""); const cfg = monitoringConfiguration(); return '<section class="view"><div class="heading"><div><h1>Choose models</h1><p class="subtle">Pick the models to ask, set each one\'s web search mode, then save them as this project\'s configuration. Currently ' + (cfg.currentVersion ? "saved as v" + cfg.currentVersion : "not saved") + '.</p></div><div class="inline-actions">' + button({ label: saveLabel, kind: state.selectionsDirty || state.modelActionState === "error" ? "primary" : "secondary", id: "save-models", testId: "save-models", on: { "data-action-state": state.modelActionState } }) + '' + saveConfigurationButton(cfg, state.selections.length > 0, false) + '</div></div>' + machineTabs() + '<div id="models-status" class="form-status ' + noticeClass + '" aria-live="polite">' + html(notice) + '</div><div class="section-stack"><section class="section-card"><div class="section-head"><div><h2>Selected models</h2><p class="subtle">Select one or more models.</p></div><span class="tag">' + selectedRows().length + '  selected</span></div>' + blockedSelectionBanner() + renderSelectedModels() + '</section><section class="section-card"><div class="section-head"><div><h2>Answer surfaces</h2><p class="subtle">The products a buyer actually opens, read through your own browser. The only sources here that search the web.</p></div></div>' + renderEngines() + '</section><section class="section-card"><div class="section-head"><div><h2>Model catalog</h2><p class="subtle">Searchable and multi-select. A provider that is unreachable contributes nothing; no fabricated models are shown.</p></div><span class="tag ' + (state.catalogState === "ready" ? "ready" : state.catalogState === "error" ? "warning" : "") + '">' + (state.catalogState === "ready" ? "Catalog available" : state.catalogState === "error" ? "Catalog error" : "Loading") + '</span></div><input id="model-search" class="model-search" data-testid="model-search" type="search" value="' + html(state.query) + '" placeholder="Search by model name, model ID or vendor"><div class="model-catalog-controls"><label for="model-provider-filter">Model vendor<select id="model-provider-filter" data-testid="model-provider-filter"><option value="">All vendors</option>' + vendorOptions + '</select></label><label for="model-native-search-filter">Web search capability<select id="model-native-search-filter" data-testid="model-native-search-filter"><option value="all" ' + (state.catalogNativeSearch === "all" ? "selected" : "") + '>All</option><option value="supported" ' + (state.catalogNativeSearch === "supported" ? "selected" : "") + '>Supports native web search</option><option value="unsupported" ' + (state.catalogNativeSearch === "unsupported" ? "selected" : "") + '>Does not support native web search</option></select></label><label for="model-catalog-sort">Sort<select id="model-catalog-sort" data-testid="model-catalog-sort"><option value="name" ' + (state.catalogSort === "name" ? "selected" : "") + '>Name A-Z</option><option value="vendor" ' + (state.catalogSort === "vendor" ? "selected" : "") + '>Vendor A-Z</option><option value="newest" ' + (state.catalogSort === "newest" ? "selected" : "") + '>Release date: newest first</option><option value="oldest" ' + (state.catalogSort === "oldest" ? "selected" : "") + '>Release date: oldest first</option></select></label></div>' + list + '</section></div></section>'; }
+    function renderModels() { if (state.providersState === "idle") { loadProviders(); } const selected = project(); if (!selected) return '<section class="view"><div class="empty"><div class="empty-copy"><h2>Select a project first</h2><p class="subtle">A model configuration belongs to a single project.</p></div></div></section>'; const vendors = catalogVendors(); const results = filteredCatalogModels(); const list = state.catalogState === "idle" || state.catalogState === "loading" ? '<p class="subtle">Loading the OpenRouter model catalog…</p>' : state.catalogState === "error" ? '<div class="warning-box"><strong>Model catalog unavailable</strong><p>' + html(state.catalogError) + '</p>' + button({ label: "Retry", id: "retry-catalog", testId: "retry-catalog" }) + '</div>' : results.length === 0 ? '<p class="subtle">No matching models.</p>' : '<p class="catalog-result-summary">' + catalogResultSummary(results.length) + '</p><div class="mtable">' + catalogHead() + '<div class="model-list">' + renderCatalogModelRows(results) + '</div></div>'; const notice = state.modelNotice.text || (state.selectionsDirty ? "Configuration not saved yet" : ""); const noticeClass = state.modelNotice.kind || (state.selectionsDirty ? "warning" : ""); const saveLabel = state.modelActionState === "error" ? "Retry saving model configuration" : "Save model configuration"; const vendorOptions = vendors.map((vendor) => '<option value="' + html(vendor) + '" ' + (state.catalogProvider === vendor ? "selected" : "") + '>' + html(vendor) + '</option>').join(""); const cfg = monitoringConfiguration(); return '<section class="view"><div class="heading"><div><h1>Choose models</h1><p class="subtle">Pick the models to ask, set each one\'s web search mode, then save them as this project\'s configuration. Currently ' + (cfg.currentVersion ? "saved as v" + cfg.currentVersion : "not saved") + '.</p></div><div class="inline-actions">' + button({ label: saveLabel, kind: state.selectionsDirty || state.modelActionState === "error" ? "primary" : "secondary", id: "save-models", testId: "save-models", on: { "data-action-state": state.modelActionState } }) + '' + saveConfigurationButton(cfg, state.selections.length > 0, false) + '</div></div>' + machineTabs() + '<div id="models-status" class="form-status ' + noticeClass + '" aria-live="polite">' + html(notice) + '</div><div class="section-stack"><section class="section-card"><div class="section-head"><div><h2>Selected models</h2><p class="subtle">Select one or more models.</p></div><span class="tag">' + selectedRows(state.catalog, state.selections, state.draftSelections, state.catalogState).length + '  selected</span></div>' + blockedSelectionBanner() + renderSelectedModels() + '</section><section class="section-card"><div class="section-head"><div><h2>Answer surfaces</h2><p class="subtle">The products a buyer actually opens, read through your own browser. The only sources here that search the web.</p></div></div>' + renderEngines() + '</section><section class="section-card"><div class="section-head"><div><h2>Model catalog</h2><p class="subtle">Searchable and multi-select. A provider that is unreachable contributes nothing; no fabricated models are shown.</p></div><span class="tag ' + (state.catalogState === "ready" ? "ready" : state.catalogState === "error" ? "warning" : "") + '">' + (state.catalogState === "ready" ? "Catalog available" : state.catalogState === "error" ? "Catalog error" : "Loading") + '</span></div><input id="model-search" class="model-search" data-testid="model-search" type="search" value="' + html(state.query) + '" placeholder="Search by model name, model ID or vendor"><div class="model-catalog-controls"><label for="model-provider-filter">Model vendor<select id="model-provider-filter" data-testid="model-provider-filter"><option value="">All vendors</option>' + vendorOptions + '</select></label><label for="model-native-search-filter">Web search capability<select id="model-native-search-filter" data-testid="model-native-search-filter"><option value="all" ' + (state.catalogNativeSearch === "all" ? "selected" : "") + '>All</option><option value="supported" ' + (state.catalogNativeSearch === "supported" ? "selected" : "") + '>Supports native web search</option><option value="unsupported" ' + (state.catalogNativeSearch === "unsupported" ? "selected" : "") + '>Does not support native web search</option></select></label><label for="model-catalog-sort">Sort<select id="model-catalog-sort" data-testid="model-catalog-sort"><option value="name" ' + (state.catalogSort === "name" ? "selected" : "") + '>Name A-Z</option><option value="vendor" ' + (state.catalogSort === "vendor" ? "selected" : "") + '>Vendor A-Z</option><option value="newest" ' + (state.catalogSort === "newest" ? "selected" : "") + '>Release date: newest first</option><option value="oldest" ' + (state.catalogSort === "oldest" ? "selected" : "") + '>Release date: oldest first</option></select></label></div>' + list + '</section></div></section>'; }
     function configurationVisualState(configuration: any) { return state.monitoringSaveState === "idle" ? configuration.status : state.monitoringSaveState; }
     function renderConfigurationDiff(configuration: any) { const diff = configuration.diff; const rows = []; for (const item of diff.addedModels) rows.push("Models added: " + item.displayName); for (const item of diff.removedModels) rows.push("Models removed: " + item.displayName); for (const item of diff.webSearchModeChanges) rows.push("Web search mode change: " + item.displayName + " from \"" + modeText(item.previousMode) + "\" to \"" + modeText(item.currentMode) + "\""); if (diff.protocolVersionChange) rows.push("Protocol version change: " + diff.protocolVersionChange.previous + " → " + diff.protocolVersionChange.current); if (diff.domainChange) rows.push("Domain change: " + diff.domainChange.previous + " → " + diff.domainChange.current); if (diff.languageChange) rows.push("Output language change: " + diff.languageChange.previous + " → " + diff.languageChange.current); if (rows.length === 0) return ""; return '<section class="section-card" data-testid="configuration-diff"><div class="section-head"><div><h2>Changes in this run</h2><p class="subtle">Saving creates a new configuration version.</p></div></div><ul class="protocol-list">' + rows.map((row) => '<li>' + html(row) + '</li>').join("") + '</ul></section>'; }
     function renderConfigurationRows(configuration: any) { if (state.baselines.length === 0) return '<p class="subtle">No past configurations yet.</p>'; const currentId = configuration.currentBaseline ? configuration.currentBaseline.id : ""; return '<div class="baseline-list">' + state.baselines.map((baseline) => '<article class="baseline-row" data-testid="configuration-version-row" data-configuration-id="' + html(baseline.id) + '"><div><strong>config v' + baseline.version + (currentId === baseline.id ? " · Current version" : "") + '</strong><span>' + html(baseline.normalizedDomain) + ' · ' + baseline.modelSnapshots.length + '  models</span><span>' + baseline.modelSnapshots.map((item: any) => html(item.displayName + "（" + modeText(item.webSearchMode) + "）")).join(", ") + '</span></div><span class="tag mono">' + html(formatTime(baseline.createdAt)) + '</span></article>').join("") + '</div>'; }
@@ -3770,7 +3674,7 @@ export function boot(): void {
       });
     }
 
-    function renderConfiguration() { const selected = project(); if (!selected) return '<section class="view"><div class="empty"><div class="empty-copy"><h2>Select a project first</h2><p class="subtle">A configuration belongs to a single project.</p></div></div></section>'; if (state.configurationState === "loading") return '<section class="view"><div class="heading"><div><h1>Configuration</h1><p class="subtle">Loading the current configuration…</p></div></div>' + machineTabs() + '<div class="section-card inline-empty" aria-live="polite">Loading the domain, models and web search modes.</div></section>'; const configuration = monitoringConfiguration(); const hasModels = selectedRows().length > 0; const notice = state.monitoringNotice.text; const noticeKind = state.monitoringNotice.kind; const stateMessage = !hasModels ? "Select at least one available model before saving the configuration." : configuration.status === "no_version" ? "No configuration saved yet. Saving fixes the current domain, language, models and web search modes." : configuration.status === "changed" ? "The models or web search modes have changed. Saving creates a new configuration version." : "The current models and web search modes are saved."; const stateClass = !hasModels || configuration.status === "changed" ? "warning-box" : configuration.status === "unchanged" ? "success-box" : "warning-box"; return '<section class="view"><div class="heading"><div><h1>Configuration</h1><p class="subtle">Save the domain, output language and each model\'s web search mode as reusable monitoring conditions.</p></div>' + saveConfigurationButton(configuration, hasModels) + '</div>' + machineTabs() + '<div id="monitoring-configuration-status" data-testid="monitoring-configuration-status" class="form-status ' + html(noticeKind) + '" aria-live="polite">' + html(notice) + '</div><div class="section-stack"><section class="section-card"><div class="section-head"><div><h2>Current version</h2><p class="subtle">Target domain: <span class="mono">' + html(selected.normalizedDomain) + '</span></p></div><span class="tag ' + (configuration.status === "unchanged" ? "ready" : "warning") + '">' + (configuration.currentVersion ? "v" + configuration.currentVersion : "Not saved yet") + '</span></div><div class="' + stateClass + '" data-testid="monitoring-configuration-summary">' + html(stateMessage) + '</div></section><section class="section-card"><div class="section-head"><div><h2>Current model configuration</h2><p class="subtle">Each model stores its own web search mode.</p></div>' + button({ label: "Adjust models", on: { "data-page": "models" } }) + '</div>' + renderSelectedModels(true) + '</section>' + renderConfigurationDiff(configuration) + '<section class="section-card"><div class="section-head"><div><h2>Past configurations</h2><p class="subtle">Read-only snapshot. Saving a new version does not overwrite past configurations.</p></div></div>' + renderConfigurationRows(configuration) + '</section>' + renderTechnicalDetails(configuration) + '</div></section>'; }
+    function renderConfiguration() { const selected = project(); if (!selected) return '<section class="view"><div class="empty"><div class="empty-copy"><h2>Select a project first</h2><p class="subtle">A configuration belongs to a single project.</p></div></div></section>'; if (state.configurationState === "loading") return '<section class="view"><div class="heading"><div><h1>Configuration</h1><p class="subtle">Loading the current configuration…</p></div></div>' + machineTabs() + '<div class="section-card inline-empty" aria-live="polite">Loading the domain, models and web search modes.</div></section>'; const configuration = monitoringConfiguration(); const hasModels = selectedRows(state.catalog, state.selections, state.draftSelections, state.catalogState).length > 0; const notice = state.monitoringNotice.text; const noticeKind = state.monitoringNotice.kind; const stateMessage = !hasModels ? "Select at least one available model before saving the configuration." : configuration.status === "no_version" ? "No configuration saved yet. Saving fixes the current domain, language, models and web search modes." : configuration.status === "changed" ? "The models or web search modes have changed. Saving creates a new configuration version." : "The current models and web search modes are saved."; const stateClass = !hasModels || configuration.status === "changed" ? "warning-box" : configuration.status === "unchanged" ? "success-box" : "warning-box"; return '<section class="view"><div class="heading"><div><h1>Configuration</h1><p class="subtle">Save the domain, output language and each model\'s web search mode as reusable monitoring conditions.</p></div>' + saveConfigurationButton(configuration, hasModels) + '</div>' + machineTabs() + '<div id="monitoring-configuration-status" data-testid="monitoring-configuration-status" class="form-status ' + html(noticeKind) + '" aria-live="polite">' + html(notice) + '</div><div class="section-stack"><section class="section-card"><div class="section-head"><div><h2>Current version</h2><p class="subtle">Target domain: <span class="mono">' + html(selected.normalizedDomain) + '</span></p></div><span class="tag ' + (configuration.status === "unchanged" ? "ready" : "warning") + '">' + (configuration.currentVersion ? "v" + configuration.currentVersion : "Not saved yet") + '</span></div><div class="' + stateClass + '" data-testid="monitoring-configuration-summary">' + html(stateMessage) + '</div></section><section class="section-card"><div class="section-head"><div><h2>Current model configuration</h2><p class="subtle">Each model stores its own web search mode.</p></div>' + button({ label: "Adjust models", on: { "data-page": "models" } }) + '</div>' + renderSelectedModels(true) + '</section>' + renderConfigurationDiff(configuration) + '<section class="section-card"><div class="section-head"><div><h2>Past configurations</h2><p class="subtle">Read-only snapshot. Saving a new version does not overwrite past configurations.</p></div></div>' + renderConfigurationRows(configuration) + '</section>' + renderTechnicalDetails(configuration) + '</div></section>'; }
     const brandMark = CONFIG.brandMark;
     const brandLockup = CONFIG.brandLockup;
     // Says what the page is built from and when, so a tab left open overnight
@@ -3798,7 +3702,7 @@ export function boot(): void {
     function dropSelection(modelId: any) { state.draftSelections.delete(modelId); state.modelNotice = { text:"", kind:"" }; state.modelActionState = "idle"; state.selectionsDirty = true; render(); }
     function changeModelMode(modelId: any, mode: any) { const catalogItem = state.catalog.find((item) => item.modelId === modelId); if (!catalogItem || !state.draftSelections.has(modelId)) return; if (mode === "provider_native" && !catalogItem.nativeWebSearchSupported) return; state.modelNotice = { text:"", kind:"" }; state.modelActionState = "idle"; state.draftSelections.set(modelId, mode); state.selectionsDirty = true; render(); }
     async function saveModels(button: HTMLElement | null) { const selected = project(); if (!selected) return; const selections = Array.from(state.draftSelections.entries()).map(([modelId, webSearchMode]) => ({ modelId, webSearchMode })); state.modelNotice = { text:"Saving each model's own web search mode…", kind:"loading" }; try { const response = await runAction(button, { loading:"Saving…", success:"Saved", error:"Save failed" }, () => request("/api/projects/" + encodeURIComponent(selected.id) + "/models", { method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ selections }) })); state.selections = response.selections; resetDraftSelections(); state.modelNotice = { text:"Model configuration saved", kind:"success" }; state.modelActionState = "success"; render(); window.setTimeout(() => { state.modelActionState = "idle"; if (state.page === "models") render(); }, 850); } catch (error) { state.modelNotice = { text:error instanceof Error ? error.message : String(error), kind:"error" }; state.modelActionState = "error"; render(); } }
-    async function saveMonitoringConfiguration() { const selected = project(); const configuration = monitoringConfiguration(); if (!selected || configuration.status === "unchanged" || state.monitoringSaveState === "saving") return; if (selectedRows().length === 0) { state.monitoringNotice = { text:"Select at least one available model before saving the configuration.", kind:"error" }; state.monitoringSaveState = "failed"; render(); return; } state.monitoringSaveState = "saving"; state.monitoringNotice = { text:"Saving the current domain, language, models and web search modes…", kind:"loading" }; render(); try { const response = await request("/api/projects/" + encodeURIComponent(selected.id) + "/baselines", { method:"POST", headers:{"Content-Type":"application/json"}, body:"{}" }); state.currentProjects = state.currentProjects.map((item) => item.id === response.project.id ? response.project : item); state.projects = state.projects.map((item) => item.id === response.project.id ? response.project : item); await refreshConfiguration(); const version = response.baseline.version; state.monitoringSaveState = "saved"; state.monitoringNotice = { text:"Saved as config v" + version, kind:"success" }; render(); window.setTimeout(() => { state.monitoringSaveState = "idle"; if (state.page === "configuration") render(); }, 850); } catch (error) { if (errorCode(error) === "baseline_unchanged") { await refreshConfiguration(); state.monitoringSaveState = "idle"; state.monitoringNotice = { text:"The current configuration is already saved", kind:"success" }; render(); return; } state.monitoringSaveState = "failed"; state.monitoringNotice = { text: error instanceof Error ? error.message : (expectedErrorText.request_failed || "The request failed."), kind: "error" }; render(); } }
+    async function saveMonitoringConfiguration() { const selected = project(); const configuration = monitoringConfiguration(); if (!selected || configuration.status === "unchanged" || state.monitoringSaveState === "saving") return; if (selectedRows(state.catalog, state.selections, state.draftSelections, state.catalogState).length === 0) { state.monitoringNotice = { text:"Select at least one available model before saving the configuration.", kind:"error" }; state.monitoringSaveState = "failed"; render(); return; } state.monitoringSaveState = "saving"; state.monitoringNotice = { text:"Saving the current domain, language, models and web search modes…", kind:"loading" }; render(); try { const response = await request("/api/projects/" + encodeURIComponent(selected.id) + "/baselines", { method:"POST", headers:{"Content-Type":"application/json"}, body:"{}" }); state.currentProjects = state.currentProjects.map((item) => item.id === response.project.id ? response.project : item); state.projects = state.projects.map((item) => item.id === response.project.id ? response.project : item); await refreshConfiguration(); const version = response.baseline.version; state.monitoringSaveState = "saved"; state.monitoringNotice = { text:"Saved as config v" + version, kind:"success" }; render(); window.setTimeout(() => { state.monitoringSaveState = "idle"; if (state.page === "configuration") render(); }, 850); } catch (error) { if (errorCode(error) === "baseline_unchanged") { await refreshConfiguration(); state.monitoringSaveState = "idle"; state.monitoringNotice = { text:"The current configuration is already saved", kind:"success" }; render(); return; } state.monitoringSaveState = "failed"; state.monitoringNotice = { text: error instanceof Error ? error.message : (expectedErrorText.request_failed || "The request failed."), kind: "error" }; render(); } }
     document.addEventListener("click", async (event) => {
       const clicked = el(event.target) as any;
       if (!clicked || !clicked.closest) return;

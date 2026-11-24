@@ -1,3 +1,4 @@
+import { blockedSelection } from "../src/ui/app/components/catalog-rows.js";
 import { buildStabilityReport } from "../src/product/topics/answer-stability.js";
 import { splitActivation } from "../src/product/topics/search-activation.js";
 import { wilsonInterval } from "../src/product/topics/proportion-interval.js";
@@ -90,7 +91,9 @@ test("a selection the server will refuse can be cleared from the page", () => {
   const html = productAppSource();
   // The catalogue checkbox for an unavailable model is disabled, so without
   // this control the save stays rejected with no way to fix it.
-  assert.equal(html.includes("function blockedSelection(row: any) { return !row.inCatalog || (row.model && row.model.available === false); }"), true);
+  assert.equal(blockedSelection({ inCatalog: false }), true);
+  assert.equal(blockedSelection({ inCatalog: true, model: { available: false } }), true);
+  assert.equal(blockedSelection({ inCatalog: true, model: { available: true } }), false);
   // The button moved into the model picker component, so pin the handler that
   // stays in the app source rather than the markup that left it.
   assert.equal(html.includes('dropSelection(removeSelectedModel.getAttribute("data-remove-selected-model") || "")'), true);
