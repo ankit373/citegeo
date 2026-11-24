@@ -6,7 +6,9 @@ import { buyingView, claimsView, conversationsView, draftsView, entityView, mark
 import { exportName, filterSummary, matchesQuery, panelCsv } from "./components/panel-tools.js";
 import { emptyState, notice, section } from "./components/primitives.js";
 import { button } from "./components/button.js";
-import { archived, remaining } from "./format.js";
+import { archived, remaining, sharePct, uptakePct } from "./format.js";
+import { alertPill, effectLabel, historyWord, intentLabel, kindWords, reachInk, reachWords, recognitionCountLabels, recognitionModelStatusText, recognitionRunStatusText, recognitionUrlLabel, urgencyInk, urgencyLabel } from "./labels.js";
+import { deltaPill, demandBadge, evidenceJump, fieldBadge } from "./components/badges.js";
 import { loading, skeletonCard, skeletonTable, skeletonText, skeletonTiles } from "./components/skeleton.js";
 import { clearToasts, toast } from "./components/toast.js";
 import { DESTINATIONS, navScrim, navToggle, sidebar, wireNav } from "./components/nav.js";
@@ -1195,10 +1197,6 @@ export function boot(): void {
     }
     function pct(value: any) { return value === null || value === undefined ? "Not measurable" : Math.round(value * 100) + "%"; }
     function scoreText(value: any) { return value === null || value === undefined ? "Not measurable" : String(value); }
-    function intentLabel(intent: string) {
-      return intent === "discovery" ? "Discovery" : intent === "comparison" ? "Comparison" : intent === "alternatives" ? "Alternatives" : intent === "brand" ? "Brand" : "Problem";
-    }
-
     function bar(value: any) { return value === null || value === undefined ? '' : '<div class="bar"><i style="width:' + Math.round(value * 100) + '%"></i></div>'; }
     function stat(label: string, value: any, note: string, fraction?: number | null) {
       return '<div class="stat"><span>' + html(label) + '</span><strong>' + value + '</strong><small>' + html(note) + '</small>' + bar(fraction) + '</div>';
@@ -1325,13 +1323,6 @@ export function boot(): void {
     // A spark has no room to say which points it dropped, so it draws only the
     // runs that asked enough to read a figure off. A line through a one-answer
     // run is a picture of how big the run was.
-
-    function deltaPill(trend: any) {
-      if (!trend || trend.change === null) return '<span class="pill flat">No movement yet</span>';
-      const cls = trend.change > 0 ? "good" : trend.change < 0 ? "bad" : "flat";
-      const arrow = trend.change > 0 ? "↑" : trend.change < 0 ? "↓" : "→";
-      return '<span class="pill ' + cls + '">' + arrow + " " + Math.abs(trend.change) + '</span>';
-    }
 
     function renderLiveRun() {
       const run = state.liveRun;
@@ -1613,12 +1604,6 @@ export function boot(): void {
         + (current === "open" ? '' : moveAction("open", "Reopen")) + '</div>' + effect;
     }
 
-    function effectLabel(effect: any) {
-      return effect === "raises_visibility" ? "Raises the score"
-        : effect === "unblocks_measurement" ? "Unblocks measurement"
-        : "Widens what is measured";
-    }
-
     function renderRankingPlan() {
       if (state.rankPlanState === "idle") { loadRankingPlan(); }
       if (state.actionsState === "idle") { loadActions(); }
@@ -1727,7 +1712,6 @@ export function boot(): void {
       render();
     }
 
-    function uptakePct(value: any) { return value === null || value === undefined ? null : Math.round(value * 100) + "%"; }
 
     function renderUptake() {
       if (state.uptakeState === "idle") { loadUptake(); }
@@ -2049,17 +2033,6 @@ export function boot(): void {
         state.kindsState = "error";
       }
       render();
-    }
-
-    function kindWords(kind: string) {
-      const words: Record<string, string> = {
-        listicle: "Ranked best-of", comparison: "Head to head", guide: "Guide or how-to",
-        documentation: "Documentation", review: "Review", forum: "Forum or community",
-        video: "Video", reference: "Reference work", article: "Article",
-        yours: "Your own site", rival: "A tracked rival", social: "Social", community: "Community",
-        corporate: "A company's own site",
-      };
-      return words[kind] || kind;
     }
 
     function kindRows(rows: any[]) {
@@ -2390,10 +2363,6 @@ export function boot(): void {
         + (state.brief ? '<a class="button" href="/api/projects/' + html(state.selectedId) + '/prompt-brief.md?promptId=' + encodeURIComponent(state.panel.promptId) + '" download>Take the brief</a>' : '')
         + '<button type="button" class="close" data-close-panel aria-label="Close">×</button></div></div>'
         + '<div class="panel-body">' + renderBrief() + '<h3 class="panel-section">The answers themselves</h3>' + body + '</div></aside>';
-    }
-
-    function alertPill(severity: any) {
-      return severity === "critical" ? "bad" : severity === "warning" ? "flat" : "flat";
     }
 
     /** The dashboard is assembled by a module of its own, from the same
@@ -2739,14 +2708,6 @@ export function boot(): void {
       render();
     }
 
-    function historyWord(verdict: string | null) {
-      if (verdict === "cited") return '<span class="state-ok">still cited</span>';
-      if (verdict === "slipping") return '<span class="state-flag">missed one run</span>';
-      if (verdict === "dropped") return '<span class="state-bad">stopped</span>';
-      if (verdict === "cited_once") return '<span class="state-flag">cited once, never again</span>';
-      return '<span class="state-flag">one run only</span>';
-    }
-
     // Pages that stopped being cited, which is a claim no single run can make.
     function renderCitationHistory() {
       if (state.historyState === "idle") { loadHistory(); }
@@ -2815,7 +2776,6 @@ export function boot(): void {
           "A page cited before and not now, which is a change rather than a level.", renderCitationHistory());
     }
 
-    function sharePct(value: any) { return value === null || value === undefined ? null : (Math.round(value * 1000) / 10) + "%"; }
 
     function renderDecomposition(report: any) {
       if (!report || !report.activation || !report.activation.considered) return '';
@@ -2894,14 +2854,6 @@ export function boot(): void {
 
     function taskFor(id: string): any {
       return tasks().find((task: any) => task.id === id) || null;
-    }
-
-    function urgencyLabel(urgency: string) {
-      return urgency === "blocking" ? "blocking" : urgency === "limiting" ? "limiting" : "to do";
-    }
-
-    function urgencyInk(urgency: string) {
-      return urgency === "blocking" ? "state-bad" : urgency === "limiting" ? "state-flag" : "state-ok";
     }
 
     /** Attached to the panel that measured it, so the action is where the
@@ -3481,21 +3433,6 @@ export function boot(): void {
 
     // Open beats settled, and the reason is on the badge, because the order is
     // a judgement and the figures it came from are not.
-    function fieldBadge(row: any) {
-      if (!row || row.contest.state === "unknown") return '';
-      const field = row.contest.state;
-      const tone = field === "open" ? "ready" : field === "settled" ? "warning" : "";
-      const label = field === "open" ? "Open field" : field === "settled" ? "Settled" : "Contested";
-      return '<span class="tag ' + tone + '" title="' + html(row.contest.reason) + '">' + label + '</span>';
-    }
-
-    function demandBadge(row: any) {
-      if (!row || !row.demand) return '';
-      const match = row.demand.match;
-      if (!match.exactTerms && !match.relatedTerms) return '<span class="tag">Nobody asked it in the corpus</span>';
-      return '<span class="tag">Asked ' + match.exactTerms + ' · ' + match.relatedTerms + ' loosely</span>';
-    }
-
     const FIELD_ORDER = { open: 0, contested: 1, settled: 2, unknown: 3 };
 
     function sortedPrompts(rows: any[], standings: any) {
@@ -3920,17 +3857,6 @@ export function boot(): void {
       }
       restoreButton(button);
       render();
-    }
-
-    function reachInk(reach: string) {
-      return reach === "drivable" ? "state-ok" : reach === "sign_in" ? "state-flag" : "state-bad";
-    }
-
-    function reachWords(reach: string) {
-      return reach === "drivable" ? "Can be driven"
-        : reach === "sign_in" ? "Asking to sign in"
-          : reach === "blocked" ? "Sent elsewhere"
-            : "Nothing to drive";
     }
 
     function renderReach() {
@@ -4408,14 +4334,10 @@ export function boot(): void {
     // was a blank page for as long as the first read took.
     render();
     refreshProjects().then(async () => { await refreshConfiguration(); state.booting = false; loadLiveRun(); render(); }).catch((error) => { app.innerHTML = '<main class="workspace"><div class="warning-box">' + html(error instanceof Error ? error.message : String(error)) + '</div></main>'; });
-    function recognitionRunStatusText(status: any) { return status === "queued" ? "Waiting to start" : status === "running" ? "Running" : status === "completed" ? "Completed" : status === "partial" ? "Partly complete" : "Execution failed"; }
-    function recognitionModelStatusText(status: any) { return status === "queued" ? "Waiting to start" : status === "running" ? "Calling" : status === "response_saved" ? "Answer received" : status === "analysis_failed" ? "Local parse failed" : status === "completed" ? "Completed" : status === "unknown" ? "Model could not confirm" : status === "unsupported" ? "Model does not support it" : "Provider Call failed"; }
     function activeRecognitionRun() { return state.recognitionDetail && (((state.recognitionDetail as any).run.status as any) === "queued" || ((state.recognitionDetail as any).run.status as any) === "running") ? (state.recognitionDetail as any).run : null; }
     function recognitionDetailFor(modelRunId: any) { return state.recognitionModelDetails[modelRunId] || null; }
     function recognitionLink(url: any, label: string) { return '<a href="' + html(url) + '" target="_blank" rel="noreferrer">' + html(label) + '</a>'; }
-    function recognitionUrlLabel(url: any) { try { const parsed = new URL(url); return parsed.hostname + parsed.pathname + parsed.search; } catch { return url; } }
     function recognitionEvidenceRows(archive: any) { const rows: any[] = []; const add = (id: any, evidence: any) => { if (evidence && typeof evidence.start === "number" && typeof evidence.end === "number") rows.push({ id, start:evidence.start, end:evidence.end }); }; add(archive.result.id + "-brand", archive.result.recognizedBrand.evidence); add(archive.result.id + "-business", archive.result.businessDescription.evidence); add(archive.result.id + "-detail", archive.result.detailedDescription?.evidence); add(archive.result.id + "-category", archive.result.productCategory.evidence); for (const competitor of archive.competitors) { add(competitor.id, competitor.evidence); add(competitor.id + "-business", competitor.businessDescription.evidence); add(competitor.id + "-category", competitor.productCategory.evidence); } for (const keyword of archive.brandKeywords) add(keyword.id, keyword.evidence); for (const keyword of archive.competitorKeywords) add(keyword.id, keyword.evidence); return rows; }
-    function evidenceJump(id: string) { return '<button type="button" class="evidence-jump" data-evidence-target="' + html(id) + '">View evidence</button>'; }
     function evidenceValue(value: any, id: string) { return value ? html(value) + evidenceJump(id) : '<span class="state-flag">Unconfirmed</span>'; }
     function recognitionIssue(archive: any, field: string) { return (archive.result.fieldIssues || []).find((item: any) => item.field === field) || null; }
     function recognitionMissingText(archive: any, field: string, emptyText: any, missingText: any) { const issue = recognitionIssue(archive, field); return issue && issue.kind === "missing_field" ? '<span class="state-flag">' + html(missingText) + '</span>' : html(emptyText); }
@@ -4423,7 +4345,6 @@ export function boot(): void {
     function renderRecognitionEvidence(detail: any, modelRun: any) { const archive = detail.archive; const attempts = detail.attempts || []; const latest = attempts.length ? attempts[attempts.length - 1] : null; const providerCitations = archive && archive.providerCitations.length ? '<ul>' + archive.providerCitations.map((item: any) => '<li>' + recognitionLink(item.url, item.title || recognitionUrlLabel(item.url)) + '</li>').join("") + '</ul>' : '<p class="subtle">' + (modelRun.recognitionMode === "unaided_domain_recognition" ? "Provider-native web search was not used in this run." : "This model returned no provider citations in this run.") + '</p>'; const answerUrls = archive && archive.answerMentionedUrls.length ? '<ul>' + archive.answerMentionedUrls.map((item: any) => '<li>' + recognitionLink(item.url, recognitionUrlLabel(item.url)) + '</li>').join("") + '</ul>' : '<p class="subtle">The answer body has no URLs outside the confirmed citations.</p>'; const history = attempts.length ? attempts.map((item: any) => '<div class="attempt-row"><strong>Attempt ' + item.attemptNumber + ' · ' + html(recognitionModelStatusText(item.status)) + '</strong>' + (item.errorMessage ? '<span>' + html(item.errorMessage) + '</span>' : '') + '</div>').join("") : '<p class="subtle">No attempt records created yet.</p>'; const revisions = detail.analysisRevisions && detail.analysisRevisions.length ? '<ul>' + detail.analysisRevisions.map((revision: any, index: any) => '<li>Local parse version ' + (index + 1) + ' · ' + (revision.status === "complete" ? "Parsed" : revision.status === "partial" ? "Partly available" : "Parsing failed") + ' · No model was called</li>').join("") + '</ul>' : '<p class="subtle">No new local parse has been created yet.</p>'; const raw = latest && latest.rawAnswer ? '<pre class="raw-answer">' + highlightedRawAnswer(latest.rawAnswer, archive ? recognitionEvidenceRows(archive) : []) + '</pre>' : '<p class="subtle">This model has not returned a raw answer to show yet.</p>'; return '<details class="evidence-details"><summary>View raw answer and evidence</summary><div class="evidence-group"><h4>Provider Citation</h4>' + providerCitations + '</div><div class="evidence-group"><h4>Plain URLs in the answer</h4>' + answerUrls + '</div><div class="evidence-group"><h4>Raw answer</h4>' + raw + '</div><div class="evidence-group"><h4>Attempt records</h4>' + history + '</div><div class="evidence-group"><h4>Local parse version</h4>' + revisions + '</div></details>'; }
     function renderRecognitionSummary(detail: any) { const archive = detail.archive; if (!archive) return ''; const competitors = archive.competitors.length ? archive.competitors.map((item: any) => evidenceValue(item.name, item.id)).join(", ") : recognitionMissingText(archive, "competitors", "This answer listed no competitors", "This answer did not provide this field"); const keywords = archive.brandKeywords.length ? archive.brandKeywords.map((item: any) => evidenceValue(item.keyword, item.id)).join(", ") : recognitionMissingText(archive, "brandKeywords", "This answer listed no associated keywords", "This answer did not provide this field"); const competitorKeywords = archive.competitors.length ? archive.competitors.map((item: any) => { const values = archive.competitorKeywords.filter((keyword: any) => keyword.competitorRecognitionId === item.id).map((keyword: any) => evidenceValue(keyword.keyword, keyword.id)); return html(item.name) + ": " + (values.length ? values.join(", ") : "This answer did not provide this field"); }).join("; ") : recognitionMissingText(archive, "competitors", "This answer listed no competitors", "This answer did not provide this field"); const domainRecognition = archive.result.domainRecognition === null ? recognitionMissingText(archive, "domainRecognition", "This field does not match the required format", "This answer did not clearly return a recognition status") : archive.result.domainRecognition === "recognized" ? '<span class="state-ok">Model explicitly recognized it</span>' : archive.result.domainRecognition === "not_recognized" ? '<span class="state-bad">Model explicitly did not recognize it</span>' : '<span class="state-flag">Model said it could not confirm</span>'; const detailDescription = archive.result.detailedDescription?.value; const detailText = detailDescription ? evidenceValue(detailDescription, archive.result.id + "-detail") : '<span class="state-flag">This answer gave no detailed description</span>'; const issues = archive.result.fieldIssues && archive.result.fieldIssues.length ? '<details class="technical-details"><summary>Field parsing notes</summary><ul class="protocol-list">' + archive.result.fieldIssues.map((item: any) => '<li>' + html(item.field + " · " + item.kind + " · " + item.detail) + '</li>').join("") + '</ul></details>' : ""; return '<div class="recognition-summary"><div><span>Brand the model recognized in this run</span><strong>' + evidenceValue(archive.result.recognizedBrand.value, archive.result.id + "-brand") + '</strong></div><div><span>Recognition status</span><strong>' + domainRecognition + '</strong></div><div><span>Business description</span><strong>' + evidenceValue(archive.result.businessDescription.value, archive.result.id + "-business") + '</strong></div><div><span>Detailed description</span><strong>' + detailText + '</strong></div><div><span>Product category</span><strong>' + evidenceValue(archive.result.productCategory.value, archive.result.id + "-category") + '</strong></div><div><span>Recognized competitors</span><strong>' + competitors + '</strong></div><div><span>Associated keywords</span><strong>' + keywords + '</strong></div><div><span>Keywords per competitor</span><strong>' + competitorKeywords + '</strong></div></div>' + issues; }
     function recognitionRunCounts(detail: any) { const summary = { received:0, complete:0, partial:0, analysisFailed:0, requestLimited:0, running:0 }; for (const modelRun of detail.modelRuns) { const presentation = recognitionDetailFor(modelRun.id)?.presentation; if (!presentation) { if (modelRun.status === "queued" || modelRun.status === "running") summary.running += 1; continue; } if (presentation.requestExecution === "response_received") summary.received += 1; if (presentation.localAnalysis === "complete") summary.complete += 1; else if (presentation.localAnalysis === "partial") summary.partial += 1; else if (presentation.localAnalysis === "failed") summary.analysisFailed += 1; if (presentation.requestExecution === "request_rejected" || presentation.requestExecution === "transport_failed") summary.requestLimited += 1; if (presentation.requestExecution === "running" || presentation.requestExecution === "not_started") summary.running += 1; } return summary; }
-    function recognitionCountLabels(summary: any) { return [["Answer received", summary.received], ["Fully parsed", summary.complete], ["Partly available", summary.partial], ["Parsing failed", summary.analysisFailed], ["Request throttled or failed", summary.requestLimited], ["Still running", summary.running]]; }
     function recognitionRunSummary(detail: any) { return recognitionCountLabels(recognitionRunCounts(detail)).map((entry) => entry[0] + " " + entry[1]).join(" · "); }
     function recognitionCountStrip(detail: any) { return '<div class="countstrip">' + recognitionCountLabels(recognitionRunCounts(detail)).map((entry) => '<span class="count' + (entry[1] ? "" : " is-zero") + '"><strong>' + entry[1] + '</strong>' + html(entry[0]) + '</span>').join("") + '</div>'; }
     function renderRecognitionModel(modelRun: any) { const detail = recognitionDetailFor(modelRun.id); const latest = detail && detail.attempts.length ? detail.attempts[detail.attempts.length - 1] : null; const presentation = detail ? detail.presentation : null; const mode = modelRun.recognitionMode === "native_web_domain_discovery" ? "Provider Native web findings" : "Offline domain recognition"; // Delivery, not recognition outcome. The report shows the other axis.

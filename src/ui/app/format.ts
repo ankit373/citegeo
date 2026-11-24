@@ -41,3 +41,11 @@ export function remaining(done: number, total: number, elapsedMs: number): strin
   if (minutes < 90) return `about ${minutes} min left`;
   return `about ${Math.round(minutes / 60)} hr left`;
 }
+
+export function sharePct(value: number | null | undefined): string | null {
+  return value === null || value === undefined ? null : (Math.round(value * 1000) / 10) + "%";
+}
+
+export function uptakePct(value: number | null | undefined): string | null {
+  return value === null || value === undefined ? null : Math.round(value * 100) + "%";
+}
