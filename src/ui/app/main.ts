@@ -11,7 +11,7 @@ import { alertPill, effectLabel, historyWord, intentLabel, kindWords, reachInk, 
 import { deltaPill, demandBadge, fieldBadge } from "./components/badges.js";
 import { bar, creditRows, experimentCard, outreachRow, overAppearances, renderLeaderboard, renderPersonaRows, searchDemandRow, shapeRow, stat, verdictButtons } from "./pages/metric-cells.js";
 import { crawlerUpload, languagePicker, pasteCountPicker, repetitionPicker } from "./components/pickers.js";
-import { blockedSelection, catalogHead, catalogReleasedAt, catalogResultSummary, catalogVendor, providerShortLabel, runsNowCell, selectedRows } from "./components/catalog-rows.js";
+import { blockedSelection, catalogHead, catalogReleasedAt, catalogResultSummary, catalogVendor, modelIsBlocked, openRouterOutOfCredit, providerShortLabel, runsNowCell, selectedRows } from "./components/catalog-rows.js";
 import { mentionChips, paneRun, renderLiveRun, runIsLive, runPaneProgress } from "./pages/run-pane.js";
 import { recognitionCountStrip, recognitionRunSummary, renderRecognitionModel, type RecognitionRunDetail } from "./pages/recognition-view.js";
 import { loading, skeletonCard, skeletonTable, skeletonText, skeletonTiles } from "./components/skeleton.js";
@@ -567,9 +567,6 @@ export function boot(): void {
         + orphan + crawlerUpload(state.crawlerUploading, state.crawlerNotice) + '</section>';
     }
 
-    /** The door. The log could only ever be named by an environment variable
-     * set where the server runs, so anybody without a shell on that machine
-     * could not use this feature at all. */
     async function uploadCrawlerLog(file: File) {
       const selected = project();
       if (!selected || state.crawlerUploading) return;
@@ -1299,10 +1296,6 @@ export function boot(): void {
       return found ? found.label : id;
     }
 
-    // Asking twice is the only way to see how much of an answer is the day
-    // rather than the question, and every extra pass is another paid call.
-    // The same question in another language is a different question to a model,
-    // and until this existed there was no way to ask one from here at all.
     // A second run is refused by the server, so the page must not offer one.
     function runActionButton(label: string, enabled?: boolean) {
       if (state.liveRun) return button({ label: "Watch the run", kind: "primary", on: { "data-open-run": state.liveRun.id } });
@@ -3521,10 +3514,6 @@ export function boot(): void {
       return '<section class="section-card"><div class="section-head"><div><h2>Getting a result</h2><p class="subtle">Three steps, in order. Each one unlocks the next.</p></div></div><ol class="steps">' + rows + '</ol></section>';
     }
     function renderOverview() { const selected = project(); if (!selected) return '<section class="view"><div class="heading"><div><h1>Project</h1><p class="subtle">Create a project before configuring AI models and monitoring.</p></div></div>' + renderProjectCards() + '</section>'; const configuration = monitoringConfiguration(); return '<section class="view"><div class="heading"><div><h1>Project overview</h1><p class="subtle">A project is bound to one domain. Save models and web search modes as the fixed configuration for later monitoring.</p></div></div><div class="toolbar"><button type="button" class="filter ' + (state.mode === "current" ? "active" : "") + '" data-list-mode="current">Current</button><button type="button" class="filter ' + (state.mode === "archived" ? "active" : "") + '" data-list-mode="archived">Archived</button><button type="button" class="filter ' + (state.mode === "deleted" ? "active" : "") + '" data-list-mode="deleted">Recently deleted</button></div>' + renderNextSteps(configuration) + renderProjectCards() + '<section class="detail"><div class="card-header"><div><h2 data-testid="selected-project-title">' + html(selected.name) + '</h2><p class="subtle">The saved record for this project.</p></div></div><div class="detail-grid"><div class="detail-cell"><span>Primary domain</span><strong class="mono" data-testid="selected-project-domain">' + html(selected.normalizedDomain) + '</strong></div><div class="detail-cell"><span>Selected models</span><strong>' + state.selections.length + '</strong></div><div class="detail-cell"><span>Current version</span><strong>' + html(configuration.currentVersion ? "v" + configuration.currentVersion : "Not saved yet") + '</strong></div><div class="detail-cell"><span>Project ID</span><strong data-testid="selected-project-id">' + html(selected.id) + '</strong></div></div><form id="project-edit-form" class="form"><h3 class="form-title">Edit this project</h3><div class="field"><label for="edit-domain">Primary domain</label><input id="edit-domain" value="' + html(selected.primaryDomain) + '"></div><div class="field"><label for="edit-name">Project name</label><input id="edit-name" value="' + html(selected.name) + '"></div><div class="actions">' + button({ label: "Save project", kind: "primary", submit: true, testId: "save-project" }) + button({ label: "Archive", id: "archive-project", testId: "archive-project" }) + button({ label: "Delete project", tone: "danger", id: "delete-project", testId: "delete-project" }) + '</div></form></section></section>'; }
-    /** The label lives on the provider row, so a provider added there is named
-     * here too. Spelling it out again is how five of them read as "Local". */
-    /** A selection the server will refuse. Its catalogue checkbox is disabled
-     * for the same reason, so the row has to offer the only way to clear it. */
     function renderSelectedModels(readOnly?: any) { return selectedModelTable({ readOnly, rows: selectedRows(state.catalog, state.selections, state.draftSelections, state.catalogState).map((row) => ({ modelId: row.modelId, displayName: String((row.model as any).displayName), providerLabel: providerShortLabel(state.providers, (row.model as any).providerId), webSearchMode: row.webSearchMode === "provider_native" ? "provider_native" as const : "off" as const, nativeWebSearchSupported: (row.model as any).nativeWebSearchSupported === true, runnable: row.inCatalog ? runsNowCell(row.model, row.modelId, state.providers) : "", unavailable: blockedSelection(row) })) }); }
     function catalogVendors() { return Array.from(new Set(state.catalog.map((item) => catalogVendor(item)).filter((vendor) => vendor.length > 0))).sort((left, right) => left.localeCompare(right)); }
     function filteredCatalogModels() { const query = state.query.toLocaleLowerCase(); const results = state.catalog.filter((item) => { const vendor = catalogVendor(item); const matchesQuery = item.displayName.toLocaleLowerCase().includes(query) || item.modelId.toLocaleLowerCase().includes(query) || vendor.toLocaleLowerCase().includes(query); const matchesVendor = !state.catalogProvider || vendor === state.catalogProvider; const matchesSearch = state.catalogNativeSearch === "all" || (state.catalogNativeSearch === "supported" ? item.nativeWebSearchSupported : !item.nativeWebSearchSupported); return matchesQuery && matchesVendor && matchesSearch; }); results.sort((left, right) => { const leftVendor = catalogVendor(left); const rightVendor = catalogVendor(right); if (state.catalogSort === "vendor") { const vendorOrder = leftVendor.localeCompare(rightVendor); return vendorOrder || left.displayName.localeCompare(right.displayName); } if (state.catalogSort === "newest" || state.catalogSort === "oldest") { const leftReleasedAt = catalogReleasedAt(left); const rightReleasedAt = catalogReleasedAt(right); if (leftReleasedAt === null && rightReleasedAt === null) return left.displayName.localeCompare(right.displayName); if (leftReleasedAt === null) return 1; if (rightReleasedAt === null) return -1; return state.catalogSort === "newest" ? rightReleasedAt - leftReleasedAt : leftReleasedAt - rightReleasedAt; } return left.displayName.localeCompare(right.displayName); }); return results.slice(0, 80); }
@@ -3534,10 +3523,9 @@ export function boot(): void {
     function refreshCatalogSearchResults() { const list = document.querySelector(".model-list"); const summary = document.querySelector(".catalog-result-summary"); if (!list || !summary || state.catalogState !== "ready") { render(); return; } const results = filteredCatalogModels(); summary.textContent = catalogResultSummary(results.length); list.innerHTML = results.length === 0 ? '<p class="subtle">No matching models.</p>' : renderCatalogModelRows(results); }
     function blockedSelectionBanner() {
       if (state.providersState !== "ready") return '';
-      const stalled = state.providers.some((provider) => provider.providerId === "openrouter" && provider.balance && !provider.balance.paidModelsRunnable);
-      if (!stalled) return '';
+      if (!openRouterOutOfCredit(state.providers)) return '';
       const rows = selectedRows(state.catalog, state.selections, state.draftSelections, state.catalogState);
-      const blocked = rows.filter((row) => row.model && (row.model as any).providerId === "openrouter" && !row.modelId.endsWith(":free"));
+      const blocked = rows.filter((row) => modelIsBlocked(row.model, row.modelId, state.providers));
       if (!blocked.length) return '';
       return '<div class="warning-box">' + blocked.length + ' of these ' + rows.length + ' models cannot run right now. This OpenRouter account has no credit, so each one answers HTTP 402 and returns no answer. Models ending in :free still run, and local gateway models cost nothing. Setup shows the full picture.</div>';
     }

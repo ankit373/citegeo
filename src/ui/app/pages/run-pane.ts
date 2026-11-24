@@ -27,10 +27,9 @@ export function renderLiveRun(run: RunRow | null): string {
 }
 
 export function paneRun(panel: Panel | null, liveRun: RunRow | null, lastRun: RunRow | null): RunRow | null {
-  const open = panel;
-  if (!open || open.kind !== "run") return null;
-  if (liveRun && liveRun.id === open.runId) return liveRun;
-  return lastRun && lastRun.id === open.runId ? lastRun : null;
+  if (!panel || panel.kind !== "run") return null;
+  if (liveRun && liveRun.id === panel.runId) return liveRun;
+  return lastRun && lastRun.id === panel.runId ? lastRun : null;
 }
 
 export function runIsLive(run: RunRow | null): boolean {

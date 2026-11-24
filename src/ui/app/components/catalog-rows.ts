@@ -18,6 +18,8 @@ export function selectedRows(catalog: CatalogModel[], selections: SelectionRow[]
     .filter((item): item is SelectedRow => Boolean(item.model));
 }
 
+/** The label lives on the provider row, so a provider added there is named
+ * here too. Spelling it out again is how five of them read as "Local". */
 export function providerShortLabel(providers: ProviderRow[], providerId: string): string {
   const row = providers.find((provider) => provider.providerId === providerId);
   return row ? row.label : String(providerId);
@@ -36,6 +38,8 @@ export function runsNowCell(model: ModelFacts | null | undefined, modelId: strin
   return modelIsBlocked(model, modelId, providers) ? '<span class="mcell state-flag">No credit</span>' : '<span class="mcell state-ok">Yes</span>';
 }
 
+/** A selection the server will refuse. Its catalogue checkbox is disabled
+ * for the same reason, so the row has to offer the only way to clear it. */
 export function blockedSelection(row: { inCatalog: boolean; model?: { available?: boolean | undefined } | null | undefined }): boolean {
   return !row.inCatalog || Boolean(row.model && row.model.available === false);
 }
