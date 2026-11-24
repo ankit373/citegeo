@@ -6,7 +6,7 @@ import type { MonitoringProject } from "../projects/project-schema.js";
 import type { ProjectInsight } from "../insights/insight-schema.js";
 import { ProjectInsightBuilder } from "../insights/project-insight-builder.js";
 import { scopeToProject } from "../projects/project-scope.js";
-import { isCompleteRun, isCurrentDataRun, RunSelector } from "./run-selection.js";
+import { isCurrentDataRun, RunSelector } from "./run-selection.js";
 
 export interface BaselineDashboardSummary {
   baselineId: string;

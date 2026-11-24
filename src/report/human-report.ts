@@ -143,7 +143,7 @@ function modelName(run: PromptRun): string {
   return parts[parts.length - 1] || run.model || run.providerId;
 }
 
-function searchSummary(run: PromptRun, locale: HumanReportLocale): string {
+function searchSummary(run: PromptRun, _locale: HumanReportLocale): string {
   const search = run.search || run.result?.search;
   if (!search?.used) {
     return search?.requested
@@ -197,7 +197,7 @@ function intentStatements(runs: IndexedRun[], select: (analysis: IntentRunAnalys
   return output;
 }
 
-function competitorStories(runs: IndexedRun[], locale: HumanReportLocale): CompetitorStory[] {
+function competitorStories(runs: IndexedRun[], _locale: HumanReportLocale): CompetitorStory[] {
   const grouped = new Map<string, EntityEvidence[]>();
   for (const row of entities(runs).filter((item) => confirmed(item.entity))) {
     const key = row.entity.canonicalUrl || row.entity.canonicalName || row.entity.name;
@@ -220,7 +220,7 @@ function competitorStories(runs: IndexedRun[], locale: HumanReportLocale): Compe
     .slice(0, 3);
 }
 
-function modelComparisons(audit: AuditRun, runs: IndexedRun[], locale: HumanReportLocale): ModelComparisonStory[] {
+function modelComparisons(audit: AuditRun, runs: IndexedRun[], _locale: HumanReportLocale): ModelComparisonStory[] {
   const groups = new Map<string, IndexedRun[]>();
   for (const item of runs) {
     const key = `${item.run.providerId}::${item.run.model}`;
@@ -253,7 +253,7 @@ function modelComparisons(audit: AuditRun, runs: IndexedRun[], locale: HumanRepo
   });
 }
 
-function headline(audit: AuditRun, runs: IndexedRun[], competitors: CompetitorStory[], locale: HumanReportLocale): string {
+function headline(audit: AuditRun, runs: IndexedRun[], competitors: CompetitorStory[], _locale: HumanReportLocale): string {
   const recognized = runs.some((item) => Boolean(targetMention(item.run)));
   const natural = runs.some((item) => item.run.prompt.auditCategory === "organic_discovery" && Boolean(targetMention(item.run)));
   const competitor = competitors[0]?.name;
@@ -264,7 +264,7 @@ function headline(audit: AuditRun, runs: IndexedRun[], competitors: CompetitorSt
   return `This run does not provide enough evidence that AI accurately recognizes ${audit.target.name}.`;
 }
 
-function differenceStatements(runs: IndexedRun[], locale: HumanReportLocale): EvidenceStatement[] {
+function differenceStatements(runs: IndexedRun[], _locale: HumanReportLocale): EvidenceStatement[] {
   const output: EvidenceStatement[] = [];
   for (const item of runs) {
     if (item.run.prompt.auditCategory !== "organic_discovery" || targetMention(item.run)) continue;
@@ -290,7 +290,7 @@ function citationTitle(citation: Citation): string {
   }
 }
 
-function sourceStory(citation: Citation, index: number, locale: HumanReportLocale): SourceStory {
+function sourceStory(citation: Citation, index: number, _locale: HumanReportLocale): SourceStory {
   const target = citation.citationType === "target_official" || citation.citationType === "target_github";
   const competitor = citation.citationType === "competitor_official";
   const thirdParty = citation.citationType === "third_party";

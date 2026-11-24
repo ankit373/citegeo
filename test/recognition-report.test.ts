@@ -325,11 +325,12 @@ test("report HTTP handler matches recognition-runs route not legacy runs route",
     },
   } as unknown as RecognitionReportService;
   let handled = false;
-  const send = (status: number, body: unknown) => { handled = true; };
+  const send = (_status: number, _body: unknown) => { handled = true; };
 
   const recognitionRunsRoute = ["api", "projects", "proj-1", "recognition-runs", "run-1", "reports"];
   const result1 = await handleRecognitionReportApi({ method: "GET", route: recognitionRunsRoute, service: mockService, send });
   assert.equal(result1, true, "recognition-runs route should be handled");
+  assert.equal(handled, true, "a handled route should have answered");
 
   const legacyRunsRoute = ["api", "projects", "proj-1", "runs", "run-1", "reports"];
   const result2 = await handleRecognitionReportApi({ method: "GET", route: legacyRunsRoute, service: mockService, send });

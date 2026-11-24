@@ -8,7 +8,7 @@ import { buildSentimentVolatility, type SentimentVolatility } from "./sentiment-
 import { compareToTier, type BrandTier, type TierComparison } from "./visibility-tier.js";
 import { buildVersionReport, type VersionReport } from "./model-version.js";
 import { FAILURE_WORDS, nextTasks, type MeasurementTask } from "./next-task.js";
-import { asDomain, domainLabel, tokenize } from "./prompt-identity.js";
+import { asDomain, tokenize } from "./prompt-identity.js";
 import { buildPromptTrend, type PromptTrend } from "./prompt-trend.js";
 import { canonicalUrl } from "../citations/canonical-url.js";
 import { region, REGION_CAVEAT } from "./region.js";
@@ -398,7 +398,7 @@ function trackedStandings(competitors: Competitor[], leaderboard: EntityStanding
 
 /** Prompts grouped one level below their topic. A set that was never grouped
  * has no subtopics rather than one called "other". */
-function subtopicStandings(rows: PromptStanding[], answers: PromptAnswer[], set: TopicSet): SubtopicStanding[] {
+function subtopicStandings(rows: PromptStanding[], answers: PromptAnswer[], _set: TopicSet): SubtopicStanding[] {
   const groups = new Map<string, PromptStanding[]>();
   for (const row of rows) {
     if (!row.subtopic) continue;

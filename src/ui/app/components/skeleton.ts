@@ -21,7 +21,7 @@ export function skeletonTable(options: SkeletonOptions = {}): string {
   const columns = options.columns || "minmax(0,1fr) 96px 82px";
   const cells = columns.split(" ").length;
   const row = `<div class="sk-row" style="grid-template-columns:${html(columns)}">`
-    + Array.from({ length: cells }, (unused, index) => line(index === 0 ? "70%" : "58%")).join("")
+    + Array.from({ length: cells }, (_unused, index) => line(index === 0 ? "70%" : "58%")).join("")
     + "</div>";
   return `<div class="sk" aria-hidden="true">${row.repeat(rows)}</div>`;
 }
@@ -37,7 +37,7 @@ export function skeletonTiles(tiles = 4): string {
 export function skeletonText(lines = 3): string {
   const widths = ["92%", "84%", "66%", "78%", "58%"];
   return `<div class="sk" aria-hidden="true">`
-    + Array.from({ length: lines }, (unused, index) => line(widths[index % widths.length] || "80%")).join("")
+    + Array.from({ length: lines }, (_unused, index) => line(widths[index % widths.length] || "80%")).join("")
     + "</div>";
 }
 

@@ -1,0 +1,305 @@
+# GitHub's rulesets protect the branches. This holds the conventions that are
+# written down in CLAUDE.md and docs/ and were enforced by nobody.
+#
+# Mergify reports all merge protections through one "Mergify Merge Protections"
+# check, which names each active rule in its output and in a comment. A rule is
+# active only when its "if" matches, so a docs change is not asked about a browser.
+
+merge_protections_settings:
+  reporting_method: check-runs
+  # One gate check carries all of these, so the per-rule verdicts go in a
+  # comment as well, where a reader sees which one they tripped.
+  post_comment: true
+  # Nothing merges itself. A pull request is auto-merged only once a human has
+  # put the auto-merge label on it, and only after it would have merged anyway.
+  auto_merge_conditions:
+    - label = auto-merge
+
+merge_protections:
+  - name: Qualifying jobs are green
+    description: >
+      One aggregating check rather than each job named by string. The ruleset
+      named the matrix jobs individually, and moving the matrix left it
+      requiring a job that could never report, with no bypass actor.
+    if:
+      - -draft
+    success_conditions:
+      - check-success = PR Gate
+      - check-success = Check the CLA signature
+
+  - name: Links an issue
+    description: >
+      Every pull request names the issue it closes, so the board reflects the
+      work. The release PR rolls up work that is already linked.
+    if:
+      - base = main
+      - -author = dependabot[bot]
+      # Anyone can name a branch, so the exemption also needs a bot in this repository.
+      - not:
+          and:
+            - head ~= ^release-please--
+            - author ~= \[bot\]$
+            - -from-fork
+    success_conditions:
+      - body ~= (?i)\b(close[sd]?|fix(e[sd])?|resolve[sd]?|part of)\s+#\d+
+
+  - name: Title says what kind of change this is
+    description: >
+      The history is read as a changelog source. A title that does not say
+      whether it is a fix, a feature or a chore costs a reader the diff.
+    if:
+      - -author = dependabot[bot]
+    success_conditions:
+      - title ~= ^(feat|fix|chore|docs|test|refactor|perf|ci|build|revert)(\(.+\))?!?:\s.+
+
+  - name: No assistant attribution
+    description: >
+      No Co-Authored-By, Signed-off-by or generated-by line naming an assistant,
+      in the commits or the description. Human sign-off for the DCO is separate
+      and is checked by its own workflow.
+    if:
+      - -author = dependabot[bot]
+    success_conditions:
+      - -body ~= (?i)(co-authored-by|signed-off-by).*(claude|copilot|chatgpt|gpt-|gemini|anthropic|openai)
+      - -body ~= (?i)generated with
+      - -commits[*].commit_message ~= (?i)(co-authored-by|signed-off-by).*(claude|copilot|chatgpt|gpt-|gemini|anthropic|openai)
+      - -commits[*].commit_message ~= (?i)generated with \[
+
+  - name: Plain prose
+    description: >
+      No em dashes, in the title or the description. The character is written
+      here as an escape so this file does not break its own rule.
+    if:
+      - -author = dependabot[bot]
+    success_conditions:
+      - -title ~= —
+      - -body ~= —
+
+  - name: Review threads are resolved
+    description: >
+      An unresolved thread on an approved pull request is a question nobody
+      answered. It has silently dropped approved work out of a queue before.
+    if:
+      - -draft
+      - "#changes-requested-reviews-by = 0"
+    success_conditions:
+      - "#review-threads-unresolved = 0"
+
+  - name: Interface change was opened in a browser
+    description: >
+      The emitted shells are strings TypeScript cannot see inside. The suite has
+      passed on an application that did not boot, three merges running. Say in
+      the description what you opened, or label it browser-checked.
+    if:
+      - -author = dependabot[bot]
+      - or:
+          - files ~= ^src/ui/
+          - files ~= ^src/site/
+    success_conditions:
+      - or:
+          - label = browser-checked
+          - body ~= (?i)browser
+
+  - name: Product change reaches the tests
+    description: >
+      A change under src/product with no test beside it is a behaviour nothing
+      holds. Label it no-test-needed if the change really cannot be observed.
+    if:
+      - -author = dependabot[bot]
+      - files ~= ^src/product/
+    success_conditions:
+      - or:
+          - files ~= ^test/
+          - files ~= ^e2e/
+          - label = no-test-needed
+
+  - name: The lockfile keeps step
+    description: >
+      A package.json moved without its lockfile is an install that resolves
+      differently on the next machine than it did on this one.
+    if:
+      - files = package.json
+    success_conditions:
+      - files = package-lock.json
+
+  - name: A workflow change is reviewed by the owner
+    description: >
+      A workflow runs with the repository's token once it lands, so anyone
+      else's edit needs the owner's approval. main's ruleset also names checks
+      by string, so a renamed job strands it: label ruleset-reviewed once looked.
+    if:
+      - files ~= ^\.github/workflows/
+    success_conditions:
+      - or:
+          - author = ankit373
+          - author = dependabot[bot]
+          - approved-reviews-by = ankit373
+      - label = ruleset-reviewed
+
+  - name: Credential and session code is reviewed
+    description: >
+      src/product/auth holds the credential store, the session, the login
+      throttle and the OAuth state. This tool ships with no authentication and
+      says so, which makes the little it does have worth a second look.
+    if:
+      - files ~= ^src/product/auth/
+    success_conditions:
+      - label = security-reviewed
+
+  - name: A release bumps the version
+    description: >
+      A release PR that misses the chart or the manifest publishes an image
+      the chart cannot pull. It also touches nothing but the release files.
+    if:
+      - head ~= ^release-please--
+    success_conditions:
+      - files = package.json
+      - files = CHANGELOG.md
+      - files = deploy/helm/citegeo/Chart.yaml
+      - files = deploy/kubernetes/citegeo.yaml
+      - -files ~= ^(?!(CHANGELOG\.md|\.release-please-manifest\.json|package\.json|package-lock\.json|deploy/helm/citegeo/Chart\.yaml|deploy/kubernetes/citegeo\.yaml)$)
+
+  - name: The owner approves a release
+    description: >
+      Merging the release PR publishes a release and an image that cannot be
+      changed. It waits for the owner, and for a failed smoke test to be cleared.
+    if:
+      - head ~= ^release-please--
+    success_conditions:
+      - approved-reviews-by = ankit373
+      - -label = release:blocked
+
+queue_rules:
+  - name: default
+    merge_method: squash
+    update_method: merge
+    batch_size: 1
+    # About three times the slowest green CI run; a hung runner dequeues instead of holding the queue.
+    checks_timeout: 30 min
+    # Checked on the pull request itself. Separate merge conditions run on a draft
+    # that Mergify authors, and the CLA check would judge Mergify, not the author.
+    queue_conditions:
+      - -draft
+      - -conflict
+      - check-success = PR Gate
+      - check-success = Check the CLA signature
+    merge_conditions: []
+
+merge_queue:
+  max_parallel_checks: 1
+  # One comment with the result: merged, or dequeued and why.
+  status_comments: outcomes
+
+pull_request_rules:
+  - name: Say so when a pull request stops merging cleanly
+    conditions:
+      - conflict
+      - -closed
+    actions:
+      label:
+        add:
+          - conflict
+      comment:
+        message: >
+          This no longer merges cleanly into `{{base}}`. Merge the base branch
+          in, and the label clears itself.
+
+  - name: Clear the conflict label once it merges cleanly again
+    conditions:
+      - -conflict
+      - label = conflict
+    actions:
+      label:
+        remove:
+          - conflict
+
+  - name: Mark a pull request that has fallen behind
+    conditions:
+      - -closed
+      - -draft
+      - "#commits-behind > 0"
+    actions:
+      label:
+        add:
+          - needs-rebase
+
+  - name: Clear the rebase label once it is level again
+    conditions:
+      - "#commits-behind = 0"
+      - label = needs-rebase
+    actions:
+      label:
+        remove:
+          - needs-rebase
+
+  - name: Hand a pull request back to its author after a review
+    conditions:
+      - -closed
+      - "#changes-requested-reviews-by > 0"
+    actions:
+      label:
+        add:
+          - needs-author
+
+  - name: Take the label back once the review is addressed
+    conditions:
+      - "#changes-requested-reviews-by = 0"
+      - label = needs-author
+    actions:
+      label:
+        remove:
+          - needs-author
+
+  - name: Label the interface
+    conditions:
+      - files ~= ^src/ui/
+    actions:
+      label:
+        add:
+          - area/interface
+
+  - name: Label the product
+    conditions:
+      - files ~= ^src/product/
+    actions:
+      label:
+        add:
+          - area/product
+
+  - name: Label the providers
+    conditions:
+      - files ~= ^src/providers/
+    actions:
+      label:
+        add:
+          - area/providers
+
+  - name: Label the documentation
+    conditions:
+      - files ~= ^(docs/|README\.md|CHANGELOG\.md)
+    actions:
+      label:
+        add:
+          - area/docs
+
+  - name: Label the deployment
+    conditions:
+      - files ~= ^deploy/
+    actions:
+      label:
+        add:
+          - area/deploy
+
+  - name: Label the pipeline
+    conditions:
+      - files ~= ^(\.github/|scripts/|\.mergify\.yml)
+    actions:
+      label:
+        add:
+          - area/ci
+
+# Queueing is the merge button, so only the owner may press it.
+commands_restrictions:
+  queue:
+    conditions:
+      - sender = ankit373

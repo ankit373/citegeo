@@ -284,15 +284,14 @@ CI fails on drift.
 
 ## Branching
 
-`develop` is where work lands. Branch from it, open a pull request against it,
-and let the owner merge.
+`main` is the only branch. Branch from it, open a pull request against it, and
+let the owner merge. The queue squashes, so the pull request title becomes the
+commit and release-please reads it.
 
-`main` is the released state and is only ever moved from `develop`, after the
-application has been opened in a browser and seen to work. It has been broken
-once by three pull requests that were green on every check, because nothing in
-CI loads the page the way a browser does.
-
-`main` is protected: pull request, five required checks, no bypass.
+A release is the release PR that release-please keeps open. Open the
+application in a browser before approving it. `main` has been broken once by
+three pull requests that were green on every check, because nothing in CI
+loads the page the way a browser does.
 
 ## Writing
 

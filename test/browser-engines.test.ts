@@ -55,7 +55,7 @@ test("drawing the page does not reach into the reader's browser", async () => {
   // Measured live: opening Models attached a debugger to the developer's own
   // signed-in Chrome, once per server process, with nothing asked for.
   const asked: Array<boolean | undefined> = [];
-  const engines = { status: async (unused: string, probe?: boolean) => { asked.push(probe); return { engines: [] }; } };
+  const engines = { status: async (_unused: string, probe?: boolean) => { asked.push(probe); return { engines: [] }; } };
   const call = (search: string) => handleEngineApi({
     method: "GET",
     route: ["api", "projects", "p1", "engines"],

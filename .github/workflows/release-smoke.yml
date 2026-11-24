@@ -1,0 +1,113 @@
+name: Release smoke test
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+      expect_latest:
+        required: false
+        type: boolean
+        default: false
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Published release tag to check, such as v0.6.1"
+        required: true
+        type: string
+      expect_latest:
+        description: "Also fail if latest is not this tag's image"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+env:
+  RELEASE_TAG: ${{ inputs.tag }}
+  EXPECT_LATEST: ${{ inputs.expect_latest }}
+  IMAGE: ghcr.io/ankit373/citegeo
+
+jobs:
+  smoke:
+    name: Published image runs
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          ref: refs/tags/${{ inputs.tag }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "26"
+          package-manager-cache: false
+
+      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1  # v4.4.0
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069  # v4.4.1
+
+      - name: The tag and latest point at one image
+        run: |
+          digest() {
+            docker buildx imagetools inspect "$IMAGE:$1" --format '{{json .Manifest}}' | jq -r .digest
+          }
+          tagged=$(digest "$RELEASE_TAG")
+          echo "$IMAGE:$RELEASE_TAG is $tagged"
+          platforms=$(docker buildx imagetools inspect "$IMAGE:$RELEASE_TAG" --format '{{json .Manifest}}' \
+            | jq -r '[.manifests[].platform | select(.os == "linux") | "\(.os)/\(.architecture)"] | sort | join(" ")')
+          case "$platforms" in
+            *linux/amd64*linux/arm64*) ;;
+            *) echo "::error::$RELEASE_TAG is published for '$platforms', not amd64 and arm64"; exit 1 ;;
+          esac
+          if [ "$EXPECT_LATEST" = "true" ] && [ "$(digest latest)" != "$tagged" ]; then
+            echo "::error::latest is not $RELEASE_TAG"
+            exit 1
+          fi
+
+      - name: Pull and run it as a user would
+        env:
+          RELEASE_IMAGE: ${{ env.IMAGE }}:${{ inputs.tag }}
+          RELEASE_VERSION: ${{ inputs.tag }}
+        run: |
+          RELEASE_SOURCE_SHA=$(git rev-parse HEAD)
+          export RELEASE_SOURCE_SHA
+          for platform in linux/amd64 linux/arm64; do
+            docker pull --platform "$platform" "$RELEASE_IMAGE"
+            node scripts/verify-release-container.mjs "$platform"
+            docker image rm "$RELEASE_IMAGE"
+          done
+
+  hold:
+    name: Hold the next release
+    needs: smoke
+    if: failure() && github.event_name == 'release'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      issues: write
+      pull-requests: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - name: Open an issue and label the release PR
+        run: |
+          gh label create release:blocked --color B60205 \
+            --description "A published release failed its smoke test" --force
+          title="Release smoke test failed for $RELEASE_TAG"
+          open=$(gh issue list --state open --label release:blocked --search "\"$title\" in:title" \
+            --json number --jq '.[0].number // ""')
+          if [ -n "$open" ]; then
+            gh issue comment "$open" --body "Failed again: $RUN_URL"
+          else
+            gh issue create --title "$title" --label release:blocked --body \
+              "The published $RELEASE_TAG image failed its smoke test: $RUN_URL. The open release PR is labelled release:blocked, so the next release waits. Fix forward, then close this issue and remove the label."
+          fi
+          for pr in $(gh pr list --state open --label "autorelease: pending" --json number --jq '.[].number'); do
+            gh pr edit "$pr" --add-label release:blocked
+          done

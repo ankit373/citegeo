@@ -1,16 +1,20 @@
 import { CONFIG } from "./config.js";
-import { dashboardBody, dashboardPanels, heroStats, type DashboardData } from "./pages/dashboard-view.js";
+import { html } from "./dom.js";
+import { sparkline, trendChart } from "./components/chart.js";
+import { boardStatus, dashboardBody, dashboardPanels, headline, heroStats, type DashboardData } from "./pages/dashboard-view.js";
 import { buyingView, claimsView, conversationsView, draftsView, entityView, marketerView } from "./pages/marketer-view.js";
 import { exportName, filterSummary, matchesQuery, panelCsv } from "./components/panel-tools.js";
 import { emptyState, notice, section } from "./components/primitives.js";
 import { button } from "./components/button.js";
-import { remaining } from "./format.js";
+import { archived, remaining, sharePct, uptakePct } from "./format.js";
+import { alertPill, effectLabel, historyWord, intentLabel, kindWords, reachInk, reachWords, recognitionCountLabels, recognitionModelStatusText, recognitionRunStatusText, recognitionUrlLabel, urgencyInk, urgencyLabel } from "./labels.js";
+import { deltaPill, demandBadge, evidenceJump, fieldBadge } from "./components/badges.js";
 import { loading, skeletonCard, skeletonTable, skeletonText, skeletonTiles } from "./components/skeleton.js";
 import { clearToasts, toast } from "./components/toast.js";
 import { DESTINATIONS, navScrim, navToggle, sidebar, wireNav } from "./components/nav.js";
 import { hasPanelOrder, resetPanelOrder, setPanelSpan, togglePanelHidden, wirePanelDrag } from "./components/reorder.js";
 import { wireChartHover } from "./components/chart-hover.js";
-import { setupView, type CredentialRow, type IntegrationRow, type ProviderRow, type SetupData, type StorageCheck, type StorageSettings } from "./pages/setup-view.js";
+import { setupView, type CredentialRow, type IntegrationRow, type ProviderRow, type StorageCheck, type StorageSettings } from "./pages/setup-view.js";
 import { selectedModelTable, webSearchModeControl } from "./components/model-picker.js";
 
 /** What moved since the previous run, in sentences. Only built when
@@ -142,7 +146,7 @@ export function boot(): void {
 
     function render(): void { announce(); if (renderOverride) renderOverride(); else phase2RenderImpl(); }
     const element = (id: string) => document.getElementById(id) as any;
-    const html = (value: unknown) => String(value).split("&").join("&amp;").split("<").join("&lt;").split(">").join("&gt;").split('"').join("&quot;").split("'").join("&#39;");
+
     const project = () => state.currentProjects.find((item) => item.id === state.selectedId) || null;
     const formatTime = (value: string) => new Date(value).toLocaleString();
     const modeText = (mode: string) => mode === "provider_native" ? "Provider Native web search" : "Offline";
@@ -154,7 +158,7 @@ export function boot(): void {
     function openDrawer() { state.drawerSession += 1; setFormStatus("", ""); setDrawer(true); window.setTimeout(() => element("project-domain").focus(), 0); }
     function closeDrawer() { state.drawerSession += 1; setDrawer(false); }
     function setFormStatus(message: string, kind: string) { const target = element("form-status"); target.textContent = message || ""; target.className = kind ? "form-status " + kind : "form-status"; }
-    const expectedErrorText: Record<string, string | undefined> = { invalid_project_input:"Invalid project input. Check the domain and name.", project_not_found:"The project does not exist or has been deleted.", project_domain_conflict:"This domain is already used by another project.", project_state_conflict:"The project\'s current status does not allow this action.", project_endpoint_not_found:"The requested project action does not exist.", configuration_invalid:"Invalid configuration. Check the models and their web search modes.", baseline_unchanged:"The current configuration is already saved.", baseline_not_found:"That configuration version does not exist.", model_catalog_unavailable:"The model catalog is temporarily unavailable. Try again shortly.", configuration_operation_failed:"Could not save the configuration. Try again.", recognition_invalid:"The recognition test cannot start. Check the configuration, or wait for the running test to finish.", recognition_run_not_found:"That recognition test record does not exist.", recognition_model_run_not_found:"That model execution record does not exist.", recognition_operation_failed:"The recognition test action failed. Try again.", project_operation_failed:"The project action failed. Try again.", request_failed:"The request did not complete. Check your network and try again." };
+    const expectedErrorText: Record<string, string | undefined> = { invalid_project_input:"Invalid project input. Check the domain and name.", project_not_found:"The project does not exist or has been deleted.", project_domain_conflict:"This domain is already used by another project.", project_state_conflict:"The project's current status does not allow this action.", project_endpoint_not_found:"The requested project action does not exist.", configuration_invalid:"Invalid configuration. Check the models and their web search modes.", baseline_unchanged:"The current configuration is already saved.", baseline_not_found:"That configuration version does not exist.", model_catalog_unavailable:"The model catalog is temporarily unavailable. Try again shortly.", configuration_operation_failed:"Could not save the configuration. Try again.", recognition_invalid:"The recognition test cannot start. Check the configuration, or wait for the running test to finish.", recognition_run_not_found:"That recognition test record does not exist.", recognition_model_run_not_found:"That model execution record does not exist.", recognition_operation_failed:"The recognition test action failed. Try again.", project_operation_failed:"The project action failed. Try again.", request_failed:"The request did not complete. Check your network and try again." };
     function requestError(code: string, detail?: string): any {
       // The server names the model or the field at fault. The generic line for
       // a code does not, and a save that fails without saying which row is why.
@@ -195,7 +199,6 @@ export function boot(): void {
     function renderProjectCards() { const rows = currentList(); if (rows.length === 0) { const title = state.mode === "current" ? "No projects yet" : state.mode === "archived" ? "No archived projects" : "No recently deleted projects"; const copy = state.mode === "current" ? "Once you enter a domain, the project is saved as a draft immediately." : "Project lifecycle records are kept here."; return '<div class="empty"><div class="empty-copy" data-testid="empty-state"><h2>' + title + '</h2><p class="subtle">' + copy + '</p>' + (state.mode === "current" ? button({ label: "New project", kind: "primary", id: "empty-new-project" }) : '') + '</div></div>'; }
       return '<div class="mtable" data-testid="project-list"><div class="mhead mcols-project"><span>Project</span><span>Domain</span><span>Status</span><span>Updated</span><span></span></div>' + rows.map((item) => '<div class="mrow mcols-project ' + (item.id === state.selectedId ? "is-selected" : "") + '" data-testid="project-card" data-project-id="' + html(item.id) + '"><button type="button" class="rowlink" data-project-action="select" data-project-id="' + html(item.id) + '" data-testid="project-title">' + html(item.name) + '</button><span class="mcell mono" data-testid="project-domain">' + html(item.normalizedDomain) + '</span><span class="tag ' + html(item.status) + '">' + statusText(item.status) + '</span><span class="mcell mono">' + html(formatTime((item.updatedAt as any))) + '</span>' + cardActions(item) + '</div>').join("") + '</div>'; }
     function monitoringConfiguration() { return state.monitoringConfiguration || { status:"no_version", currentVersion:null, nextVersion:1, currentBaseline:null, currentProtocol:{ protocolId:"domain-recognition", protocolVersion:"v1", inputType:"domain_only", requestedFields:[], promptTemplateHash:"" }, currentDomain:"", currentLanguage:"zh", currentModelSnapshots:[], diff:{ addedModels:[], removedModels:[], webSearchModeChanges:[], protocolVersionChange:null, domainChange:null, languageChange:null } }; }
-    function activeBaseline() { return monitoringConfiguration().currentBaseline; }
     async function loadProviders() {
       if (state.providersState === "loading") return;
       state.providersState = "loading";
@@ -360,9 +363,6 @@ export function boot(): void {
       return parts.length ? "?" + parts.join("&") : "";
     }
 
-    function filtersApplied() {
-      return ["modelId", "regionId", "languageId", "topicId"].filter((key) => state.filters[key]).length;
-    }
 
     /** The mark each rival's own site declares, read once by the server and
      * kept. A domain with no mark is remembered as having none. */
@@ -930,111 +930,8 @@ export function boot(): void {
     function savePreference(key: string, value: any) {
       try { window.localStorage.setItem("citegeo." + key, value); } catch (error) { return; }
     }
-    function rangeCutoff(range: string) {
-      if (range === "all") return null;
-      const days = range === "7d" ? 7 : 30;
-      return Date.now() - days * 24 * 60 * 60 * 1000;
-    }
-    function trendInRange(trend: any, range: string) {
-      const cutoff = rangeCutoff(range);
-      if (cutoff === null) return trend;
-      return trend.filter((point: any) => Date.parse(point.at) >= cutoff);
-    }
     // A line chart drawn by hand. Points with no score leave a gap rather than
     // dropping to zero, because a run that parsed nothing is not 0% visibility.
-    function trendChart(points: any[], label?: string) {
-      const width = 640;
-      const height = 170;
-      const left = 34;
-      const bottom = 26;
-      if (!points.length) return '<p class="subtle">Nothing to plot in this range.</p>';
-      const usable = points.filter((point) => point.value !== null);
-      if (!usable.length) return '<p class="subtle">No measurable ' + html(label) + ' in this range.</p>';
-      const max = points[0].axisMax || Math.max(1, ...usable.map((point) => point.value));
-      const x = (index: any) => points.length === 1
-        ? left + (width - left) / 2
-        : left + index * (width - left - 8) / (points.length - 1);
-      const y = (value: any) => 10 + (max - value) * (height - bottom - 10) / (max || 1);
-      // The line joins readings. A point off a handful of answers is plotted
-      // where it fell and the line is broken through it, because joining two of
-      // them draws a move that the answer count invented.
-      let path = "";
-      let open = false;
-      points.forEach((point, index) => {
-        if (point.value === null || point.thin) { open = false; return; }
-        path += (open ? " L " : " M ") + x(index).toFixed(1) + " " + y(point.value).toFixed(1);
-        open = true;
-      });
-      const dots = points.map((point, index) => point.value === null
-        ? ''
-        : '<circle cx="' + x(index).toFixed(1) + '" cy="' + y(point.value).toFixed(1) + '" r="3.5"'
-          + (point.thin ? ' class="chart-thin"' : '') + '><title>' + html(point.at.slice(0, 10)) + ': ' + html(point.display)
-          + (point.thin && point.note ? ' (' + html(point.note) + ')' : '') + '</title></circle>').join("");
-      const gridY = [0, max / 2, max];
-      const grid = gridY.map((value) => '<line x1="' + left + '" x2="' + width + '" y1="' + y(value).toFixed(1) + '" y2="' + y(value).toFixed(1) + '" class="chart-grid"/><text x="0" y="' + (y(value) + 4).toFixed(1) + '" class="chart-axis">' + html(points[0].format(value)) + '</text>').join("");
-      return '<svg class="trend" viewBox="0 0 ' + width + ' ' + height + '" role="img" aria-label="' + html(label) + ' over time">' + grid + '<path d="' + path + '" class="chart-line"/>' + dots + '</svg>';
-    }
-    function dashboardSeries(data: any, metric: string) {
-      const core = data.insights;
-      if (metric === "citations") {
-        const total = core.citations.answersWithCitations || 0;
-        return {
-          label: "answers carrying a citation",
-          points: data.trend.map((point: any) => ({ at:point.at, value:null, display:"", format:(v: any) => String(Math.round(v)) })),
-          headline: total + " of " + core.answered,
-          empty: "Citations arrive once a run has web search enabled.",
-        };
-      }
-      if (metric === "voice") {
-        const share = core.shareOfVoice.target.share;
-        return {
-          label: "share of voice",
-          points: [],
-          headline: share === null ? "not comparable" : Math.round(share * 100) + "%",
-          empty: "Share of voice needs an answer that names a competitor.",
-        };
-      }
-      return {
-        label: "visibility",
-        points: data.trend.map((point: any) => ({
-          at: point.at,
-          value: point.score === null ? null : point.score * 100,
-          display: point.recognized + " of " + point.answered,
-          axisMax: 100,
-          format: (v: any) => Math.round(v) + "%",
-        })),
-        headline: core.visibility.score === null ? "n/a" : Math.round(core.visibility.score * 100) + "%",
-        empty: "No parsed answers yet.",
-      };
-    }
-    function renderDashboard() {
-      if (state.insightsState === "idle") { loadInsights(); }
-      const selected = project();
-      if (!selected) return '<section class="view"><div class="empty"><div class="empty-copy"><h2>Create a project first</h2><p class="subtle">A dashboard reports on one domain.</p></div></div></section>';
-      if (state.insightsState !== "ready" || !state.insights) {
-        return '<section class="view"><div class="heading"><div><h1>Dashboard</h1><p class="subtle">How models answer about ' + html(selected.normalizedDomain) + '.</p></div></div><div class="empty"><div class="empty-copy"><h2>' + (state.insightsState === "error" ? "Could not read the evidence" : "Reading every archived answer") + '</h2></div></div></section>';
-      }
-      const data = state.insights;
-      const core = data.insights;
-      const metric = state.dashMetric;
-      const range = state.dashRange;
-      const series = dashboardSeries(data, metric);
-      const points = trendInRange(series.points, range);
-      const rangeButton = (value: any, label: any) => '<button type="button" class="filter ' + (range === value ? "active" : "") + '" data-dash-range="' + value + '">' + label + '</button>';
-      const metricButton = (value: any, label: any) => '<button type="button" class="filter ' + (metric === value ? "active" : "") + '" data-dash-metric="' + value + '">' + label + '</button>';
-      const modelRows = core.visibility.byModel.map((row: any) => '<div class="mrow mcols-rank"><div class="mname"><strong>' + html(row.displayName) + '</strong><span class="mono">' + html(row.modelId) + '</span></div><span class="mcell">' + row.recognized + ' / ' + row.answered + '</span><span class="mcell ' + (row.score ? "state-ok" : "state-flag") + '">' + (row.score === null ? "n/a" : Math.round(row.score * 100) + "%") + '</span></div>').join("");
-      const criticals = (state.plan && state.plan.actions ? state.plan.actions : []).filter((action: any) => action.severity === "critical");
-      const alert = criticals.length
-        ? '<div class="warning-box"><strong>' + criticals.length + ' critical finding(s).</strong> ' + html(criticals[0].title) + '. ' + button({ label: "See what to do", kind: "link", on: { "data-page": "visibility" } }) + '</div>'
-        : '';
-      return '<section class="view"><div class="heading"><div><h1>Dashboard</h1><p class="subtle">Pooled from ' + data.runsConsidered + ' run(s) and ' + core.answered + ' parsed answer(s) for ' + html(data.domain) + '.</p></div><div class="inline-actions">' + button({ label: "Run a test", on: { "data-page": "recognition" } }) + '</div></div>'
-        + '<div class="toolbar">' + rangeButton("7d", "7 days") + rangeButton("30d", "30 days") + rangeButton("all", "All time") + '</div>'
-        + alert
-        + '<div class="countstrip"><span class="count"><strong>' + html(series.headline) + '</strong>' + html(series.label) + '</span><span class="count"><strong>' + core.visibility.recognized + '</strong>Recognised</span><span class="count"><strong>' + core.answered + '</strong>Answers</span><span class="count"><strong>' + core.citations.targetCitedIn + '</strong>Citing you</span><span class="count"><strong>' + data.citationGap.length + '</strong>Citation gaps</span></div>'
-        + '<section class="section-card"><div class="section-head"><div><h2>Movement</h2><p class="subtle">Each point is one complete run. A run that parsed nothing leaves a gap rather than dropping to zero.</p></div><div class="toolbar">' + metricButton("visibility", "Visibility") + metricButton("voice", "Share of voice") + metricButton("citations", "Citations") + '</div></div>'
-        + '<div class="dash-split"><div>' + (points.length ? trendChart(points, series.label) : '<p class="subtle">' + html(series.empty) + '</p>') + '</div>'
-        + '<div><div class="mtable"><div class="mhead mcols-rank"><span>Model</span><span>Recognised</span><span>Visibility</span></div>' + (modelRows || '<div class="mrow mcols-rank"><span class="mcell">No answers yet.</span></div>') + '</div></div></div></section></section>';
-    }
     /** One shell for every marketer page, so each one loads the same way and
      * an empty one says what is absent rather than showing nothing. */
     // These five lost their rail entries when it collapsed to six destinations,
@@ -1300,10 +1197,6 @@ export function boot(): void {
     }
     function pct(value: any) { return value === null || value === undefined ? "Not measurable" : Math.round(value * 100) + "%"; }
     function scoreText(value: any) { return value === null || value === undefined ? "Not measurable" : String(value); }
-    function intentLabel(intent: string) {
-      return intent === "discovery" ? "Discovery" : intent === "comparison" ? "Comparison" : intent === "alternatives" ? "Alternatives" : intent === "brand" ? "Brand" : "Problem";
-    }
-
     function bar(value: any) { return value === null || value === undefined ? '' : '<div class="bar"><i style="width:' + Math.round(value * 100) + '%"></i></div>'; }
     function stat(label: string, value: any, note: string, fraction?: number | null) {
       return '<div class="stat"><span>' + html(label) + '</span><strong>' + value + '</strong><small>' + html(note) + '</small>' + bar(fraction) + '</div>';
@@ -1430,26 +1323,6 @@ export function boot(): void {
     // A spark has no room to say which points it dropped, so it draws only the
     // runs that asked enough to read a figure off. A line through a one-answer
     // run is a picture of how big the run was.
-    function sparkline(points: any[], width?: number, height?: number) {
-      const usable = points.filter((point) => point.score.score !== null && !point.score.tooFewAnswers);
-      if (usable.length < 2) return '<span class="subtle">Run again to see movement</span>';
-      const values = usable.map((point) => point.score.score);
-      const max = Math.max(100, ...values);
-      const x = (index: any) => index * (width as any) / (usable.length - 1);
-      const y = (value: any) => (height as any) - 2 - (value / max) * ((height as any) - 4);
-      const path = usable.map((point, index) => (index ? "L " : "M ") + x(index).toFixed(1) + " " + y(point.score.score).toFixed(1)).join(" ");
-      const last = usable[usable.length - 1];
-      return '<svg viewBox="0 0 ' + width + ' ' + height + '" preserveAspectRatio="none" role="img" aria-label="score over time" style="width:100%;height:' + height + 'px;overflow:visible">'
-        + '<path d="' + path + '" fill="none" stroke="var(--accent)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>'
-        + '<circle cx="' + x(usable.length - 1).toFixed(1) + '" cy="' + y(last.score.score).toFixed(1) + '" r="2.75" fill="var(--accent)"/></svg>';
-    }
-
-    function deltaPill(trend: any) {
-      if (!trend || trend.change === null) return '<span class="pill flat">No movement yet</span>';
-      const cls = trend.change > 0 ? "good" : trend.change < 0 ? "bad" : "flat";
-      const arrow = trend.change > 0 ? "↑" : trend.change < 0 ? "↓" : "→";
-      return '<span class="pill ' + cls + '">' + arrow + " " + Math.abs(trend.change) + '</span>';
-    }
 
     function renderLiveRun() {
       const run = state.liveRun;
@@ -1475,67 +1348,9 @@ export function boot(): void {
         + '<p class="subtle">' + doing + '. Open this to watch each question and answer as it lands.</p></div>';
     }
 
-    function renderHero(data: any) {
-      const rank = data.rank === null ? "Not named" : "#" + data.rank + " of " + data.leaderboard.length;
-      const heroProm = overAppearances(data.overall, data.overall.prominence, 'how early you appear');
-      const heroSent = overAppearances(data.overall, data.overall.sentiment, 'recommended or listed');
-      const leader = data.leaderboard.find((row: any) => !row.isTarget);
-      return '<div class="hero">'
-        + '<div class="hero-figure"><span class="scorebig">' + scoreText(data.overall.score) + '</span>'
-        + '<span class="hero-sub">' + deltaPill(data.trend) + '<span>' + html(rank) + '</span></span>'
-        + '<span class="hero-spark">' + sparkline(data.trend.points, 150, 26) + '</span></div>'
-        + '<div class="hero-stats">'
-        + '<div class="hero-stat"><span>Presence</span><strong>' + pct(data.overall.presenceRate) + '</strong><small>' + data.overall.appearances + ' of ' + data.overall.answers + ' answers</small></div>'
-        + '<div class="hero-stat"><span>Prominence</span><strong>' + heroProm.value + '</strong><small>' + html(heroProm.note) + '</small></div>'
-        + '<div class="hero-stat"><span>Sentiment</span><strong>' + heroSent.value + '</strong><small>' + html(heroSent.note) + '</small></div>'
-        + '<div class="hero-stat"><span>Ahead of you</span><strong>' + (leader ? html(leader.name) : "—") + '</strong><small>' + (leader ? leader.appearances + ' answers' : 'nobody named') + '</small></div>'
-        + '</div></div>';
-    }
 
-    function option(value: any, label: string, selected: unknown) {
-      return '<option value="' + html(value) + '"' + (selected === value ? " selected" : "") + '>' + html(label) + '</option>';
-    }
-
-    function renderSavedViews() {
-      if (state.segmentsState === "idle") { loadSegments(); }
-      const saved = state.segments ? state.segments.segments : [];
-      if (!saved.length && !filtersApplied()) return "";
-      const chips = saved.map((row: any) => '<button type="button" class="filter" data-segment="' + html(row.id) + '">' + html(row.name) + ' <span class="chev" data-segment-remove="' + html(row.id) + '">\u00d7</span></button>').join("");
-      const save = filtersApplied() ? '<button type="button" class="filter" data-save-segment>+ Save this view</button>' : '';
-      return '<div class="toolbar" style="margin:0 0 4px">' + chips + save + '</div>';
-    }
-
-    function renderSegment(data: any) {
-      const models = [option("", "All models", state.filters.modelId)].concat(data.byModel.map((row: any) => option(row.modelId, row.displayName, state.filters.modelId)));
-      const topics = [option("", "All topics", state.filters.topicId)].concat(data.topics.map((row: any) => option(row.topicId, row.name, state.filters.topicId)));
-      const markets = [option("", "All markets", state.filters.regionId)].concat((state.regions || []).map((row) => option(row.id, row.label, state.filters.regionId)));
-      const tongues = [option("", "All languages", state.filters.languageId)].concat((state.languages || []).map((row) => option(row.id, row.label, state.filters.languageId)));
-      const applied = filtersApplied();
-      // A dashed edge means nothing is chosen, a solid one means something is,
-      // so the bar says what it is filtering by without a badge or a count.
-      const set = (value: any) => value ? ' class="is-set"' : '';
-      return '<div class="segment">'
-        + '<select data-filter="topicId" aria-label="Topic"' + set(state.filters.topicId) + '>' + topics.join("") + '</select>'
-        + '<select data-filter="modelId" aria-label="Model"' + set(state.filters.modelId) + '>' + models.join("") + '</select>'
-        + '<select data-filter="regionId" aria-label="Market"' + set(state.filters.regionId) + '>' + markets.join("") + '</select>'
-        + '<select data-filter="languageId" aria-label="Language"' + set(state.filters.languageId) + '>' + tongues.join("") + '</select>'
-        + (applied ? '<button type="button" class="linklike applied" data-clear-filters>Clear ' + applied + '</button>' : '')
-        + '<span class="spacer"></span>'
-        + exportMenu() + '</div>';
-    }
-
-    const AGGREGATE_EXPORTS = [["scores", "Scores by question"], ["leaderboard", "Who was named"], ["topics", "Topics"], ["models", "By assistant"], ["markets", "By market"], ["trend", "Movement"], ["absent", "Absent from"]];
-    const ANSWER_EXPORTS = [["answers", "Every answer"], ["mentions", "Every name in every answer"], ["citations", "Every source"]];
 
     // The filters travel with the file, so an export is the slice on screen.
-    function exportMenu() {
-      const link = (base: any, name: any, label: any) => '<a href="/api/projects/' + html(state.selectedId) + '/' + base + '/' + name + '.csv' + filterQuery() + '">' + label + '</a>';
-      return '<details class="exportmenu"><summary class="button">Export CSV</summary><div class="exportlist">'
-        + '<strong>Aggregates</strong>' + AGGREGATE_EXPORTS.map((row) => link("prompt-export", row[0], row[1])).join("")
-        + '<strong>One row per answer</strong>' + ANSWER_EXPORTS.map((row) => link("answer-export", row[0], row[1])).join("")
-        + '<span class="subtle">Every aggregate in this tool is built from the answer rows, so exporting them is how a number here gets checked rather than taken.</span>'
-        + '</div></details>';
-    }
 
     function renderLeaderboard(rows: any[]) {
       if (!rows || !rows.length) return '<p class="subtle">No organisation was named in any answer yet.</p>';
@@ -1789,12 +1604,6 @@ export function boot(): void {
         + (current === "open" ? '' : moveAction("open", "Reopen")) + '</div>' + effect;
     }
 
-    function effectLabel(effect: any) {
-      return effect === "raises_visibility" ? "Raises the score"
-        : effect === "unblocks_measurement" ? "Unblocks measurement"
-        : "Widens what is measured";
-    }
-
     function renderRankingPlan() {
       if (state.rankPlanState === "idle") { loadRankingPlan(); }
       if (state.actionsState === "idle") { loadActions(); }
@@ -1903,7 +1712,6 @@ export function boot(): void {
       render();
     }
 
-    function uptakePct(value: any) { return value === null || value === undefined ? null : Math.round(value * 100) + "%"; }
 
     function renderUptake() {
       if (state.uptakeState === "idle") { loadUptake(); }
@@ -2225,17 +2033,6 @@ export function boot(): void {
         state.kindsState = "error";
       }
       render();
-    }
-
-    function kindWords(kind: string) {
-      const words: Record<string, string> = {
-        listicle: "Ranked best-of", comparison: "Head to head", guide: "Guide or how-to",
-        documentation: "Documentation", review: "Review", forum: "Forum or community",
-        video: "Video", reference: "Reference work", article: "Article",
-        yours: "Your own site", rival: "A tracked rival", social: "Social", community: "Community",
-        corporate: "A company's own site",
-      };
-      return words[kind] || kind;
     }
 
     function kindRows(rows: any[]) {
@@ -2568,10 +2365,6 @@ export function boot(): void {
         + '<div class="panel-body">' + renderBrief() + '<h3 class="panel-section">The answers themselves</h3>' + body + '</div></aside>';
     }
 
-    function alertPill(severity: any) {
-      return severity === "critical" ? "bad" : severity === "warning" ? "flat" : "flat";
-    }
-
     /** The dashboard is assembled by a module of its own, from the same
      * figures the answer engine reports, so two screens cannot disagree. */
     /** What the dashboard draws from. Built here rather than inside the
@@ -2620,8 +2413,9 @@ export function boot(): void {
     function dashboardView(): DashboardData | null {
       const selected = project();
       const home = state.home;
-      if (!selected || !home) return null;
       const data = state.answerEngine;
+      if (!selected || !home || !data || boardStatus(state.homeState, state.answerEngineState) !== "ready") return null;
+      const reading = headline(data);
       const outreach = state.outreach;
       const plan = state.rankPlan;
       const questions = data ? data.topics.reduce((total: number, topic: any) => total + topic.prompts.length, 0) : 0;
@@ -2667,9 +2461,9 @@ export function boot(): void {
           };
         })(),
         domain: String(home.domain || selected.normalizedDomain),
-        score: home.score ?? null,
-        change: home.change ?? null,
-        rank: home.rank ?? null,
+        score: reading.standing.score,
+        change: reading.change,
+        rank: reading.rank,
         overall: data ? data.overall : { score: null, presenceRate: null, prominence: null, sentiment: null, answers: 0, appearances: 0, namedIn: 0, tooFewAppearances: true },
         leaderboard: data ? (data.leaderboard as any[]).map((row: any) => ({
           name: row.name,
@@ -2695,7 +2489,8 @@ export function boot(): void {
         assistants: data ? data.byModel.filter((row: any) => row.score.answers > 0).length : 0,
         assistantsConfigured: data ? data.byModel.length : 0,
         assistantsNaming: data ? data.byModel.filter((row: any) => row.score.appearances > 0).length : 0,
-        moves: plan ? (plan.moves as any[]).filter((m: any) => m.effect === "raises_visibility") : [],
+        moves: plan && state.rankPlanState === "ready" ? (plan.moves as any[]).filter((m: any) => m.effect === "raises_visibility")
+          : state.rankPlanState === "error" ? [] : null,
         citationsUnavailable: data ? data.citationsUnavailable : false,
         citedPages: outreach ? outreach.cited : null,
         missingFrom: outreach ? (outreach.targets as any[]).filter((t: any) => !t.namesYou).length : null,
@@ -2799,6 +2594,7 @@ export function boot(): void {
         // A page that offers a run has to show the run, or starting one from
         // here looked like nothing happened.
         + '<div class="inline-actions">' + button({ label: "Full report", on: { "data-page": "answer-engine" } }) + runActionButton("Run prompts") + '</div></div>' + renderLiveRun();
+      if (state.answerEngineState === "error") return heading + notice("Could not read this project.", "error") + '</section>';
       const view = dashboardView();
       if (!view) return heading + dashboardBody({ status: "loading" }) + '</section>';
       const wanted = ["trend", "named", "described", "sources"];
@@ -2846,13 +2642,15 @@ export function boot(): void {
         return heading('<section class="section-card"><div class="mtable"><div class="mhead mcols-step"><span></span><span>Step</span><span></span></div>' + steps + '</div></section>');
       }
 
+      if (state.answerEngineState === "error") return heading(notice("Could not read this project.", "error"));
       const view = dashboardView();
-      if (!view) return heading(dashboardBody({ status: "loading" }));
-      const data = state.answerEngine;
-      const hero = '<div class="hero"><div class="hero-figure"><span class="scorebig">' + scoreText(home.score) + '</span>'
-        + '<span class="hero-sub">' + deltaPill(data ? data.trend : { change: home.change }) + '<span>'
-        + (home.rank === null || home.rank === undefined ? "Not named" : "#" + home.rank + " of " + ((home.rivals || 0) + 1)) + '</span></span>'
-        + '<span class="hero-spark">' + view.spark + '</span></div>' + heroStats(view.overall, view.position) + '</div>';
+      if (!view || !state.answerEngine) return heading(dashboardBody({ status: "loading" }));
+      const reading = headline(state.answerEngine);
+      const rankText = reading.rank === null ? "Not named" : "#" + reading.rank + (reading.at ? "" : " of " + ((home.rivals || 0) + 1));
+      const hero = '<div class="hero"><div class="hero-figure"><span class="scorebig">' + scoreText(reading.standing.score) + '</span>'
+        + '<span class="hero-sub">' + deltaPill({ change: reading.change }) + '<span>' + html(rankText) + '</span>'
+        + (reading.at ? '<span>run of ' + html(reading.at.slice(0, 10)) + '</span>' : '') + '</span>'
+        + '<span class="hero-spark">' + view.spark + '</span></div>' + heroStats(reading.standing, view.position) + '</div>';
 
       const alerts = (home.alerts as any[]).length
         ? '<div class="alertlist">' + (home.alerts as any[]).map((alert: any) => '<div class="alertrow"><span class="pill ' + alertPill(alert.severity) + '">' + html(alert.severity) + '</span><div><strong>' + html(alert.headline) + '</strong><p class="subtle">' + html(alert.detail) + '</p></div></div>').join("") + '</div>'
@@ -2908,14 +2706,6 @@ export function boot(): void {
         state.historyState = "error";
       }
       render();
-    }
-
-    function historyWord(verdict: string | null) {
-      if (verdict === "cited") return '<span class="state-ok">still cited</span>';
-      if (verdict === "slipping") return '<span class="state-flag">missed one run</span>';
-      if (verdict === "dropped") return '<span class="state-bad">stopped</span>';
-      if (verdict === "cited_once") return '<span class="state-flag">cited once, never again</span>';
-      return '<span class="state-flag">one run only</span>';
     }
 
     // Pages that stopped being cited, which is a claim no single run can make.
@@ -2986,7 +2776,6 @@ export function boot(): void {
           "A page cited before and not now, which is a change rather than a level.", renderCitationHistory());
     }
 
-    function sharePct(value: any) { return value === null || value === undefined ? null : (Math.round(value * 1000) / 10) + "%"; }
 
     function renderDecomposition(report: any) {
       if (!report || !report.activation || !report.activation.considered) return '';
@@ -3065,14 +2854,6 @@ export function boot(): void {
 
     function taskFor(id: string): any {
       return tasks().find((task: any) => task.id === id) || null;
-    }
-
-    function urgencyLabel(urgency: string) {
-      return urgency === "blocking" ? "blocking" : urgency === "limiting" ? "limiting" : "to do";
-    }
-
-    function urgencyInk(urgency: string) {
-      return urgency === "blocking" ? "state-bad" : urgency === "limiting" ? "state-flag" : "state-ok";
     }
 
     /** Attached to the panel that measured it, so the action is where the
@@ -3652,21 +3433,6 @@ export function boot(): void {
 
     // Open beats settled, and the reason is on the badge, because the order is
     // a judgement and the figures it came from are not.
-    function fieldBadge(row: any) {
-      if (!row || row.contest.state === "unknown") return '';
-      const field = row.contest.state;
-      const tone = field === "open" ? "ready" : field === "settled" ? "warning" : "";
-      const label = field === "open" ? "Open field" : field === "settled" ? "Settled" : "Contested";
-      return '<span class="tag ' + tone + '" title="' + html(row.contest.reason) + '">' + label + '</span>';
-    }
-
-    function demandBadge(row: any) {
-      if (!row || !row.demand) return '';
-      const match = row.demand.match;
-      if (!match.exactTerms && !match.relatedTerms) return '<span class="tag">Nobody asked it in the corpus</span>';
-      return '<span class="tag">Asked ' + match.exactTerms + ' · ' + match.relatedTerms + ' loosely</span>';
-    }
-
     const FIELD_ORDER = { open: 0, contested: 1, settled: 2, unknown: 3 };
 
     function sortedPrompts(rows: any[], standings: any) {
@@ -4093,17 +3859,6 @@ export function boot(): void {
       render();
     }
 
-    function reachInk(reach: string) {
-      return reach === "drivable" ? "state-ok" : reach === "sign_in" ? "state-flag" : "state-bad";
-    }
-
-    function reachWords(reach: string) {
-      return reach === "drivable" ? "Can be driven"
-        : reach === "sign_in" ? "Asking to sign in"
-          : reach === "blocked" ? "Sent elsewhere"
-            : "Nothing to drive";
-    }
-
     function renderReach() {
       const action = '<div class="inline-actions">'
         + button({ label: state.reachState === "loading" ? "Checking\u2026" : "Check what this browser can reach", kind: "quiet", disabled: state.reachState === "loading", on: { "data-probe-reach": "true" } })
@@ -4187,11 +3942,13 @@ export function boot(): void {
     // Says what the page is built from and when, so a tab left open overnight
     // is recognisable as stale rather than read as current.
     function renderFooter() {
+      // Every page carries the footer, and most never asked for the summary it reads.
+      if (state.homeState === "idle" && state.selectedId) { loadHome(); }
       const home = state.home;
       const answers = home && typeof home.answers === "number" ? home.answers : null;
       const run = home && home.lastRun ? String(home.lastRun.at) : "";
       return '<footer class="appfoot">'
-        + '<span>' + (answers === null ? 'Nothing archived yet' : answers + ' archived answer(s)')
+        + '<span>' + html(archived(state.homeState, answers))
         + (run ? ' \u00b7 last run ' + html(run.slice(0, 16).replace("T", " ")) : '') + '</span>'
         + '<span>Every figure here opens the answer it came from.</span></footer>';
     }
@@ -4206,7 +3963,7 @@ export function boot(): void {
      * one, so without this the save stays rejected with no way to fix it. */
     function dropSelection(modelId: any) { state.draftSelections.delete(modelId); state.modelNotice = { text:"", kind:"" }; state.modelActionState = "idle"; state.selectionsDirty = true; render(); }
     function changeModelMode(modelId: any, mode: any) { const catalogItem = state.catalog.find((item) => item.modelId === modelId); if (!catalogItem || !state.draftSelections.has(modelId)) return; if (mode === "provider_native" && !catalogItem.nativeWebSearchSupported) return; state.modelNotice = { text:"", kind:"" }; state.modelActionState = "idle"; state.draftSelections.set(modelId, mode); state.selectionsDirty = true; render(); }
-    async function saveModels(button: HTMLElement | null) { const selected = project(); if (!selected) return; const selections = Array.from(state.draftSelections.entries()).map(([modelId, webSearchMode]) => ({ modelId, webSearchMode })); state.modelNotice = { text:"Saving each model\'s own web search mode…", kind:"loading" }; try { const response = await runAction(button, { loading:"Saving…", success:"Saved", error:"Save failed" }, () => request("/api/projects/" + encodeURIComponent(selected.id) + "/models", { method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ selections }) })); state.selections = response.selections; resetDraftSelections(); state.modelNotice = { text:"Model configuration saved", kind:"success" }; state.modelActionState = "success"; render(); window.setTimeout(() => { state.modelActionState = "idle"; if (state.page === "models") render(); }, 850); } catch (error) { state.modelNotice = { text:error instanceof Error ? error.message : String(error), kind:"error" }; state.modelActionState = "error"; render(); } }
+    async function saveModels(button: HTMLElement | null) { const selected = project(); if (!selected) return; const selections = Array.from(state.draftSelections.entries()).map(([modelId, webSearchMode]) => ({ modelId, webSearchMode })); state.modelNotice = { text:"Saving each model's own web search mode…", kind:"loading" }; try { const response = await runAction(button, { loading:"Saving…", success:"Saved", error:"Save failed" }, () => request("/api/projects/" + encodeURIComponent(selected.id) + "/models", { method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ selections }) })); state.selections = response.selections; resetDraftSelections(); state.modelNotice = { text:"Model configuration saved", kind:"success" }; state.modelActionState = "success"; render(); window.setTimeout(() => { state.modelActionState = "idle"; if (state.page === "models") render(); }, 850); } catch (error) { state.modelNotice = { text:error instanceof Error ? error.message : String(error), kind:"error" }; state.modelActionState = "error"; render(); } }
     async function saveMonitoringConfiguration() { const selected = project(); const configuration = monitoringConfiguration(); if (!selected || configuration.status === "unchanged" || state.monitoringSaveState === "saving") return; if (selectedRows().length === 0) { state.monitoringNotice = { text:"Select at least one available model before saving the configuration.", kind:"error" }; state.monitoringSaveState = "failed"; render(); return; } state.monitoringSaveState = "saving"; state.monitoringNotice = { text:"Saving the current domain, language, models and web search modes…", kind:"loading" }; render(); try { const response = await request("/api/projects/" + encodeURIComponent(selected.id) + "/baselines", { method:"POST", headers:{"Content-Type":"application/json"}, body:"{}" }); state.currentProjects = state.currentProjects.map((item) => item.id === response.project.id ? response.project : item); state.projects = state.projects.map((item) => item.id === response.project.id ? response.project : item); await refreshConfiguration(); const version = response.baseline.version; state.monitoringSaveState = "saved"; state.monitoringNotice = { text:"Saved as config v" + version, kind:"success" }; render(); window.setTimeout(() => { state.monitoringSaveState = "idle"; if (state.page === "configuration") render(); }, 850); } catch (error) { if (errorCode(error) === "baseline_unchanged") { await refreshConfiguration(); state.monitoringSaveState = "idle"; state.monitoringNotice = { text:"The current configuration is already saved", kind:"success" }; render(); return; } state.monitoringSaveState = "failed"; state.monitoringNotice = { text: error instanceof Error ? error.message : (expectedErrorText.request_failed || "The request failed."), kind: "error" }; render(); } }
     document.addEventListener("click", async (event) => {
       const clicked = el(event.target) as any;
@@ -4577,14 +4334,10 @@ export function boot(): void {
     // was a blank page for as long as the first read took.
     render();
     refreshProjects().then(async () => { await refreshConfiguration(); state.booting = false; loadLiveRun(); render(); }).catch((error) => { app.innerHTML = '<main class="workspace"><div class="warning-box">' + html(error instanceof Error ? error.message : String(error)) + '</div></main>'; });
-    function recognitionRunStatusText(status: any) { return status === "queued" ? "Waiting to start" : status === "running" ? "Running" : status === "completed" ? "Completed" : status === "partial" ? "Partly complete" : "Execution failed"; }
-    function recognitionModelStatusText(status: any) { return status === "queued" ? "Waiting to start" : status === "running" ? "Calling" : status === "response_saved" ? "Answer received" : status === "analysis_failed" ? "Local parse failed" : status === "completed" ? "Completed" : status === "unknown" ? "Model could not confirm" : status === "unsupported" ? "Model does not support it" : "Provider Call failed"; }
     function activeRecognitionRun() { return state.recognitionDetail && (((state.recognitionDetail as any).run.status as any) === "queued" || ((state.recognitionDetail as any).run.status as any) === "running") ? (state.recognitionDetail as any).run : null; }
     function recognitionDetailFor(modelRunId: any) { return state.recognitionModelDetails[modelRunId] || null; }
     function recognitionLink(url: any, label: string) { return '<a href="' + html(url) + '" target="_blank" rel="noreferrer">' + html(label) + '</a>'; }
-    function recognitionUrlLabel(url: any) { try { const parsed = new URL(url); return parsed.hostname + parsed.pathname + parsed.search; } catch { return url; } }
     function recognitionEvidenceRows(archive: any) { const rows: any[] = []; const add = (id: any, evidence: any) => { if (evidence && typeof evidence.start === "number" && typeof evidence.end === "number") rows.push({ id, start:evidence.start, end:evidence.end }); }; add(archive.result.id + "-brand", archive.result.recognizedBrand.evidence); add(archive.result.id + "-business", archive.result.businessDescription.evidence); add(archive.result.id + "-detail", archive.result.detailedDescription?.evidence); add(archive.result.id + "-category", archive.result.productCategory.evidence); for (const competitor of archive.competitors) { add(competitor.id, competitor.evidence); add(competitor.id + "-business", competitor.businessDescription.evidence); add(competitor.id + "-category", competitor.productCategory.evidence); } for (const keyword of archive.brandKeywords) add(keyword.id, keyword.evidence); for (const keyword of archive.competitorKeywords) add(keyword.id, keyword.evidence); return rows; }
-    function evidenceJump(id: string) { return '<button type="button" class="evidence-jump" data-evidence-target="' + html(id) + '">View evidence</button>'; }
     function evidenceValue(value: any, id: string) { return value ? html(value) + evidenceJump(id) : '<span class="state-flag">Unconfirmed</span>'; }
     function recognitionIssue(archive: any, field: string) { return (archive.result.fieldIssues || []).find((item: any) => item.field === field) || null; }
     function recognitionMissingText(archive: any, field: string, emptyText: any, missingText: any) { const issue = recognitionIssue(archive, field); return issue && issue.kind === "missing_field" ? '<span class="state-flag">' + html(missingText) + '</span>' : html(emptyText); }
@@ -4592,7 +4345,6 @@ export function boot(): void {
     function renderRecognitionEvidence(detail: any, modelRun: any) { const archive = detail.archive; const attempts = detail.attempts || []; const latest = attempts.length ? attempts[attempts.length - 1] : null; const providerCitations = archive && archive.providerCitations.length ? '<ul>' + archive.providerCitations.map((item: any) => '<li>' + recognitionLink(item.url, item.title || recognitionUrlLabel(item.url)) + '</li>').join("") + '</ul>' : '<p class="subtle">' + (modelRun.recognitionMode === "unaided_domain_recognition" ? "Provider-native web search was not used in this run." : "This model returned no provider citations in this run.") + '</p>'; const answerUrls = archive && archive.answerMentionedUrls.length ? '<ul>' + archive.answerMentionedUrls.map((item: any) => '<li>' + recognitionLink(item.url, recognitionUrlLabel(item.url)) + '</li>').join("") + '</ul>' : '<p class="subtle">The answer body has no URLs outside the confirmed citations.</p>'; const history = attempts.length ? attempts.map((item: any) => '<div class="attempt-row"><strong>Attempt ' + item.attemptNumber + ' · ' + html(recognitionModelStatusText(item.status)) + '</strong>' + (item.errorMessage ? '<span>' + html(item.errorMessage) + '</span>' : '') + '</div>').join("") : '<p class="subtle">No attempt records created yet.</p>'; const revisions = detail.analysisRevisions && detail.analysisRevisions.length ? '<ul>' + detail.analysisRevisions.map((revision: any, index: any) => '<li>Local parse version ' + (index + 1) + ' · ' + (revision.status === "complete" ? "Parsed" : revision.status === "partial" ? "Partly available" : "Parsing failed") + ' · No model was called</li>').join("") + '</ul>' : '<p class="subtle">No new local parse has been created yet.</p>'; const raw = latest && latest.rawAnswer ? '<pre class="raw-answer">' + highlightedRawAnswer(latest.rawAnswer, archive ? recognitionEvidenceRows(archive) : []) + '</pre>' : '<p class="subtle">This model has not returned a raw answer to show yet.</p>'; return '<details class="evidence-details"><summary>View raw answer and evidence</summary><div class="evidence-group"><h4>Provider Citation</h4>' + providerCitations + '</div><div class="evidence-group"><h4>Plain URLs in the answer</h4>' + answerUrls + '</div><div class="evidence-group"><h4>Raw answer</h4>' + raw + '</div><div class="evidence-group"><h4>Attempt records</h4>' + history + '</div><div class="evidence-group"><h4>Local parse version</h4>' + revisions + '</div></details>'; }
     function renderRecognitionSummary(detail: any) { const archive = detail.archive; if (!archive) return ''; const competitors = archive.competitors.length ? archive.competitors.map((item: any) => evidenceValue(item.name, item.id)).join(", ") : recognitionMissingText(archive, "competitors", "This answer listed no competitors", "This answer did not provide this field"); const keywords = archive.brandKeywords.length ? archive.brandKeywords.map((item: any) => evidenceValue(item.keyword, item.id)).join(", ") : recognitionMissingText(archive, "brandKeywords", "This answer listed no associated keywords", "This answer did not provide this field"); const competitorKeywords = archive.competitors.length ? archive.competitors.map((item: any) => { const values = archive.competitorKeywords.filter((keyword: any) => keyword.competitorRecognitionId === item.id).map((keyword: any) => evidenceValue(keyword.keyword, keyword.id)); return html(item.name) + ": " + (values.length ? values.join(", ") : "This answer did not provide this field"); }).join("; ") : recognitionMissingText(archive, "competitors", "This answer listed no competitors", "This answer did not provide this field"); const domainRecognition = archive.result.domainRecognition === null ? recognitionMissingText(archive, "domainRecognition", "This field does not match the required format", "This answer did not clearly return a recognition status") : archive.result.domainRecognition === "recognized" ? '<span class="state-ok">Model explicitly recognized it</span>' : archive.result.domainRecognition === "not_recognized" ? '<span class="state-bad">Model explicitly did not recognize it</span>' : '<span class="state-flag">Model said it could not confirm</span>'; const detailDescription = archive.result.detailedDescription?.value; const detailText = detailDescription ? evidenceValue(detailDescription, archive.result.id + "-detail") : '<span class="state-flag">This answer gave no detailed description</span>'; const issues = archive.result.fieldIssues && archive.result.fieldIssues.length ? '<details class="technical-details"><summary>Field parsing notes</summary><ul class="protocol-list">' + archive.result.fieldIssues.map((item: any) => '<li>' + html(item.field + " · " + item.kind + " · " + item.detail) + '</li>').join("") + '</ul></details>' : ""; return '<div class="recognition-summary"><div><span>Brand the model recognized in this run</span><strong>' + evidenceValue(archive.result.recognizedBrand.value, archive.result.id + "-brand") + '</strong></div><div><span>Recognition status</span><strong>' + domainRecognition + '</strong></div><div><span>Business description</span><strong>' + evidenceValue(archive.result.businessDescription.value, archive.result.id + "-business") + '</strong></div><div><span>Detailed description</span><strong>' + detailText + '</strong></div><div><span>Product category</span><strong>' + evidenceValue(archive.result.productCategory.value, archive.result.id + "-category") + '</strong></div><div><span>Recognized competitors</span><strong>' + competitors + '</strong></div><div><span>Associated keywords</span><strong>' + keywords + '</strong></div><div><span>Keywords per competitor</span><strong>' + competitorKeywords + '</strong></div></div>' + issues; }
     function recognitionRunCounts(detail: any) { const summary = { received:0, complete:0, partial:0, analysisFailed:0, requestLimited:0, running:0 }; for (const modelRun of detail.modelRuns) { const presentation = recognitionDetailFor(modelRun.id)?.presentation; if (!presentation) { if (modelRun.status === "queued" || modelRun.status === "running") summary.running += 1; continue; } if (presentation.requestExecution === "response_received") summary.received += 1; if (presentation.localAnalysis === "complete") summary.complete += 1; else if (presentation.localAnalysis === "partial") summary.partial += 1; else if (presentation.localAnalysis === "failed") summary.analysisFailed += 1; if (presentation.requestExecution === "request_rejected" || presentation.requestExecution === "transport_failed") summary.requestLimited += 1; if (presentation.requestExecution === "running" || presentation.requestExecution === "not_started") summary.running += 1; } return summary; }
-    function recognitionCountLabels(summary: any) { return [["Answer received", summary.received], ["Fully parsed", summary.complete], ["Partly available", summary.partial], ["Parsing failed", summary.analysisFailed], ["Request throttled or failed", summary.requestLimited], ["Still running", summary.running]]; }
     function recognitionRunSummary(detail: any) { return recognitionCountLabels(recognitionRunCounts(detail)).map((entry) => entry[0] + " " + entry[1]).join(" · "); }
     function recognitionCountStrip(detail: any) { return '<div class="countstrip">' + recognitionCountLabels(recognitionRunCounts(detail)).map((entry) => '<span class="count' + (entry[1] ? "" : " is-zero") + '"><strong>' + entry[1] + '</strong>' + html(entry[0]) + '</span>').join("") + '</div>'; }
     function renderRecognitionModel(modelRun: any) { const detail = recognitionDetailFor(modelRun.id); const latest = detail && detail.attempts.length ? detail.attempts[detail.attempts.length - 1] : null; const presentation = detail ? detail.presentation : null; const mode = modelRun.recognitionMode === "native_web_domain_discovery" ? "Provider Native web findings" : "Offline domain recognition"; // Delivery, not recognition outcome. The report shows the other axis.

@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { sha256 } from "../../utils/hash.js";
-import type { AnswerResult, Citation } from "../../core/types.js";
+import type { AnswerResult, } from "../../core/types.js";
 import { providerFailureCode } from "../../providers/provider-error.js";
 import type { ProductBaseline, ProductModelSnapshot } from "../configuration/baseline-schema.js";
 import { ProductBaselineService } from "../configuration/baseline-service.js";
@@ -28,7 +28,7 @@ import type {
   WatchObject,
   WatchSet,
 } from "./measurement-schema.js";
-import { DOMAIN_PROTOCOL_ID, KEYWORD_PROTOCOL_ID } from "./measurement-schema.js";
+import { DOMAIN_PROTOCOL_ID, } from "./measurement-schema.js";
 import { ProductWatchSetService } from "./watchset-service.js";
 
 const DEFAULT_BUDGET: MeasurementBudget = { requestLimit: 100, dailyRequestLimit: null, tokenLimit: null, costLimitUsd: null };

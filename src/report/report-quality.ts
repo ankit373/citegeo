@@ -40,19 +40,6 @@ function forbiddenTerms(): string[] {
   ];
 }
 
-function firstParagraphAfter(markdown: string, heading: string): string {
-  const start = markdown.indexOf(heading);
-  if (start < 0) return "";
-  const rest = markdown.slice(start + heading.length);
-  const lines = rest.split("\n");
-  for (const line of lines) {
-    const text = line.trim();
-    if (!text || text.startsWith("|") || text.startsWith("---")) continue;
-    return text;
-  }
-  return "";
-}
-
 function removeDetailsBlocks(markdown: string): string {
   let output = "";
   let cursor = 0;
@@ -70,7 +57,7 @@ function removeDetailsBlocks(markdown: string): string {
   return output;
 }
 
-export function validateReport(markdown: string, audit: AuditRun, metrics: AuditMetrics, gaps?: GeoGapAnalysis): ReportQualityResult {
+export function validateReport(markdown: string, _audit: AuditRun, metrics: AuditMetrics, gaps?: GeoGapAnalysis): ReportQualityResult {
   void gaps;
   const errors: string[] = [];
   for (const section of requiredSections()) {

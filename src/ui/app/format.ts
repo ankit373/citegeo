@@ -21,6 +21,12 @@ export function shortDate(value: string | null | undefined): string {
   return value ? value.slice(0, 16).replace("T", " ") : "";
 }
 
+/** What the footer says the page is built from. */
+export function archived(status: string, answers: number | null): string {
+  if (status !== "ready" && status !== "error") return "Reading the archive";
+  return answers === null ? "Nothing archived yet" : `${answers} archived answer(s)`;
+}
+
 export function seconds(milliseconds: number | null | undefined): string {
   return milliseconds === null || milliseconds === undefined ? "no timing" : `${Math.round(milliseconds / 100) / 10}s`;
 }
@@ -34,4 +40,12 @@ export function remaining(done: number, total: number, elapsedMs: number): strin
   const minutes = Math.round(left / 60);
   if (minutes < 90) return `about ${minutes} min left`;
   return `about ${Math.round(minutes / 60)} hr left`;
+}
+
+export function sharePct(value: number | null | undefined): string | null {
+  return value === null || value === undefined ? null : (Math.round(value * 1000) / 10) + "%";
+}
+
+export function uptakePct(value: number | null | undefined): string | null {
+  return value === null || value === undefined ? null : Math.round(value * 100) + "%";
 }

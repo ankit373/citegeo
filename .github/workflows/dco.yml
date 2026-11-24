@@ -15,11 +15,15 @@ jobs:
     # The DCO exists so an outside contributor certifies the origin of their
     # work. The repository owner is the party being certified to, so their own
     # pull requests are not asked to sign, matching the CLA allowlist.
-    if: ${{ !contains(fromJSON('["ankit373"]'), github.event.pull_request.user.login) }}
+    if: >-
+      !contains(fromJSON('["ankit373"]'), github.event.pull_request.user.login) &&
+      !(endsWith(github.event.pull_request.user.login, '[bot]') &&
+        startsWith(github.event.pull_request.head.ref, 'release-please--'))
     steps:
       # The whole range has to be present to read each commit message.
       - uses: actions/checkout@v7
         with:
+          persist-credentials: false
           fetch-depth: 0
 
       - name: Every commit carries a matching Signed-off-by
