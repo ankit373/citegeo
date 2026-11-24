@@ -6,14 +6,16 @@ import { buyingView, claimsView, conversationsView, draftsView, entityView, mark
 import { exportName, filterSummary, matchesQuery, panelCsv } from "./components/panel-tools.js";
 import { emptyState, notice, section } from "./components/primitives.js";
 import { button } from "./components/button.js";
-import { formatTime, percent, score as scoreText, sharePct, uptakePct } from "./format.js";
-import { alertPill, effectLabel, historyWord, intentLabel, reachInk, reachWords, recognitionRunStatusText, urgencyInk, urgencyLabel } from "./labels.js";
+import { formatTime, percent, score as scoreText, sharePct } from "./format.js";
+import { alertPill, effectLabel, historyWord, intentLabel, reachInk, reachWords, recognitionRunStatusText } from "./labels.js";
 import { deltaPill, demandBadge, fieldBadge } from "./components/badges.js";
 import { bar, experimentCard, overAppearances, renderLeaderboard, renderPersonaRows, stat, verdictButtons } from "./pages/metric-cells.js";
 import { crawlerUpload, languagePicker, pasteCountPicker, repetitionPicker } from "./components/pickers.js";
 import { blockedSelection, catalogHead, catalogReleasedAt, catalogResultSummary, catalogVendor, modelIsBlocked, openRouterOutOfCredit, providerShortLabel, runsNowCell, selectedRows } from "./components/catalog-rows.js";
 import { mentionChips, paneRun, renderLiveRun, runIsLive, runPaneProgress } from "./pages/run-pane.js";
-import { renderConcentration, renderCredit, renderInterference, renderKinds, renderOutreach, renderReferrals, renderSearchDemand, renderShape } from "./pages/source-sections.js";
+import { renderStability } from "./pages/trust-sections.js";
+import { answerTasks, renderTasks, taskCta } from "./pages/task-views.js";
+import { renderConcentration, renderCredit, renderDecomposition, renderUptake, renderInterference, renderKinds, renderOutreach, renderReferrals, renderSearchDemand, renderShape } from "./pages/source-sections.js";
 import { renderFooter, renderOverview } from "./pages/overview-view.js";
 import { recognitionCountStrip, recognitionRunSummary, renderRecognitionModel, type RecognitionRunDetail } from "./pages/recognition-view.js";
 import { loading, skeletonCard, skeletonTable, skeletonText, skeletonTiles } from "./components/skeleton.js";
@@ -154,7 +156,8 @@ export function boot(): void {
 
     const project = () => state.currentProjects.find((item) => item.id === state.selectedId) || null;
     const footerActions = { loadHome };
-    const sourceActions = { loadInterference, loadConcentration, loadShape, loadCredit, loadKinds, loadOutreach, loadSearchDemand, loadReferrals };
+    const currentTasks = () => answerTasks(state.answerEngine);
+    const sourceActions = { loadInterference, loadConcentration, loadShape, loadCredit, loadKinds, loadOutreach, loadSearchDemand, loadReferrals, loadUptake };
     const currentPaneRun = () => paneRun(state.panel, state.liveRun, state.lastRun);
     const modeText = (mode: string) => mode === "provider_native" ? "Provider Native web search" : "Offline";
     function setSelectedProject(projectId: string) { if (projectId !== state.selectedId) { state.liveRun = null; state.lastRun = null; state.insights = null; state.insightsState = "idle"; state.plan = null; state.planState = "idle"; state.rankPlan = null; state.rankPlanState = "idle"; state.engines = null; state.enginesState = "idle"; state.actions = []; state.actionsState = "idle"; state.outreach = null; state.outreachState = "idle"; state.paste = null; state.pasteState = "idle"; state.uptake = null; state.uptakeState = "idle"; state.interference = null; state.interferenceState = "idle"; state.concentration = null; state.concentrationState = "idle"; state.shape = null; state.shapeState = "idle"; state.kinds = null; state.kindsState = "idle"; state.experiments = null; state.experimentsState = "idle"; state.check = null; state.checkState = "idle"; state.credit = null; state.creditState = "idle"; state.reach = null; state.reachState = "idle"; state.searchDemand = null; state.searchDemandState = "idle"; state.personas = null; state.personasState = "idle"; state.priority = null; state.priorityState = "idle"; state.referrals = null; state.referralsState = "idle"; state.crawlers = null; state.crawlersState = "idle"; state.signals = null; state.signalsState = "idle"; state.externalMetrics = null; state.externalMetricsState = "idle"; state.externalMetricsPulling = ""; state.externalMetricsNotice = { text:"", kind:"" }; } state.selectedId = projectId || ""; if (state.selectedId) localStorage.setItem("citegeo.product.projectId", state.selectedId); else localStorage.removeItem("citegeo.product.projectId"); const next = new URL(window.location.href); if (state.selectedId) next.searchParams.set("projectId", state.selectedId); else next.searchParams.delete("projectId"); window.history.replaceState({ projectId:state.selectedId }, "", next); }
@@ -1551,44 +1554,6 @@ export function boot(): void {
     }
 
 
-    function renderUptake() {
-      if (state.uptakeState === "idle") { loadUptake(); }
-      if (state.uptakeState !== "ready" || !state.uptake) {
-        return '<p class="subtle">' + (state.uptakeState === "error" ? "Could not read what the answers took from the pages." : "Reading what the answers took from the pages.") + '</p>';
-      }
-      const report = state.uptake;
-      if (!report.measured && !report.unread) return '<p class="subtle">No answer carried a citation, so there is no page to compare one against.</p>';
-      // The button that clears this sits on the outreach panel, so the task
-      // is shown where the figure is missing rather than only in the list.
-      const unreadCta = report.unread ? taskCta("sources-unread") : '';
-      // A reading is one page against one answer. The same page cited by five
-      // answers gives five readings and five figures, and calling them pages
-      // printed one page disagreeing with itself.
-      const lead = report.mean === null
-        ? 'No cited page has been read back, so nothing can be said about what the answers took from them.'
-        : 'Across ' + report.measured + ' reading(s) of ' + report.pagesRead + ' cited page(s) read back, the mean uptake is ' + uptakePct(report.mean) + '.'
-          + (report.citedNotUsed
-            ? ' ' + report.citedNotUsed + (report.citedNotUsed === 1 ? ' reading is of a page whose subject the answer barely touches.' : ' readings are of pages whose subject the answer barely touches.')
-            : ' Every cited page shares its subject with the answer that cited it.');
-      const unread = report.unread
-        ? '<p class="subtle">' + report.pagesUnread + ' of the ' + (report.pagesRead + report.pagesUnread)
-          + ' cited page(s) have not been read back, so they are left out rather than counted as unused.</p>'
-        : '';
-      const rows = report.pages.slice(0, 10).map((row: any) => '<div class="mrow mcols-uptake"><div class="mname"><strong>' + html(row.host) + '</strong>'
-        + '<span class="mono">' + html(row.url.length > 70 ? row.url.slice(0, 70) + "\u2026" : row.url) + '</span>'
-        + '<span class="subtle">' + html(row.promptText.length > 70 ? row.promptText.slice(0, 70) + "\u2026" : row.promptText) + ' \u00b7 ' + html(row.modelId) + '</span>'
-        + (row.phrases.length ? '<span class="subtle">\u201c' + html(row.phrases[0].text.slice(0, 90)) + '\u201d</span>' : '')
-        + '</div>'
-        + '<span class="mcell">#' + row.citedAt + '</span>'
-        + '<span class="mcell ' + (row.uptake === null ? "" : row.uptake >= 0.4 ? "state-ok" : row.uptake > 0 ? "state-flag" : "state-bad") + '">'
-        + (row.uptake === null ? 'Not read' : uptakePct(row.uptake)) + '</span>'
-        + '<span class="mcell">' + (row.shared === null ? "Not measurable" : uptakePct(row.shared)) + '</span>'
-        + '<span class="mcell">' + (row.coverage === null ? "Not measurable" : uptakePct(row.coverage)) + '</span></div>').join("");
-      return '<p>' + html(lead) + '</p>' + unread + unreadCta
-        + '<div class="mtable"><div class="mhead mcols-uptake"><span>Page, and the answer that cited it</span><span>Cited</span><span>Uptake</span><span>Shared subject</span><span>Coverage</span></div>' + rows + '</div>'
-        + '<p class="mlegend">' + html(report.caveat) + '</p>';
-    }
-
     // Shapes, not findings. A rewrite aimed at being cited stays factually
     // consistent with the original, so nothing that checks facts catches one.
     async function loadInterference() {
@@ -2202,7 +2167,7 @@ export function boot(): void {
           : '<p class="subtle">Nothing has moved since the previous run.</p>';
 
       return heading(hero
-        + renderTasks(3)
+        + renderTasks(currentTasks(), 3)
         + dashboardBody({ status: "ready", value: view }, state.editingBoard, state.panelViews)
         + '<section class="section-card"><div class="section-head"><div class="headmain"><h2>What changed</h2><p class="subtle">Read off the archived answers, in the words the evidence supports.</p></div></div>' + changed + '</section>'
         + '<section class="section-card"><div class="section-head"><div class="headmain"><h2>Needs attention</h2><p class="subtle">Only what moved, and only where both runs could be measured.</p></div></div>' + alerts + '</section>');
@@ -2302,7 +2267,7 @@ export function boot(): void {
       // Four tables stacked under one heading was five screens. What the page
       // is for stays open; each table folds.
       return '<p class="subtle">' + data.answersWithCitations + ' of ' + data.answersConsidered + ' answers carried a source.</p>'
-        + renderDecomposition(data.decomposition)
+        + renderDecomposition(data.decomposition, currentTasks())
         + foldCard("sources-own", "Pages of yours the models reached for",
           "The pages that did the work, so you know which ones to keep.", own)
         + foldCard("sources-domains", "Every domain cited",
@@ -2311,123 +2276,6 @@ export function boot(): void {
           "A question somebody else answered. This is the shortest list to act on.", openings)
         + foldCard("sources-history", "Pages that stopped being cited",
           "A page cited before and not now, which is a change rather than a level.", renderCitationHistory());
-    }
-
-
-    function renderDecomposition(report: any) {
-      if (!report || !report.activation || !report.activation.considered) return '';
-      const act = report.activation;
-      const searched = act.rate === null
-        ? 'Between ' + sharePct(act.low) + ' and ' + sharePct(act.high) + ' of answers searched the web'
-        : sharePct(act.rate) + ' of answers searched the web';
-      // Both ends equal reads as a band of nothing, so it is stated as one figure.
-      const settled = report.citedGivenActivated !== null || report.citedGivenActivatedLow === report.citedGivenActivatedHigh;
-      const cited = report.citedGivenActivatedHigh === null
-        ? 'Nothing is known to have searched, so there is no share among those to give.'
-        : settled
-          ? sharePct(report.citedGivenActivatedHigh) + ' of the answers that searched cited you.'
-          : 'Between ' + sharePct(report.citedGivenActivatedLow) + ' and ' + sharePct(report.citedGivenActivatedHigh) + ' of the answers that searched cited you, depending on how many of the unknown ones did.';
-      const overall = report.overall === null
-        ? ''
-        : 'Across all answers it is ' + sharePct(report.overall) + ', which is exact: an answer carrying no source cited nobody.';
-      // Each state is only named when it happened, or the line lists noughts.
-      const parts = [act.activated + ' searched'];
-      if (act.unavailable) parts.push(act.unavailable + ' could not search at all');
-      if (act.notRequested) parts.push(act.notRequested + (act.notRequested === 1 ? ' was' : ' were') + ' never asked to');
-      if (act.unknown) parts.push(act.unknown + ' could have searched and nothing says whether they did, which is unknown rather than a no');
-      const band = parts.length > 1 ? '<p class="subtle">' + parts.join(', ') + '.</p>' : '';
-      // The one thing this page decides, so it is the one card that stays open.
-      return section({ id: "sources-searching", title: "Searching, then being cited", blurb: report.caveat, wide: true,
-        body: '<p>' + searched + '. ' + cited + ' ' + overall + '</p>'
-          + band
-          + '<p class="subtle">' + html(act.caveat) + '</p>' + taskCta("activation-unknown") });
-    }
-
-    function renderStability(report: any) {
-      if (!report) return '';
-      if (!report.measured) {
-        return foldCard("trust-stability", "How much the answer moves",
-          "Every question here was asked once, so nothing can be said about how much of an answer is the question and how much is the day.",
-          taskCta("asked-once"));
-      }
-      // The overlap is a mean over the questions that cited anything, and most
-      // of these cited nothing. Printing it against the larger number claims a
-      // reading of questions there was nothing to read.
-      const overall = report.sourceOverlap === null
-        ? 'No pair of passes cited a source between them, so there is no overlap to take.'
-        : 'Across the ' + report.withSources + ' of ' + report.measured + ' question(s) asked more than once that cited anything, '
-          + sharePct(report.sourceOverlap) + ' of the cited sources survived from one pass to the next.';
-      // Never naming you and always naming you are both agreement. Only one of
-      // them is good news, and reporting them as one printed your absence as
-      // a reassurance about the measurement.
-      const naming = report.namingUnstable
-        ? report.namingUnstable + ' question(s) named you on one pass and not on another, which means a single pass would have reported either answer.'
-        : report.alwaysNamed === 0
-          ? 'No pass of any of them named you, so they agree on an absence rather than on a reading.'
-          : report.neverNamed === 0
-            ? 'Every pass of every question named you.'
-            : report.alwaysNamed + ' question(s) named you on every pass and ' + report.neverNamed + ' named you on none. Each agrees with itself.';
-      const rows = report.questions.slice(0, 8).map((row: any) =>
-        '<div class="mrow mcols-stability"><div class="mname"><strong>' + html(row.promptText) + '</strong>'
-        + '<span class="mono">' + html(row.modelId) + ' · ' + row.passes + ' passes</span></div>'
-        + '<span class="mcell ' + (row.naming === "always" ? "state-ok" : row.naming === "split" ? "state-bad" : "subtle") + '">'
-        + (row.naming === "always" ? "Every pass" : row.naming === "split" ? row.named + ' of ' + row.passes : "No pass") + '</span>'
-        + '<span class="mcell">' + row.sourcesAlways + ' of ' + row.sourcesEver + '</span>'
-        + '<span class="mcell">' + (row.sourceOverlap === null ? 'No sources' : sharePct(row.sourceOverlap)) + '</span>'
-        + '<span class="mcell subtle">' + (row.spanHours === null ? 'Unknown span' : row.spanHours < 1 ? 'Minutes apart' : row.spanHours < 48 ? Math.round(row.spanHours) + 'h apart' : Math.round(row.spanHours / 24) + 'd apart') + '</span></div>').join("");
-      return foldCard("trust-stability", "How much the answer moves", report.caveat, ''
-        + '<p>' + overall + ' ' + naming + '</p>'
-        + '<div class="mtable"><div class="mhead mcols-stability"><span>Question</span><span>Named you</span><span>Sources every pass</span><span>Overlap</span><span>Span</span></div>'
-        + rows + '</div>'
-        + (taskCta("naming-unstable") || taskCta("sources-turn-over") || taskCta("asked-once")));
-    }
-
-    // One list, two places: the listing at the top of a page and the button
-    // on the panel that measured it both read the same task.
-    function tasks(): any[] {
-      const data: any = state.answerEngine;
-      return data && Array.isArray(data.tasks) ? data.tasks : [];
-    }
-
-    function taskFor(id: string): any {
-      return tasks().find((task: any) => task.id === id) || null;
-    }
-
-    /** Attached to the panel that measured it, so the action is where the
-     * finding is and nobody has to scroll back to the list to act on it. */
-    function taskCta(id: string) {
-      const task = taskFor(id);
-      if (!task) return '';
-      return '<div class="task-cta"><span class="' + urgencyInk(task.urgency) + '">' + html(urgencyLabel(task.urgency)) + '</span>'
-        + '<span><strong>' + html(task.title) + '</strong></span>'
-        + button({ label: task.action, kind: task.urgency === "blocking" ? "primary" : "quiet", on: { "data-page": task.page } }) + '</div>';
-    }
-
-    function taskRow(task: any) {
-      // Not "done": that greys the label, and work still to do is not done.
-      return '<li class="step task-step" data-state="' + (task.urgency === "blocking" ? "warn" : task.urgency === "limiting" ? "next" : "work") + '">'
-        + '<span class="step-index ' + urgencyInk(task.urgency) + '">' + html(urgencyLabel(task.urgency)) + '</span>'
-        + '<span class="step-label"><strong>' + html(task.title) + '</strong>'
-        + '<br><span class="step-why">' + html(task.why) + '</span>'
-        + '<br><span class="step-note">Observed: ' + html(task.evidence) + '</span></span>'
-        + '<span class="step-action">' + button({ label: task.action, kind: task.urgency === "blocking" ? "primary" : "quiet", on: { "data-page": task.page } }) + '</span></li>';
-    }
-
-    // Absent on an archive scored before tasks existed, which is not the same
-    // as a project with nothing to do, so neither is drawn for the other.
-    function renderTasks(limit?: number) {
-      const rows = tasks();
-      if (!rows.length) return '';
-      const blocking = rows.filter((task: any) => task.urgency === "blocking").length;
-      const shown = limit ? rows.slice(0, limit) : rows;
-      const rest = rows.length - shown.length;
-      const blurb = blocking
-        ? blocking + ' of these ' + (blocking === 1 ? 'stops' : 'stop') + ' a number being produced at all. Nothing below it can be read until it is cleared.'
-        : 'Ordered by what is holding the measurement back, then by what the measurement says to do.';
-      return '<section class="section-card"><div class="section-head"><div class="headmain"><h2>What to do next</h2>'
-        + '<p class="subtle">' + html(blurb) + '</p></div></div>'
-        + '<ol class="steps">' + shown.map(taskRow).join("") + '</ol>'
-        + (rest > 0 ? '<p class="mlegend">' + rest + ' more on the full report.</p>' : '') + '</section>';
     }
 
     // Repetition holds the wording and varies the day. This holds the day and
@@ -2740,7 +2588,7 @@ export function boot(): void {
             + '</li>').join("")
           + '</ul></details>'
         : '';
-      const failedNote = data.answersFailed ? '<div class="warning-box">' + data.answersFailed + ' answer(s) failed and are excluded. They are not counted as answers that did not name you.' + causeList + taskCta("answers-failed") + retryButton + '</div>' : '';
+      const failedNote = data.answersFailed ? '<div class="warning-box">' + data.answersFailed + ' answer(s) failed and are excluded. They are not counted as answers that did not name you.' + causeList + taskCta(currentTasks(), "answers-failed") + retryButton + '</div>' : '';
       // A question you retired is one you said is not your business. Its old
       // answers stay archived and stop supplying the figures, and the reader
       // is told rather than left wondering where the count went.
@@ -2757,7 +2605,7 @@ export function boot(): void {
           + (corr.absentFromAnswer ? ', and ' + corr.absentFromAnswer + ' named nothing the answer actually contains' : '')
           + '. ' + (corr.quotesChecked ? corr.quotesFound + ' of ' + corr.quotesChecked + ' quoted lines are really in the answer.' : '')
           + '<details class="technical-details"><summary>What that does and does not prove</summary><p>' + html(corr.caveat) + '</p></details>'
-          + taskCta("quotes-not-found") + taskCta("mentions-absent") + '</div>'
+          + taskCta(currentTasks(), "quotes-not-found") + taskCta(currentTasks(), "mentions-absent") + '</div>'
         : '';
       // Naming the cause matters more than naming the symptom. Telling somebody
       // to get a provider with web search is wrong when they have one, switched off.
@@ -2769,7 +2617,7 @@ export function boot(): void {
           : act0.unavailable === act0.considered
             ? 'None of the models that ran can search the web at all, so no citation was ever possible.'
             : 'A provider with web search will produce them.';
-      const citationFix = taskCta("search-switched-off") || taskCta("no-model-can-search") || taskCta("no-sources-returned");
+      const citationFix = taskCta(currentTasks(), "search-switched-off") || taskCta(currentTasks(), "no-model-can-search") || taskCta(currentTasks(), "no-sources-returned");
       const citationNote = data.citationsUnavailable
         ? '<div class="warning-box">No answer carried a citation, so there are no sources to analyse. That is a property of the models you ran, not evidence that nobody cites you. '
           + html(citationCause) + citationFix + '</div>'
@@ -2801,7 +2649,7 @@ export function boot(): void {
       });
       return answerPage("Sources", "What the answers cited, and whether the answer used it. A citation is an address until the page behind it is read.", () => ''
         + card("source-pages", "Sources", "A domain says you are cited. A page says which one to write more of.", renderCitedPages())
-        + card("source-uptake", "Cited, or actually used", "A citation says a page was listed. This says how much of the answer came from it. A page cited and used for nothing is the finding worth having.", renderUptake())
+        + card("source-uptake", "Cited, or actually used", "A citation says a page was listed. This says how much of the answer came from it. A page cited and used for nothing is the finding worth having.", renderUptake(state.uptakeState, state.uptake, currentTasks(), sourceActions))
         + card("source-outreach", "Pages the models read", "Each cited page, fetched and read back: who is on it, in what order, and whether you are. A page cited on a question you lose, without you on it, is the most specific thing here.", renderOutreach(state.outreachState, state.outreach, state.harvesting, sourceActions))
         + card("source-demand", "What people search for", "Search Console, joined to the questions you track. Not AI prompt volume, but real demand for the same subject.", renderSearchDemand(state.searchDemandState, state.searchDemand, state.pulling, sourceActions))
         + card("source-referrals", "Who arrived from an assistant", "Analytics sessions by referring assistant. Being named is one claim; somebody arriving because of it is another.", renderReferrals(state.referralsState, state.referrals, state.pullingReferrals, sourceActions))
@@ -2828,7 +2676,7 @@ export function boot(): void {
       return ''
         + card("rival-plan", "What would move this", "Read off the archived answers, strongest lever first. None of it is an opinion about your marketing.", renderRankingPlan())
         + card("rival-leaderboard", "Competitors named in the answers", "Organisations the assistants named while answering your questions. Not the assistants themselves. Ranked by how many answers named them, then by how early.", renderLeaderboard(data.leaderboard))
-        + card("rival-absent", "Questions you never appear in", "Answered, and you were not named once. Open one to read what the models credited the winners with, which is the standard that question is answered against.", renderAbsent(data.absentFrom) + taskCta("absent-questions"))
+        + card("rival-absent", "Questions you never appear in", "Answered, and you were not named once. Open one to read what the models credited the winners with, which is the standard that question is answered against.", renderAbsent(data.absentFrom) + taskCta(currentTasks(), "absent-questions"))
         + card("rival-topics", "Topics, weakest first", "Where you are losing, in the order worth fixing. Every question opens its answers.", renderTopicRows(data.topics))
         + card("rival-named", "Rivals you name", "Name a competitor here and it is tracked whether or not an answer mentions it. A tracked rival nobody named reads as zero, which is a finding; leaving it out would hide it.", renderRivals(data))
         + card("rival-trend", "Movement", "One point per run. A run where everything failed is left out rather than drawn as a drop.", renderPromptTrend(data.trend))
@@ -2854,8 +2702,8 @@ export function boot(): void {
         + renderVersions(data.versions)
         + renderDecoys(data.decoys)
         + renderVariance(data.variance)
-        + taskCta("too-few-answers")
-        + renderStability(data.stability)
+        + taskCta(currentTasks(), "too-few-answers")
+        + renderStability(data.stability, currentTasks(), foldCard)
         + renderPhrasing(data.phrasing)
         + renderFraming(data.framing)
         + foldCard("trust-check", "Check the machine", "Every figure here rests on a model classifying what another model wrote. Judge a few yourself and the agreement rate becomes the confidence in the whole column.", renderHumanCheck())
