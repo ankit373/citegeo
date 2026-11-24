@@ -16,6 +16,7 @@ import { mentionChips, paneRun, renderLiveRun, runIsLive, runPaneProgress } from
 import { renderDecoys, renderFraming, renderHumanCheck, renderExperiments, renderPhrasing, renderSchedule, renderStability, renderTier, renderVariance, renderVersions } from "./pages/trust-sections.js";
 import { answerTasks, taskCta } from "./pages/task-views.js";
 import { renderConcentration, renderCredit, renderDecomposition, renderUptake, renderInterference, renderKinds, renderOutreach, renderReferrals, renderSearchDemand, renderShape } from "./pages/source-sections.js";
+import { settlePull } from "./pull.js";
 import { dashboardView, renderHome, type AnswerDigest, type CitedPages, type ReferralsPayload } from "./pages/home-view.js";
 import { renderFooter, renderOverview } from "./pages/overview-view.js";
 import { recognitionCountStrip, recognitionRunSummary, renderRecognitionModel, type RecognitionRunDetail } from "./pages/recognition-view.js";
@@ -1676,15 +1677,16 @@ export function boot(): void {
 
     async function pullSearchDemand() {
       if (!state.selectedId || state.pulling) return;
+      const startedFor = state.selectedId;
       state.pulling = true;
       render();
       try {
-        const result = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/search-demand", { method:"POST", headers:{"Content-Type":"application/json"}, body:"{}" });
-        if (state.searchDemand) state.searchDemand = { ...state.searchDemand, configured:true, report: result.report };
-        state.searchDemandState = "ready";
-        state.promptNotice = { text: result.report.queries + " query row(s) read from Search Console.", kind:"success" };
+        const result = await request("/api/projects/" + encodeURIComponent(startedFor) + "/search-demand", { method:"POST", headers:{"Content-Type":"application/json"}, body:"{}" });
+        const settled = settlePull(startedFor, state.selectedId, state.searchDemand, result.report);
+        if (settled.next) { state.searchDemand = settled.next; state.searchDemandState = "ready"; }
+        if (settled.sameProject) state.promptNotice = { text: result.report.queries + " query row(s) read from Search Console.", kind:"success" };
       } catch (error) {
-        state.promptNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind:"error" };
+        if (state.selectedId === startedFor) state.promptNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind:"error" };
       }
       state.pulling = false;
       render();
@@ -1741,14 +1743,16 @@ export function boot(): void {
 
     async function pullReferrals() {
       if (!state.selectedId || state.pullingReferrals) return;
+      const startedFor = state.selectedId;
       state.pullingReferrals = true;
       render();
       try {
-        const result = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/assistant-referrals", { method:"POST", headers:{"Content-Type":"application/json"}, body:"{}" });
-        if (state.referrals) state.referrals = { ...state.referrals, configured:true, report: result.report };
-        state.promptNotice = { text:"Analytics read.", kind:"success" };
+        const result = await request("/api/projects/" + encodeURIComponent(startedFor) + "/assistant-referrals", { method:"POST", headers:{"Content-Type":"application/json"}, body:"{}" });
+        const settled = settlePull(startedFor, state.selectedId, state.referrals, result.report);
+        if (settled.next) state.referrals = settled.next;
+        if (settled.sameProject) state.promptNotice = { text:"Analytics read.", kind:"success" };
       } catch (error) {
-        state.promptNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind:"error" };
+        if (state.selectedId === startedFor) state.promptNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind:"error" };
       }
       state.pullingReferrals = false;
       render();

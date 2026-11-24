@@ -5,6 +5,7 @@ import { ProductProjectService } from "../../src/product/projects/project-servic
 import { LocalObjectStore } from "../../src/product/storage/object-store.js";
 import { TopicFileStore } from "../../src/product/topics/topic-store.js";
 import { emptyTopicSet, type Prompt } from "../../src/product/topics/topic-schema.js";
+import { SiteIconStore } from "../../src/product/discovery/site-icon-service.js";
 import { PromptRunFileStore } from "../../src/product/topics/prompt-run-store.js";
 import type { PromptAnswer, PromptRun } from "../../src/product/topics/prompt-run-schema.js";
 
@@ -48,5 +49,9 @@ await runs.saveAnswer(answer("a1", "p1", true));
 await runs.saveAnswer(answer("a2", "p1", false));
 await runs.saveAnswer(answer("a3", "p2", true));
 await runs.saveAnswer(answer("a4", "p2", true));
+
+// Marks already read as "none declared", so the board makes no request to either site.
+const readAt = new Date().toISOString();
+await new SiteIconStore(store).save({ "acme.example": { url: null, readAt }, "rival.example": { url: null, readAt } });
 
 createProductServer().listen(Number(process.env.PORT || 8787));

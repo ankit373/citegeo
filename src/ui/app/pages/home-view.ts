@@ -18,7 +18,7 @@ import type { SearchConsoleService, SearchConsoleStatus } from "../../../product
 import type { CitationAnalysis } from "../../../product/topics/citation-analysis.js";
 import type { CitationStanding } from "../../../product/topics/position-metrics.js";
 import type { MeasurementTask } from "../../../product/topics/next-task.js";
-import type { PromptStanding } from "../../../product/topics/topic-insights.js";
+import type { EntityStanding, PromptStanding } from "../../../product/topics/topic-insights.js";
 
 /** What moved since the previous run, in sentences. Only built when
  * something did: a digest that usually says nothing stops being read. */
@@ -150,10 +150,8 @@ export function dashboardView(state: DashboardState, selected: ProjectRow | null
     questions,
     measurable,
     absent: data ? data.absentFrom.length : 0,
-    // The models that actually answered. byModel carries every model the
-    // archive has ever seen, and fourteen of this project's twenty four
-    // have never produced an answer, so "3 of 24" was over a denominator
-    // more than twice the number that were asked.
+    // The models that actually answered. byModel lists every model ever seen, and
+    // "3 of 24" was over a denominator more than twice the number asked.
     assistants: data ? data.byModel.filter((row) => row.score.answers > 0).length : 0,
     assistantsConfigured: data ? data.byModel.length : 0,
     assistantsNaming: data ? data.byModel.filter((row) => row.score.appearances > 0).length : 0,
@@ -272,11 +270,11 @@ export function buildMatrix(data: InsightsShape | null, own: string, brandIcons:
   const rivals = board.filter((row) => !row.isTarget).slice(0, 7);
   const columns = [...mine, ...rivals].map((row) => ({ name: String(row.name), domain: row.domain ?? null, icon: row.domain ? brandIcons[row.domain] ?? null : null, isTarget: !!row.isTarget }));
   if (!columns.length) return undefined;
-  const shareIn = (standing: any[]) => columns.map((column) => {
+  const shareIn = (standing: EntityStanding[]) => columns.map((column) => {
     const found = (standing || []).find((row) => row.name === column.name);
     return found ? (found.shareOfAnswers ?? null) : null;
   });
-  const rows: any[] = [];
+  const rows: MatrixData["rows"] = [];
   for (const topic of data.topics) {
     const subs = topic.subtopics || [];
     const key = "t:" + topic.topicId;

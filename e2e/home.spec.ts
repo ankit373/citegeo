@@ -61,7 +61,8 @@ test.afterAll(async () => {
 test("Home draws the board from a project's archived answers", async ({ page }) => {
   await page.goto(`${baseUrl}/?projectId=${projectIds["Acme"]}`);
   await expect(page.getByRole("heading", { level: 1, name: "Acme" })).toBeVisible();
-  await expect(page.locator(".hero .scorebig")).toBeVisible();
+  await expect(page.locator(".hero .scorebig")).toHaveText("75");
+  await expect(page.locator(".view").getByText("Rival One").first()).toBeVisible();
   await expect(page.getByRole("heading", { name: "What changed" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Needs attention" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Arrange board" })).toBeVisible();
