@@ -47,7 +47,7 @@ async function startProductServer(): Promise<void> {
     stdio: "ignore",
   });
   baseUrl = `http://127.0.0.1:${port}`;
-  for (let attempt = 0; attempt < 80; attempt += 1) {
+  for (let attempt = 0; attempt < 400; attempt += 1) {
     try {
       const response = await fetch(`${baseUrl}/api/projects`);
       if (response.status === 200) return;
