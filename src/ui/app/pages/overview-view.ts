@@ -62,10 +62,8 @@ export function renderProjectCards(list: ProjectList): string {
     + '</div>';
 }
 
-export function renderNextSteps(selectionCount: number, runCount: number, currentVersion: unknown): string {
-  const models = selectionCount;
+export function renderNextSteps(models: number, runs: number, currentVersion: unknown): string {
   const saved = Boolean(currentVersion);
-  const runs = runCount;
   const steps = [
     { label: "Choose models and save them as a configuration", done: models > 0 && saved, note: models ? models + " selected" + (saved ? ", saved v" + String(currentVersion) : ", not saved") : "None yet", page: "models", action: "Choose models" },
     { label: "Run a domain recognition test", done: runs > 0, note: runs ? runs + " run" + (runs === 1 ? "" : "s") : "Not run yet", page: "recognition", action: "Run test" },
