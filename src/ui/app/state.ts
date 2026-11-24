@@ -66,7 +66,6 @@ export interface ScoresSlice {
   outreach: Loadable<unknown>;
   cited: Loadable<unknown>;
   rivals: Loadable<unknown>;
-  segments: Loadable<unknown>;
   personas: Loadable<unknown>;
   filters: Filters;
 }
@@ -117,7 +116,7 @@ export function emptyStore(page: string, selectedId: string): Store {
     scores: {
       insights: { status: "idle" }, plan: { status: "idle" }, actions: { status: "idle" },
       brief: { status: "idle" }, outreach: { status: "idle" }, cited: { status: "idle" },
-      rivals: { status: "idle" }, segments: { status: "idle" }, personas: { status: "idle" },
+      rivals: { status: "idle" }, personas: { status: "idle" },
       filters: { ...NO_FILTERS },
     },
     run: { live: null, last: null, feed: { status: "idle" }, pollTimer: 0, feedTimer: 0 },

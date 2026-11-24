@@ -3,34 +3,36 @@ import assert from "node:assert/strict";
 import {
   evidenceValue, highlightedRawAnswer, recognitionCountStrip, recognitionEvidenceRows, recognitionMissingText,
   recognitionRunCounts, recognitionRunSummary, renderRecognitionEvidence, renderRecognitionModel, renderRecognitionSummary,
-  type RecognitionArchive, type RecognitionModelDetail, type RecognitionModelRun, type RecognitionPresentation,
+  type RecognitionArchive, type RecognitionModelDetail, type RecognitionModelRunView, type RecognitionRunDetail,
 } from "../src/ui/app/pages/recognition-view.js";
 
 function has(text: string, ...parts: string[]): void {
   for (const part of parts) assert.ok(text.includes(part), `${JSON.stringify(text)} lacks ${part}`);
 }
 
+const span = (start: number, end: number) => ({ quote: "", start, end, encoding: "utf16_code_unit" as const });
+
 const archive: RecognitionArchive = {
   result: {
     id: "r1",
     domainRecognition: "recognized",
-    recognizedBrand: { value: "Acme", evidence: { start: 0, end: 4 } },
+    recognizedBrand: { value: "Acme", evidence: span(0, 4) },
     businessDescription: { value: null, evidence: null },
-    productCategory: { value: "Tools" },
+    productCategory: { value: "Tools", evidence: null },
     fieldIssues: [{ field: "competitors", kind: "missing_field", detail: "none" }],
   },
   competitors: [],
-  brandKeywords: [{ id: "k1", keyword: "anvil", evidence: { start: 5, end: 10 } }],
+  brandKeywords: [{ id: "k1", keyword: "anvil", evidence: span(5, 10) }],
   competitorKeywords: [],
   providerCitations: [{ url: "https://a.example/x", title: "" }],
   answerMentionedUrls: [],
 };
 
-const presentation: RecognitionPresentation = {
+const presentation: RecognitionModelDetail["presentation"] = {
   requestExecution: "response_received", localAnalysis: "complete", primaryAction: "reanalyze_saved_answer", statusLabel: "Got it", detail: null,
 };
 
-const modelRun: RecognitionModelRun = {
+const modelRun: RecognitionModelRunView = {
   id: "m1", status: "completed", recognitionMode: "native_web_domain_discovery", modelSnapshot: { displayName: "Model <1>", modelId: "v/m" },
 };
 
@@ -66,7 +68,7 @@ test("the evidence block escapes the raw answer and names a missing citation lis
 });
 
 test("run counts come from the model details, and a model with none is still running", () => {
-  const run = { run: { id: "r", status: "running" }, modelRuns: [modelRun, { ...modelRun, id: "m2", status: "queued" }, { ...modelRun, id: "m3", status: "failed" }] };
+  const run: RecognitionRunDetail = { run: { id: "r", status: "running" }, modelRuns: [modelRun, { ...modelRun, id: "m2", status: "queued" }, { ...modelRun, id: "m3", status: "failed" }] };
   const counts = recognitionRunCounts(run, { m1: detail });
   assert.deepEqual(counts, { received: 1, complete: 1, partial: 0, analysisFailed: 0, requestLimited: 0, running: 1 });
   has(recognitionRunSummary(run, { m1: detail }), "Answer received 1", "Still running 1");
