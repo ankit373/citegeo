@@ -3,6 +3,8 @@ import { button } from "../components/button.js";
 import { urgencyInk, urgencyLabel } from "../labels.js";
 import type { MeasurementTask } from "../../../product/topics/next-task.js";
 
+// One list, two places: the listing at the top of a page and the button
+// on the panel that measured it both read the same task.
 /** The tasks the answer-engine read carries, or none before it has arrived. */
 export function answerTasks(data: { tasks?: MeasurementTask[] | null | undefined } | null | undefined): MeasurementTask[] {
   return data && Array.isArray(data.tasks) ? data.tasks : [];
@@ -12,6 +14,8 @@ export function taskFor(tasks: MeasurementTask[], id: string): MeasurementTask |
   return tasks.find((task) => task.id === id) || null;
 }
 
+/** Attached to the panel that measured it, so the action is where the
+ * finding is and nobody has to scroll back to the list to act on it. */
 export function taskCta(tasks: MeasurementTask[], id: string): string {
   const task = taskFor(tasks, id);
   if (!task) return '';
@@ -30,6 +34,8 @@ export function taskRow(task: MeasurementTask): string {
     + '<span class="step-action">' + button({ label: task.action, kind: task.urgency === "blocking" ? "primary" : "quiet", on: { "data-page": task.page } }) + '</span></li>';
 }
 
+// Absent on an archive scored before tasks existed, which is not the same
+// as a project with nothing to do, so neither is drawn for the other.
 export function renderTasks(rows: MeasurementTask[], limit?: number): string {
   if (!rows.length) return '';
   const blocking = rows.filter((task) => task.urgency === "blocking").length;

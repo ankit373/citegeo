@@ -2278,13 +2278,6 @@ export function boot(): void {
           "A page cited before and not now, which is a change rather than a level.", renderCitationHistory());
     }
 
-
-    // One list, two places: the listing at the top of a page and the button
-    // on the panel that measured it both read the same task.
-    /** Attached to the panel that measured it, so the action is where the
-     * finding is and nobody has to scroll back to the list to act on it. */
-    // Absent on an archive scored before tasks existed, which is not the same
-    // as a project with nothing to do, so neither is drawn for the other.
     // Repetition holds the wording and varies the day. This holds the day and
     // varies the wording, so the two read together and neither alone.
     function renderPhrasing(report: any) {

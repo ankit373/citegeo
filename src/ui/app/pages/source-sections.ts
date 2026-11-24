@@ -251,6 +251,7 @@ export function renderReferrals(status: LoadState, data: ReferralsData | null | 
       + '<span class="mcell">' + (report.totalSessions ? Math.round(row.sessions / report.totalSessions * 1000) / 10 + '%' : "Not measurable") + '</span></div>').join("")
     + '</div><p class="evidence-note">Arriving is a different claim from being named. A high score with no sessions means the answers name you and nobody clicks through, which is the normal case and not a fault in either number.</p>';
 }
+
 export function renderUptake(status: LoadState, report: UptakeSummary | null | undefined, tasks: MeasurementTask[], actions: Pick<SourceActions, "loadUptake">): string {
   if (status === "idle") { actions.loadUptake(); }
   if (status !== "ready" || !report) {
@@ -276,15 +277,15 @@ export function renderUptake(status: LoadState, report: UptakeSummary | null | u
   const rows = report.pages.slice(0, 10).map((row) => {
     const phrase = row.phrases[0];
     return '<div class="mrow mcols-uptake"><div class="mname"><strong>' + html(row.host) + '</strong>'
-    + '<span class="mono">' + html(row.url.length > 70 ? row.url.slice(0, 70) + "\u2026" : row.url) + '</span>'
-    + '<span class="subtle">' + html(row.promptText.length > 70 ? row.promptText.slice(0, 70) + "\u2026" : row.promptText) + ' \u00b7 ' + html(row.modelId) + '</span>'
-    + (phrase ? '<span class="subtle">\u201c' + html(phrase.text.slice(0, 90)) + '\u201d</span>' : '')
-    + '</div>'
-    + '<span class="mcell">#' + row.citedAt + '</span>'
-    + '<span class="mcell ' + (row.uptake === null ? "" : row.uptake >= 0.4 ? "state-ok" : row.uptake > 0 ? "state-flag" : "state-bad") + '">'
-    + (row.uptake === null ? 'Not read' : uptakePct(row.uptake)) + '</span>'
-    + '<span class="mcell">' + (row.shared === null ? "Not measurable" : uptakePct(row.shared)) + '</span>'
-    + '<span class="mcell">' + (row.coverage === null ? "Not measurable" : uptakePct(row.coverage)) + '</span></div>';
+      + '<span class="mono">' + html(row.url.length > 70 ? row.url.slice(0, 70) + "\u2026" : row.url) + '</span>'
+      + '<span class="subtle">' + html(row.promptText.length > 70 ? row.promptText.slice(0, 70) + "\u2026" : row.promptText) + ' \u00b7 ' + html(row.modelId) + '</span>'
+      + (phrase ? '<span class="subtle">\u201c' + html(phrase.text.slice(0, 90)) + '\u201d</span>' : '')
+      + '</div>'
+      + '<span class="mcell">#' + row.citedAt + '</span>'
+      + '<span class="mcell ' + (row.uptake === null ? "" : row.uptake >= 0.4 ? "state-ok" : row.uptake > 0 ? "state-flag" : "state-bad") + '">'
+      + (row.uptake === null ? 'Not read' : uptakePct(row.uptake)) + '</span>'
+      + '<span class="mcell">' + (row.shared === null ? "Not measurable" : uptakePct(row.shared)) + '</span>'
+      + '<span class="mcell">' + (row.coverage === null ? "Not measurable" : uptakePct(row.coverage)) + '</span></div>';
   }).join("");
   return '<p>' + html(lead) + '</p>' + unread + unreadCta
     + '<div class="mtable"><div class="mhead mcols-uptake"><span>Page, and the answer that cited it</span><span>Cited</span><span>Uptake</span><span>Shared subject</span><span>Coverage</span></div>' + rows + '</div>'
