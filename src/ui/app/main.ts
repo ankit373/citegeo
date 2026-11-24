@@ -6,14 +6,14 @@ import { buyingView, claimsView, conversationsView, draftsView, entityView, mark
 import { exportName, filterSummary, matchesQuery, panelCsv } from "./components/panel-tools.js";
 import { emptyState, notice, section } from "./components/primitives.js";
 import { button } from "./components/button.js";
-import { formatTime, percent, score as scoreText, sharePct } from "./format.js";
+import { formatTime, percent, score as scoreText } from "./format.js";
 import { alertPill, effectLabel, historyWord, intentLabel, reachInk, reachWords, recognitionRunStatusText } from "./labels.js";
 import { deltaPill, demandBadge, fieldBadge } from "./components/badges.js";
-import { bar, experimentCard, overAppearances, renderLeaderboard, renderPersonaRows, stat, verdictButtons } from "./pages/metric-cells.js";
+import { overAppearances, renderLeaderboard, renderPersonaRows, stat } from "./pages/metric-cells.js";
 import { crawlerUpload, languagePicker, pasteCountPicker, repetitionPicker } from "./components/pickers.js";
 import { blockedSelection, catalogHead, catalogReleasedAt, catalogResultSummary, catalogVendor, modelIsBlocked, openRouterOutOfCredit, providerShortLabel, runsNowCell, selectedRows } from "./components/catalog-rows.js";
 import { mentionChips, paneRun, renderLiveRun, runIsLive, runPaneProgress } from "./pages/run-pane.js";
-import { renderStability } from "./pages/trust-sections.js";
+import { renderDecoys, renderFraming, renderHumanCheck, renderExperiments, renderPhrasing, renderSchedule, renderStability, renderTier, renderVariance, renderVersions } from "./pages/trust-sections.js";
 import { answerTasks, renderTasks, taskCta } from "./pages/task-views.js";
 import { renderConcentration, renderCredit, renderDecomposition, renderUptake, renderInterference, renderKinds, renderOutreach, renderReferrals, renderSearchDemand, renderShape } from "./pages/source-sections.js";
 import { renderFooter, renderOverview } from "./pages/overview-view.js";
@@ -156,6 +156,7 @@ export function boot(): void {
 
     const project = () => state.currentProjects.find((item) => item.id === state.selectedId) || null;
     const footerActions = { loadHome };
+    const trustActions = { loadCheck, loadExperiments, loadSchedule };
     const currentTasks = () => answerTasks(state.answerEngine);
     const sourceActions = { loadInterference, loadConcentration, loadShape, loadCredit, loadKinds, loadOutreach, loadSearchDemand, loadReferrals, loadUptake };
     const currentPaneRun = () => paneRun(state.panel, state.liveRun, state.lastRun);
@@ -1236,22 +1237,6 @@ export function boot(): void {
         + '</div>';
     }
 
-    function renderSchedule() {
-      if (state.scheduleState === "idle") { loadSchedule(); }
-      const schedule = state.schedule;
-      if (!schedule) return loading("the schedule", skeletonText(2));
-      const options = ["daily", "weekly", "monthly"].map((value) => '<option value="' + value + '"' + (schedule.rule.frequency === value ? " selected" : "") + '>' + value.charAt(0).toUpperCase() + value.slice(1) + '</option>').join("");
-      const markets = (state.regions || []).map((row) => '<label class="checkline"><input type="checkbox" name="regionIds" value="' + html(row.id) + '"' + (schedule.regionIds.indexOf(row.id) >= 0 ? " checked" : "") + '> ' + html(row.label) + '</label>').join("");
-      const next = schedule.enabled && schedule.nextRunAt ? 'Next run ' + html(schedule.nextRunAt.slice(0, 16).replace("T", " ")) + ' UTC.' : 'Not scheduled.';
-      const failure = schedule.lastError ? '<div class="warning-box">The last scheduled run did not happen: ' + html(schedule.lastError) + '</div>' : '';
-      return failure + '<form id="schedule-form" class="inline-form">'
-        + '<label class="checkline"><input type="checkbox" name="enabled"' + (schedule.enabled ? " checked" : "") + '> Run automatically</label>'
-        + '<select name="frequency" aria-label="How often">' + options + '</select>'
-        + '' + button({ label: "Save schedule", submit: true }) + '</form>'
-        + '<p class="subtle">' + next + ' The worker must be running: <span class="mono">npm run monitor:worker</span>.</p>'
-        + '<details class="technical-details"><summary>Markets to ask in</summary><div class="checkgrid">' + markets + '</div></details>';
-    }
-
     // A trend read at a glance: no axes, no grid, just the shape.
     // A spark has no room to say which points it dropped, so it draws only the
     // runs that asked enough to read a figure off. A line through a one-answer
@@ -1627,38 +1612,6 @@ export function boot(): void {
         state.promptNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind: "error" };
       }
       render();
-    }
-
-    function renderHumanCheck() {
-      if (state.checkState === "idle") { loadCheck(); }
-      if (state.checkState !== "ready" || !state.check) {
-        return '<p class="subtle">' + (state.checkState === "error" ? "Could not read the review queue." : "Drawing a sample to review.") + '</p>';
-      }
-      const report = state.check;
-      const agreement = report.agreement;
-      const rows = agreement.byField.map((row: any) => '<div class="mrow mcols-check"><div class="mname"><strong>' + html(row.field === "isTarget" ? "Is it you" : "How you were described") + '</strong>'
-        + (row.corrections.length ? '<span class="subtle">should have been ' + row.corrections.map((c: any) => html(c.value) + ' \u00d7' + c.count).join(", ") + '</span>' : '')
-        + '</div>'
-        + '<span class="mcell">' + row.checked + '</span>'
-        + '<span class="mcell ' + (row.interval.rate === null ? "" : row.interval.rate >= 0.9 ? "state-ok" : "state-flag") + '">'
-        + (row.interval.rate === null ? 'Not checked' : Math.round(row.interval.rate * 100) + '%') + '</span>'
-        + '<span class="mcell subtle">' + (row.interval.low === null ? "Not measurable" : Math.round(row.interval.low * 100) + ' to ' + Math.round(row.interval.high * 100) + '%') + '</span></div>').join("");
-      const next = report.items[0];
-      const judging = next
-        ? '<div class="fix"><div class="fix-top"><strong>' + html(next.name) + '</strong><span class="tag">' + html(next.modelId) + '</span></div>'
-          + '<p class="evidence-note">Asked: ' + html(next.promptText) + '</p>'
-          // The window centres on the name. Where the answer never spells it,
-          // this is the opening of the answer instead, which is a different
-          // thing to be judging and the reviewer is told so.
-          + (next.excerptHasName === false
-            ? '<p class="warning-box">The answer does not contain this name anywhere, so what follows is its opening rather than the place being judged. The model reported a mention its own answer does not carry.</p>'
-            : '')
-          + '<p class="why">\u2026' + html(next.excerpt) + '\u2026</p>'
-          + verdictButtons(next)
-          + '<p class="mlegend">' + report.remaining + ' left in this sample, drawn from ' + agreement.population + ' mention(s).</p></div>'
-        : '<p class="subtle">Nothing left in this sample. Every mention drawn has been judged.</p>';
-      return '<div class="mtable"><div class="mhead mcols-check"><span>What was classified</span><span>Checked</span><span>Agreed</span><span>Consistent with</span></div>' + rows + '</div>'
-        + judging + '<p class="mlegend">' + html(agreement.caveat) + '</p>';
     }
 
     // Where a page was credited against how much of the answer it accounts for.
@@ -2278,129 +2231,6 @@ export function boot(): void {
           "A page cited before and not now, which is a change rather than a level.", renderCitationHistory());
     }
 
-    // Repetition holds the wording and varies the day. This holds the day and
-    // varies the wording, so the two read together and neither alone.
-    function renderPhrasing(report: any) {
-      if (!report) return '';
-      if (!report.measured) {
-        return foldCard("trust-phrasing", "How much the wording decides",
-          "Every question here is written down one way, so nothing says whether you are visible for what was asked or for the exact words it was asked in. Add a rewording to a question and the next run compares them.",
-          '<div class="inline-actions">' + button({ label: "Open questions", kind: "quiet", on: { "data-page": "prompts" } }) + '</div>');
-      }
-      const lead = report.spread === null
-        ? 'No pair of wordings produced an answer to compare.'
-        : 'Across ' + report.measured + ' question(s) written more than one way, the widest gap between two wordings averages ' + sharePct(report.spread) + '.';
-      const naming = report.unstable
-        ? ' ' + report.unstable + ' question(s) named you under one wording and not another, so that figure is about the words rather than about you.'
-        : report.alwaysNamed === 0
-          ? ' No wording of any of them named you, so they agree on an absence rather than on a reading.'
-          : report.neverNamed === 0
-            ? ' Every wording of every question named you.'
-            : ' ' + report.alwaysNamed + ' question(s) named you under every wording and ' + report.neverNamed + ' under none.';
-      const named = report.namesTheBrand
-        ? ' ' + report.namesTheBrand + ' wording(s) name you and are left out, because the model discusses a brand the question names whatever it thinks.'
-        : '';
-      const rows = report.questions.slice(0, 6).map((row: any) => '<div class="mrow mcols-phrasing"><div class="mname"><strong>' + html(row.rootText) + '</strong>'
-        + '<span class="mono">' + html(row.modelId) + ' \u00b7 ' + row.wordings.length + ' wordings</span>'
-        + row.wordings.slice(0, 4).map((wording: any) => '<span class="subtle">' + (wording.named ? '\u2713' : '\u2717') + ' ' + html(wording.text) + '</span>').join("")
-        + '</div>'
-        + '<span class="mcell ' + (row.naming === "always" ? "state-ok" : row.naming === "split" ? "state-bad" : "subtle") + '">'
-        + (row.naming === "always" ? "Every wording" : row.naming === "split" ? row.namedIn + ' of ' + row.wordings.length : "No wording") + '</span>'
-        + '<span class="mcell">' + (row.spread === null ? "Not measurable" : sharePct(row.spread)) + '</span></div>').join("");
-      return foldCard("trust-phrasing", "How much the wording decides", report.caveat, ''
-        + '<p>' + html(lead + naming + named) + '</p>'
-        + '<div class="mtable"><div class="mhead mcols-phrasing"><span>Question and its wordings</span><span>Named you</span><span>Widest gap</span></div>'
-        + rows + '</div>');
-    }
-
-    // The error rate every other figure here should be read against. It sits
-    // with the score rather than in a corner, because that is what it qualifies.
-    function renderDecoys(report: any) {
-      if (!report) return '';
-      if (!report.decoys.length) {
-        return foldCard("trust-decoys", "A brand that should never appear",
-          "Nothing here measures how often this product finds a name that is not there. Declare a brand you know is irrelevant to these questions and every run carries it, so the share it turns up in becomes the figure yours has to beat.",
-          '<div class="inline-actions">' + button({ label: "Add a decoy", kind: "quiet", on: { "data-add-decoy": "true" } }) + '</div>');
-      }
-      const floor = sharePct(report.noiseFloor);
-      const verdict = report.clearsFloor === null
-        ? 'Nothing answered yet, so there is nothing to compare.'
-        : report.clearsFloor
-          ? 'Your ' + sharePct(report.presenceRate) + ' clears it.'
-          : 'Your ' + sharePct(report.presenceRate) + ' does not clear it, so it has not been told apart from a name that should never have been there.';
-      const add = '<div class="inline-actions" style="margin-top:12px">'
-        + button({ label: "Add a decoy", kind: "quiet", on: { "data-add-decoy": "true" } }) + '</div>';
-      const errors = report.matcherErrors
-        ? '<div class="warning-box"><strong>' + report.matcherErrors + ' reported mention(s) of a decoy are not in the answer that was said to contain them.</strong> That is this product reading a name that is not there, not a model writing one. Every figure built on reported mentions carries that error.</div>'
-        : '';
-      const rows = report.decoys.map((row: any) => '<div class="mrow mcols-decoy"><div class="mname"><strong>' + html(row.name) + '</strong>'
-        + '<span class="subtle">' + (row.absentFromText ? row.absentFromText + ' read into an answer that does not contain it' : 'never read into an answer that does not contain it') + '</span></div>'
-        + '<span class="mcell">' + row.namedIn + ' of ' + report.considered + '</span>'
-        + '<span class="mcell ' + (row.namedIn ? "state-flag" : "state-ok") + '">' + (row.share === null ? '\u2014' : sharePct(row.share)) + '</span>'
-        + '<span class="mcell">' + (row.high === null ? '\u2014' : sharePct(row.high)) + '</span></div>').join("");
-      return foldCard("trust-decoys", "A brand that should never appear", report.caveat, ''
-        + '<p><strong>Anything under ' + floor + ' is not a finding.</strong> ' + html(verdict) + '</p>' + errors
-        + '<div class="mtable"><div class="mhead mcols-decoy"><span>Decoy</span><span>Named in</span><span>Share</span><span>Consistent with up to</span></div>'
-        + rows + '</div>' + add);
-    }
-
-    // Published work decomposing what decides a recommendation put the product's
-    // own parameters at most of it and the brand at close to none. This asks
-    // the same of one project's archive rather than taking that on trust.
-    function renderVariance(report: any) {
-      if (!report || !report.answers) return '';
-      if (report.flat) {
-        return foldCard("trust-variance", "What decides whether you appear",
-          "Every answer said the same thing about you, so nothing here varies and nothing can explain it. That is a finding about the brand rather than a gap in the measurement.", '');
-      }
-      const measured = report.factors.filter((row: any) => row.share !== null);
-      if (!measured.length) return '';
-      // The rarer outcome is what every share is taken over, and saying the
-      // answer count here would point at the larger, reassuring number.
-      const few = report.tooFew
-        ? '<div class="warning-box">' + (report.events === undefined ? report.answers + ' answers' : report.events + ' of ' + report.answers + ' answers are the outcome these shares are taken over, which') + ' is too few for them to be read as anything but a direction. ' + html(report.caveat) + '</div>'
-        : '';
-      const rows = measured.map((row: any) => '<div class="mrow mcols-variance"><div class="mname"><strong>' + html(row.label) + '</strong>'
-        + (row.best && row.worst ? '<span class="subtle">' + html(String(row.best.level).slice(0, 40)) + ' ' + Math.round(row.best.rate * 100) + '% against ' + html(String(row.worst.level).slice(0, 40)) + ' ' + Math.round(row.worst.rate * 100) + '%</span>' : '')
-        + '</div>'
-        + '<span class="mcell">' + row.levels + '</span>'
-        + '<span class="mcell ' + (row.share >= 0.4 ? "state-flag" : "") + '">' + Math.round(row.share * 100) + '%</span>'
-        + '<span class="mcell">' + bar(row.share) + '</span></div>').join("");
-      const unvaried = report.factors.filter((row: any) => row.share === null);
-      const nothing = unvaried.length
-        ? '<p class="subtle">' + unvaried.map((row: any) => html(row.label)).join(", ") + ' took one value, so nothing varied for them to explain.</p>'
-        : '';
-      return foldCard("trust-variance", "What decides whether you appear", report.caveat, few
-        + '<div class="mtable"><div class="mhead mcols-variance"><span>Factor</span><span>Values</span><span>Goes with</span><span></span></div>' + rows + '</div>'
-        + nothing);
-    }
-
-    // The more volatile half of the score, and the half that had no stability
-    // figure. Published work puts framing flipping far more often than naming.
-    function renderFraming(report: any) {
-      if (!report) return '';
-      if (!report.measured) {
-        return foldCard("trust-framing", "How steady the framing is",
-          'No question named you more than once under identical conditions, so nothing says whether the way you are described holds still. Published work puts framing flipping about '
-          + report.publishedRatio + ' times as often as whether you are named at all, so this is the half of the score most likely to be moving.', '');
-      }
-      const lead = report.flipped
-        ? report.flipped + ' of ' + report.measured + ' question(s) described you more than one way across passes that all named you.'
-        : 'Every question that named you more than once described you the same way each time.';
-      const against = report.ratio === null
-        ? ' Whether you are named never flipped here, so there is nothing to compare the framing against.'
-        : ' Framing flipped ' + report.ratio + ' times as often as naming did, against the ' + report.publishedRatio + ' published.';
-      const rows = report.questions.slice(0, 6).map((row: any) => '<div class="mrow mcols-framing"><div class="mname"><strong>' + html(row.promptText) + '</strong>'
-        + '<span class="mono">' + html(row.modelId) + ' \u00b7 named in ' + row.named + ' passes</span></div>'
-        + '<span class="mcell ' + (row.steady ? "state-ok" : "state-bad") + '">' + (row.steady ? "Steady" : row.framings.length + ' ways') + '</span>'
-        + '<span class="mcell subtle">' + html(row.framings.join(", ")) + '</span></div>').join("");
-      return foldCard("trust-framing", "How steady the framing is", report.caveat, ''
-        + '<p>' + html(lead + against) + '</p>'
-        + '<div class="mtable"><div class="mhead mcols-framing"><span>Question</span><span>Framing</span><span>Called it</span></div>' + rows + '</div>');
-    }
-
-    const TIERS = [["unstated", "Not said"], ["household", "Global household name"], ["mid_market", "Mid-market or regional"], ["niche", "Niche or small"]];
-
     async function setTier(value: string) {
       const selected = project();
       if (!selected) return;
@@ -2417,35 +2247,6 @@ export function boot(): void {
         state.promptNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind: "error" };
       }
       render();
-    }
-
-    // A rate on its own answers nothing: the same figure is poor for a
-    // household name and ordinary for a brand nobody has heard of.
-    function renderTier(report: any) {
-      if (!report) return '';
-      const picker = '<label class="picker"><span class="subtle">This brand is</span><select data-brand-tier>'
-        + TIERS.map(([value, label]) => '<option value="' + value + '"' + (report.tier === value ? " selected" : "") + '>' + html(label) + '</option>').join("")
-        + '</select></label>';
-      if (!report.baseline) {
-        return foldCard("trust-tier", "Against brands like yours",
-          "A visibility figure on its own answers nothing. The same number is poor for a household name and ordinary for a brand nobody has heard of. Say which this is and the figure gets something to be read against.",
-          '', '<div class="inline-actions">' + picker + '</div>');
-      }
-      const yours = report.presence.rate === null
-        ? 'Nothing answered yet, so there is nothing of yours to compare.'
-        : 'You are named in ' + sharePct(report.presence.rate) + ' of answers, consistent with ' + sharePct(report.presence.low) + ' to ' + sharePct(report.presence.high) + '.';
-      const verdict = report.standing === null
-        ? ''
-        : report.standing === "typical"
-          ? ' That range covers the ' + sharePct(report.baseline.rate) + ' brands of this kind tended to get, so you are doing what your kind does.'
-          : report.standing === "above"
-            ? ' That is clear of the ' + sharePct(report.baseline.rate) + ' brands of this kind tended to get.'
-            : ' That falls short of the ' + sharePct(report.baseline.rate) + ' brands of this kind tended to get.';
-      const ink = report.standing === "above" ? "state-ok" : report.standing === "below" ? "state-bad" : "state-flag";
-      return foldCard("trust-tier", "Against brands like yours", report.caveat, ''
-        + '<div class="countstrip"><span class="count ' + ink + '"><strong>' + (report.presence.rate === null ? '\u2014' : sharePct(report.presence.rate)) + '</strong>yours</span>'
-        + '<span class="count"><strong>' + sharePct(report.baseline.rate) + '</strong>' + html(report.baseline.label) + '</span></div>'
-        + '<p>' + html(yours + verdict) + '</p>', '<div class="inline-actions">' + picker + '</div>');
     }
 
     // Everything else here is an observation. This is the only thing that can
@@ -2502,47 +2303,6 @@ export function boot(): void {
         state.promptNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind: "error" };
       }
       render();
-    }
-
-    function renderExperiments() {
-      if (state.experimentsState === "idle") { loadExperiments(); }
-      const start = '<div class="inline-actions">' + button({ label: "Start one against the selected questions", kind: "quiet", on: { "data-start-experiment": "true" } }) + '</div>';
-      if (state.experimentsState !== "ready" || !state.experiments) {
-        return start + (state.experimentsState === "error" ? '<p class="subtle">Could not read the experiments.</p>' : '');
-      }
-      const rows = state.experiments.experiments || [];
-      if (!rows.length) {
-        return '<p class="subtle">Nothing is being tested. Select the questions a change should move and the ones it should not on the Prompts page, then start one here. Everything else in this product watches; this is the only part that tests.</p>' + start;
-      }
-      return rows.map(experimentCard).join("") + start
-        + '<p class="mlegend">' + html(rows[0].result.caveat) + '</p>';
-    }
-
-    // Every trend line here assumes the thing being measured held still while
-    // the brand changed. A model shipping is the confound that breaks that.
-    function renderVersions(report: any) {
-      if (!report || (!report.models.length && !report.unconfirmed.length)) return '';
-      const shifts = report.models.flatMap((row: any) => row.shifts.filter((shift: any) => shift.separated));
-      const lead = shifts.length
-        ? shifts.length + ' model version change(s) moved your presence by more than the noise on either side. Nothing you did caused those, and no trend drawn across them compares like with like.'
-        : report.models.some((row: any) => row.reported)
-          ? 'No model version change here moved your presence by more than the noise either side of it.'
-          : 'No provider here names the version it ran, so a change would be invisible rather than absent.';
-      const rows = report.models.filter((row: any) => row.reported).flatMap((row: any) => row.shifts.map((shift: any) => {
-        const ink = shift.separated ? "state-bad" : shift.separated === null ? "state-flag" : "state-ok";
-        const words = shift.change === null ? "Too thin" : (shift.change > 0 ? "+" : "") + Math.round(shift.change * 100) + " points";
-        return '<div class="mrow mcols-version"><div class="mname"><strong>' + html(shift.modelId) + '</strong>'
-          + '<span class="mono">' + html(shift.from.version) + ' \u2192 ' + html(shift.to.version) + '</span></div>'
-          + '<span class="mcell ' + ink + '">' + html(words) + '</span>'
-          + '<span class="mcell subtle">' + (shift.separated === null ? 'not readable' : shift.separated ? 'beyond the noise' : 'within the noise') + '</span></div>';
-      })).join("");
-      const blind = report.unconfirmed.length
-        ? '<p class="subtle">' + report.unconfirmed.map((id: string) => html(id)).join(", ") + ' never named a version, so a change there cannot be seen. That is unconfirmed, not steady.</p>'
-        : '';
-      return foldCard("trust-versions", "Was it you, or did the model ship", report.caveat, ''
-        + '<p>' + html(lead) + '</p>'
-        + (rows ? '<div class="mtable"><div class="mhead mcols-version"><span>Change</span><span>Presence moved</span><span>Reading</span></div>' + rows + '</div>' : '')
-        + blind);
     }
 
     // One shell for the three pages built on the same archive: the loading,
@@ -2698,17 +2458,17 @@ export function boot(): void {
           blurb: "Presence scaled by where you appear and how you are described.",
           body: renderScoreBreakdown(data.overall)
             + '<details class="technical-details"><summary>The formula, and the judgement in it</summary>' + page.objective + '<p class="subtle">score = presence \u00d7 (' + page.weights.prominenceFloor + ' + ' + (1 - page.weights.prominenceFloor).toFixed(1) + ' \u00d7 prominence) \u00d7 (' + page.weights.sentimentFloor + ' + ' + (1 - page.weights.sentimentFloor).toFixed(1) + ' \u00d7 sentiment) \u00d7 100.</p><p class="subtle">The two floors are a judgement, not a measurement: being named late and grudgingly is still better than not being named, so prominence and sentiment scale presence rather than replacing it. Every component above is reported separately so you can ignore the composite entirely.</p></details>' })
-        + renderTier(data.tier)
-        + renderVersions(data.versions)
-        + renderDecoys(data.decoys)
-        + renderVariance(data.variance)
+        + renderTier(data.tier, foldCard)
+        + renderVersions(data.versions, foldCard)
+        + renderDecoys(data.decoys, foldCard)
+        + renderVariance(data.variance, foldCard)
         + taskCta(currentTasks(), "too-few-answers")
         + renderStability(data.stability, currentTasks(), foldCard)
-        + renderPhrasing(data.phrasing)
-        + renderFraming(data.framing)
-        + foldCard("trust-check", "Check the machine", "Every figure here rests on a model classifying what another model wrote. Judge a few yourself and the agreement rate becomes the confidence in the whole column.", renderHumanCheck())
-        + foldCard("trust-experiments", "Did your change do anything", "Everything else here watches. This tests. Change something, leave a comparable set of questions alone, and whatever moved for both is subtracted rather than claimed.", renderExperiments())
-        + foldCard("trust-schedule", "Keep it running", "A tracker that is run by hand is a snapshot.", renderSchedule())
+        + renderPhrasing(data.phrasing, foldCard)
+        + renderFraming(data.framing, foldCard)
+        + foldCard("trust-check", "Check the machine", "Every figure here rests on a model classifying what another model wrote. Judge a few yourself and the agreement rate becomes the confidence in the whole column.", renderHumanCheck(state.checkState, state.check, trustActions))
+        + foldCard("trust-experiments", "Did your change do anything", "Everything else here watches. This tests. Change something, leave a comparable set of questions alone, and whatever moved for both is subtracted rather than claimed.", renderExperiments(state.experimentsState, state.experiments, trustActions))
+        + foldCard("trust-schedule", "Keep it running", "A tracker that is run by hand is a snapshot.", renderSchedule(state.scheduleState, state.schedule, state.regions, trustActions))
       );
     }
 
