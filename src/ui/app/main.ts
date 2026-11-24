@@ -6,9 +6,10 @@ import { buyingView, claimsView, conversationsView, draftsView, entityView, mark
 import { exportName, filterSummary, matchesQuery, panelCsv } from "./components/panel-tools.js";
 import { emptyState, notice, section } from "./components/primitives.js";
 import { button } from "./components/button.js";
-import { archived, remaining, sharePct, uptakePct } from "./format.js";
+import { archived, percent, remaining, score as scoreText, sharePct, uptakePct } from "./format.js";
 import { alertPill, effectLabel, historyWord, intentLabel, kindWords, reachInk, reachWords, recognitionRunStatusText, urgencyInk, urgencyLabel } from "./labels.js";
 import { deltaPill, demandBadge, fieldBadge } from "./components/badges.js";
+import { bar, creditRows, experimentCard, outreachRow, overAppearances, renderLeaderboard, renderPersonaRows, searchDemandRow, shapeRow, stat, verdictButtons } from "./pages/metric-cells.js";
 import { recognitionCountStrip, recognitionRunSummary, renderRecognitionModel, type RecognitionRunDetail } from "./pages/recognition-view.js";
 import { loading, skeletonCard, skeletonTable, skeletonText, skeletonTiles } from "./components/skeleton.js";
 import { clearToasts, toast } from "./components/toast.js";
@@ -1161,47 +1162,26 @@ export function boot(): void {
       state.credentialsState = "idle";
       loadCredentials();
     }
-    function pct(value: any) { return value === null || value === undefined ? "Not measurable" : Math.round(value * 100) + "%"; }
-    function scoreText(value: any) { return value === null || value === undefined ? "Not measurable" : String(value); }
-    function bar(value: any) { return value === null || value === undefined ? '' : '<div class="bar"><i style="width:' + Math.round(value * 100) + '%"></i></div>'; }
-    function stat(label: string, value: any, note: string, fraction?: number | null) {
-      return '<div class="stat"><span>' + html(label) + '</span><strong>' + value + '</strong><small>' + html(note) + '</small>' + bar(fraction) + '</div>';
-    }
-
     // Prominence and framing are means over the answers that named the brand,
     // which on a handful of them cannot be told from a coin. The counts are the
     // finding there, and a percentage beside "Not named" is the old bug.
-    function overAppearances(score: any, value: any, words: string) {
-      if (!score || score.tooFewAppearances) {
-        const named = score ? score.namedIn || score.appearances || 0 : 0;
-        return {
-          value: named ? 'Too few' : pct(null),
-          note: named
-            ? named + ' appearance(s) cannot be read as a rate. ' + words
-            : 'Nothing named, so nothing judged.',
-          fraction: null,
-        };
-      }
-      return { value: pct(value), note: words, fraction: value };
-    }
-
     function renderScoreBreakdown(score: any) {
       if (!score || score.answers === 0) return '<p class="subtle">Nothing has been answered yet, so there is nothing to score. This is not a zero.</p>';
       const band = score.presenceInterval;
       // Absent on an archive scored before the range existed, so nothing is
       // claimed about how precise those figures were.
       const presenceNote = band && band.low !== null
-        ? score.appearances + ' of ' + score.answers + ', consistent with ' + pct(band.low) + ' to ' + pct(band.high)
+        ? score.appearances + ' of ' + score.answers + ', consistent with ' + percent(band.low) + ' to ' + percent(band.high)
         : score.appearances + ' of ' + score.answers + ' answers named you';
       const width = score.tooFewAnswers
         ? '<div class="warning-box"><strong>Too few answers to read this as a rate.</strong> '
-          + score.answers + ' answer(s) leave the presence rate anywhere from ' + pct(band.low) + ' to ' + pct(band.high)
+          + score.answers + ' answer(s) leave the presence rate anywhere from ' + percent(band.low) + ' to ' + percent(band.high)
           + ', which decides nothing. Track more questions, or more models, before acting on the number. ' + html(band.caveat) + '</div>'
         : '';
       const prom = overAppearances(score, score.prominence, 'Full marks means always named first.');
       const sent = overAppearances(score, score.sentiment, 'Full marks means always recommended.');
       return '<div class="statgrid">'
-        + stat("Presence", pct(score.presenceRate), presenceNote, score.presenceRate)
+        + stat("Presence", percent(score.presenceRate), presenceNote, score.presenceRate)
         + stat("Prominence", prom.value, score.prominence === null && !score.namedIn ? 'No answer gave a readable order' : prom.note, prom.fraction)
         + stat("Sentiment", sent.value, sent.note, sent.fraction)
         + '</div>' + width;
@@ -1228,7 +1208,7 @@ export function boot(): void {
         + asked.map((row) => '<div class="mrow mcols-aemodel">'
           + '<div class="mname"><strong>' + html(row.displayName) + '</strong><span class="mono">' + html(row.providerId) + ' · ' + html(row.modelId) + '</span></div>'
           + '<span class="mcell">' + scoreText(row.score.score) + '</span>'
-          + '<span class="mcell">' + pct(row.score.presenceRate) + band(row.score) + '</span>'
+          + '<span class="mcell">' + percent(row.score.presenceRate) + band(row.score) + '</span>'
           + '<span class="mcell">' + row.score.answers + '</span></div>').join("")
         + '</div>'
         + (silent ? '<p class="subtle">' + silent + ' more model(s) are saved or have been seen and have never produced an answer, so there is nothing to read for them.</p>' : '');
@@ -1264,7 +1244,7 @@ export function boot(): void {
         + rows.map((row) => '<div class="mrow mcols-aemodel">'
           + '<div class="mname"><strong>' + html(row.label) + '</strong></div>'
           + '<span class="mcell">' + scoreText(row.score.score) + '</span>'
-          + '<span class="mcell">' + pct(row.score.presenceRate) + '</span>'
+          + '<span class="mcell">' + percent(row.score.presenceRate) + '</span>'
           + '<span class="mcell">' + (row.rank === null ? "Not named" : "#" + row.rank) + '</span></div>').join("")
         + '</div>';
     }
@@ -1317,19 +1297,6 @@ export function boot(): void {
 
 
     // The filters travel with the file, so an export is the slice on screen.
-
-    function renderLeaderboard(rows: any[]) {
-      if (!rows || !rows.length) return '<p class="subtle">No organisation was named in any answer yet.</p>';
-      const top = rows.slice(0, 12);
-      const most = Math.max(1, ...top.map((row) => row.appearances));
-      return '<div class="mtable"><div class="mhead mcols-board"><span>#</span><span>Organisation</span><span>Answers naming them</span><span>Prominence</span></div>'
-        + top.map((row, index) => '<div class="mrow mcols-board">'
-          + '<span class="mcell mono">' + (index + 1) + '</span>'
-          + '<div class="mname"><strong>' + html(row.name) + (row.isTarget ? ' <span class="pill good">You</span>' : row.isTracked ? ' <span class="tag">Rival you track</span>' : ' <span class="tag">Named by the models</span>') + '</strong><span class="mono">' + html(row.domain || "no domain given") + '</span></div>'
-          + '<span class="mcell"><span class="sharebar' + (row.isTarget ? " is-target" : "") + '"><i style="width:' + Math.round(row.appearances / most * 100) + '%"></i><b>' + row.appearances + ' · ' + pct(row.shareOfAnswers) + '</b></span></span>'
-          + '<span class="mcell">' + pct(row.prominence) + '</span></div>').join("")
-        + '</div>';
-    }
 
     function renderTopicRows(topics: any[]) {
       if (!topics || !topics.length) return '<p class="subtle">No topic has been answered yet.</p>';
@@ -1608,7 +1575,7 @@ export function boot(): void {
       const spread = voice.answers + ' answer(s)'
         + (voice.positive ? ' · ' + voice.positive + ' recommended' : '')
         + (voice.negative ? ' · ' + voice.negative + ' warned against' : '')
-        + (voice.prominence === null ? '' : ' · named ' + pct(voice.prominence) + ' of the way to first');
+        + (voice.prominence === null ? '' : ' · named ' + percent(voice.prominence) + ' of the way to first');
       const quotes = voice.quotes.length
         ? '<ul class="quotes">' + voice.quotes.map((quote: any) => '<li>' + html(quote) + '</li>').join("") + '</ul>'
         : '<p class="subtle">Named without a reason given.</p>';
@@ -1825,13 +1792,6 @@ export function boot(): void {
       render();
     }
 
-    function shapeRow(label: string, theirs: any, yours: any) {
-      const behind = theirs !== null && yours !== null && theirs > yours;
-      return '<div class="mrow mcols-shape"><div class="mname"><strong>' + html(label) + '</strong></div>'
-        + '<span class="mcell ' + (behind ? "state-flag" : "") + '">' + (theirs === null ? '\u2014' : theirs) + '</span>'
-        + '<span class="mcell">' + (yours === null ? '\u2014' : yours) + '</span></div>';
-    }
-
     function renderShape() {
       if (state.shapeState === "idle") { loadShape(); }
       if (state.shapeState !== "ready" || !state.shape) {
@@ -1892,21 +1852,6 @@ export function boot(): void {
       render();
     }
 
-    function verdictButtons(item: any) {
-      const call = (field: string, agreed: boolean, correction: string, label: string) =>
-        '<button type="button" class="card-action" data-verdict-id="' + html(item.id) + '" data-verdict-field="' + field
-        + '" data-verdict-agreed="' + String(agreed) + '" data-verdict-correction="' + html(correction) + '">' + html(label) + '</button>';
-      const others = ["positive", "negative", "mentioned", "uncertain"].filter((value) => value !== item.recommendation);
-      return '<div class="move-actions"><span class="subtle">Called it ' + html(item.recommendation) + '</span>'
-        + call("recommendation", true, "", "Right")
-        + others.map((value) => call("recommendation", false, value, "No, " + value)).join("")
-        + '</div>'
-        + '<div class="move-actions"><span class="subtle">' + (item.isTarget ? "Called it you" : "Called it somebody else") + '</span>'
-        + call("isTarget", true, "", "Right")
-        + call("isTarget", false, item.isTarget ? "false" : "true", item.isTarget ? "No, not you" : "No, that is you")
-        + '</div>';
-    }
-
     function renderHumanCheck() {
       if (state.checkState === "idle") { loadCheck(); }
       if (state.checkState !== "ready" || !state.check) {
@@ -1951,16 +1896,6 @@ export function boot(): void {
         state.creditState = "error";
       }
       render();
-    }
-
-    function creditRows(rows: any[], kind: string) {
-      // Ranked against the pages that could be read, with the place it really
-      // held in the citation list beside it where the two differ.
-      return rows.slice(0, 5).map((row: any) => '<div class="mrow mcols-credit"><div class="mname"><strong>' + html(row.host) + '</strong>'
-        + '<span class="mono">' + html(row.url.slice(0, 64)) + '</span></div>'
-        + '<span class="mcell">#' + row.creditedAt + (row.citedAt !== row.creditedAt ? '<small> of ' + row.citedAt + ' cited</small>' : '') + '</span>'
-        + '<span class="mcell">#' + row.usedAt + '</span>'
-        + '<span class="mcell ' + kind + '">' + (row.gap > 0 ? '+' : '') + row.gap + '</span></div>').join("");
     }
 
     function renderCredit() {
@@ -2065,27 +2000,6 @@ export function boot(): void {
       render();
     }
 
-    function ageCell(target: any) {
-      if (target.freshness === "unread") return '<span class="mcell subtle">Not read</span>';
-      if (target.freshness === "undated") return '<span class="mcell subtle">No date given</span>';
-      const tone = target.freshness === "fresh" ? "state-ok" : target.freshness === "ageing" ? "state-flag" : "state-bad";
-      return '<span class="mcell ' + tone + '">' + target.ageDays + ' days</span>';
-    }
-
-    function outreachRow(target: any) {
-      const rivals = target.rivals.length
-        ? '<span class="namechips">' + target.rivals.slice(0, 8).map((named: any, index: any) => '<span class="namechip"><b>' + (index + 1) + '</b>' + html(named.name) + '</span>').join("") + '</span>'
-        : '<span class="subtle">Nobody the answers named is on this page.</span>';
-      return '<div class="mrow mcols-source">'
-        + '<div class="mname"><strong><a href="' + html(target.url) + '" target="_blank" rel="noreferrer">' + html(target.title || target.url) + '</a></strong>'
-        + '<span class="mono">' + html(target.host) + (target.words === null ? '' : ' · ' + target.words + ' words') + '</span>'
-        + '<span class="subtle">' + html(target.why) + '</span>'
-        + '<span class="subtle">Cited answering: ' + html(target.prompts.slice(0, 2).join(" · ")) + '</span>' + rivals + '</div>'
-        + '<span class="mcell ' + (target.namesYou ? "state-ok" : "state-bad") + '">' + (target.namesYou ? "You are on it" : "You are not") + '</span>'
-        + '<span class="mcell">' + target.citedBy + ' answer(s)</span>'
-        + ageCell(target) + '</div>';
-    }
-
     function renderOutreach() {
       if (state.outreachState === "idle") { loadOutreach(); }
       if (state.outreachState !== "ready" || !state.outreach) {
@@ -2137,17 +2051,6 @@ export function boot(): void {
       }
       state.pulling = false;
       render();
-    }
-
-    function searchDemandRow(row: any) {
-      const matched = row.exact.concat(row.related).slice(0, 4);
-      return '<div class="mrow mcols-search">'
-        + '<div class="mname"><strong>' + html(row.text) + '</strong>'
-        + (matched.length ? '<span class="subtle">' + html(matched.map((match: any) => match.query).join(" · ")) + '</span>' : '<span class="subtle">No query in the window shares its words.</span>')
-        + (row.earnedInSearchAbsentInAnswers ? '<span class="tag warning">Found in search, absent from the answers</span>' : '') + '</div>'
-        + '<span class="mcell">' + row.impressions + '</span>'
-        + '<span class="mcell">' + row.clicks + '</span>'
-        + '<span class="mcell">' + (row.position === null ? "Not ranked" : "#" + (Math.round(row.position * 10) / 10)) + '</span></div>';
     }
 
     function renderSearchDemand() {
@@ -2207,16 +2110,6 @@ export function boot(): void {
       return rows
         + '<form id="add-persona-form" class="inline-form"><input name="label" type="text" placeholder="Beginner retail trader" aria-label="Persona name"><input name="describedAs" type="text" placeholder="someone new to investing, with a small account, who has never used a screener" aria-label="How the model is told to see them">' + button({ label: "Add", submit: true }) + '</form>'
         + '<p class="evidence-note">Each persona multiplies a run: every question is asked once per persona per model per market. The forecast on Prompts counts them.</p>';
-    }
-
-    function renderPersonaRows(rows: any[]) {
-      if (!rows || !rows.length) return '<p class="subtle">One audience is the overall figure under another name, so this fills in once a run asks on behalf of more than one.</p>';
-      return '<div class="mtable"><div class="mhead mcols-rank"><span>Persona</span><span>Score</span><span>Rank</span></div>'
-        + rows.map((row) => '<div class="mrow mcols-rank">'
-          + '<div class="mname"><strong>' + html(row.label) + '</strong><span class="subtle">' + row.score.answers + ' answer(s)</span></div>'
-          + '<span class="mcell">' + scoreText(row.score.score) + '</span>'
-          + '<span class="mcell">' + (row.rank === null ? "Not named" : "#" + row.rank) + '</span></div>').join("")
-        + '</div>';
     }
 
     async function loadReferrals() {
@@ -2534,7 +2427,7 @@ export function boot(): void {
         .map((row: Unshaped) => '<div class="mrow mcols-demand"><div class="mname"><strong>' + html(row.text) + '</strong>'
           + ((row.match.examples || []).length ? '<span class="subtle">' + html(String(row.match.examples[0])) + '</span>' : '')
           + '</div><span class="mcell">' + row.match.exactTerms + '</span><span class="mcell">' + row.match.relatedTerms + '</span>'
-          + '<span class="mcell">' + (row.shareOfCorpus === null ? "not comparable" : pct(row.shareOfCorpus)) + '</span></div>').join("");
+          + '<span class="mcell">' + (row.shareOfCorpus === null ? "not comparable" : percent(row.shareOfCorpus)) + '</span></div>').join("");
       const uncovered = (report.uncoveredTerms as Unshaped[] || []).slice(0, 12);
       return head
         + '<p class="subtle">' + html(String(report.caveat || "")) + '</p>'
@@ -2646,7 +2539,7 @@ export function boot(): void {
           + tracked.map((row: any) => '<div class="mrow mcols-aemodel">'
             + '<div class="mname"><strong>' + html(row.name) + '</strong><span class="mono">' + html(row.domain || "no domain") + '</span></div>'
             + '<span class="mcell ' + (row.appearances ? "" : "state-bad") + '">' + row.appearances + '</span>'
-            + '<span class="mcell">' + pct(row.shareOfAnswers) + '</span>'
+            + '<span class="mcell">' + percent(row.shareOfAnswers) + '</span>'
             + '<span class="mcell">' + button({ label: "Stop tracking", kind: "link", tone: "danger", on: { "data-retire-rival": declaredIdFor(row.name) } }) + '</span></div>').join("") + '</div>'
         : '<p class="subtle">No rival is tracked yet. Adopt the ones your site and your answers already name, or add one by hand.</p>';
       return body
@@ -3083,31 +2976,6 @@ export function boot(): void {
         state.promptNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind: "error" };
       }
       render();
-    }
-
-    function armCell(label: string, side: any) {
-      return '<span class="count"><strong>' + (side.rate === null ? '\u2014' : Math.round(side.rate * 100) + '%') + '</strong>' + html(label) + ' (' + side.trials + ')</span>';
-    }
-
-    function experimentCard(row: any) {
-      const result = row.result;
-      const ink = result.verdict === "moved" ? "state-ok" : result.verdict === "no_effect_shown" ? "state-flag" : "state-bad";
-      const words = result.verdict === "moved" ? "Moved" : result.verdict === "no_effect_shown" ? "Nothing shown" : result.verdict === "no_control" ? "No control" : "Too thin yet";
-      const band = result.difference === null
-        ? ''
-        : '<p><strong>' + (result.difference > 0 ? '+' : '') + Math.round(result.difference * 100) + ' points</strong> more than the control moved, consistent with '
-          + Math.round((result.low || 0) * 100) + ' to ' + Math.round((result.high || 0) * 100) + ' points.</p>';
-      return '<div class="fix"><div class="fix-top"><strong>' + html(row.name) + '</strong>'
-        + '<span class="tag ' + ink + '">' + html(words) + '</span>'
-        + (row.status === "running" ? '<button type="button" class="card-action" data-stop-experiment="' + html(row.id) + '">Stop</button>' : '<span class="subtle">stopped</span>')
-        + '</div>'
-        + (row.changed ? '<p class="evidence-note">Changed: ' + html(row.changed) + '</p>' : '')
-        + (row.draftId ? '<p class="evidence-note">Started from a draft, against the questions it was written for.</p>' : '')
-        + '<p class="evidence-note">Measured from ' + html(row.changedAt.slice(0, 10)) + ' \u00b7 ' + row.treatedPromptIds.length + ' treated, ' + row.controlPromptIds.length + ' control</p>'
-        + band
-        + '<div class="countstrip">' + armCell("treated before", result.treated.before) + armCell("treated after", result.treated.after)
-        + armCell("control before", result.control.before) + armCell("control after", result.control.after) + '</div>'
-        + '<p class="subtle">' + html(result.detail) + '</p></div>';
     }
 
     function renderExperiments() {
