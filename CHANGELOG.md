@@ -4,6 +4,38 @@
 
 Nothing yet.
 
+## 0.6.1 - 2026-11-24
+
+A patch release. v0.6.0 never got a container image, and the chart asked for a
+tag that was never published, so neither way of installing 0.6.0 worked. This
+release ships the image and points the chart at it.
+
+### Fixed
+
+- **v0.6.0 has no image.** Its publish failed on a release check that had been
+  matching a string in dead code, not the page it claimed to check. It now
+  checks the shell's markup and that its boot module is served (#208). 0.6.1
+  is the first image since 0.5.0.
+- **The chart pulled a tag that does not exist.** Images are tagged `v0.6.1`,
+  but the chart and `deploy/kubernetes/citegeo.yaml` asked for `0.6.0`, so every
+  install failed to pull. The chart now defaults to `v<appVersion>` (#237).
+- **The Docker guide pinned `v0.2.0`,** an image that was never published. It
+  now runs `latest` and says how to pin a release (#237).
+- **The dashboard drew zeros while it loaded.** A project with hundreds of
+  answers showed "Questions tracked 0" until the second read arrived. It now
+  waits for both. The score, its change and the figures under it come from the
+  same run, and the page says which run that is (#231).
+- **A failed lock release hid the real error.** A caller was told the lock was
+  stuck instead of what went wrong (#217).
+
+### Changed
+
+- A linter runs on every pull request (#217, #242).
+- Pull requests merge through a queue gated on one `PR Gate` check, with
+  dependency, workflow and queue config checks behind it (#206, #210, #221).
+- The first helpers move out of the interface's main module (#243). No
+  behaviour change.
+
 ## 0.6.0 - 2026-10-20
 
 Four merges. The last release joined what the product measured to what it

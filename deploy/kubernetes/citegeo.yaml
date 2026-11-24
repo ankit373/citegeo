@@ -19,10 +19,10 @@ kind: ServiceAccount
 metadata:
   name: citegeo
   labels:
-    helm.sh/chart: citegeo-0.1.6
+    helm.sh/chart: citegeo-0.1.7
     app.kubernetes.io/name: citegeo
     app.kubernetes.io/instance: citegeo
-    app.kubernetes.io/version: "0.6.0"
+    app.kubernetes.io/version: "0.6.1"
     app.kubernetes.io/managed-by: Helm
 
 ---
@@ -32,10 +32,10 @@ kind: ConfigMap
 metadata:
   name: citegeo
   labels:
-    helm.sh/chart: citegeo-0.1.6
+    helm.sh/chart: citegeo-0.1.7
     app.kubernetes.io/name: citegeo
     app.kubernetes.io/instance: citegeo
-    app.kubernetes.io/version: "0.6.0"
+    app.kubernetes.io/version: "0.6.1"
     app.kubernetes.io/managed-by: Helm
 data:
   AZURE_OPENAI_API_VERSION: "2024-10-21"
@@ -52,10 +52,10 @@ kind: PersistentVolumeClaim
 metadata:
   name: citegeo-data
   labels:
-    helm.sh/chart: citegeo-0.1.6
+    helm.sh/chart: citegeo-0.1.7
     app.kubernetes.io/name: citegeo
     app.kubernetes.io/instance: citegeo
-    app.kubernetes.io/version: "0.6.0"
+    app.kubernetes.io/version: "0.6.1"
     app.kubernetes.io/managed-by: Helm
 spec:
   accessModes:
@@ -71,10 +71,10 @@ kind: Service
 metadata:
   name: citegeo
   labels:
-    helm.sh/chart: citegeo-0.1.6
+    helm.sh/chart: citegeo-0.1.7
     app.kubernetes.io/name: citegeo
     app.kubernetes.io/instance: citegeo
-    app.kubernetes.io/version: "0.6.0"
+    app.kubernetes.io/version: "0.6.1"
     app.kubernetes.io/managed-by: Helm
 spec:
   type: ClusterIP
@@ -95,10 +95,10 @@ kind: Deployment
 metadata:
   name: citegeo
   labels:
-    helm.sh/chart: citegeo-0.1.6
+    helm.sh/chart: citegeo-0.1.7
     app.kubernetes.io/name: citegeo
     app.kubernetes.io/instance: citegeo
-    app.kubernetes.io/version: "0.6.0"
+    app.kubernetes.io/version: "0.6.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: server
 spec:
@@ -118,7 +118,7 @@ spec:
         app.kubernetes.io/instance: citegeo
         app.kubernetes.io/component: server
       annotations:
-        checksum/config: caace1e98c362b394c8f531fddcf0c51d485ab5b1a7f93a200e7152ccbf748be
+        checksum/config: 666eef6dc0c8d82a1ac1ee87570503d37149e60a65370470fa8cd4fe1bc90cae
     spec:
       serviceAccountName: citegeo
       securityContext:
@@ -129,7 +129,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: server
-          image: "ghcr.io/ankit373/citegeo:v0.6.0"
+          image: "ghcr.io/ankit373/citegeo:v0.6.1"
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false
