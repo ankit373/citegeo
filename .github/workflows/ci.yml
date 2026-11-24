@@ -36,6 +36,9 @@ jobs:
 
       - run: npm ci
 
+      - name: Lint
+        run: npm run lint
+
       - name: Typecheck and unit tests
         run: npm run self-check
 

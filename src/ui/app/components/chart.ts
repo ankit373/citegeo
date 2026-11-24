@@ -36,13 +36,13 @@ export function trendChart(points: any[], label?: string) {
   return '<svg class="trend" viewBox="0 0 ' + width + ' ' + height + '" role="img" aria-label="' + html(label) + ' over time">' + grid + '<path d="' + path + '" class="chart-line"/>' + dots + '</svg>';
 }
 
-export function sparkline(points: any[], width?: number, height?: number) {
+export function sparkline(points: any[], width = 170, height = 30) {
   const usable = points.filter((point) => point.score.score !== null && !point.score.tooFewAnswers);
   if (usable.length < 2) return '<span class="subtle">Run again to see movement</span>';
   const values = usable.map((point) => point.score.score);
   const max = Math.max(100, ...values);
-  const x = (index: any) => index * (width as any) / (usable.length - 1);
-  const y = (value: any) => (height as any) - 2 - (value / max) * ((height as any) - 4);
+  const x = (index: number) => index * width / (usable.length - 1);
+  const y = (value: number) => height - 2 - (value / max) * (height - 4);
   const path = usable.map((point, index) => (index ? "L " : "M ") + x(index).toFixed(1) + " " + y(point.score.score).toFixed(1)).join(" ");
   const last = usable[usable.length - 1];
   return '<svg viewBox="0 0 ' + width + ' ' + height + '" preserveAspectRatio="none" role="img" aria-label="score over time" style="width:100%;height:' + height + 'px;overflow:visible">'
