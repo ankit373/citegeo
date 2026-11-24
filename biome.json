@@ -15,28 +15,28 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true,
+      "preset": "recommended",
       "style": {
-        "recommended": false
+        "preset": "none"
       },
       "complexity": {
-        "recommended": false
+        "preset": "none"
       },
       "performance": {
-        "recommended": false
+        "preset": "none"
       },
       "nursery": {
-        "recommended": false
+        "preset": "none"
       },
       "correctness": {
-        "recommended": true,
+        "preset": "recommended",
         "noVoidTypeReturn": "off",
         "noUnusedImports": "error",
         "noUnusedVariables": "error",
         "usePlaywrightValidDescribeCallback": "off"
       },
       "suspicious": {
-        "recommended": true,
+        "preset": "recommended",
         "noExplicitAny": "off",
         "noAssignInExpressions": "off",
         "noImplicitAnyLet": "off"
