@@ -35,8 +35,9 @@ Releases are cut from `main` by release-please.
 2. release-please keeps one release PR open. It bumps `package.json`, the
    lockfile and `CHANGELOG.md`, and the release workflow adds the chart
    version, `appVersion` and the regenerated `deploy/kubernetes/citegeo.yaml`.
-3. Edit the CHANGELOG on that PR so it says what changed for someone running
-   it, not what changed in the code.
+3. Just before approving, edit the CHANGELOG on that PR so it says what
+   changed for someone running it, not what changed in the code. release-please
+   rebuilds the branch on every merge into `main`, so an earlier edit is lost.
 4. Approve it. The queue merges it, release-please tags `vX.Y.Z` and publishes
    the release, and the Docker workflow builds and pushes the image. It never
    rebuilds an existing tag.

@@ -84,7 +84,7 @@ jobs:
   hold:
     name: Hold the next release
     needs: smoke
-    if: failure()
+    if: failure() && github.event_name == 'release'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:

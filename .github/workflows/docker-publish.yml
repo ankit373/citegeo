@@ -145,7 +145,7 @@ jobs:
   smoke:
     name: Published image smoke test
     needs: publish
-    if: github.event_name == 'release'
+    if: always() && github.event_name == 'release'
     permissions:
       contents: read
       issues: write

@@ -33,6 +33,7 @@ jobs:
         id: release
         with:
           token: ${{ steps.app.outputs.token }}
+          target-branch: main
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
@@ -49,6 +50,8 @@ jobs:
           app-id: ${{ vars.RELEASE_APP_ID }}
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
           permission-contents: write
+          permission-issues: read
+          permission-pull-requests: write
 
       - name: Find the release branch
         id: pr
@@ -107,3 +110,15 @@ jobs:
           git -c user.name="$bot" -c user.email="${id}+${bot}@users.noreply.github.com" \
             commit -qam "chore(release): chart and manifest for ${version}"
           git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/${BRANCH}"
+
+      - name: Hold the release PR while a smoke test failure is open
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_JSON: ${{ needs.release-please.outputs.pr }}
+        run: |
+          number=$(printf '%s' "$PR_JSON" | jq -r '.number')
+          held=$(gh issue list --state open --label release:blocked --json number --jq 'length')
+          if [ "$held" -gt 0 ]; then
+            gh pr edit "$number" --add-label release:blocked
+          fi
