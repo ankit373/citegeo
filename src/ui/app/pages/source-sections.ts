@@ -1,13 +1,19 @@
 import { html } from "../dom.js";
+import { sharePct, uptakePct } from "../format.js";
 import { button } from "../components/button.js";
 import { kindWords } from "../labels.js";
 import { bar, creditRows, outreachRow, searchDemandRow, shapeRow } from "./metric-cells.js";
+import { taskCta } from "./task-views.js";
+import { section } from "../components/primitives.js";
 import type { LoadState } from "../types.js";
 import type { InterferenceReport } from "../../../product/citations/interference.js";
 import type { ConcentrationReport } from "../../../product/citations/concentration.js";
 import type { ShapeComparison } from "../../../product/citations/page-shape.js";
 import type { CreditReport } from "../../../product/citations/credit-gap.js";
 import type { KindShare, PageKindReport } from "../../../product/citations/page-kind.js";
+import type { MeasurementTask } from "../../../product/topics/next-task.js";
+import type { CitationDecomposition } from "../../../product/topics/citation-decomposition.js";
+import type { UptakeSummary } from "../../../product/citations/answer-uptake.js";
 import type { OutreachPlan } from "../../../product/citations/outreach.js";
 import type { ProportionInterval } from "../../../product/topics/proportion-interval.js";
 import type { SearchConsoleService, SearchConsoleStatus } from "../../../product/search-console/search-console-service.js";
@@ -24,6 +30,7 @@ export interface SourceActions {
   loadOutreach(): void;
   loadSearchDemand(): void;
   loadReferrals(): void;
+  loadUptake(): void;
 }
 
 function kindRows(rows: Array<KindShare<string>>): string {
@@ -243,4 +250,72 @@ export function renderReferrals(status: LoadState, data: ReferralsData | null | 
       + '<span class="mcell">' + row.sessions + '</span>'
       + '<span class="mcell">' + (report.totalSessions ? Math.round(row.sessions / report.totalSessions * 1000) / 10 + '%' : "Not measurable") + '</span></div>').join("")
     + '</div><p class="evidence-note">Arriving is a different claim from being named. A high score with no sessions means the answers name you and nobody clicks through, which is the normal case and not a fault in either number.</p>';
+}
+export function renderUptake(status: LoadState, report: UptakeSummary | null | undefined, tasks: MeasurementTask[], actions: Pick<SourceActions, "loadUptake">): string {
+  if (status === "idle") { actions.loadUptake(); }
+  if (status !== "ready" || !report) {
+    return '<p class="subtle">' + (status === "error" ? "Could not read what the answers took from the pages." : "Reading what the answers took from the pages.") + '</p>';
+  }
+  if (!report.measured && !report.unread) return '<p class="subtle">No answer carried a citation, so there is no page to compare one against.</p>';
+  // The button that clears this sits on the outreach panel, so the task
+  // is shown where the figure is missing rather than only in the list.
+  const unreadCta = report.unread ? taskCta(tasks, "sources-unread") : '';
+  // A reading is one page against one answer. The same page cited by five
+  // answers gives five readings and five figures, and calling them pages
+  // printed one page disagreeing with itself.
+  const lead = report.mean === null
+    ? 'No cited page has been read back, so nothing can be said about what the answers took from them.'
+    : 'Across ' + report.measured + ' reading(s) of ' + report.pagesRead + ' cited page(s) read back, the mean uptake is ' + uptakePct(report.mean) + '.'
+      + (report.citedNotUsed
+        ? ' ' + report.citedNotUsed + (report.citedNotUsed === 1 ? ' reading is of a page whose subject the answer barely touches.' : ' readings are of pages whose subject the answer barely touches.')
+        : ' Every cited page shares its subject with the answer that cited it.');
+  const unread = report.unread
+    ? '<p class="subtle">' + report.pagesUnread + ' of the ' + (report.pagesRead + report.pagesUnread)
+      + ' cited page(s) have not been read back, so they are left out rather than counted as unused.</p>'
+    : '';
+  const rows = report.pages.slice(0, 10).map((row) => {
+    const phrase = row.phrases[0];
+    return '<div class="mrow mcols-uptake"><div class="mname"><strong>' + html(row.host) + '</strong>'
+    + '<span class="mono">' + html(row.url.length > 70 ? row.url.slice(0, 70) + "\u2026" : row.url) + '</span>'
+    + '<span class="subtle">' + html(row.promptText.length > 70 ? row.promptText.slice(0, 70) + "\u2026" : row.promptText) + ' \u00b7 ' + html(row.modelId) + '</span>'
+    + (phrase ? '<span class="subtle">\u201c' + html(phrase.text.slice(0, 90)) + '\u201d</span>' : '')
+    + '</div>'
+    + '<span class="mcell">#' + row.citedAt + '</span>'
+    + '<span class="mcell ' + (row.uptake === null ? "" : row.uptake >= 0.4 ? "state-ok" : row.uptake > 0 ? "state-flag" : "state-bad") + '">'
+    + (row.uptake === null ? 'Not read' : uptakePct(row.uptake)) + '</span>'
+    + '<span class="mcell">' + (row.shared === null ? "Not measurable" : uptakePct(row.shared)) + '</span>'
+    + '<span class="mcell">' + (row.coverage === null ? "Not measurable" : uptakePct(row.coverage)) + '</span></div>';
+  }).join("");
+  return '<p>' + html(lead) + '</p>' + unread + unreadCta
+    + '<div class="mtable"><div class="mhead mcols-uptake"><span>Page, and the answer that cited it</span><span>Cited</span><span>Uptake</span><span>Shared subject</span><span>Coverage</span></div>' + rows + '</div>'
+    + '<p class="mlegend">' + html(report.caveat) + '</p>';
+}
+
+export function renderDecomposition(report: CitationDecomposition | null | undefined, tasks: MeasurementTask[]): string {
+  if (!report || !report.activation || !report.activation.considered) return '';
+  const act = report.activation;
+  const searched = act.rate === null
+    ? 'Between ' + sharePct(act.low) + ' and ' + sharePct(act.high) + ' of answers searched the web'
+    : sharePct(act.rate) + ' of answers searched the web';
+  // Both ends equal reads as a band of nothing, so it is stated as one figure.
+  const settled = report.citedGivenActivated !== null || report.citedGivenActivatedLow === report.citedGivenActivatedHigh;
+  const cited = report.citedGivenActivatedHigh === null
+    ? 'Nothing is known to have searched, so there is no share among those to give.'
+    : settled
+      ? sharePct(report.citedGivenActivatedHigh) + ' of the answers that searched cited you.'
+      : 'Between ' + sharePct(report.citedGivenActivatedLow) + ' and ' + sharePct(report.citedGivenActivatedHigh) + ' of the answers that searched cited you, depending on how many of the unknown ones did.';
+  const overall = report.overall === null
+    ? ''
+    : 'Across all answers it is ' + sharePct(report.overall) + ', which is exact: an answer carrying no source cited nobody.';
+  // Each state is only named when it happened, or the line lists noughts.
+  const parts = [act.activated + ' searched'];
+  if (act.unavailable) parts.push(act.unavailable + ' could not search at all');
+  if (act.notRequested) parts.push(act.notRequested + (act.notRequested === 1 ? ' was' : ' were') + ' never asked to');
+  if (act.unknown) parts.push(act.unknown + ' could have searched and nothing says whether they did, which is unknown rather than a no');
+  const band = parts.length > 1 ? '<p class="subtle">' + parts.join(', ') + '.</p>' : '';
+  // The one thing this page decides, so it is the one card that stays open.
+  return section({ id: "sources-searching", title: "Searching, then being cited", blurb: report.caveat, wide: true,
+    body: '<p>' + searched + '. ' + cited + ' ' + overall + '</p>'
+      + band
+      + '<p class="subtle">' + html(act.caveat) + '</p>' + taskCta(tasks, "activation-unknown") });
 }

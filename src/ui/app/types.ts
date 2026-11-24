@@ -2,6 +2,8 @@
 // from empty literals before, so every array was never[] and every property
 // read off one was an error the compiler could not have reported usefully.
 
+import type { MeasurementTask } from "../../product/topics/next-task.js";
+
 export type LoadState = "idle" | "loading" | "ready" | "error";
 
 export interface Notice { text: string; kind: string }
@@ -192,15 +194,7 @@ export interface ActivationShape {
   caveat: string;
 }
 
-export interface TaskShape {
-  id: string;
-  urgency: "blocking" | "limiting" | "work";
-  title: string;
-  why: string;
-  evidence: string;
-  page: string;
-  action: string;
-}
+export type TaskShape = MeasurementTask;
 
 export interface CorroborationShape {
   reported: number;
