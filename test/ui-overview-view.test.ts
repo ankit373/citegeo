@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { formatTime } from "../src/ui/app/format.js";
 import {
-  cardActions, projectsForMode, renderFooter, renderNextSteps, renderOverview, renderProjectCards, type OverviewState,
+  cardActions, projectsForMode, renderFooter, renderNextSteps, renderOverview, renderProjectCards, type FooterInput, type OverviewState,
 } from "../src/ui/app/pages/overview-view.js";
 import type { ProjectRow } from "../src/ui/app/types.js";
 
@@ -54,12 +54,15 @@ test("the overview lists projects alone until one is selected", () => {
   has(renderOverview(view("current"), project("b", "active"), null), "Not saved yet");
 });
 
-test("the footer asks for the summary once and reads archived answers from it", () => {
+test("the footer asks for the summary once, because loading it leaves the idle state", () => {
   let loads = 0;
-  const actions = { loadHome: () => { loads += 1; } };
-  has(renderFooter({ homeState: "idle", selectedId: "a", home: null }, actions), "Reading the archive");
+  const input: FooterInput = { homeState: "idle", selectedId: "a", home: null };
+  const actions = { loadHome: () => { loads += 1; input.homeState = "loading"; } };
+  has(renderFooter(input, actions), "Reading the archive");
+  renderFooter(input, actions);
   assert.equal(loads, 1);
-  renderFooter({ homeState: "idle", selectedId: "", home: null }, actions);
+  const quiet: FooterInput = { homeState: "idle", selectedId: "", home: null };
+  renderFooter(quiet, actions);
   renderFooter({ homeState: "ready", selectedId: "a", home: null }, actions);
   assert.equal(loads, 1);
   const done = renderFooter({ homeState: "ready", selectedId: "a", home: { answers: 12, lastRun: { at: "2026-11-24T10:20:30Z" } } }, actions);

@@ -7,12 +7,13 @@ import { exportName, filterSummary, matchesQuery, panelCsv } from "./components/
 import { emptyState, notice, section } from "./components/primitives.js";
 import { button } from "./components/button.js";
 import { formatTime, percent, score as scoreText, sharePct, uptakePct } from "./format.js";
-import { alertPill, effectLabel, historyWord, intentLabel, kindWords, reachInk, reachWords, recognitionRunStatusText, urgencyInk, urgencyLabel } from "./labels.js";
+import { alertPill, effectLabel, historyWord, intentLabel, reachInk, reachWords, recognitionRunStatusText, urgencyInk, urgencyLabel } from "./labels.js";
 import { deltaPill, demandBadge, fieldBadge } from "./components/badges.js";
-import { bar, creditRows, experimentCard, outreachRow, overAppearances, renderLeaderboard, renderPersonaRows, searchDemandRow, shapeRow, stat, verdictButtons } from "./pages/metric-cells.js";
+import { bar, experimentCard, overAppearances, renderLeaderboard, renderPersonaRows, stat, verdictButtons } from "./pages/metric-cells.js";
 import { crawlerUpload, languagePicker, pasteCountPicker, repetitionPicker } from "./components/pickers.js";
 import { blockedSelection, catalogHead, catalogReleasedAt, catalogResultSummary, catalogVendor, modelIsBlocked, openRouterOutOfCredit, providerShortLabel, runsNowCell, selectedRows } from "./components/catalog-rows.js";
 import { mentionChips, paneRun, renderLiveRun, runIsLive, runPaneProgress } from "./pages/run-pane.js";
+import { renderConcentration, renderCredit, renderInterference, renderKinds, renderOutreach, renderReferrals, renderSearchDemand, renderShape } from "./pages/source-sections.js";
 import { renderFooter, renderOverview } from "./pages/overview-view.js";
 import { recognitionCountStrip, recognitionRunSummary, renderRecognitionModel, type RecognitionRunDetail } from "./pages/recognition-view.js";
 import { loading, skeletonCard, skeletonTable, skeletonText, skeletonTiles } from "./components/skeleton.js";
@@ -153,6 +154,7 @@ export function boot(): void {
 
     const project = () => state.currentProjects.find((item) => item.id === state.selectedId) || null;
     const footerActions = { loadHome };
+    const sourceActions = { loadInterference, loadConcentration, loadShape, loadCredit, loadKinds, loadOutreach, loadSearchDemand, loadReferrals };
     const currentPaneRun = () => paneRun(state.panel, state.liveRun, state.lastRun);
     const modeText = (mode: string) => mode === "provider_native" ? "Provider Native web search" : "Offline";
     function setSelectedProject(projectId: string) { if (projectId !== state.selectedId) { state.liveRun = null; state.lastRun = null; state.insights = null; state.insightsState = "idle"; state.plan = null; state.planState = "idle"; state.rankPlan = null; state.rankPlanState = "idle"; state.engines = null; state.enginesState = "idle"; state.actions = []; state.actionsState = "idle"; state.outreach = null; state.outreachState = "idle"; state.paste = null; state.pasteState = "idle"; state.uptake = null; state.uptakeState = "idle"; state.interference = null; state.interferenceState = "idle"; state.concentration = null; state.concentrationState = "idle"; state.shape = null; state.shapeState = "idle"; state.kinds = null; state.kindsState = "idle"; state.experiments = null; state.experimentsState = "idle"; state.check = null; state.checkState = "idle"; state.credit = null; state.creditState = "idle"; state.reach = null; state.reachState = "idle"; state.searchDemand = null; state.searchDemandState = "idle"; state.personas = null; state.personasState = "idle"; state.priority = null; state.priorityState = "idle"; state.referrals = null; state.referralsState = "idle"; state.crawlers = null; state.crawlersState = "idle"; state.signals = null; state.signalsState = "idle"; state.externalMetrics = null; state.externalMetricsState = "idle"; state.externalMetricsPulling = ""; state.externalMetricsNotice = { text:"", kind:"" }; } state.selectedId = projectId || ""; if (state.selectedId) localStorage.setItem("citegeo.product.projectId", state.selectedId); else localStorage.removeItem("citegeo.product.projectId"); const next = new URL(window.location.href); if (state.selectedId) next.searchParams.set("projectId", state.selectedId); else next.searchParams.delete("projectId"); window.history.replaceState({ projectId:state.selectedId }, "", next); }
@@ -1601,40 +1603,6 @@ export function boot(): void {
       render();
     }
 
-    function renderInterference() {
-      if (state.interferenceState === "idle") { loadInterference(); }
-      if (state.interferenceState !== "ready" || !state.interference) {
-        return '<p class="subtle">' + (state.interferenceState === "error" ? "Could not read the shape of the sources." : "Reading how the sources arrived.") + '</p>';
-      }
-      const report = state.interference;
-      const sudden = report.arrivals.filter((row: any) => row.sudden);
-      if (report.runs < 2) {
-        return '<p class="subtle">' + report.runs + ' run(s) have cited anything. A source that arrived everywhere at once can only be told from one that was always there by comparing runs, so this needs a second one.</p>';
-      }
-      // "Everything grew in over more than one run" was false for 107 of this
-      // project's 122 hosts, which were cited in exactly one run and never again.
-      const lead = sudden.length
-        ? sudden.length + ' source(s) arrived across most of the questions in a single run rather than growing into them.'
-        : 'No source arrived across most of the questions in a run that was not the first.'
-          + (report.arrivedOnce ? ' ' + report.arrivedOnce + ' of the ' + report.arrivals.length + ' host(s) cited here appear in one run only, which is neither shape.' : '');
-      const shifts = report.shifts.length
-        ? '<p>' + report.shifts.length + ' cited page(s) changed materially since they were last read.</p>'
-          + '<div class="mtable"><div class="mhead mcols-shift"><span>Page</span><span>Changed</span><span>Last read</span></div>'
-          + report.shifts.slice(0, 6).map((row: any) => '<div class="mrow mcols-shift"><div class="mname"><strong>' + html(row.host) + '</strong><span class="mono">' + html(row.url.slice(0, 70)) + '</span></div>'
-            + '<span class="mcell state-flag">' + Math.round(row.changed * 100) + '%</span>'
-            + '<span class="mcell mono">' + html(row.previousAt.slice(0, 10)) + '</span></div>').join("") + '</div>'
-        : '<p class="subtle">No cited page has been read twice, so none can be seen to have changed. Re-read them to start that comparison.</p>';
-      const rows = sudden.slice(0, 6).map((row: any) => '<div class="mrow mcols-arrival"><div class="mname"><strong>' + html(row.host) + '</strong>'
-        + '<span class="subtle">first cited ' + html(row.arrivedAt.slice(0, 10)) + '</span></div>'
-        + '<span class="mcell state-flag">' + row.questionsAtArrival + ' of ' + row.questionsInRun + '</span>'
-        + '<span class="mcell">' + Math.round(row.breadth * 100) + '%</span></div>').join("");
-      return '<p>' + html(lead) + '</p>'
-        + (rows ? '<div class="mtable"><div class="mhead mcols-arrival"><span>Source</span><span>Arrived across</span><span>Breadth</span></div>' + rows + '</div>' : '')
-        + shifts
-        + '<div class="inline-actions">' + button({ label: "Re-read the cited pages", kind: "quiet", on: { "data-refresh-pages": "true" } }) + '</div>'
-        + '<p class="mlegend">' + html(report.caveat) + '</p>';
-    }
-
     // Who supplies the answers in this category. A few domains holding most of
     // it makes getting onto them the whole game; a long tail means a new page
     // can still get in.
@@ -1650,37 +1618,6 @@ export function boot(): void {
       render();
     }
 
-    function renderConcentration() {
-      if (state.concentrationState === "idle") { loadConcentration(); }
-      if (state.concentrationState !== "ready" || !state.concentration) {
-        return '<p class="subtle">' + (state.concentrationState === "error" ? "Could not read who supplies these answers." : "Reading who supplies these answers.") + '</p>';
-      }
-      const report = state.concentration;
-      if (!report.hosts.length) return '<p class="subtle">No answer carried a citation, so there is nobody supplying them to count.</p>';
-      const half = report.halfHeldBy === null ? '' : report.halfHeldBy + ' of ' + report.hosts.length + ' domain(s) supply half of every citation here.';
-      // The header offers the reader two worlds and the figures decide which
-      // one this is, so the panel says it rather than leaving it as homework.
-      const which = report.verdict === "concentrated"
-        ? ' A handful of them own the category, so getting onto those is the game.'
-        : report.verdict === "spread"
-          ? ' The tail is long enough that a new page can still get in.'
-          : '';
-      const where = report.yourRank === null
-        ? ' Your own domain is not among them.'
-        : ' Yours is ranked ' + report.yourRank + ' of ' + report.hosts.length + '.';
-      const curve = report.topShares.map((row: any) => '<span class="count"><strong>' + Math.round(row.share * 100) + '%</strong>top ' + row.rank + '</span>').join("");
-      // Both readings of the row. One count beside one share left a reader
-      // dividing the count by the answers and getting a third number.
-      const rows = report.hosts.slice(0, 10).map((row: any, index: number) => '<div class="mrow mcols-concentration"><div class="mname"><strong>' + html(row.host) + (row.isYours ? ' <span class="tag">yours</span>' : '') + '</strong></div>'
-        + '<span class="mcell mono">' + (index + 1) + '</span>'
-        + '<span class="mcell">' + row.answers + ' of ' + report.answersWithCitations + '</span>'
-        + '<span class="mcell">' + Math.round(row.share * 100) + '%</span></div>').join("");
-      return '<p>' + html(half + which + where) + '</p>'
-        + '<div class="countstrip">' + curve + '<span class="count"><strong>' + (report.gini === null ? "Not measurable" : (Math.round(report.gini * 100) / 100)) + '</strong>concentration</span></div>'
-        + '<div class="mtable"><div class="mhead mcols-concentration"><span>Domain</span><span>Rank</span><span>Cited in</span><span>Share of citations</span></div>' + rows + '</div>'
-        + '<p class="mlegend">' + html(report.caveat) + '</p>';
-    }
-
     // Presentation moves citation credit between pages making the same claim,
     // and the gain comes out of somebody else rather than out of nowhere.
     async function loadShape() {
@@ -1693,34 +1630,6 @@ export function boot(): void {
         state.shapeState = "error";
       }
       render();
-    }
-
-    function renderShape() {
-      if (state.shapeState === "idle") { loadShape(); }
-      if (state.shapeState !== "ready" || !state.shape) {
-        return '<p class="subtle">' + (state.shapeState === "error" ? "Could not read how these pages are laid out." : "Reading how these pages are laid out.") + '</p>';
-      }
-      const report = state.shape;
-      if (!report.theirs.pages) return '<p class="subtle">No page cited on a question you lose has been read back, so there is nothing to compare a layout against.</p>';
-      // A verdict off one page of yours is a verdict about that page. The side
-      // that is short is named, because "nothing to compare" and "three pages
-      // short of a comparison" are different things to do something about.
-      const lead = report.behindOnAll !== null
-        ? report.behindOnAll
-          ? 'The pages cited instead of you carry more structure than yours on every count below.'
-          : 'Your pages are not behind on every count.'
-        : !report.yours.pages
-          ? 'None of your own pages has been cited and read back, so there is nothing of yours to compare. The figures on the left are what is already winning here.'
-          : 'Each side needs ' + report.minimum + ' pages read back before this is a comparison between two kinds of page rather than between two pages. '
-            + report.yours.pages + ' of yours and ' + report.theirs.pages + ' of theirs have been read, so the figures stand and the verdict does not.';
-      return '<p>' + html(lead) + '</p>'
-        + '<div class="mtable"><div class="mhead mcols-shape"><span>Per thousand words</span><span>Cited instead of you</span><span>Yours</span></div>'
-        + shapeRow("Headings", report.theirs.headingsPerThousand, report.yours.headingsPerThousand)
-        + shapeRow("List items", report.theirs.listItemsPerThousand, report.yours.listItemsPerThousand)
-        + shapeRow("Tables", report.theirs.tablesPerThousand, report.yours.tablesPerThousand)
-        + '</div>'
-        + '<p class="subtle">' + html(report.effect) + '</p>'
-        + '<p class="mlegend">' + html(report.caveat) + '</p>';
     }
 
     // Every figure here rests on a model classifying what another model wrote,
@@ -1801,29 +1710,6 @@ export function boot(): void {
       render();
     }
 
-    function renderCredit() {
-      if (state.creditState === "idle") { loadCredit(); }
-      if (state.creditState !== "ready" || !state.credit) {
-        return '<p class="subtle">' + (state.creditState === "error" ? "Could not compare credit against contribution." : "Comparing where pages were cited against what the answers took from them.") + '</p>';
-      }
-      const report = state.credit;
-      if (!report.comparable) {
-        return '<p class="subtle">No answer cited two pages that could both be read back, so there is no citation list to rank within. Read the cited pages and this fills.</p>';
-      }
-      const lead = 'Across ' + report.comparable + ' answer(s) citing more than one page that could be read, a page sits ' + report.meanGap + ' place(s) from where its contribution would put it on average, over ' + report.rows + ' page(s) ranked.'
-        + (report.tooFewRead ? ' ' + report.tooFewRead + ' more answer(s) cited something, with fewer than two of their pages read back, so nothing could be ranked inside them.' : '');
-      const over = report.overCredited.length
-        ? '<p><strong>Cited early, barely used.</strong></p><div class="mtable"><div class="mhead mcols-credit"><span>Page</span><span>Cited</span><span>Used</span><span>Gap</span></div>' + creditRows(report.overCredited, "state-flag") + '</div>'
-        : '';
-      const under = report.underCredited.length
-        ? '<p><strong>Used heavily, cited late.</strong></p><div class="mtable"><div class="mhead mcols-credit"><span>Page</span><span>Cited</span><span>Used</span><span>Gap</span></div>' + creditRows(report.underCredited, "state-ok") + '</div>'
-        : '';
-      const none = !over && !under ? '<p class="subtle">No page sits far from where its contribution would put it.</p>' : '';
-      return '<p>' + html(lead) + '</p>' + over + under + none
-        + '<p class="subtle">' + html(report.finding) + '</p>'
-        + '<p class="mlegend">' + html(report.caveat) + '</p>';
-    }
-
     // The ranked best-of listicle was the most cited format in published work,
     // at about a fifth of all citations, and four in five went to a company's
     // own site. Both are worth knowing against what wins here.
@@ -1837,48 +1723,6 @@ export function boot(): void {
         state.kindsState = "error";
       }
       render();
-    }
-
-    function kindRows(rows: any[]) {
-      return rows.map((row: any) => '<div class="mrow mcols-kind"><div class="mname"><strong>' + html(kindWords(row.kind)) + '</strong></div>'
-        + '<span class="mcell">' + row.pages + '</span>'
-        + '<span class="mcell">' + Math.round(row.share * 100) + '%</span>'
-        + '<span class="mcell">' + bar(row.share) + '</span></div>').join("");
-    }
-
-    function renderKinds() {
-      if (state.kindsState === "idle") { loadKinds(); }
-      if (state.kindsState !== "ready" || !state.kinds) {
-        return '<p class="subtle">' + (state.kindsState === "error" ? "Could not read what kind of pages are cited." : "Reading what kind of pages are cited.") + '</p>';
-      }
-      const report = state.kinds;
-      if (!report.pages) return '<p class="subtle">No cited page has been read back, so there is nothing to say about what kind of page wins here.</p>';
-      // A share off thirteen pages has a range wider than its distance from the
-      // published figure, so the range travels with it and the comparison is
-      // withheld rather than printed as a finding.
-      const over = report.pages + ' of the ' + report.cited + ' page(s) these answers cited have been read back. ';
-      const span = (interval: any) => interval && interval.low !== null
-        ? ' (' + Math.round(interval.low * 100) + ' to ' + Math.round(interval.high * 100) + '%)'
-        : '';
-      const listicle = 'Ranked best-of pages are ' + Math.round((report.listicleShare || 0) * 100) + '%' + span(report.listicleInterval)
-        + ' of what has been read here, against ' + Math.round(report.listicleBaseline * 100) + '% published.';
-      const corporate = ' A site belonging to a company in this category accounts for ' + Math.round((report.corporateShare || 0) * 100) + '%'
-        + span(report.corporateInterval) + ', against ' + Math.round(report.corporateBaseline * 100) + '%.';
-      const thin = report.tooFewToCompare
-        ? '<p class="subtle">' + html(over + 'That is too few for either share to be set against a published one: the range each is consistent with is wider than its distance from the baseline. Read the rest of the cited pages to close it.') + '</p>'
-        : '';
-      // Being absent from your own citations is what usually happens, so the
-      // figure is given with the band rather than as nought out of ten.
-      const ownedPercent = Math.round((report.ownedShare || 0) * 100);
-      const band = Math.round(report.ownedBaselineLow * 100) + ' to ' + Math.round(report.ownedBaselineHigh * 100) + '%';
-      const owned = report.ownedShare === null ? '' : report.ownedShare >= report.ownedBaselineLow
-        ? 'Your own pages are ' + ownedPercent + '% of what was cited, inside the ' + band + ' a brand\u2019s own domain usually gets.'
-        : 'Your own pages are ' + ownedPercent + '% of what was cited. Published work puts a brand\u2019s own domain at ' + band + ' of its citations, so the work is on the pages you do not own.';
-      return '<p>' + html(listicle + corporate) + '</p>' + thin
-        + (owned ? '<p>' + html(owned) + '</p>' : '')
-        + '<div class="mtable"><div class="mhead mcols-kind"><span>Format</span><span>Pages</span><span>Share</span><span></span></div>' + kindRows(report.formats) + '</div>'
-        + '<div class="mtable" style="margin-top:14px"><div class="mhead mcols-kind"><span>Belongs to</span><span>Pages</span><span>Share</span><span></span></div>' + kindRows(report.sources) + '</div>'
-        + '<p class="mlegend">' + html(report.caveat) + '</p>';
     }
 
     async function harvestPages(refresh?: boolean) {
@@ -1901,31 +1745,6 @@ export function boot(): void {
       }
       state.harvesting = false;
       render();
-    }
-
-    function renderOutreach() {
-      if (state.outreachState === "idle") { loadOutreach(); }
-      if (state.outreachState !== "ready" || !state.outreach) {
-        return '<p class="subtle">' + (state.outreachState === "error" ? "Could not read the cited pages." : "Reading which pages the answers cited.") + '</p>';
-      }
-      const plan = state.outreach;
-      const harvestAction = button({ label: (state.harvesting ? "Reading…" : "Read the cited pages"), disabled: state.harvesting, on: { "data-harvest-pages": true } });
-      if (plan.unavailable) {
-        return '<p class="subtle">No archived answer carried a source, so there is no page to read. That is a property of the models and surfaces that ran, not evidence that nobody cites you. Turn on a grounded provider or an answer surface and run again.</p>';
-      }
-      const age = plan.freshness;
-      const aged = age.fresh + age.ageing + age.stale;
-      const freshLine = aged || age.undated
-        ? '<p class="subtle">Of the pages read back, ' + age.fresh + ' fresh, ' + age.ageing + ' ageing and ' + age.stale + ' stale'
-          + (age.undated ? ', and ' + age.undated + ' state no date at all' : '')
-          + (age.medianAgeDays === null ? '. None of them gave a date to take a median of.' : '. Median age ' + age.medianAgeDays + ' days, over the ' + age.datedPages + ' that state one.')
-          + ' ' + html(age.caveat) + '</p>'
-        : '';
-      return '<p class="subtle">' + plan.cited + ' page(s) cited across ' + plan.answersWithCitations + ' of ' + plan.answersConsidered + ' answer(s). ' + plan.read + ' read back.</p>'
-        + freshLine
-        + '<div class="inline-actions">' + harvestAction + '</div>'
-        + '<div class="mtable"><div class="mhead mcols-source"><span>Page</span><span>You</span><span>Cited</span><span>Page age</span></div>'
-        + plan.targets.slice(0, 20).map(outreachRow).join("") + '</div>';
     }
 
     async function loadSearchDemand() {
@@ -1954,28 +1773,6 @@ export function boot(): void {
       }
       state.pulling = false;
       render();
-    }
-
-    function renderSearchDemand() {
-      if (state.searchDemandState === "idle") { loadSearchDemand(); }
-      if (state.searchDemandState !== "ready" || !state.searchDemand) {
-        return '<p class="subtle">' + (state.searchDemandState === "error" ? "Could not read the Search Console settings." : "Checking for a Search Console key.") + '</p>';
-      }
-      const data = state.searchDemand;
-      const pullAction = data.configured && data.siteUrl
-        ? button({ label: (state.pulling ? "Reading…" : "Pull the last 90 days"), disabled: state.pulling, on: { "data-pull-search": true } })
-        : button({ label: "Add the key in Setup", on: { "data-page": "setup" } });
-      const head = '<p class="subtle">' + html(data.detail) + '</p><div class="inline-actions">' + pullAction + '</div>';
-      const report = data.report;
-      if (!report) return head;
-      const gaps = report.prompts.filter((row: any) => row.earnedInSearchAbsentInAnswers).length;
-      return head
-        + '<p class="subtle">' + report.queries + ' query row(s), ' + report.totalImpressions + ' impression(s), ' + html(report.window.from) + ' to ' + html(report.window.to) + '. '
-        + (gaps ? gaps + ' question(s) earn search impressions while no answer names you. Those are the clearest gaps here.' : 'No question earns search impressions while the answers leave you out.')
-        + '</p>'
-        + '<div class="mtable"><div class="mhead mcols-search"><span>Question, and the queries matching it</span><span>Impressions</span><span>Clicks</span><span>Position</span></div>'
-        + report.prompts.slice(0, 20).map(searchDemandRow).join("") + '</div>'
-        + '<p class="evidence-note">Search queries are not AI prompts and this does not pretend otherwise. It is measured demand for the same subject, from the one place that reports it.</p>';
     }
 
     async function loadPersonas() {
@@ -2040,28 +1837,6 @@ export function boot(): void {
       }
       state.pullingReferrals = false;
       render();
-    }
-
-    function renderReferrals() {
-      if (state.referralsState === "idle") { loadReferrals(); }
-      if (state.referralsState !== "ready" || !state.referrals) {
-        return '<p class="subtle">' + (state.referralsState === "error" ? "Could not read the Analytics settings." : "Checking for an Analytics property.") + '</p>';
-      }
-      const data = state.referrals;
-      const pullAction = data.configured && data.propertyId
-        ? button({ label: (state.pullingReferrals ? "Reading…" : "Pull the last 90 days"), disabled: state.pullingReferrals, on: { "data-pull-referrals": true } })
-        : button({ label: "Add it in Setup", on: { "data-page": "setup" } });
-      const head = '<p class="subtle">' + html(data.detail) + '</p><div class="inline-actions">' + pullAction + '</div>';
-      const report = data.report;
-      if (!report) return head;
-      if (report.empty) return head + '<p class="subtle">The property reported no row at all for this window, which is a property with nothing in it rather than a property where nobody arrived from an assistant.</p>';
-      if (!report.assistants.length) return head + '<p class="subtle">' + report.totalSessions + ' session(s) in the window and none from an assistant this tool knows. Being named is not the same as being visited.</p>';
-      return head + '<div class="mtable"><div class="mhead mcols-rank"><span>Assistant</span><span>Sessions</span><span>Share of all</span></div>'
-        + report.assistants.map((row: any) => '<div class="mrow mcols-rank">'
-          + '<div class="mname"><strong>' + html(row.source) + '</strong><span class="subtle">' + (row.engaged === null ? "engagement not reported" : row.engaged + ' engaged') + '</span></div>'
-          + '<span class="mcell">' + row.sessions + '</span>'
-          + '<span class="mcell">' + (report.totalSessions ? Math.round(row.sessions / report.totalSessions * 1000) / 10 + '%' : "Not measurable") + '</span></div>').join("")
-        + '</div><p class="evidence-note">Arriving is a different claim from being named. A high score with no sessions means the answers name you and nobody clicks through, which is the normal case and not a fault in either number.</p>';
     }
 
     function renderRunPane() {
@@ -3027,14 +2802,14 @@ export function boot(): void {
       return answerPage("Sources", "What the answers cited, and whether the answer used it. A citation is an address until the page behind it is read.", () => ''
         + card("source-pages", "Sources", "A domain says you are cited. A page says which one to write more of.", renderCitedPages())
         + card("source-uptake", "Cited, or actually used", "A citation says a page was listed. This says how much of the answer came from it. A page cited and used for nothing is the finding worth having.", renderUptake())
-        + card("source-outreach", "Pages the models read", "Each cited page, fetched and read back: who is on it, in what order, and whether you are. A page cited on a question you lose, without you on it, is the most specific thing here.", renderOutreach())
-        + card("source-demand", "What people search for", "Search Console, joined to the questions you track. Not AI prompt volume, but real demand for the same subject.", renderSearchDemand())
-        + card("source-referrals", "Who arrived from an assistant", "Analytics sessions by referring assistant. Being named is one claim; somebody arriving because of it is another.", renderReferrals())
-        + card("source-credit", "Who gets the credit", "Where a page was cited against how much of the answer it actually accounts for. A page credited first that the answer took nothing from was credited for something other than its content.", renderCredit())
-        + card("source-kinds", "What kind of page gets cited", "The ranked best-of listicle was the most cited format in published work, at about a fifth of everything. What wins here is a different question, and this is the answer to it.", renderKinds())
-        + card("source-shape", "How the pages that beat you are built", "The same facts rendered as structure instead of prose were measured to take citation credit from the page that stayed prose. This is the one lever here with a causal test behind it.", renderShape())
-        + card("source-concentration", "Who supplies these answers", "A category where a handful of domains account for most citations is one where getting onto those domains is the whole game. A long tail is one where a new page can still get in.", renderConcentration())
-        + card("source-interference", "Someone else is working on this answer", "A document rewritten to match what an engine likes to cite stays factually consistent with the original, so nothing that checks facts will catch one. What is left is shape.", renderInterference())
+        + card("source-outreach", "Pages the models read", "Each cited page, fetched and read back: who is on it, in what order, and whether you are. A page cited on a question you lose, without you on it, is the most specific thing here.", renderOutreach(state.outreachState, state.outreach, state.harvesting, sourceActions))
+        + card("source-demand", "What people search for", "Search Console, joined to the questions you track. Not AI prompt volume, but real demand for the same subject.", renderSearchDemand(state.searchDemandState, state.searchDemand, state.pulling, sourceActions))
+        + card("source-referrals", "Who arrived from an assistant", "Analytics sessions by referring assistant. Being named is one claim; somebody arriving because of it is another.", renderReferrals(state.referralsState, state.referrals, state.pullingReferrals, sourceActions))
+        + card("source-credit", "Who gets the credit", "Where a page was cited against how much of the answer it actually accounts for. A page credited first that the answer took nothing from was credited for something other than its content.", renderCredit(state.creditState, state.credit, sourceActions))
+        + card("source-kinds", "What kind of page gets cited", "The ranked best-of listicle was the most cited format in published work, at about a fifth of everything. What wins here is a different question, and this is the answer to it.", renderKinds(state.kindsState, state.kinds, sourceActions))
+        + card("source-shape", "How the pages that beat you are built", "The same facts rendered as structure instead of prose were measured to take citation credit from the page that stayed prose. This is the one lever here with a causal test behind it.", renderShape(state.shapeState, state.shape, sourceActions))
+        + card("source-concentration", "Who supplies these answers", "A category where a handful of domains account for most citations is one where getting onto those domains is the whole game. A long tail is one where a new page can still get in.", renderConcentration(state.concentrationState, state.concentration, sourceActions))
+        + card("source-interference", "Someone else is working on this answer", "A document rewritten to match what an engine likes to cite stays factually consistent with the original, so nothing that checks facts will catch one. What is left is shape.", renderInterference(state.interferenceState, state.interference, sourceActions))
       );
     }
 
