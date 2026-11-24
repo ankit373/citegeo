@@ -1,60 +1,12 @@
 import { html } from "../dom.js";
 import { percent, score as scoreText } from "../format.js";
 import type { EntityRow, SplitRow } from "../types.js";
-
-export interface RateReading {
-  tooFewAppearances?: boolean | undefined;
-  namedIn?: number | undefined;
-  appearances?: number | undefined;
-}
-
-export interface CreditRow { host: string; url: string; creditedAt: number; citedAt: number; usedAt: number; gap: number }
-
-export interface OutreachTarget {
-  url: string;
-  title?: string | null | undefined;
-  host: string;
-  words: number | null;
-  why: string;
-  prompts: string[];
-  rivals: Array<{ name: string }>;
-  namesYou: boolean;
-  citedBy: number;
-  freshness: string;
-  ageDays?: number | null | undefined;
-}
-
-export interface SearchDemandRow {
-  text: string;
-  exact: Array<{ query: string }>;
-  related: Array<{ query: string }>;
-  earnedInSearchAbsentInAnswers?: boolean | undefined;
-  impressions: number;
-  clicks: number;
-  position: number | null;
-}
-
-export interface ExperimentArm { rate: number | null; trials: number }
-
-export interface ExperimentRow {
-  id: string;
-  name: string;
-  status: string;
-  changed?: string | undefined;
-  draftId?: string | undefined;
-  changedAt: string;
-  treatedPromptIds: string[];
-  controlPromptIds: string[];
-  result: {
-    verdict: string;
-    difference: number | null;
-    low?: number | null | undefined;
-    high?: number | null | undefined;
-    detail: string;
-    treated: { before: ExperimentArm; after: ExperimentArm };
-    control: { before: ExperimentArm; after: ExperimentArm };
-  };
-}
+import type { VisibilityScore } from "../../../product/topics/visibility-score.js";
+import type { CreditRow } from "../../../product/citations/credit-gap.js";
+import type { OutreachTarget } from "../../../product/citations/outreach.js";
+import type { PromptSearchDemand } from "../../../product/search-console/search-demand.js";
+import type { ExperimentReport } from "../../../product/experiments/experiment-service.js";
+import type { ProportionInterval } from "../../../product/topics/proportion-interval.js";
 
 export function bar(value: number | null | undefined): string {
   return value === null || value === undefined ? '' : '<div class="bar"><i style="width:' + Math.round(value * 100) + '%"></i></div>';
@@ -64,7 +16,7 @@ export function stat(label: string, value: string | number, note: string, fracti
   return '<div class="stat"><span>' + html(label) + '</span><strong>' + value + '</strong><small>' + html(note) + '</small>' + bar(fraction) + '</div>';
 }
 
-export function overAppearances(score: RateReading | null | undefined, value: number | null | undefined, words: string) {
+export function overAppearances(score: Pick<VisibilityScore, "tooFewAppearances" | "namedIn" | "appearances"> | null | undefined, value: number | null | undefined, words: string) {
   if (!score || score.tooFewAppearances) {
     const named = score ? score.namedIn || score.appearances || 0 : 0;
     return {
@@ -123,7 +75,7 @@ export function creditRows(rows: CreditRow[], kind: string): string {
     + '<span class="mcell ' + kind + '">' + (row.gap > 0 ? '+' : '') + row.gap + '</span></div>').join("");
 }
 
-export function ageCell(target: { freshness: string; ageDays?: number | null | undefined }): string {
+export function ageCell(target: Pick<OutreachTarget, "freshness" | "ageDays">): string {
   if (target.freshness === "unread") return '<span class="mcell subtle">Not read</span>';
   if (target.freshness === "undated") return '<span class="mcell subtle">No date given</span>';
   const tone = target.freshness === "fresh" ? "state-ok" : target.freshness === "ageing" ? "state-flag" : "state-bad";
@@ -144,7 +96,7 @@ export function outreachRow(target: OutreachTarget): string {
     + ageCell(target) + '</div>';
 }
 
-export function searchDemandRow(row: SearchDemandRow): string {
+export function searchDemandRow(row: PromptSearchDemand): string {
   const matched = row.exact.concat(row.related).slice(0, 4);
   return '<div class="mrow mcols-search">'
     + '<div class="mname"><strong>' + html(row.text) + '</strong>'
@@ -165,11 +117,11 @@ export function renderPersonaRows(rows: SplitRow[] | null | undefined): string {
     + '</div>';
 }
 
-export function armCell(label: string, side: ExperimentArm): string {
+export function armCell(label: string, side: ProportionInterval): string {
   return '<span class="count"><strong>' + (side.rate === null ? '—' : Math.round(side.rate * 100) + '%') + '</strong>' + html(label) + ' (' + side.trials + ')</span>';
 }
 
-export function experimentCard(row: ExperimentRow): string {
+export function experimentCard(row: ExperimentReport): string {
   const result = row.result;
   const ink = result.verdict === "moved" ? "state-ok" : result.verdict === "no_effect_shown" ? "state-flag" : "state-bad";
   const words = result.verdict === "moved" ? "Moved" : result.verdict === "no_effect_shown" ? "Nothing shown" : result.verdict === "no_control" ? "No control" : "Too thin yet";
