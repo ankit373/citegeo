@@ -1,39 +1,35 @@
 import { CONFIG } from "./config.js";
 import { html } from "./dom.js";
-import { sparkline, trendChart } from "./components/chart.js";
-import { boardStatus, dashboardBody, dashboardPanels, headline, heroStats, type DashboardData } from "./pages/dashboard-view.js";
+import { trendChart } from "./components/chart.js";
+import { dashboardBody, dashboardPanels } from "./pages/dashboard-view.js";
 import { buyingView, claimsView, conversationsView, draftsView, entityView, marketerView } from "./pages/marketer-view.js";
 import { exportName, filterSummary, matchesQuery, panelCsv } from "./components/panel-tools.js";
 import { emptyState, notice, section } from "./components/primitives.js";
 import { button } from "./components/button.js";
 import { formatTime, percent, score as scoreText } from "./format.js";
-import { alertPill, effectLabel, historyWord, intentLabel, reachInk, reachWords, recognitionRunStatusText } from "./labels.js";
-import { deltaPill, demandBadge, fieldBadge } from "./components/badges.js";
+import { effectLabel, historyWord, intentLabel, reachInk, reachWords, recognitionRunStatusText } from "./labels.js";
+import { demandBadge, fieldBadge } from "./components/badges.js";
 import { overAppearances, renderLeaderboard, renderPersonaRows, stat } from "./pages/metric-cells.js";
 import { crawlerUpload, languagePicker, pasteCountPicker, repetitionPicker } from "./components/pickers.js";
 import { blockedSelection, catalogHead, catalogReleasedAt, catalogResultSummary, catalogVendor, modelIsBlocked, openRouterOutOfCredit, providerShortLabel, runsNowCell, selectedRows } from "./components/catalog-rows.js";
 import { mentionChips, paneRun, renderLiveRun, runIsLive, runPaneProgress } from "./pages/run-pane.js";
 import { renderDecoys, renderFraming, renderHumanCheck, renderExperiments, renderPhrasing, renderSchedule, renderStability, renderTier, renderVariance, renderVersions } from "./pages/trust-sections.js";
-import { answerTasks, renderTasks, taskCta } from "./pages/task-views.js";
+import { answerTasks, taskCta } from "./pages/task-views.js";
 import { renderConcentration, renderCredit, renderDecomposition, renderUptake, renderInterference, renderKinds, renderOutreach, renderReferrals, renderSearchDemand, renderShape } from "./pages/source-sections.js";
+import { dashboardView, renderHome, type AnswerDigest, type CitedPages, type ReferralsPayload } from "./pages/home-view.js";
 import { renderFooter, renderOverview } from "./pages/overview-view.js";
 import { recognitionCountStrip, recognitionRunSummary, renderRecognitionModel, type RecognitionRunDetail } from "./pages/recognition-view.js";
 import { loading, skeletonCard, skeletonTable, skeletonText, skeletonTiles } from "./components/skeleton.js";
 import { clearToasts, toast } from "./components/toast.js";
 import { DESTINATIONS, navScrim, navToggle, sidebar, wireNav } from "./components/nav.js";
-import { hasPanelOrder, resetPanelOrder, setPanelSpan, togglePanelHidden, wirePanelDrag } from "./components/reorder.js";
+import { resetPanelOrder, setPanelSpan, togglePanelHidden, wirePanelDrag } from "./components/reorder.js";
 import { wireChartHover } from "./components/chart-hover.js";
 import { setupView, type CredentialRow, type IntegrationRow, type ProviderRow, type StorageCheck, type StorageSettings } from "./pages/setup-view.js";
+import type { HomeSummary } from "../../product/alerts/home-summary.js";
+import type { RankingPlan } from "../../product/topics/ranking-plan.js";
+import type { OutreachPlan } from "../../product/citations/outreach.js";
+import type { SearchConsoleStatus } from "../../product/search-console/search-console-service.js";
 import { selectedModelTable, webSearchModeControl } from "./components/model-picker.js";
-
-/** What moved since the previous run, in sentences. Only built when
- * something did: a digest that usually says nothing stops being read. */
-interface AnswerDigest {
-  headline: string;
-  newsworthy: boolean;
-  lines: string[];
-  builtAt: string;
-}
 
 /** What the credentials endpoint answers with, or nothing when it refuses. */
 type CredentialFile = { closed?: boolean; detail?: string; storageEnabled?: boolean; credentials?: CredentialRow[] };
@@ -80,8 +76,8 @@ export function boot(): void {
     promptDraft: { topicId: string; text: string; intent: string };
     schedule: Unshaped; scheduleState: LoadState;
     regions: Array<{ id: string; label: string }>; languages: Array<{ id: string; label: string }>;
-    home: Unshaped; homeState: LoadState;
-    cited: Unshaped; citedState: LoadState;
+    home: HomeSummary | null; homeState: LoadState;
+    cited: CitedPages | null; citedState: LoadState;
     rivals: Unshaped; rivalsState: LoadState;
     storage: StorageSettings | null; storageState: LoadState;
     storageDraft: Record<string, string>; storageBackend: string; storageCheck: StorageCheck | null;
@@ -89,9 +85,9 @@ export function boot(): void {
     panel: Panel | null; panelState: LoadState; panelAnswers: AnswerRow[];
     liveRun: RunRow | null; lastRun: RunRow | null; runPollTimer: number;
     runFeed: AnswerRow[]; runFeedState: LoadState; runFeedTimer: number;
-    rankPlan: Unshaped; rankPlanState: LoadState;
+    rankPlan: RankingPlan | null; rankPlanState: LoadState;
     brief: Unshaped; briefState: LoadState;
-    outreach: Unshaped; outreachState: LoadState; harvesting: boolean;
+    outreach: OutreachPlan | null; outreachState: LoadState; harvesting: boolean;
     uptake: Unshaped; uptakeState: LoadState;
     interference: Unshaped; interferenceState: LoadState;
     concentration: Unshaped; concentrationState: LoadState;
@@ -106,10 +102,10 @@ export function boot(): void {
     paste: Unshaped; pasteState: LoadState; pasteCount: number;
     repetitions: number;
     runLanguageId: string;
-    searchDemand: Unshaped; searchDemandState: LoadState; pulling: boolean;
+    searchDemand: SearchConsoleStatus | null; searchDemandState: LoadState; pulling: boolean;
     personas: Unshaped; personasState: LoadState;
     priority: Unshaped; priorityState: LoadState;
-    referrals: Unshaped; referralsState: LoadState; pullingReferrals: boolean;
+    referrals: ReferralsPayload | null; referralsState: LoadState; pullingReferrals: boolean;
     engines: Unshaped; enginesState: LoadState;
     actions: Unshaped[]; actionsState: LoadState;
     matrixOpen: string[];
@@ -156,6 +152,7 @@ export function boot(): void {
 
     const project = () => state.currentProjects.find((item) => item.id === state.selectedId) || null;
     const footerActions = { loadHome };
+    const homeActions = { loadHome, loadAnswerEngine, loadOutreach, loadRankingPlan, loadDigest, loadSearchDemand, loadReferrals };
     const trustActions = { loadCheck, loadExperiments, loadSchedule };
     const currentTasks = () => answerTasks(state.answerEngine);
     const sourceActions = { loadInterference, loadConcentration, loadShape, loadCredit, loadKinds, loadOutreach, loadSearchDemand, loadReferrals, loadUptake };
@@ -460,7 +457,7 @@ export function boot(): void {
     /** One dashboard panel on its own. It carries what the card had to leave
      * out, because opening a panel is a deep dive rather than a bigger card. */
     function openPanel(panelId: string) {
-      const view = dashboardView();
+      const view = dashboardView(state, project());
       if (!view) return;
       const panel = dashboardPanels(view).find((row) => row.id === panelId);
       if (!panel) return;
@@ -1683,7 +1680,7 @@ export function boot(): void {
       render();
       try {
         const result = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/search-demand", { method:"POST", headers:{"Content-Type":"application/json"}, body:"{}" });
-        state.searchDemand = { ...(state.searchDemand || {}), configured:true, report: result.report };
+        if (state.searchDemand) state.searchDemand = { ...state.searchDemand, configured:true, report: result.report };
         state.searchDemandState = "ready";
         state.promptNotice = { text: result.report.queries + " query row(s) read from Search Console.", kind:"success" };
       } catch (error) {
@@ -1748,7 +1745,7 @@ export function boot(): void {
       render();
       try {
         const result = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/assistant-referrals", { method:"POST", headers:{"Content-Type":"application/json"}, body:"{}" });
-        state.referrals = { ...(state.referrals || {}), configured:true, report: result.report };
+        if (state.referrals) state.referrals = { ...state.referrals, configured:true, report: result.report };
         state.promptNotice = { text:"Analytics read.", kind:"success" };
       } catch (error) {
         state.promptNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind:"error" };
@@ -1820,172 +1817,6 @@ export function boot(): void {
         + '<div class="panel-body">' + renderBrief() + '<h3 class="panel-section">The answers themselves</h3>' + body + '</div></aside>';
     }
 
-    /** The dashboard is assembled by a module of its own, from the same
-     * figures the answer engine reports, so two screens cannot disagree. */
-    /** What the dashboard draws from. Built here rather than inside the
-     * renderer, so the side pane can redraw one panel from the same figures. */
-    /** Topics, their subtopics and their prompts against every brand named,
-     * with the columns fixed by the overall order so rows stay comparable. */
-    function buildMatrix(data: any, own: string): any {
-      if (!data || !data.topics || !data.topics.length) return undefined;
-      // The reader's own column is never cut. Taking the top eight outright
-      // drops a brand ranked ninth, and every row then reads as never named.
-      const board = (data.leaderboard || []);
-      // Never being named keeps a brand off the leaderboard entirely, and a
-      // grid with no column for the reader cannot show them anything.
-      const found = board.filter((row: any) => row.isTarget);
-      const mine = found.length ? found : [{ name: own, domain: null, isTarget: true }];
-      const rivals = board.filter((row: any) => !row.isTarget).slice(0, 7);
-      const columns = [...mine, ...rivals].map((row: any) => ({ name: String(row.name), domain: row.domain ?? null, icon: row.domain ? state.brandIcons[row.domain] ?? null : null, isTarget: !!row.isTarget }));
-      if (!columns.length) return undefined;
-      const shareIn = (standing: any[]) => columns.map((column: any) => {
-        const found = (standing || []).find((row: any) => row.name === column.name);
-        return found ? (found.shareOfAnswers ?? null) : null;
-      });
-      const rows: any[] = [];
-      for (const topic of data.topics) {
-        const subs = topic.subtopics || [];
-        const key = "t:" + topic.topicId;
-        rows.push({ key, parent: "", depth: 0, label: topic.name, shares: shareIn(topic.standing), children: subs.length || (topic.prompts || []).length });
-        for (const sub of subs) {
-          const subKey = key + "/s:" + sub.name;
-          rows.push({ key: subKey, parent: key, depth: 1, label: sub.name, shares: shareIn(sub.standing), children: (sub.prompts || []).length });
-          for (const prompt of sub.prompts || []) {
-            rows.push({ key: subKey + "/p:" + prompt.promptId, parent: subKey, depth: 2, label: prompt.text, shares: shareIn(prompt.standing), children: 0 });
-          }
-        }
-        // A set nobody grouped opens straight onto its questions, rather than
-        // onto one subtopic invented to fill the level.
-        if (!subs.length) {
-          for (const prompt of topic.prompts || []) {
-            rows.push({ key: key + "/p:" + prompt.promptId, parent: key, depth: 1, label: prompt.text, shares: shareIn(prompt.standing), children: 0 });
-          }
-        }
-      }
-      return { columns, rows };
-    }
-
-    function dashboardView(): DashboardData | null {
-      const selected = project();
-      const home = state.home;
-      const data = state.answerEngine;
-      if (!selected || !home || !data || boardStatus(state.homeState, state.answerEngineState) !== "ready") return null;
-      const reading = headline(data);
-      const outreach = state.outreach;
-      const plan = state.rankPlan;
-      const questions = data ? data.topics.reduce((total: number, topic: any) => total + topic.prompts.length, 0) : 0;
-      const measurable = data ? data.topics.reduce((total: number, topic: any) => total + topic.prompts.filter((p: any) => p.measuresVisibility).length, 0) : 0;
-
-      const view: DashboardData = {
-        matrix: buildMatrix(data, String(home.domain || selected.normalizedDomain)),
-        matrixOpen: state.matrixOpen,
-        matrixHidden: state.matrixHidden,
-        regionCaveat: data ? data.regionCaveat : "",
-        // Computed on the server, where both halves live. The view reads it.
-        link: (() => {
-          const held = state.referrals as Unshaped;
-          const link = held ? (held.link as Unshaped) : null;
-          return link && Array.isArray(link.rows) && link.rows.length ? link : undefined;
-        })(),
-        demand: (() => {
-          const held = state.searchDemand as Unshaped;
-          if (!held) return undefined;
-          const report = held.report as Unshaped;
-          const rows: Unshaped[] = report ? (report.prompts as Unshaped[]) || [] : [];
-          return {
-            configured: Boolean(held.configured && held.siteUrl),
-            pulled: Boolean(report),
-            impressions: rows.reduce((total: number, row: Unshaped) => total + (Number(row.impressions) || 0), 0),
-            clicks: rows.reduce((total: number, row: Unshaped) => total + (Number(row.clicks) || 0), 0),
-            gaps: rows.filter((row: Unshaped) => row.earnedInSearchAbsentInAnswers).length,
-            top: [...rows].sort((a: Unshaped, b: Unshaped) => (Number(b.impressions) || 0) - (Number(a.impressions) || 0))
-              .filter((row: Unshaped) => (Number(row.impressions) || 0) > 0)
-              .map((row: Unshaped) => ({ text: String(row.text), impressions: Number(row.impressions) || 0, position: row.position ?? null })),
-          };
-        })(),
-        arrivals: (() => {
-          const held = state.referrals as Unshaped;
-          if (!held) return undefined;
-          const report = held.report as Unshaped;
-          const rows: Unshaped[] = report ? (report.assistants as Unshaped[]) || [] : [];
-          return {
-            configured: Boolean(held.configured && held.propertyId),
-            pulled: Boolean(report),
-            sessions: rows.reduce((total: number, row: Unshaped) => total + (Number(row.sessions) || 0), 0),
-            assistants: rows.map((row: Unshaped) => ({ source: String(row.source), sessions: Number(row.sessions) || 0, engaged: Number(row.engaged) || 0 })),
-          };
-        })(),
-        domain: String(home.domain || selected.normalizedDomain),
-        score: reading.standing.score,
-        change: reading.change,
-        rank: reading.rank,
-        overall: data ? data.overall : { score: null, presenceRate: null, prominence: null, sentiment: null, answers: 0, appearances: 0, namedIn: 0, tooFewAppearances: true },
-        leaderboard: data ? (data.leaderboard as any[]).map((row: any) => ({
-          name: row.name,
-          domain: row.domain ?? null,
-          icon: row.domain ? state.brandIcons[row.domain] ?? null : null,
-          isTarget: row.isTarget,
-          appearances: row.appearances,
-          shareOfAnswers: row.shareOfAnswers,
-          prominence: row.prominence ?? null,
-          positive: row.positive ?? 0,
-          negative: row.negative ?? 0,
-        })) : [],
-        byModel: data ? data.byModel.map((row: any) => ({ label: row.displayName, score: row.score.score, answers: row.score.answers, rank: null })) : [],
-        byRegion: data ? data.byRegion.map((row: any) => ({ id: row.regionId, label: row.label, score: row.score.score, answers: row.score.answers, rank: row.rank })) : [],
-        byPersona: data ? data.byPersona.map((row: any) => ({ label: row.label, score: row.score.score, answers: row.score.answers, rank: row.rank })) : [],
-        questions,
-        measurable,
-        absent: data ? data.absentFrom.length : 0,
-        // The models that actually answered. byModel carries every model the
-        // archive has ever seen, and fourteen of this project's twenty four
-        // have never produced an answer, so "3 of 24" was over a denominator
-        // more than twice the number that were asked.
-        assistants: data ? data.byModel.filter((row: any) => row.score.answers > 0).length : 0,
-        assistantsConfigured: data ? data.byModel.length : 0,
-        assistantsNaming: data ? data.byModel.filter((row: any) => row.score.appearances > 0).length : 0,
-        moves: plan && state.rankPlanState === "ready" ? (plan.moves as any[]).filter((m: any) => m.effect === "raises_visibility")
-          : state.rankPlanState === "error" ? [] : null,
-        citationsUnavailable: data ? data.citationsUnavailable : false,
-        citedPages: outreach ? outreach.cited : null,
-        missingFrom: outreach ? (outreach.targets as any[]).filter((t: any) => !t.namesYou).length : null,
-        spark: data ? sparkline(data.trend.points, 170, 30) : "",
-        position: data ? (data.position as any) : undefined,
-        citation: state.cited ? ((state.cited as Unshaped).standing as any) : undefined,
-        asked: (() => {
-          if (!data) return undefined;
-          const prompts = (data.topics as any[]).flatMap((topic: any) => topic.prompts as any[]);
-          const earned = prompts.filter((row: any) => row.measuresVisibility);
-          const byName = prompts.filter((row: any) => !row.measuresVisibility);
-          const sum = (rows: any[], pick: (row: any) => number) => rows.reduce((total, row) => total + pick(row), 0);
-          const judged = byName.filter((row: any) => row.score.sentiment !== null);
-          return {
-            unbranded: {
-              prompts: earned.length,
-              answers: sum(earned, (row) => row.score.answers),
-              appearances: sum(earned, (row) => row.score.appearances),
-              score: earned.length ? Math.round(sum(earned, (row) => row.score.score || 0) / earned.length) : null,
-            },
-            branded: {
-              prompts: byName.length,
-              answers: sum(byName, (row) => row.score.answers),
-              // Averaging over the judged ones only: an unjudged answer is not a zero.
-              sentiment: judged.length ? sum(judged, (row) => row.score.sentiment) / judged.length : null,
-            },
-          };
-        })(),
-        rivalTrend: data && data.trend && data.trend.rivals ? (data.trend.rivals as any[]).map((row: any) => ({
-          name: row.name, isTarget: row.isTarget,
-          domain: ((data.leaderboard as any[]) || []).find((entry: any) => entry.name === row.name)?.domain ?? null,
-          icon: state.brandIcons[((data.leaderboard as any[]) || []).find((entry: any) => entry.name === row.name)?.domain || ""] ?? null,
-          points: (row.points as any[]).map((point: any) => ({ at: point.at, share: point.share, answers: point.answers, readable: point.readable })),
-        })) : [],
-        alerts: (home.alerts as any[]).length,
-      };
-
-      return view;
-    }
-
     /** The corpus report, which is absent until one has been built. A 404 here
      * is a configuration answer and carries the corpora it could be built from. */
     async function loadDemand() {
@@ -2050,7 +1881,7 @@ export function boot(): void {
         // here looked like nothing happened.
         + '<div class="inline-actions">' + button({ label: "Full report", on: { "data-page": "answer-engine" } }) + runActionButton("Run prompts") + '</div></div>' + renderLiveRun(state.liveRun);
       if (state.answerEngineState === "error") return heading + notice("Could not read this project.", "error") + '</section>';
-      const view = dashboardView();
+      const view = dashboardView(state, project());
       if (!view) return heading + dashboardBody({ status: "loading" }) + '</section>';
       const wanted = ["trend", "named", "described", "sources"];
       const panels = dashboardPanels(view).filter((panel) => wanted.includes(panel.id));
@@ -2064,66 +1895,6 @@ export function boot(): void {
       })).join("");
       // The board first, then what sits behind it. One destination, one page.
       return heading + '<div class="dgrid">' + body + '</div>' + renderDemand() + rivalDetail() + '</section>';
-    }
-
-    function renderHome() {
-      const selected = project();
-      if (!selected) return '<section class="view">' + emptyState("Create a project first", "Everything here reports on one domain.") + '</section>';
-      if (state.homeState === "idle") { loadHome(); }
-      if (state.answerEngineState === "idle") { loadAnswerEngine(); }
-      if (state.outreachState === "idle") { loadOutreach(); }
-      if (state.rankPlanState === "idle") { loadRankingPlan(); }
-      if (state.digestState === "idle") { loadDigest(); }
-      if (state.searchDemandState === "idle") { loadSearchDemand(); }
-      if (state.referralsState === "idle") { loadReferrals(); }
-
-      const heading = (body: string): string => '<section class="view"><div class="heading"><div class="headmain"><h1>'
-        + html(selected.name) + '</h1><p class="subtle">' + html(String((state.home && state.home.domain) || selected.normalizedDomain)) + '</p></div>'
-        + '<div class="inline-actions">'
-        + button({ label: state.editingBoard ? "Done arranging" : "Arrange board", kind: state.editingBoard ? "secondary" : "quiet", on: { "data-edit-board": true } })
-        + (hasPanelOrder() ? button({ label: "Reset layout", kind: "quiet", on: { "data-reset-panels": true } }) : '')
-        + button({ label: "Full report", on: { "data-page": "answer-engine" } }) + ''
-        + runActionButton("Run prompts") + '</div></div>' + renderLiveRun(state.liveRun) + body + '</section>';
-
-      if (state.homeState === "error") return heading(notice("Could not read this project.", "error"));
-      if (state.homeState !== "ready" || !state.home) return heading(dashboardBody({ status: "loading" }));
-
-      const home = state.home;
-      if (home.showSetupOnly) {
-        const steps = (home.setup as any[]).map((step: any, index: number) => '<div class="mrow mcols-step" data-state="' + (step.done ? "done" : "todo") + '">'
-          + '<span class="mcell mono">' + (step.done ? "\u2713" : String(index + 1)) + '</span>'
-          + '<div class="mname"><strong>' + html(step.label) + '</strong><span class="subtle">' + html(step.detail) + '</span></div>'
-          + '<span class="mcell">' + (step.done ? '<span class="state-ok">Done</span>' : button({ label: "Open", kind: "link", on: { "data-page": (step.id === "models" ? "models" : "prompts") } })) + '</span></div>').join("");
-        return heading('<section class="section-card"><div class="mtable"><div class="mhead mcols-step"><span></span><span>Step</span><span></span></div>' + steps + '</div></section>');
-      }
-
-      if (state.answerEngineState === "error") return heading(notice("Could not read this project.", "error"));
-      const view = dashboardView();
-      if (!view || !state.answerEngine) return heading(dashboardBody({ status: "loading" }));
-      const reading = headline(state.answerEngine);
-      const rankText = reading.rank === null ? "Not named" : "#" + reading.rank + (reading.at ? "" : " of " + ((home.rivals || 0) + 1));
-      const hero = '<div class="hero"><div class="hero-figure"><span class="scorebig">' + scoreText(reading.standing.score) + '</span>'
-        + '<span class="hero-sub">' + deltaPill({ change: reading.change }) + '<span>' + html(rankText) + '</span>'
-        + (reading.at ? '<span>run of ' + html(reading.at.slice(0, 10)) + '</span>' : '') + '</span>'
-        + '<span class="hero-spark">' + view.spark + '</span></div>' + heroStats(reading.standing, view.position) + '</div>';
-
-      const alerts = (home.alerts as any[]).length
-        ? '<div class="alertlist">' + (home.alerts as any[]).map((alert: any) => '<div class="alertrow"><span class="pill ' + alertPill(alert.severity) + '">' + html(alert.severity) + '</span><div><strong>' + html(alert.headline) + '</strong><p class="subtle">' + html(alert.detail) + '</p></div></div>').join("") + '</div>'
-        : '<p class="subtle">Nothing moved since the previous run.</p>';
-
-      const digest = state.digest;
-      const changed = state.digestState === "loading"
-        ? loading("what changed", skeletonText(3))
-        : digest && digest.lines.length
-          ? '<p class="changed-headline">' + html(digest.headline) + '</p><ul class="protocol-list">'
-            + digest.lines.map((line: string) => '<li>' + html(line) + '</li>').join("") + '</ul>'
-          : '<p class="subtle">Nothing has moved since the previous run.</p>';
-
-      return heading(hero
-        + renderTasks(currentTasks(), 3)
-        + dashboardBody({ status: "ready", value: view }, state.editingBoard, state.panelViews)
-        + '<section class="section-card"><div class="section-head"><div class="headmain"><h2>What changed</h2><p class="subtle">Read off the archived answers, in the words the evidence supports.</p></div></div>' + changed + '</section>'
-        + '<section class="section-card"><div class="section-head"><div class="headmain"><h2>Needs attention</h2><p class="subtle">Only what moved, and only where both runs could be measured.</p></div></div>' + alerts + '</section>');
     }
 
     function renderRivals(data: any) {
@@ -3024,7 +2795,7 @@ export function boot(): void {
     function renderConfiguration() { const selected = project(); if (!selected) return '<section class="view"><div class="empty"><div class="empty-copy"><h2>Select a project first</h2><p class="subtle">A configuration belongs to a single project.</p></div></div></section>'; if (state.configurationState === "loading") return '<section class="view"><div class="heading"><div><h1>Configuration</h1><p class="subtle">Loading the current configuration…</p></div></div>' + machineTabs() + '<div class="section-card inline-empty" aria-live="polite">Loading the domain, models and web search modes.</div></section>'; const configuration = monitoringConfiguration(); const hasModels = selectedRows(state.catalog, state.selections, state.draftSelections, state.catalogState).length > 0; const notice = state.monitoringNotice.text; const noticeKind = state.monitoringNotice.kind; const stateMessage = !hasModels ? "Select at least one available model before saving the configuration." : configuration.status === "no_version" ? "No configuration saved yet. Saving fixes the current domain, language, models and web search modes." : configuration.status === "changed" ? "The models or web search modes have changed. Saving creates a new configuration version." : "The current models and web search modes are saved."; const stateClass = !hasModels || configuration.status === "changed" ? "warning-box" : configuration.status === "unchanged" ? "success-box" : "warning-box"; return '<section class="view"><div class="heading"><div><h1>Configuration</h1><p class="subtle">Save the domain, output language and each model\'s web search mode as reusable monitoring conditions.</p></div>' + saveConfigurationButton(configuration, hasModels) + '</div>' + machineTabs() + '<div id="monitoring-configuration-status" data-testid="monitoring-configuration-status" class="form-status ' + html(noticeKind) + '" aria-live="polite">' + html(notice) + '</div><div class="section-stack"><section class="section-card"><div class="section-head"><div><h2>Current version</h2><p class="subtle">Target domain: <span class="mono">' + html(selected.normalizedDomain) + '</span></p></div><span class="tag ' + (configuration.status === "unchanged" ? "ready" : "warning") + '">' + (configuration.currentVersion ? "v" + configuration.currentVersion : "Not saved yet") + '</span></div><div class="' + stateClass + '" data-testid="monitoring-configuration-summary">' + html(stateMessage) + '</div></section><section class="section-card"><div class="section-head"><div><h2>Current model configuration</h2><p class="subtle">Each model stores its own web search mode.</p></div>' + button({ label: "Adjust models", on: { "data-page": "models" } }) + '</div>' + renderSelectedModels(true) + '</section>' + renderConfigurationDiff(configuration) + '<section class="section-card"><div class="section-head"><div><h2>Past configurations</h2><p class="subtle">Read-only snapshot. Saving a new version does not overwrite past configurations.</p></div></div>' + renderConfigurationRows(configuration) + '</section>' + renderTechnicalDetails(configuration) + '</div></section>'; }
     const brandMark = CONFIG.brandMark;
     const brandLockup = CONFIG.brandLockup;
-    function phase2RenderImpl() { if (window.__citegeoPhase5Active) return; const selected = project(); const options = state.currentProjects.length ? state.currentProjects.map((item) => '<option value="' + html(item.id) + '">' + html(item.name) + ' · ' + html(item.normalizedDomain) + '</option>').join("") : '<option value="">No projects yet</option>'; let view = state.booting ? bootShape() : state.page === "marketer" ? renderMarketer() : state.page === "drafts" ? renderDrafts() : state.page === "claims" ? renderClaims() : state.page === "buying" ? renderBuying() : state.page === "conversations" ? renderConversations() : state.page === "entity" ? renderEntity() : state.page === "reports" ? renderReport() : state.page === "models" ? renderModels() : state.page === "configuration" ? renderConfiguration() : state.page === "setup" ? renderSetup() : state.page === "visibility" ? renderVisibility() : state.page === "brand-visibility" ? renderBrandVisibility() : state.page === "trust" ? renderTrustPage() : state.page === "prompts" ? renderPrompts() : state.page === "answer-engine" ? renderAnswerEngine() : state.page === "dashboard" ? renderHome() : renderOverview(state, project(), monitoringConfiguration().currentVersion); app.innerHTML = renderEvidence() + '<div class="shell">' + navScrim() + '<aside class="sidebar"><button type="button" class="brand" data-page="dashboard" aria-label="Back to the dashboard">' + brandLockup + '</button><div class="project-label">Project</div><select id="project-select" class="project-select" aria-label="Switch project" data-testid="project-select">' + options + '</select>' + sidebar({ page: state.page, options }) + '<div class="sidebar-bottom">Domain recognition</div></aside><main class="workspace"><header class="topbar"><div class="topbar-lead">' + navToggle() + '<div class="crumb"><button type="button" class="crumb-home" data-page="dashboard">' + html(CONFIG.productName) + '</button> / ' + html(selected ? selected.name : "Project") + '</div></div><div class="topbar-actions"><button type="button" class="theme-toggle" data-theme-toggle aria-label="Switch between light and dark">&#9681;</button>' + button({ label: "New project", id: "new-project", testId: "new-project" }) + '</div></header><section class="content">' + view + '</section>' + renderFooter(state, footerActions) + '</main></div>'; const select = element("project-select"); select.value = state.selectedId; document.title = selected ? selected.name + " | " + CONFIG.productTitle + "" : "" + CONFIG.productTitle + ""; }
+    function phase2RenderImpl() { if (window.__citegeoPhase5Active) return; const selected = project(); const options = state.currentProjects.length ? state.currentProjects.map((item) => '<option value="' + html(item.id) + '">' + html(item.name) + ' · ' + html(item.normalizedDomain) + '</option>').join("") : '<option value="">No projects yet</option>'; let view = state.booting ? bootShape() : state.page === "marketer" ? renderMarketer() : state.page === "drafts" ? renderDrafts() : state.page === "claims" ? renderClaims() : state.page === "buying" ? renderBuying() : state.page === "conversations" ? renderConversations() : state.page === "entity" ? renderEntity() : state.page === "reports" ? renderReport() : state.page === "models" ? renderModels() : state.page === "configuration" ? renderConfiguration() : state.page === "setup" ? renderSetup() : state.page === "visibility" ? renderVisibility() : state.page === "brand-visibility" ? renderBrandVisibility() : state.page === "trust" ? renderTrustPage() : state.page === "prompts" ? renderPrompts() : state.page === "answer-engine" ? renderAnswerEngine() : state.page === "dashboard" ? renderHome(state, project(), currentTasks(), runActionButton, homeActions) : renderOverview(state, project(), monitoringConfiguration().currentVersion); app.innerHTML = renderEvidence() + '<div class="shell">' + navScrim() + '<aside class="sidebar"><button type="button" class="brand" data-page="dashboard" aria-label="Back to the dashboard">' + brandLockup + '</button><div class="project-label">Project</div><select id="project-select" class="project-select" aria-label="Switch project" data-testid="project-select">' + options + '</select>' + sidebar({ page: state.page, options }) + '<div class="sidebar-bottom">Domain recognition</div></aside><main class="workspace"><header class="topbar"><div class="topbar-lead">' + navToggle() + '<div class="crumb"><button type="button" class="crumb-home" data-page="dashboard">' + html(CONFIG.productName) + '</button> / ' + html(selected ? selected.name : "Project") + '</div></div><div class="topbar-actions"><button type="button" class="theme-toggle" data-theme-toggle aria-label="Switch between light and dark">&#9681;</button>' + button({ label: "New project", id: "new-project", testId: "new-project" }) + '</div></header><section class="content">' + view + '</section>' + renderFooter(state, footerActions) + '</main></div>'; const select = element("project-select"); select.value = state.selectedId; document.title = selected ? selected.name + " | " + CONFIG.productTitle + "" : "" + CONFIG.productTitle + ""; }
     async function setPage(page: any) { clearToasts(); state.page = page; savePreference("page", page); if (page === "configuration") { await refreshConfiguration(); return; } if (page === "reports" && window.__citegeoPhase4 && typeof window.__citegeoPhase4.open === "function") { await window.__citegeoPhase4.open(); return; } render(); if (page === "models") { await refreshConfiguration(); await loadCatalog(); } }
     async function createDraft(event: any) { event.preventDefault(); const control = element("save-draft"); const session = state.drawerSession; setFormStatus("Creating project draft", "loading"); try { const response = await runAction(control, { loading:"Saving…", success:"Saved", error:"Save failed" }, () => request("/api/projects", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ domain:element("project-domain").value, name:element("project-name").value }) })); state.mode = "current"; state.page = "overview"; setSelectedProject(response.project.id); await refreshProjects(); state.selections = []; state.baselines = []; resetDraftSelections(); setFormStatus("Draft saved", "success"); render(); window.setTimeout(() => { if (state.drawerSession === session) closeDrawer(); }, 850); } catch (error) { setFormStatus(error instanceof Error ? error.message : String(error), "error"); } }
     async function saveProject(event: any) { event.preventDefault(); const selected = project(); if (!selected) return; const control = event.currentTarget.querySelector('button[type="submit"]'); try { await runAction(control, { loading:"Saving…", success:"Saved", error:"Save failed" }, () => request("/api/projects/" + encodeURIComponent(selected.id), { method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ domain:element("edit-domain").value, name:element("edit-name").value }) })); await refreshProjects(); render(); } catch (error) { toast({ text: error instanceof Error ? error.message : String(error), kind: "error" }); } }

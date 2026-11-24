@@ -241,7 +241,7 @@ export function renderVersions(report: VersionReport | null | undefined, fold: F
       + '<span class="mcell subtle">' + (shift.separated === null ? 'not readable' : shift.separated ? 'beyond the noise' : 'within the noise') + '</span></div>';
   })).join("");
   const blind = report.unconfirmed.length
-    ? '<p class="subtle">' + report.unconfirmed.map((id: string) => html(id)).join(", ") + ' never named a version, so a change there cannot be seen. That is unconfirmed, not steady.</p>'
+    ? '<p class="subtle">' + report.unconfirmed.map((id) => html(id)).join(", ") + ' never named a version, so a change there cannot be seen. That is unconfirmed, not steady.</p>'
     : '';
   return fold("trust-versions", "Was it you, or did the model ship", report.caveat, ''
     + '<p>' + html(lead) + '</p>'
