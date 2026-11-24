@@ -141,3 +141,16 @@ jobs:
             ${{ env.RELEASE_RECEIPT_FILE }}
             release-container-*.json
           if-no-files-found: ignore
+
+  smoke:
+    name: Published image smoke test
+    needs: publish
+    if: github.event_name == 'release'
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    uses: ./.github/workflows/release-smoke.yml
+    with:
+      tag: ${{ github.event.release.tag_name }}
+      expect_latest: true

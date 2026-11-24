@@ -1,0 +1,109 @@
+name: Release Please
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-please
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    name: Release Please
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      prs_created: ${{ steps.release.outputs.prs_created }}
+      pr: ${{ steps.release.outputs.pr }}
+    steps:
+      - uses: actions/create-github-app-token@v3
+        id: app
+        with:
+          app-id: ${{ vars.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-issues: write
+          permission-pull-requests: write
+
+      - uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071  # v4.4.1
+        id: release
+        with:
+          token: ${{ steps.app.outputs.token }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  release-pr:
+    name: Release PR carries the chart and manifest
+    needs: release-please
+    if: needs.release-please.outputs.prs_created == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/create-github-app-token@v3
+        id: app
+        with:
+          app-id: ${{ vars.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+
+      - name: Find the release branch
+        id: pr
+        env:
+          PR_JSON: ${{ needs.release-please.outputs.pr }}
+        run: |
+          branch=$(printf '%s' "$PR_JSON" | jq -r '.headBranchName // ""')
+          case "$branch" in
+            release-please--*) echo "branch=$branch" >> "$GITHUB_OUTPUT" ;;
+            *) echo "::error::Unexpected release branch '$branch'"; exit 1 ;;
+          esac
+
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ steps.pr.outputs.branch }}
+          token: ${{ steps.app.outputs.token }}
+          persist-credentials: false
+          fetch-depth: 0
+
+      - uses: azure/setup-helm@2f5e7bc67f1f9972ab16657bb795f36d8f04de0e  # v5.1.0
+        with:
+          version: v4.2.2
+
+      - name: Set the chart version and regenerate the manifest
+        run: |
+          version=$(jq -r .version package.json)
+          chart=deploy/helm/citegeo/Chart.yaml
+          released=$(git show origin/main:"$chart" | awk '$1 == "version:" { print $2 }')
+          current=$(awk '$1 == "version:" { print $2 }' "$chart")
+          if [ "$current" = "$released" ]; then
+            current=$(printf '%s' "$released" | awk -F. '{ printf "%d.%d.%d", $1, $2, $3 + 1 }')
+          fi
+          sed -i -e "s/^version: .*/version: $current/" \
+            -e "s/^appVersion: .*/appVersion: \"$version\"/" "$chart"
+          manifest=deploy/kubernetes/citegeo.yaml
+          {
+            awk '/^---$/ { exit } { print }' "$manifest"
+            helm template citegeo deploy/helm/citegeo --namespace citegeo
+          } > "$RUNNER_TEMP/citegeo.yaml"
+          mv "$RUNNER_TEMP/citegeo.yaml" "$manifest"
+          git diff --stat
+
+      - name: Push to the release branch
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          APP_SLUG: ${{ steps.app.outputs.app-slug }}
+          BRANCH: ${{ steps.pr.outputs.branch }}
+        run: |
+          if git diff --quiet; then
+            echo "The chart and manifest are already in step."
+            exit 0
+          fi
+          bot="${APP_SLUG}[bot]"
+          id=$(gh api "users/${APP_SLUG}%5Bbot%5D" --jq .id)
+          version=$(jq -r .version package.json)
+          git -c user.name="$bot" -c user.email="${id}+${bot}@users.noreply.github.com" \
+            commit -qam "chore(release): chart and manifest for ${version}"
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/${BRANCH}"

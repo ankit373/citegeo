@@ -27,17 +27,30 @@ interface works.
 
 ## Cutting the release
 
-1. Update `CHANGELOG.md` under a new version heading. Say what changed for
-   someone running it, not what changed in the code.
-2. Bump `version` in `package.json`, and `appVersion` in
-   `deploy/helm/citegeo/Chart.yaml`.
-3. Commit, tag `vX.Y.Z`, push the tag.
-4. Publish the GitHub release. The Docker workflow builds and pushes the image
-   on publish; it never rebuilds an existing tag.
+Releases are cut from `main` by release-please.
+
+1. Every merge into `main` is a squash commit titled by the pull request, so
+   the title has to say what kind of change it is: `feat` bumps the minor
+   version, `fix` and `perf` the patch, and `!` a major.
+2. release-please keeps one release PR open. It bumps `package.json`, the
+   lockfile and `CHANGELOG.md`, and the release workflow adds the chart
+   version, `appVersion` and the regenerated `deploy/kubernetes/citegeo.yaml`.
+3. Edit the CHANGELOG on that PR so it says what changed for someone running
+   it, not what changed in the code.
+4. Approve it. The queue merges it, release-please tags `vX.Y.Z` and publishes
+   the release, and the Docker workflow builds and pushes the image. It never
+   rebuilds an existing tag.
 
 ## After publishing
 
-Verify the published image rather than assuming it:
+The publish workflow ends with a smoke test that pulls the published image for
+both platforms and runs it. If it fails, it opens an issue labelled
+`release:blocked` and puts the same label on the open release PR, so the next
+release waits. A published release cannot be changed: fix forward with the next
+patch. To run the smoke test again for any tag, start the "Release smoke test"
+workflow by hand.
+
+To check by hand:
 
 ```bash
 docker run --rm -p 8787:8787 ghcr.io/ankit373/citegeo:vX.Y.Z
