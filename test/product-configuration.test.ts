@@ -13,7 +13,6 @@ import { monitoringConfigurationState } from "../src/product/configuration/monit
 import { recognitionProtocolSnapshot } from "../src/product/configuration/recognition-protocol.js";
 import { ProductProjectService } from "../src/product/projects/project-service.js";
 import { ProductProjectFileStore } from "../src/product/projects/project-store.js";
-import { renderProductPhase2AppHtml } from "../src/ui/product-phase2-app.js";
 import { productAppSource } from "../src/ui/app-source.js";
 
 const fixtureModels: ProviderModelCatalogItem[] = [

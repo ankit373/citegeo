@@ -1,6 +1,6 @@
 # Evidence model and source rules
 
-Applies to: the current product implementation, planned for release as **v0.2.0-rc.1, UNPUBLISHED**. This page defines how to read a stored record and points out the guarantees that are not yet implemented. This round's R02 case keeps an actual partial completion and its raw text; the R04 case's web-enabled K response includes provider citations traceable to a structured payload path. Other answers with no citation still show an empty result rather than being backfilled from a plain link.
+Applies to the current product implementation. This page defines how to read a stored record and points out the guarantees that are not yet implemented. This round's R02 case keeps an actual partial completion and its raw text; the R04 case's web-enabled K response includes provider citations traceable to a structured payload path. Other answers with no citation still show an empty result rather than being backfilled from a plain link.
 
 What is published is this run's answer and its evidence; it does not expose the model's internal reasoning, and a rerun is not guaranteed to produce an identical answer.
 
@@ -124,7 +124,7 @@ A measurement's probe attempt keeps its first/latest ID, but its result and evid
 
 ## Read-only recheck and export
 
-The current product offers a JSON read API, with no general-purpose PDF/CSV/public-evidence-bundle export endpoint. See [architecture](ARCHITECTURE.md) for the product API list. Generating a recognition report, generating measurement statistics, and local re-analysis all send no inference, but they do write a derived file; a plain GET read of a report/attempt/probe should never be labeled a new measurement.
+The current product offers a JSON read API, with no general-purpose PDF/CSV/public-evidence-bundle export endpoint. See [architecture](architecture.md) for the product API list. Generating a recognition report, generating measurement statistics, and local re-analysis all send no inference, but they do write a derived file; a plain GET read of a report/attempt/probe should never be labeled a new measurement.
 
 The current case index has local redacted evidence and an index already, not yet a public release. When reading it, check the following links; any missing release information is still pending:
 

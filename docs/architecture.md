@@ -1,8 +1,8 @@
 # Current product architecture
 
-Audience: `src/product` in the Phase 6 worktree; planned release version **v0.2.0-rc.1, UNPUBLISHED**. This page documents the source code; it is not a release, container-run, or real-model acceptance report. The checkpoint commit is `18c41528a1a7cee8562a6ddc10e59021487962e6`, but the current product includes uncommitted changes, so that HEAD alone cannot rebuild the product described on this page.
+Audience: anyone reading `src/product`. This page documents the source code. It is not a release note, a container-run report, or a real-model acceptance report, and the released behaviour is whatever the current tag builds.
 
-This continues to be the repository's one `docs/ARCHITECTURE.md`; no differently-cased duplicate entry point is created. The earlier AuditPlan architecture is preserved as-is at legacy architecture. The old design draft, the old CLI, and the current product can coexist; to judge current capability, start from the service entry points and source code linked on this page.
+This continues to be the repository's one `docs/architecture.md`; no differently-cased duplicate entry point is created. The earlier AuditPlan architecture is preserved as-is at legacy architecture. The old design draft, the old CLI, and the current product can coexist; to judge current capability, start from the service entry points and source code linked on this page.
 
 ## System boundary
 
@@ -28,7 +28,7 @@ flowchart LR
   X -. Read-only presentation .-> C[Case Markdown / site]
 ```
 
-The solid lines are the current product's actual dependencies. The dashed lines mark the Phase 6 public delivery boundary; they are not an export HTTP API built into the product service. The case client, the isolated product session, and the public export reuse the existing services. The case executor injects a cumulative-budget wrapper inside an isolated `PRODUCT_DATA_DIR`; the site and Markdown reads go through the public export. A freshly installed workbench never auto-imports the public cases. R02 has this round's actual D/K answers, three measurements, and parsing failures recorded. All 20 cases in the study plan have run to their final state; a run finishing does not mean every answer is valid — coverage and failures are in each case's evidence index.
+The solid lines are the current product's actual dependencies. The dashed lines mark the public delivery boundary; they are not an export HTTP API built into the product service. The case client, the isolated product session, and the public export reuse the existing services. The case executor injects a cumulative-budget wrapper inside an isolated `PRODUCT_DATA_DIR`; the site and Markdown reads go through the public export. A freshly installed workbench never auto-imports the public cases. R02 has this round's actual D/K answers, three measurements, and parsing failures recorded. All 20 cases in the study plan have run to their final state; a run finishing does not mean every answer is valid — coverage and failures are in each case's evidence index.
 
 ## Entry points and responsibilities
 
@@ -228,6 +228,18 @@ Scheduling first serializes a single task with a file lock, then establishes a u
 Currently the lock and the unique file provide only partial duplicate protection; an exactly-once execution after a crash is not guaranteed. A run is not a persistent queue, and an old lock has no lease-based recovery; a skipped or budget-blocked branch does not advance `nextRunAt`, and handling of a missed time has not fully implemented skip semantics. A task stores `watchSetId`, but at execution time the measurement service reads the current scope, and a task-scope consistency check is still missing. See [limitations](limitations.md) for detailed risks and cost limits.
 
 ## Archive, delete, and legacy
+
+**The legacy workbench is deprecated.** Everything under `src/` that is not
+`src/product`, `src/ui`, `src/site`, `src/core`, `src/config` or `src/providers`
+belongs to the original AuditPlan workbench, reached through `src/server.ts`. It
+is 114 files and about 14,500 lines, a quarter of the source tree. It still
+builds and is still tested, and it takes no new work: do not extend it, and do
+not import it from `src/product`.
+
+Two names exist in both worlds, `src/insights` beside `src/product/insights` and
+`src/projects` beside `src/product/projects`. When touching either, check which
+one you are in. Removal is tracked in [#214](https://github.com/ankit373/citegeo/issues/214).
+
 
 The default project list does not show archived/deleted projects; the data still lives in its original project directory. Restore rechecks for a domain conflict; purge is only allowed on an already-soft-deleted project and permanently removes the entire project directory. Starting a run does not fully check for a disabling archived state, and deleting does not cancel a request already executing in memory; the task must be stopped first and any in-flight request allowed to finish.
 

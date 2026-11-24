@@ -1,4 +1,4 @@
-import { BrowserConnection, CdpSession, type CdpTarget } from "./cdp-client.js";
+import { BrowserConnection, CdpSession, } from "./cdp-client.js";
 import { browserSocketUrl, discoverBrowser, installedProfileDirectories, liveDiscoveryIo, type BrowserSearch } from "./browser-discovery.js";
 
 // The surfaces buyers use, not the APIs behind them. It drives your own

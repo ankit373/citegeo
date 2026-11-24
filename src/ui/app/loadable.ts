@@ -22,7 +22,7 @@ export function failed<T>(error: unknown): Loadable<T> {
 
 /** The value, or nothing. Nothing is not an empty value: a caller that wants
  * to tell "not loaded" from "loaded and empty" must ask the status. */
-export function valueOf<T>(held: Loadable<T>): T | null {
+export function readyValue<T>(held: Loadable<T>): T | null {
   return held.status === "ready" ? held.value : null;
 }
 

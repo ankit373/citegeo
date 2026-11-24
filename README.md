@@ -301,7 +301,7 @@ topics that are not yours. It does not ask a model to invent advice.
 
 ## Documentation
 
-- [How it works](docs/how-it-works.md) · [Architecture](docs/ARCHITECTURE.md)
+- [How it works](docs/how-it-works.md) · [Architecture](docs/architecture.md)
 - [Measurement methodology](docs/measurement-methodology.md) · [Sources and evidence](docs/evidence-model.md)
 - [Raising your standing](docs/ranking-process.md) · [Prompt volume](docs/prompt-demand.md)
 - [Reading the surfaces buyers use](docs/browser-engines.md)
