@@ -1,99 +1,18 @@
 import { html } from "../dom.js";
 import { button } from "../components/button.js";
 import { kindWords } from "../labels.js";
-import { bar, creditRows, outreachRow, searchDemandRow, shapeRow, type CreditRow, type OutreachTarget, type SearchDemandRow } from "./metric-cells.js";
+import { bar, creditRows, outreachRow, searchDemandRow, shapeRow } from "./metric-cells.js";
 import type { LoadState } from "../types.js";
+import type { InterferenceReport } from "../../../product/citations/interference.js";
+import type { ConcentrationReport } from "../../../product/citations/concentration.js";
+import type { ShapeComparison } from "../../../product/citations/page-shape.js";
+import type { CreditReport } from "../../../product/citations/credit-gap.js";
+import type { KindShare, PageKindReport } from "../../../product/citations/page-kind.js";
+import type { OutreachPlan } from "../../../product/citations/outreach.js";
+import type { ProportionInterval } from "../../../product/topics/proportion-interval.js";
+import type { SearchConsoleService, SearchConsoleStatus } from "../../../product/search-console/search-console-service.js";
 
-export interface InterferenceReport {
-  runs: number;
-  arrivals: Array<{ host: string; sudden: boolean; arrivedAt: string; questionsAtArrival: number; questionsInRun: number; breadth: number }>;
-  arrivedOnce: number;
-  shifts: Array<{ host: string; url: string; changed: number; previousAt: string }>;
-  caveat: string;
-}
-
-export interface ConcentrationReport {
-  hosts: Array<{ host: string; isYours: boolean; answers: number; share: number }>;
-  halfHeldBy: number | null;
-  verdict: string;
-  yourRank: number | null;
-  topShares: Array<{ share: number; rank: number }>;
-  answersWithCitations: number;
-  gini: number | null;
-  caveat: string;
-}
-
-interface PageSide {
-  pages: number;
-  headingsPerThousand: number | null;
-  listItemsPerThousand: number | null;
-  tablesPerThousand: number | null;
-}
-
-export interface ShapeReport {
-  theirs: PageSide;
-  yours: PageSide;
-  behindOnAll: boolean | null;
-  minimum: number;
-  effect: string;
-  caveat: string;
-}
-
-export interface CreditReport {
-  comparable: number;
-  meanGap: number;
-  rows: number;
-  tooFewRead: number;
-  overCredited: CreditRow[];
-  underCredited: CreditRow[];
-  finding: string;
-  caveat: string;
-}
-
-interface KindRow { kind: string; pages: number; share: number }
-interface ShareRange { low: number | null; high: number }
-
-export interface KindsReport {
-  pages: number;
-  cited: number;
-  listicleShare: number | null;
-  corporateShare: number | null;
-  ownedShare: number | null;
-  listicleInterval?: ShareRange | null | undefined;
-  corporateInterval?: ShareRange | null | undefined;
-  listicleBaseline: number;
-  corporateBaseline: number;
-  ownedBaselineLow: number;
-  ownedBaselineHigh: number;
-  tooFewToCompare: boolean;
-  formats: KindRow[];
-  sources: KindRow[];
-  caveat: string;
-}
-
-export interface OutreachPlan {
-  unavailable?: boolean | undefined;
-  freshness: { fresh: number; ageing: number; stale: number; undated: number; medianAgeDays: number | null; datedPages: number; caveat: string };
-  cited: number;
-  answersWithCitations: number;
-  answersConsidered: number;
-  read: number;
-  targets: OutreachTarget[];
-}
-
-export interface SearchDemandData {
-  configured: boolean;
-  siteUrl?: string | null | undefined;
-  detail: string;
-  report?: { queries: number; totalImpressions: number; window: { from: string; to: string }; prompts: SearchDemandRow[] } | null | undefined;
-}
-
-export interface ReferralsData {
-  configured: boolean;
-  propertyId?: string | null | undefined;
-  detail: string;
-  report?: { empty: boolean; totalSessions: number; assistants: Array<{ source: string; engaged: number | null; sessions: number }> } | null | undefined;
-}
+type ReferralsData = Awaited<ReturnType<SearchConsoleService["referrals"]>>;
 
 /** The loaders these sections call while idle. Each must be a hoisted function declaration that reads live state. */
 export interface SourceActions {
@@ -107,7 +26,7 @@ export interface SourceActions {
   loadReferrals(): void;
 }
 
-function kindRows(rows: KindRow[]): string {
+function kindRows(rows: Array<KindShare<string>>): string {
   return rows.map((row) => '<div class="mrow mcols-kind"><div class="mname"><strong>' + html(kindWords(row.kind)) + '</strong></div>'
     + '<span class="mcell">' + row.pages + '</span>'
     + '<span class="mcell">' + Math.round(row.share * 100) + '%</span>'
@@ -119,7 +38,7 @@ export function renderInterference(status: LoadState, report: InterferenceReport
   if (status !== "ready" || !report) {
     return '<p class="subtle">' + (status === "error" ? "Could not read the shape of the sources." : "Reading how the sources arrived.") + '</p>';
   }
-  const sudden = report.arrivals.filter((row: any) => row.sudden);
+  const sudden = report.arrivals.filter((row) => row.sudden);
   if (report.runs < 2) {
     return '<p class="subtle">' + report.runs + ' run(s) have cited anything. A source that arrived everywhere at once can only be told from one that was always there by comparing runs, so this needs a second one.</p>';
   }
@@ -132,11 +51,11 @@ export function renderInterference(status: LoadState, report: InterferenceReport
   const shifts = report.shifts.length
     ? '<p>' + report.shifts.length + ' cited page(s) changed materially since they were last read.</p>'
       + '<div class="mtable"><div class="mhead mcols-shift"><span>Page</span><span>Changed</span><span>Last read</span></div>'
-      + report.shifts.slice(0, 6).map((row: any) => '<div class="mrow mcols-shift"><div class="mname"><strong>' + html(row.host) + '</strong><span class="mono">' + html(row.url.slice(0, 70)) + '</span></div>'
+      + report.shifts.slice(0, 6).map((row) => '<div class="mrow mcols-shift"><div class="mname"><strong>' + html(row.host) + '</strong><span class="mono">' + html(row.url.slice(0, 70)) + '</span></div>'
         + '<span class="mcell state-flag">' + Math.round(row.changed * 100) + '%</span>'
         + '<span class="mcell mono">' + html(row.previousAt.slice(0, 10)) + '</span></div>').join("") + '</div>'
     : '<p class="subtle">No cited page has been read twice, so none can be seen to have changed. Re-read them to start that comparison.</p>';
-  const rows = sudden.slice(0, 6).map((row: any) => '<div class="mrow mcols-arrival"><div class="mname"><strong>' + html(row.host) + '</strong>'
+  const rows = sudden.slice(0, 6).map((row) => '<div class="mrow mcols-arrival"><div class="mname"><strong>' + html(row.host) + '</strong>'
     + '<span class="subtle">first cited ' + html(row.arrivedAt.slice(0, 10)) + '</span></div>'
     + '<span class="mcell state-flag">' + row.questionsAtArrival + ' of ' + row.questionsInRun + '</span>'
     + '<span class="mcell">' + Math.round(row.breadth * 100) + '%</span></div>').join("");
@@ -164,10 +83,10 @@ export function renderConcentration(status: LoadState, report: ConcentrationRepo
   const where = report.yourRank === null
     ? ' Your own domain is not among them.'
     : ' Yours is ranked ' + report.yourRank + ' of ' + report.hosts.length + '.';
-  const curve = report.topShares.map((row: any) => '<span class="count"><strong>' + Math.round(row.share * 100) + '%</strong>top ' + row.rank + '</span>').join("");
+  const curve = report.topShares.map((row) => '<span class="count"><strong>' + Math.round(row.share * 100) + '%</strong>top ' + row.rank + '</span>').join("");
   // Both readings of the row. One count beside one share left a reader
   // dividing the count by the answers and getting a third number.
-  const rows = report.hosts.slice(0, 10).map((row: any, index: number) => '<div class="mrow mcols-concentration"><div class="mname"><strong>' + html(row.host) + (row.isYours ? ' <span class="tag">yours</span>' : '') + '</strong></div>'
+  const rows = report.hosts.slice(0, 10).map((row, index) => '<div class="mrow mcols-concentration"><div class="mname"><strong>' + html(row.host) + (row.isYours ? ' <span class="tag">yours</span>' : '') + '</strong></div>'
     + '<span class="mcell mono">' + (index + 1) + '</span>'
     + '<span class="mcell">' + row.answers + ' of ' + report.answersWithCitations + '</span>'
     + '<span class="mcell">' + Math.round(row.share * 100) + '%</span></div>').join("");
@@ -177,7 +96,7 @@ export function renderConcentration(status: LoadState, report: ConcentrationRepo
     + '<p class="mlegend">' + html(report.caveat) + '</p>';
 }
 
-export function renderShape(status: LoadState, report: ShapeReport | null | undefined, actions: Pick<SourceActions, "loadShape">): string {
+export function renderShape(status: LoadState, report: ShapeComparison | null | undefined, actions: Pick<SourceActions, "loadShape">): string {
   if (status === "idle") { actions.loadShape(); }
   if (status !== "ready" || !report) {
     return '<p class="subtle">' + (status === "error" ? "Could not read how these pages are laid out." : "Reading how these pages are laid out.") + '</p>';
@@ -226,7 +145,7 @@ export function renderCredit(status: LoadState, report: CreditReport | null | un
     + '<p class="mlegend">' + html(report.caveat) + '</p>';
 }
 
-export function renderKinds(status: LoadState, report: KindsReport | null | undefined, actions: Pick<SourceActions, "loadKinds">): string {
+export function renderKinds(status: LoadState, report: PageKindReport | null | undefined, actions: Pick<SourceActions, "loadKinds">): string {
   if (status === "idle") { actions.loadKinds(); }
   if (status !== "ready" || !report) {
     return '<p class="subtle">' + (status === "error" ? "Could not read what kind of pages are cited." : "Reading what kind of pages are cited.") + '</p>';
@@ -236,7 +155,7 @@ export function renderKinds(status: LoadState, report: KindsReport | null | unde
   // published figure, so the range travels with it and the comparison is
   // withheld rather than printed as a finding.
   const over = report.pages + ' of the ' + report.cited + ' page(s) these answers cited have been read back. ';
-  const span = (interval: any) => interval && interval.low !== null
+  const span = (interval: ProportionInterval) => interval.low !== null && interval.high !== null
     ? ' (' + Math.round(interval.low * 100) + ' to ' + Math.round(interval.high * 100) + '%)'
     : '';
   const listicle = 'Ranked best-of pages are ' + Math.round((report.listicleShare || 0) * 100) + '%' + span(report.listicleInterval)
@@ -284,7 +203,7 @@ export function renderOutreach(status: LoadState, plan: OutreachPlan | null | un
     + plan.targets.slice(0, 20).map(outreachRow).join("") + '</div>';
 }
 
-export function renderSearchDemand(status: LoadState, data: SearchDemandData | null | undefined, pulling: boolean, actions: Pick<SourceActions, "loadSearchDemand">): string {
+export function renderSearchDemand(status: LoadState, data: SearchConsoleStatus | null | undefined, pulling: boolean, actions: Pick<SourceActions, "loadSearchDemand">): string {
   if (status === "idle") { actions.loadSearchDemand(); }
   if (status !== "ready" || !data) {
     return '<p class="subtle">' + (status === "error" ? "Could not read the Search Console settings." : "Checking for a Search Console key.") + '</p>';
@@ -295,7 +214,7 @@ export function renderSearchDemand(status: LoadState, data: SearchDemandData | n
   const head = '<p class="subtle">' + html(data.detail) + '</p><div class="inline-actions">' + pullAction + '</div>';
   const report = data.report;
   if (!report) return head;
-  const gaps = report.prompts.filter((row: any) => row.earnedInSearchAbsentInAnswers).length;
+  const gaps = report.prompts.filter((row) => row.earnedInSearchAbsentInAnswers).length;
   return head
     + '<p class="subtle">' + report.queries + ' query row(s), ' + report.totalImpressions + ' impression(s), ' + html(report.window.from) + ' to ' + html(report.window.to) + '. '
     + (gaps ? gaps + ' question(s) earn search impressions while no answer names you. Those are the clearest gaps here.' : 'No question earns search impressions while the answers leave you out.')
@@ -319,7 +238,7 @@ export function renderReferrals(status: LoadState, data: ReferralsData | null | 
   if (report.empty) return head + '<p class="subtle">The property reported no row at all for this window, which is a property with nothing in it rather than a property where nobody arrived from an assistant.</p>';
   if (!report.assistants.length) return head + '<p class="subtle">' + report.totalSessions + ' session(s) in the window and none from an assistant this tool knows. Being named is not the same as being visited.</p>';
   return head + '<div class="mtable"><div class="mhead mcols-rank"><span>Assistant</span><span>Sessions</span><span>Share of all</span></div>'
-    + report.assistants.map((row: any) => '<div class="mrow mcols-rank">'
+    + report.assistants.map((row) => '<div class="mrow mcols-rank">'
       + '<div class="mname"><strong>' + html(row.source) + '</strong><span class="subtle">' + (row.engaged === null ? "engagement not reported" : row.engaged + ' engaged') + '</span></div>'
       + '<span class="mcell">' + row.sessions + '</span>'
       + '<span class="mcell">' + (report.totalSessions ? Math.round(row.sessions / report.totalSessions * 1000) / 10 + '%' : "Not measurable") + '</span></div>').join("")
