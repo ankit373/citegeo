@@ -16,7 +16,7 @@ import { answerTasks, taskCta } from "./pages/task-views.js";
 import { renderConcentration, renderCredit, renderDecomposition, renderUptake, renderInterference, renderKinds, renderOutreach, renderReferrals, renderSearchDemand, renderShape } from "./pages/source-sections.js";
 import { isOpen, loadForProject, settlePull } from "./pull.js";
 import { renderBrandVisibility } from "./pages/rivals-view.js";
-import { filteredPrompts, promptBulkInner, promptStandings, renderPromptGroups, renderPrompts, topicStandings, livePrompts, promptResultSummary, type PriorityQuestion } from "./pages/prompts-view.js";
+import { filteredPrompts, promptBulkInner, promptStandings, renderPromptGroups, renderPrompts, topicStandings, liveTopics, livePrompts, promptResultSummary, type PriorityQuestion } from "./pages/prompts-view.js";
 import type { TopicSet } from "../../product/topics/topic-schema.js";
 import type { DemandReport } from "../../product/demand/corpus-schema.js";
 import type { CompetitorSet } from "../../product/topics/competitor-set.js";
@@ -79,6 +79,8 @@ export function boot(): void {
     promptSelection: string[]; promptSort: string;
     answerEngine: InsightsShape | null; answerEngineState: LoadState;
     promptRunState: string; promptNotice: Notice;
+    /** What each project has in flight, so a switch away and back still shows it busy. */
+    promptRunning: Map<string, string>;
     promptDraft: { topicId: string; text: string; intent: string };
     schedule: Unshaped; scheduleState: LoadState;
     regions: Array<{ id: string; label: string }>; languages: Array<{ id: string; label: string }>;
@@ -128,7 +130,7 @@ export function boot(): void {
     booting: boolean;
   }
 
-    const state: State = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", crawlerUploading:false, crawlerNotice:{ text:"", kind:"" }, plan:null, planState:"idle", marketer:null, drafts:null, claims:null, buying:null, conversations:null, entity:null, marketerState:"idle", marketerNotice:{ text:"", kind:"" }, signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, integrations:[], integrationsState:"idle", externalMetrics:null, externalMetricsState:"idle", externalMetricsPulling:"", externalMetricsNotice:{text:"",kind:""}, digest:null, digestState:"idle", demand:null, demandState:"idle", repetitions:Number(savedPreference("repetitions", "1")) || 1, runLanguageId:savedPreference("runLanguage", "en"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", promptFilters:{ query:"", topicId:"", intent:"", status:"" }, promptSelection:[], answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", history:null, historyState:"idle", rivals:null, rivalsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, lastRun:null, runPollTimer:0, runFeed:[], runFeedState:"idle", runFeedTimer:0, rankPlan:null, rankPlanState:"idle", brief:null, briefState:"idle", outreach:null, outreachState:"idle", harvesting:false, paste:null, pasteState:"idle", pasteCount:Number(savedPreference("pasteCount", "2")) || 2, uptake:null, uptakeState:"idle", interference:null, interferenceState:"idle", concentration:null, concentrationState:"idle", shape:null, shapeState:"idle", kinds:null, kindsState:"idle", experiments:null, experimentsState:"idle", check:null, checkState:"idle", credit:null, creditState:"idle", reach:null, reachState:"idle", searchDemand:null, searchDemandState:"idle", pulling:false, personas:null, personasState:"idle", priority:null, priorityState:"idle", promptSort:"topic", referrals:null, referralsState:"idle", pullingReferrals:false, engines:null, enginesState:"idle", actions:[], actionsState:"idle", matrixOpen:[], editingBoard:false, brandIcons:{}, panelViews:savedJson("panelViews"), matrixHidden:savedList("matrixHidden"), panelOpen:savedList("panelOpen"), booting:true };
+    const state: State = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", crawlerUploading:false, crawlerNotice:{ text:"", kind:"" }, plan:null, planState:"idle", marketer:null, drafts:null, claims:null, buying:null, conversations:null, entity:null, marketerState:"idle", marketerNotice:{ text:"", kind:"" }, signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, integrations:[], integrationsState:"idle", externalMetrics:null, externalMetricsState:"idle", externalMetricsPulling:"", externalMetricsNotice:{text:"",kind:""}, digest:null, digestState:"idle", demand:null, demandState:"idle", repetitions:Number(savedPreference("repetitions", "1")) || 1, runLanguageId:savedPreference("runLanguage", "en"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", promptFilters:{ query:"", topicId:"", intent:"", status:"" }, promptSelection:[], answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptRunning:new Map<string, string>(), promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", history:null, historyState:"idle", rivals:null, rivalsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, lastRun:null, runPollTimer:0, runFeed:[], runFeedState:"idle", runFeedTimer:0, rankPlan:null, rankPlanState:"idle", brief:null, briefState:"idle", outreach:null, outreachState:"idle", harvesting:false, paste:null, pasteState:"idle", pasteCount:Number(savedPreference("pasteCount", "2")) || 2, uptake:null, uptakeState:"idle", interference:null, interferenceState:"idle", concentration:null, concentrationState:"idle", shape:null, shapeState:"idle", kinds:null, kindsState:"idle", experiments:null, experimentsState:"idle", check:null, checkState:"idle", credit:null, creditState:"idle", reach:null, reachState:"idle", searchDemand:null, searchDemandState:"idle", pulling:false, personas:null, personasState:"idle", priority:null, priorityState:"idle", promptSort:"topic", referrals:null, referralsState:"idle", pullingReferrals:false, engines:null, enginesState:"idle", actions:[], actionsState:"idle", matrixOpen:[], editingBoard:false, brandIcons:{}, panelViews:savedJson("panelViews"), matrixHidden:savedList("matrixHidden"), panelOpen:savedList("panelOpen"), booting:true };
     const app = document.getElementById("app") as HTMLElement;
     let renderOverride: (() => void) | null = null;
     // render() was a hoisted declaration that a later line reassigned. A
@@ -232,6 +234,7 @@ export function boot(): void {
     function setSelectedProject(projectId: string) {
       if (projectId !== state.selectedId) resetProject();
       state.selectedId = projectId || "";
+      state.promptRunState = state.promptRunning.get(state.selectedId) || "idle";
       if (state.selectedId) localStorage.setItem("citegeo.product.projectId", state.selectedId); else localStorage.removeItem("citegeo.product.projectId");
       const next = new URL(window.location.href);
       if (state.selectedId) next.searchParams.set("projectId", state.selectedId); else next.searchParams.delete("projectId");
@@ -324,7 +327,11 @@ export function boot(): void {
       state.topicState = "loading";
       const startedFor = state.selectedId;
       await loadForProject(startedFor, () => state.selectedId, () => request("/api/projects/" + encodeURIComponent(startedFor) + "/topics"),
-        (value) => { state.topicSet = value; state.topicState = "ready"; }, () => { state.topicState = "error"; });
+        (value) => {
+          state.topicSet = value;
+          state.topicState = "ready";
+          if (!liveTopics(value).some((topic) => topic.id === state.promptFilters.topicId)) state.promptFilters.topicId = "";
+        }, () => { state.topicState = "error"; });
       render();
     }
 
@@ -576,6 +583,7 @@ export function boot(): void {
     async function postPrompts(path: string, body: Payload, working: string, done: string) {
       if (!state.selectedId) return;
       const startedFor = state.selectedId;
+      state.promptRunning.set(startedFor, working);
       state.promptRunState = working;
       state.promptNotice = { text:"", kind:"" };
       render();
@@ -594,6 +602,7 @@ export function boot(): void {
           state.promptNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind: "error" };
         }
       }
+      state.promptRunning.delete(startedFor);
       render();
     }
 

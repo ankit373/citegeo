@@ -122,7 +122,7 @@ export function livePrompts(set: PromptSet): Prompt[] { return set.prompts.filte
  * every topic ever generated, so a project regenerated against the right
  * category read as having eight groups of questions and twenty five
  * questions in five of them. */
-function liveTopics(set: PromptSet) { return set.topics.filter((topic) => topic.status !== "retired"); }
+export function liveTopics(set: PromptSet) { return set.topics.filter((topic) => topic.status !== "retired"); }
 
 export function filteredPrompts(state: Pick<PromptsState, "promptFilters">, set: PromptSet, standings: Map<string, PromptStanding>): Prompt[] {
   const filters = state.promptFilters;
@@ -283,8 +283,10 @@ export function renderPromptGroups(state: Pick<PromptsState, "promptSort" | "pri
 
 function promptAddForms(state: Pick<PromptsState, "promptDraft" | "panelOpen">, set: PromptSet, folds = true): string {
   const live = liveTopics(set);
-  if (!live.length) return '';
-  const topics = live.map((topic) => '<option value="' + html(topic.id) + '">' + html(topic.name) + '</option>').join("");
+  // Untracking every question retires every topic, and that must not take the add form with it.
+  const offered = live.length ? live : set.topics;
+  if (!offered.length) return '';
+  const topics = offered.map((topic) => '<option value="' + html(topic.id) + '">' + html(topic.name) + '</option>').join("");
   const intents = PROMPT_INTENTS.map((intent) => '<option value="' + intent + '">' + intentLabel(intent) + '</option>').join("");
   const body = ''
     + '<form id="add-prompt-form" class="inline-form"><select name="topicId" aria-label="Topic">' + topics + '</select><input name="text" type="text" value="' + html(state.promptDraft.text) + '" placeholder="best stock screener for indian markets" aria-label="Question"><select name="intent" aria-label="Intent">' + intents + '</select>' + button({ label: "Add", submit: true }) + '</form>'

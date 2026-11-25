@@ -239,9 +239,13 @@ test("a retired topic is not a gap in the coverage note, and is not offered in e
   assert.equal(out.includes("nothing tracked: Gone"), false);
 });
 
-test("a set whose topics are all retired offers no add form, rather than one that adds to a retired topic", () => {
+test("a set whose topics are all retired still offers the add form, since retiring the last question retires its topic", () => {
   const retired = { ...set, topics: set.topics.map((topic) => ({ ...topic, status: "retired" as const })), prompts: [prompt("d", { topicId: "t2", status: "retired" })] };
   const out = renderPrompts(state({ topicSet: retired }), project, runAction, actions([]));
-  has(out, "Nothing is being asked");
+  has(out, "Nothing is being asked", "add-prompt-form", "Topic&lt;", "Gone");
+});
+
+test("a set with no topics at all offers no add form", () => {
+  const out = renderPrompts(state({ topicSet: { ...set, topics: [], prompts: [] } }), project, runAction, actions([]));
   assert.equal(out.includes("add-prompt-form"), false);
 });

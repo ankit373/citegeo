@@ -216,3 +216,33 @@ test("proposing a set on one project does not show as busy on another, or clear 
   await finish(second);
   await expect(page.getByRole("button", { name: "Propose a set" })).toBeVisible();
 });
+
+test("switching away from a project that is proposing and back still shows it proposing", async ({ page }) => {
+  const first = projectIds["Acme"] || "";
+  const second = projectIds["Blank"] || "";
+  let release!: () => void;
+  const held = new Promise<void>((resolveHeld) => { release = resolveHeld; });
+  await page.route(`**/api/projects/${first}/topics/generate`, async (route) => {
+    await held;
+    await route.fulfill({ json: {} });
+  });
+
+  await page.goto(`${baseUrl}/?projectId=${first}`);
+  await page.locator('.sidebar [data-page="prompts"]').first().click();
+  await page.getByRole("button", { name: "Propose a set" }).click();
+  await expect(page.getByRole("button", { name: "Proposing…" })).toBeVisible();
+
+  await page.selectOption("[data-testid=project-select]", second);
+  await expect(page.getByRole("button", { name: "Propose a set" })).toBeVisible();
+  await page.selectOption("[data-testid=project-select]", first);
+  await expect(page.getByTestId("project-select")).toHaveValue(first);
+
+  // A second click here would start a second paid generation.
+  await expect(page.getByRole("button", { name: "Proposing…" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Propose a set" })).toHaveCount(0);
+
+  const done = page.waitForResponse((response) => response.url().endsWith(`/api/projects/${first}/topics/generate`));
+  release();
+  await done;
+  await expect(page.getByRole("button", { name: "Propose a set" })).toBeVisible();
+});

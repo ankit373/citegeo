@@ -91,7 +91,7 @@ export function visibilityPrompts(set: TopicSet): Prompt[] {
   return set.prompts.filter((prompt) => prompt.status === "active" && prompt.measuresVisibility);
 }
 
-/** Topics that still have a question. A retired topic has nothing tracked by definition, so it is never a gap. */
+/** Topics not marked retired. retire() marks a topic once none of its questions is live, so these are the ones worth offering or checking for a gap. */
 export function liveTopics(set: Pick<TopicSet, "topics">): Topic[] {
   return set.topics.filter((topic) => topic.status !== "retired");
 }
