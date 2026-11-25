@@ -226,6 +226,49 @@ test("a slow configuration read after a save does not mark the project it was sw
   await expect(page.locator(".view")).not.toContainText("Saved as");
 });
 
+test("a failed save on one project does not leave \"Save again\" on the next", async ({ page }) => {
+  await page.route(`**/api/projects/${projectIds["Saved failing"]}/baselines`, async (route) => {
+    if (route.request().method() !== "POST") { await route.fallback(); return; }
+    await route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ error: { code: "boom", message: "The save failed." } }) });
+  });
+  await open(page, "Saved failing", "models");
+  await page.locator("[data-page=\"configuration\"]").first().click();
+  await page.getByTestId("save-monitoring-configuration").click();
+  await expect(page.getByTestId("save-monitoring-configuration")).toContainText("Save again");
+
+  await page.selectOption("[data-testid=project-select]", projectIds["Blank"]);
+  await expect(page.getByTestId("project-select")).toHaveValue(projectIds["Blank"] || "");
+  await expect(page.getByTestId("save-monitoring-configuration")).toHaveText("Save config v1");
+});
+
+test("switching within a moment of a successful save does not show the saved version on the next project", async ({ page }) => {
+  // The page clears "saved" after 850 ms. Stretching that timer keeps the switch inside the window.
+  await page.addInitScript(() => {
+    const original = window.setTimeout.bind(window);
+    window.setTimeout = ((handler: TimerHandler, delay?: number, ...rest: unknown[]) => original(handler, delay === 850 ? 60_000 : delay, ...rest)) as typeof window.setTimeout;
+  });
+  await open(page, "Saved quick", "models");
+  await page.locator("[data-page=\"configuration\"]").first().click();
+  await page.getByTestId("save-monitoring-configuration").click();
+  await expect(page.getByTestId("save-monitoring-configuration")).toContainText("Saved as v2");
+
+  await page.selectOption("[data-testid=project-select]", projectIds["Blank"]);
+  await expect(page.getByTestId("project-select")).toHaveValue(projectIds["Blank"] || "");
+  await expect(page.getByTestId("save-monitoring-configuration")).toHaveText("Save config v1");
+});
+
+test("a configuration that cannot be read says so, and offers no save", async ({ page }) => {
+  await page.route(`**/api/projects/${projectIds["Acme"]}/monitoring-configuration*`, async (route) => {
+    await route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ error: { code: "boom", message: "The configuration read failed." } }) });
+  });
+  await open(page, "Acme", "models");
+  await page.locator("[data-page=\"configuration\"]").first().click();
+  await expect(page.getByTestId("configuration-read-error")).toBeVisible();
+  await expect(page.locator(".view")).toContainText("could not be read");
+  await expect(page.getByTestId("save-monitoring-configuration")).toHaveCount(0);
+  await expect(page.locator(".view")).not.toContainText("No configuration saved yet");
+});
+
 test("Setup lists every provider this server knows, and says nothing can run when none is configured", async ({ page }) => {
   const known = await (await page.request.get(`${baseUrl}/api/providers`)).json() as { providers: Array<{ label: string }> };
   await open(page, "Acme", "setup");

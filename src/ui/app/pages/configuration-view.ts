@@ -38,7 +38,7 @@ export function renderConfigurationRows(baselines: ProductBaseline[], configurat
   return '<div class="baseline-list">' + baselines.map((baseline) => '<article class="baseline-row" data-testid="configuration-version-row" data-configuration-id="' + html(baseline.id)
     + '"><div><strong>config v' + baseline.version + (currentId === baseline.id ? " · Current version" : "")
     + '</strong><span>' + html(baseline.normalizedDomain) + ' · ' + baseline.modelSnapshots.length + '  models</span><span>'
-    + baseline.modelSnapshots.map((item) => html(item.displayName + "（" + modeText(item.webSearchMode) + "）")).join(", ")
+    + baseline.modelSnapshots.map((item) => html(item.displayName + " (" + modeText(item.webSearchMode) + ")")).join(", ")
     + '</span></div><span class="tag mono">' + html(formatTime(baseline.createdAt)) + '</span></article>').join("") + '</div>';
 }
 
@@ -63,6 +63,10 @@ export function renderConfiguration(
   if (state.configurationState === "loading") {
     return '<section class="view"><div class="heading"><div><h1>Configuration</h1><p class="subtle">Loading the current configuration…</p></div></div>'
       + machineTabs() + '<div class="section-card inline-empty" aria-live="polite">Loading the domain, models and web search modes.</div></section>';
+  }
+  if (state.configurationState === "error") {
+    return '<section class="view"><div class="heading"><div><h1>Configuration</h1><p class="subtle">The current configuration could not be read.</p></div></div>'
+      + machineTabs() + '<div class="warning-box" data-testid="configuration-read-error" role="alert">' + html(state.monitoringNotice.text || "The request failed.") + '</div></section>';
   }
   const hasModels = selectedRows(state.catalog, state.selections, state.draftSelections, state.catalogState).length > 0;
   const notice = state.monitoringNotice.text;
