@@ -22,3 +22,15 @@ export async function loopbackOnly(page: Page): Promise<() => string[]> {
 export function expectNoOutbound(seen: () => string[]): void {
   expect(seen(), "requests that left the machine").toEqual([]);
 }
+
+const PROVIDER_KEYS = [
+  "OPENROUTER_API_KEY", "OPENROUTER_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GEMINI_API_KEY", "PERPLEXITY_API_KEY",
+  "DEEPSEEK_API_KEY", "OPENAI_COMPATIBLE_API_KEY", "AZURE_OPENAI_API_KEY", "WATSONX_API_KEY",
+];
+
+/** A fixture server must never reach a provider, whatever keys the developer's shell holds. */
+export function withoutProviderKeys(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const kept = { ...env };
+  for (const key of PROVIDER_KEYS) delete kept[key];
+  return kept;
+}

@@ -4,7 +4,7 @@ import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "@playwright/test";
-import { expectNoOutbound, loopbackOnly } from "./loopback.js";
+import { expectNoOutbound, loopbackOnly, withoutProviderKeys } from "./loopback.js";
 
 let temporaryRoot = "";
 let server: ChildProcess | undefined;
@@ -32,7 +32,7 @@ async function startSeededServer(): Promise<void> {
   temporaryRoot = await mkdtemp(join(tmpdir(), "citegeo-home-browser-"));
   server = spawn(process.execPath, [join(process.cwd(), "node_modules", "tsx", "dist", "cli.mjs"), "test/fixtures/home-product-server.ts"], {
     cwd: process.cwd(),
-    env: { ...process.env, PORT: String(port), PRODUCT_DATA_DIR: temporaryRoot, RUNS_DIR: join(temporaryRoot, "runs"), MONITORING_DATA_DIR: join(temporaryRoot, "monitoring"), SKIP_DOTENV: "1" },
+    env: { ...withoutProviderKeys(process.env), PORT: String(port), PRODUCT_DATA_DIR: temporaryRoot, RUNS_DIR: join(temporaryRoot, "runs"), MONITORING_DATA_DIR: join(temporaryRoot, "monitoring"), SKIP_DOTENV: "1" },
     stdio: "ignore",
   });
   baseUrl = `http://127.0.0.1:${port}`;
