@@ -18,14 +18,25 @@ const acme = await projects.createDraft({ primaryDomain: "acme.example", name: "
 await projects.createDraft({ primaryDomain: "blank.example", name: "Blank" });
 
 const at = "2026-11-20T10:00:00.000Z";
-const prompt = (id: string, text: string): Prompt => ({
+const prompt = (id: string, text: string, over: Partial<Prompt> = {}): Prompt => ({
   id, projectId: acme.id, topicId: "topic-1", text, normalizedText: text.toLocaleLowerCase(), intent: "discovery", source: "authored",
-  measuresVisibility: true, visibilityExclusionReason: null, status: "active", createdAt: at, activatedAt: at,
+  measuresVisibility: true, visibilityExclusionReason: null, status: "active", createdAt: at, activatedAt: at, ...over,
 });
-const prompts = [prompt("p1", "best invoicing tools for small teams"), prompt("p2", "how to automate invoice reminders")];
+// Two tracked questions with answers, one that names the brand, one proposed and not asked,
+// and one retired with its topic, so the Questions page has every state to draw.
+const prompts = [
+  prompt("p1", "best invoicing tools for small teams"),
+  prompt("p2", "how to automate invoice reminders"),
+  prompt("p3", "is Acme any good for invoicing", { intent: "brand", measuresVisibility: false, visibilityExclusionReason: "names_the_brand" }),
+  prompt("p4", "Acme vs Rival One for invoicing", { intent: "comparison", status: "proposed", activatedAt: null }),
+  prompt("p5", "old question nobody asks", { topicId: "topic-2", status: "retired" }),
+];
 await new TopicFileStore(store).save({
   ...emptyTopicSet(acme.id),
-  topics: [{ id: "topic-1", projectId: acme.id, name: "Invoicing", description: "", source: "authored", status: "active", createdAt: at }],
+  topics: [
+    { id: "topic-1", projectId: acme.id, name: "Invoicing", description: "", source: "authored", status: "active", createdAt: at },
+    { id: "topic-2", projectId: acme.id, name: "Old ideas", description: "", source: "authored", status: "retired", createdAt: at },
+  ],
   prompts,
 });
 

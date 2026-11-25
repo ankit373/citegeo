@@ -5,9 +5,8 @@ import { buyingView, claimsView, conversationsView, draftsView, entityView, mark
 import { exportName, filterSummary, matchesQuery, panelCsv } from "./components/panel-tools.js";
 import { section } from "./components/primitives.js";
 import { button } from "./components/button.js";
-import { formatTime, percent, score as scoreText } from "./format.js";
-import { historyWord, intentLabel, reachInk, reachWords, recognitionRunStatusText } from "./labels.js";
-import { demandBadge, fieldBadge } from "./components/badges.js";
+import { formatTime, percent } from "./format.js";
+import { historyWord, reachInk, reachWords, recognitionRunStatusText } from "./labels.js";
 import { overAppearances, stat } from "./pages/metric-cells.js";
 import { crawlerUpload, languagePicker, pasteCountPicker, repetitionPicker } from "./components/pickers.js";
 import { blockedSelection, catalogHead, catalogReleasedAt, catalogResultSummary, catalogVendor, modelIsBlocked, openRouterOutOfCredit, providerShortLabel, runsNowCell, selectedRows } from "./components/catalog-rows.js";
@@ -17,6 +16,8 @@ import { answerTasks, taskCta } from "./pages/task-views.js";
 import { renderConcentration, renderCredit, renderDecomposition, renderUptake, renderInterference, renderKinds, renderOutreach, renderReferrals, renderSearchDemand, renderShape } from "./pages/source-sections.js";
 import { isOpen, loadForProject, settlePull } from "./pull.js";
 import { renderBrandVisibility } from "./pages/rivals-view.js";
+import { filteredPrompts, promptBulkInner, promptStandings, renderPromptGroups, renderPrompts, topicStandings, livePrompts, promptResultSummary, type PriorityQuestion } from "./pages/prompts-view.js";
+import type { TopicSet } from "../../product/topics/topic-schema.js";
 import type { DemandReport } from "../../product/demand/corpus-schema.js";
 import type { CompetitorSet } from "../../product/topics/competitor-set.js";
 import type { PersonaSet } from "../../product/topics/persona.js";
@@ -40,7 +41,7 @@ import { selectedModelTable, webSearchModeControl } from "./components/model-pic
 type CredentialFile = { closed?: boolean; detail?: string; storageEnabled?: boolean; credentials?: CredentialRow[] };
 import type {
   AnswerRow, CatalogModel, InsightsShape, LoadState, Notice, Panel, Payload,
-  ProjectRow, RunRow, SelectionRow, TopicSetShape, Unshaped,
+  ProjectRow, RunRow, SelectionRow, Unshaped,
 } from "./types.js";
 
 // The application, as a module the compiler can see. It used to live inside a
@@ -73,7 +74,7 @@ export function boot(): void {
     recognitionRuns: Unshaped[]; recognitionDetail: RecognitionRunDetail | null;
     recognitionModelDetails: Record<string, Unshaped>; recognitionSelectedRunId: string;
     recognitionNotice: Notice; recognitionActionState: string; recognitionRefreshTimer: number;
-    topicSet: TopicSetShape | null; topicState: LoadState;
+    topicSet: TopicSet | null; topicState: LoadState;
     promptFilters: { query: string; topicId: string; intent: string; status: string };
     promptSelection: string[]; promptSort: string;
     answerEngine: InsightsShape | null; answerEngineState: LoadState;
@@ -109,7 +110,7 @@ export function boot(): void {
     runLanguageId: string;
     searchDemand: SearchConsoleStatus | null; searchDemandState: LoadState; pulling: boolean;
     personas: PersonaSet | null; personasState: LoadState;
-    priority: Unshaped; priorityState: LoadState;
+    priority: { questions: PriorityQuestion[]; corpusIndexed: boolean } | null; priorityState: LoadState;
     referrals: ReferralsPayload | null; referralsState: LoadState; pullingReferrals: boolean;
     engines: Unshaped; enginesState: LoadState;
     actions: TakenActionView[]; actionsState: LoadState;
@@ -160,6 +161,7 @@ export function boot(): void {
     const rivalsActions = { loadRankingPlan, loadActions, loadPersonas, loadRivals, loadDemand };
     const homeActions = { loadHome, loadAnswerEngine, loadOutreach, loadRankingPlan, loadDigest, loadSearchDemand, loadReferrals };
     const brandVisibilityActions = { ...homeActions, ...rivalsActions };
+    const promptPageActions = { ...brandVisibilityActions, loadTopics, loadSchedule, loadPriority };
     const trustActions = { loadCheck, loadExperiments, loadSchedule };
     const currentTasks = () => answerTasks(state.answerEngine);
     const sourceActions = { loadInterference, loadConcentration, loadShape, loadCredit, loadKinds, loadOutreach, loadSearchDemand, loadReferrals, loadUptake };
@@ -2038,12 +2040,6 @@ export function boot(): void {
       );
     }
 
-
-    const PROMPT_INTENTS = ["discovery", "comparison", "alternatives", "brand", "problem"];
-    const PROMPT_STATES = [["", "Any state"], ["tracked", "Tracked"], ["proposed", "Needs review"], ["absent", "Never named"], ["unmeasured", "Cannot measure"]];
-
-    // Score and rank come from the answer engine, so a question shows whether
-    // it is working rather than only that it is tracked.
     // The comparison had no way to be fed from the product at all: it shipped
     // with the measurement and without a door into it.
     async function suggestWordings(control: Element) {
@@ -2118,248 +2114,19 @@ export function boot(): void {
       render();
     }
 
-    function priorityOf(promptId: string) {
-      if (!state.priority) return null;
-      return state.priority.questions.find((row: any) => row.promptId === promptId) || null;
-    }
-
-    // Open beats settled, and the reason is on the badge, because the order is
-    // a judgement and the figures it came from are not.
-    const FIELD_ORDER = { open: 0, contested: 1, settled: 2, unknown: 3 };
-
-    function sortedPrompts(rows: any[], standings: any) {
-      if (state.promptSort === "topic") return rows;
-      const copy = rows.slice();
-      if (state.promptSort === "open") {
-        copy.sort((left, right) => {
-          const a = priorityOf(left.id);
-          const b = priorityOf(right.id);
-          return ((FIELD_ORDER as any)[a ? a.contest.state : "unknown"] || 0) - ((FIELD_ORDER as any)[b ? b.contest.state : "unknown"] || 0);
-        });
-        return copy;
-      }
-      // A question with no answer has no score, so it sorts after the scored
-      // ones rather than ahead of them as a zero would.
-      copy.sort((left, right) => {
-        const a = standings.get(left.id);
-        const b = standings.get(right.id);
-        const scoreOf = (row: any) => (row && row.score.answers ? (row.score.score === null ? 101 : row.score.score) : 102);
-        return scoreOf(a) - scoreOf(b);
-      });
-      return copy;
-    }
-
-    function promptStandings() {
-      const rows = new Map();
-      const data = state.answerEngine;
-      if (!data || !data.topics) return rows;
-      for (const topic of data.topics) {
-        for (const prompt of topic.prompts) rows.set(prompt.promptId, prompt);
-      }
-      return rows;
-    }
-
-    function topicStandings() {
-      const rows = new Map();
-      const data = state.answerEngine;
-      if (!data || !data.topics) return rows;
-      for (const topic of data.topics) rows.set(topic.topicId, topic);
-      return rows;
-    }
-
-    function livePrompts(set: TopicSetShape) { return set.prompts.filter((prompt) => prompt.status !== "retired"); }
-    /** Every tile on this row counts live prompts, and the topic tile counted
-     * every topic ever generated, so a project regenerated against the right
-     * category read as having eight groups of questions and twenty five
-     * questions in five of them. */
-    function liveTopics(set: TopicSetShape) { return set.topics.filter((topic: any) => topic.status !== "retired"); }
-
-    function filteredPrompts(set: TopicSetShape, standings: any) {
-      const filters = state.promptFilters;
-      const query = filters.query.trim().toLocaleLowerCase();
-      return livePrompts(set).filter((prompt) => {
-        if (filters.topicId && prompt.topicId !== filters.topicId) return false;
-        if (filters.intent && prompt.intent !== filters.intent) return false;
-        if (filters.status === "tracked" && prompt.status !== "active") return false;
-        if (filters.status === "proposed" && prompt.status !== "proposed") return false;
-        if (filters.status === "unmeasured" && prompt.measuresVisibility) return false;
-        if (filters.status === "absent") {
-          const standing = standings.get(prompt.id);
-          if (!standing || standing.score.answers === 0 || standing.score.appearances > 0) return false;
-        }
-        return !query || prompt.text.toLocaleLowerCase().includes(query);
-      });
-    }
-
-    function promptResultSummary(shown: number, total: any) {
-      return shown === total ? "Showing all " + total + " question(s)" : "Showing " + shown + " of " + total + " question(s)";
-    }
-
-    // A forecast of one run at the saved model set, in one market and one
-    // language. An unknown model count says so rather than standing in as one.
-    function runForecast(tracked: any) {
-      const models = state.home && typeof state.home.modelCount === "number" ? state.home.modelCount : null;
-      if (models === null) return { value: "Unknown", note: "the saved model count has not loaded" };
-      if (!models) return { value: "None", note: "no models are saved, so a run cannot ask anything" };
-      if (!tracked) return { value: "None", note: "nothing is tracked, so a run has nothing to ask" };
-      // A run covers nobody in particular plus every tracked persona, so a
-      // forecast that leaves them out is short by exactly that multiple.
-      if (state.personasState === "idle") { loadPersonas(); }
-      if (state.personasState !== "ready" || !state.personas) {
-        return { value: "Unknown", note: "the personas a run covers have not loaded" };
-      }
-      const personas = state.personas.personas.filter((row: any) => row.tracked).length;
-      const arms = personas + 1;
-      const note = tracked + " question(s) by " + models + " model(s)"
-        + (personas ? " on behalf of nobody and " + personas + " persona(s)" : "")
-        + ", one market, one language";
-      return { value: String(tracked * models * arms), note };
-    }
-
-    function renderPromptStats(set: TopicSetShape, standings: any) {
-      const live = livePrompts(set);
-      const tracked = live.filter((prompt) => prompt.status === "active");
-      const proposed = live.filter((prompt) => prompt.status === "proposed").length;
-      const measuring = tracked.filter((prompt) => prompt.measuresVisibility).length;
-      const answered = tracked.filter((prompt) => { const row = standings.get(prompt.id); return Boolean(row) && row.score.answers > 0; }).length;
-      const forecast = runForecast(tracked.length);
-      return '<div class="statgrid">'
-        + stat("Tracked", String(tracked.length), tracked.length ? "asked on every run" : "nothing is being asked", live.length ? tracked.length / live.length : null)
-        + stat("Needs review", String(proposed), proposed ? "proposed, never asked until tracked" : "nothing waiting on you", null)
-        + stat("Topics", String(liveTopics(set).length),
-            (set.topics.length - liveTopics(set).length)
-              ? (set.topics.length - liveTopics(set).length) + " more retired, and left out of every figure"
-              : liveTopics(set).length + " group(s) of questions", null)
-        + stat("Answers per run", forecast.value, forecast.note, null)
-        + stat("Measures visibility", measuring + " of " + tracked.length, "the rest name you, so presence is not earned", tracked.length ? measuring / tracked.length : null)
-        + stat("Has an answer", answered + " of " + tracked.length, answered ? "tracked question(s) with archived answers" : "no tracked question has been answered yet", tracked.length ? answered / tracked.length : null)
-        + '</div>';
-    }
-
-    function renderPromptCoverage(set: TopicSetShape) {
-      const live = livePrompts(set);
-      const tracked = live.filter((prompt) => prompt.status === "active");
-      // Tracked over proposed, because a chip reading 0 that filters to rows
-      // looked like a contradiction rather than a blind spot.
-      const chips = PROMPT_INTENTS.map((intent) => {
-        const count = tracked.filter((prompt) => prompt.intent === intent).length;
-        const total = live.filter((prompt) => prompt.intent === intent).length;
-        const active = state.promptFilters.intent === intent ? ' active' : '';
-        return '<button type="button" class="tag' + (count ? '' : ' warning') + active + '" data-prompt-intent="' + intent + '">' + intentLabel(intent) + ' · ' + count + ' of ' + total + ' tracked</button>';
-      }).join("");
-      const thin = set.topics.filter((topic) => !tracked.some((prompt) => prompt.topicId === topic.id));
-      const note = thin.length
-        ? thin.length + ' topic(s) have nothing tracked: ' + thin.map((topic) => html(topic.name)).join(", ") + '.'
-        : 'Every topic has at least one tracked question.';
-      return section({
-        id: "prompt-coverage", title: "Coverage", wide: true,
-        blurb: "A buyer arrives five ways. An intent with nothing tracked is a blind spot, not a zero.",
-        body: '<div class="coverage">' + chips + '</div><p class="subtle">' + note + '</p>',
-        folded: state.panelOpen.indexOf("prompt-coverage") < 0,
-      });
-    }
-
-    function promptToolbar(set: TopicSetShape, shown: number) {
-      const filters = state.promptFilters;
-      const topics = set.topics.map((topic) => '<option value="' + html(topic.id) + '"' + (filters.topicId === topic.id ? ' selected' : '') + '>' + html(topic.name) + '</option>').join("");
-      const intents = PROMPT_INTENTS.map((intent) => '<option value="' + intent + '"' + (filters.intent === intent ? ' selected' : '') + '>' + intentLabel(intent) + '</option>').join("");
-      const states = PROMPT_STATES.map((row) => '<option value="' + row[0] + '"' + (filters.status === row[0] ? ' selected' : '') + '>' + row[1] + '</option>').join("");
-      return '<div class="promptbar">'
-        + '<input id="prompt-search" type="search" placeholder="Search questions" aria-label="Search questions" value="' + html(filters.query) + '">'
-        + '<select data-prompt-filter="topicId" aria-label="Filter by topic"' + (filters.topicId ? ' class="is-set"' : '') + '><option value="">All topics</option>' + topics + '</select>'
-        + '<select data-prompt-filter="intent" aria-label="Filter by intent"' + (filters.intent ? ' class="is-set"' : '') + '><option value="">Any intent</option>' + intents + '</select>'
-        + '<select data-prompt-filter="status" aria-label="Filter by state"' + (filters.status ? ' class="is-set"' : '') + '>' + states + '</select>'
-        + '<select data-prompt-sort aria-label="Order" class="is-set"><option value="topic"' + (state.promptSort === "topic" ? " selected" : "") + '>Group by topic</option><option value="open"' + (state.promptSort === "open" ? " selected" : "") + '>Open fields first</option><option value="worst"' + (state.promptSort === "worst" ? " selected" : "") + '>Worst score first</option></select>'
-        + '<span class="prompt-result-summary subtle">' + promptResultSummary(shown, livePrompts(set).length) + '</span></div>';
-    }
-
-    function promptBulkInner() {
-      const ids = state.promptSelection;
-      if (!ids.length) return '';
-      const set = state.topicSet || { topics: [], prompts: [] };
-      const chosen = set.prompts.filter((prompt) => ids.indexOf(prompt.id) >= 0);
-      const proposed = chosen.filter((prompt) => prompt.status === "proposed").length;
-      const tracked = chosen.filter((prompt) => prompt.status === "active").length;
-      return '<div class="bulkbar"><strong>' + chosen.length + ' selected</strong>'
-        + (proposed ? button({ label: "Track " + (proposed), on: { "data-bulk-activate": true } }) : '')
-        + (tracked ? button({ label: "Stop tracking " + (tracked), on: { "data-bulk-retire": true } }) : '')
-        + (tracked && !state.liveRun ? button({ label: "Run these " + (tracked), kind: "primary", on: { "data-bulk-run": true } }) : '')
-        + '<span class="spacer"></span>' + button({ label: "Clear", kind: "link", on: { "data-bulk-clear": true } }) + '</div>';
-    }
-
-    function promptRow(prompt: any, standing: any) {
-      const checked = state.promptSelection.indexOf(prompt.id) >= 0;
-      const notes = [intentLabel(prompt.intent)];
-      if (prompt.status === "proposed") notes.push("proposed, not asked yet");
-      if (!prompt.measuresVisibility) notes.push("names you, so it cannot measure visibility");
-      const priority = priorityOf(prompt.id);
-      const answers = standing ? standing.score.answers : 0;
-      const label = answers
-        ? button({ label: prompt.text, kind: "title", on: { "data-evidence": prompt.id, "data-evidence-title": prompt.text } })
-        : html(prompt.text);
-      const scoreClass = !standing || standing.score.score === null ? "" : standing.score.score > 0 ? "state-ok" : "state-bad";
-      return '<div class="mrow mcols-promptrow">'
-        + '<input type="checkbox" data-prompt-checkbox="' + html(prompt.id) + '"' + (checked ? ' checked' : '') + ' aria-label="Select this question">'
-        + '<div class="mname"><strong>' + label + '</strong><span class="subtle">' + html(notes.join(" · ")) + (answers ? ' · ' + answers + ' answer(s)' : '') + '</span>'
-        + (priority ? '<span class="rowtags">' + fieldBadge(priority) + demandBadge(priority) + '</span>' : '') + '</div>'
-        + '<span class="mcell ' + scoreClass + '">' + (answers ? scoreText(standing.score.score) : "Not asked yet") + '</span>'
-        + '<span class="mcell">' + (answers ? (standing.rank === null ? "Not named" : "#" + standing.rank) : "") + '</span>'
-        + '<span class="mcell">'
-        + (prompt.variantOf ? '<span class="subtle">a rewording</span>' : button({ label: "Reword it", kind: "link", on: { "data-reword-prompt": prompt.id, "data-reword-text": prompt.text } }))
-        + '</span>'
-        + '<span class="mcell">' + (prompt.status === "active"
-          ? button({ label: "Stop tracking", kind: "link", tone: "danger", on: { "data-retire-prompt": prompt.id } })
-          : button({ label: "Track it", kind: "link", on: { "data-activate-prompt": prompt.id } })) + '</span></div>';
-    }
-
-    function renderPromptGroups(set: TopicSetShape, rows: any[], standings: any, topics: any[]) {
-      if (!set.topics.length) return '<p class="subtle">No topics yet.</p>';
-      if (!rows.length) return '<p class="subtle">No question matches these filters.</p>';
-      return set.topics.filter((topic) => rows.some((prompt) => prompt.topicId === topic.id)).map((topic) => {
-        const mine = rows.filter((prompt) => prompt.topicId === topic.id);
-        const proposed = mine.filter((prompt) => prompt.status === "proposed").length;
-        const tracked = mine.filter((prompt) => prompt.status === "active").length;
-        const standing = (topics as any).get(topic.id);
-        const score = standing && standing.score.answers
-          ? '<div class="scorehead"><span class="scoremid">' + scoreText(standing.score.score) + '</span><span class="subtle">' + (standing.rank === null ? "not named" : "rank #" + standing.rank) + '</span></div>'
-          : '';
-        const bulk = proposed ? button({ label: "Track all " + (proposed), kind: "quiet", on: { "data-activate-topic": topic.id } }) : '';
-        const description = topic.description ? html(topic.description) + ' · ' : '';
-        return '<section class="section-card"><div class="section-head"><div class="headmain"><h2>' + html(topic.name) + '</h2><p class="subtle">' + description + tracked + ' of ' + mine.length + ' shown tracked</p></div><div class="headaside">' + bulk + score + '</div></div>'
-          + '<div class="mtable"><div class="mhead mcols-promptrow"><span></span><span>Question</span><span>Score</span><span>Rank</span><span>Wordings</span><span></span></div>'
-          + sortedPrompts(mine, standings).map((prompt) => promptRow(prompt, standings.get(prompt.id))).join("") + '</div></section>';
-      }).join("");
-    }
-
     function refreshPromptResults() {
       const list = document.querySelector(".prompt-results");
       if (!list || state.page !== "prompts" || state.topicState !== "ready") { render(); return; }
       const set = state.topicSet || { topics: [], prompts: [] };
-      const standings = promptStandings();
-      const rows = filteredPrompts(set, standings);
-      list.innerHTML = renderPromptGroups(set, rows, standings, (topicStandings() as any));
+      const standings = promptStandings(state.answerEngine);
+      const rows = filteredPrompts(state, set, standings);
+      list.innerHTML = renderPromptGroups(state, set, rows, standings, topicStandings(state.answerEngine));
       const summary = document.querySelector(".prompt-result-summary");
       if (summary) summary.textContent = promptResultSummary(rows.length, livePrompts(set).length);
       // The toolbar is not re-rendered on a filter, so the button that acts on
       // the rows has to be told when there are none to act on.
       const bulk = document.querySelector(".prompt-bulk");
-      if (bulk) bulk.innerHTML = promptBulkInner();
-    }
-
-    function promptAddForms(set: TopicSetShape, folds = true) {
-      if (!set.topics.length) return '';
-      const topics = set.topics.map((topic) => '<option value="' + html(topic.id) + '">' + html(topic.name) + '</option>').join("");
-      const intents = PROMPT_INTENTS.map((intent) => '<option value="' + intent + '">' + intentLabel(intent) + '</option>').join("");
-      const body = ''
-        + '<form id="add-prompt-form" class="inline-form"><select name="topicId" aria-label="Topic">' + topics + '</select><input name="text" type="text" value="' + html(state.promptDraft.text) + '" placeholder="best stock screener for indian markets" aria-label="Question"><select name="intent" aria-label="Intent">' + intents + '</select>' + button({ label: "Add", submit: true }) + '</form>'
-        + '<details class="technical-details" style="margin-top:14px"><summary>Paste a list</summary>'
-        + '<form id="bulk-prompt-form" class="inline-form"><select name="topicId" aria-label="Topic for the pasted questions">' + topics + '</select><select name="intent" aria-label="Intent for the pasted questions">' + intents + '</select><textarea name="text" rows="6" placeholder="One question per line" aria-label="Questions, one per line"></textarea>' + button({ label: "Add them all", submit: true }) + '</form>'
-        + '<p class="subtle">One question per line, all under the same topic and intent. A question already in the set is skipped rather than added twice.</p></details>';
-      return section({
-        id: "prompt-add", title: "Add your own", body, wide: true,
-        blurb: "A question you know buyers ask. It starts tracked.",
-        ...(folds ? { folded: state.panelOpen.indexOf("prompt-add") < 0 } : {}),
-      });
+      if (bulk) bulk.innerHTML = promptBulkInner(state);
     }
 
     /** The first paint, before any read has landed. The page's own name is
@@ -2367,82 +2134,6 @@ export function boot(): void {
     function bootShape() {
       return '<section class="view"><div class="heading"><div><h1>' + html(DESTINATIONS.find((row) => row.page === state.page || (row.also || []).includes(state.page))?.label || CONFIG.productName) + '</h1></div></div>'
         + loading("this page", skeletonTiles(4) + skeletonCard({ rows: 5 })) + '</section>';
-    }
-
-    function renderPrompts() {
-      const selected = project();
-      if (!selected) return '<section class="view"><div class="empty"><div class="empty-copy"><h2>Select a project first</h2></div></div></section>';
-      if (state.topicState === "idle") { loadTopics(); }
-      if (state.answerEngineState === "idle") { loadAnswerEngine(); }
-      if (state.homeState === "idle") { loadHome(); }
-      if (state.scheduleState === "idle") { loadSchedule(); }
-      if (state.priorityState === "idle") { loadPriority(); }
-      if (state.topicState !== "ready") {
-        const head = '<section class="view"><div class="heading"><div><h1>Questions</h1><p class="subtle">The questions your buyers ask.</p></div></div>';
-        // An error is a sentence. A wait is the shape of what is coming, which
-        // holds the space the figures and the table are about to take.
-        if (state.topicState === "error") {
-          return head + '<div class="empty"><div class="empty-copy"><h2>Could not read the prompt set</h2></div></div></section>';
-        }
-        return head + loading("the questions", skeletonTiles(6)
-          + skeletonCard({ rows: 6, columns: "minmax(0,1fr) 96px 82px 96px 104px" })) + '</section>';
-      }
-      const set = state.topicSet || { topics: [], prompts: [] };
-      const notice = state.promptNotice.text ? '<div class="' + (state.promptNotice.kind === "error" ? "warning-box" : "success-box") + '">' + html(state.promptNotice.text) + '</div>' : '';
-      const live = livePrompts(set);
-      const active = live.filter((prompt) => prompt.status === "active").length;
-      const head = '<section class="view"><div class="heading"><div><h1>Questions</h1><p class="subtle">The questions buyers type, grouped by topic. Every other number in this tool is these questions, asked and archived.</p></div><div class="inline-actions">' + button({ label: (state.promptRunState === "generating" ? "Proposing…" : "Propose a set"), on: { "data-generate-prompts": true } }) + '' + runActionButton("Run all " + active, active > 0) + '</div></div>' + notice + renderLiveRun(state.liveRun);
-      if (!live.length) {
-        // Retiring the last question must not remove the only way to add one.
-        return head + '<div class="empty"><div class="empty-copy"><h2>Nothing is being asked</h2><p class="subtle">Propose a set and a model will suggest the questions buyers ask about what you do, grouped into topics. Nothing runs until you have read them and chosen which to track, because what buyers ask is not something this tool can observe.</p></div></div>' + promptAddForms(set, false) + '</section>';
-      }
-      const standings = promptStandings();
-      const rows = filteredPrompts(set, standings);
-      const proposed = live.filter((prompt) => prompt.status === "proposed").length;
-      const review = proposed
-        ? '<div class="warning-box"><strong>' + proposed + ' question(s) are proposed and not tracked.</strong> A proposed question is never asked. Read them and track the ones buyers actually type. ' + button({ label: "Show only those", kind: "link", on: { "data-prompt-review": true } }) + '</div>'
-        : '';
-      // A set proposed with nothing established about the business was written
-      // off the domain name. Read it that way or it reads like a finding.
-      const blind = set.generatedWithoutFacts
-        ? '<div class="warning-box"><strong>These were proposed without anything established about the business.</strong> The site read returned no description and no category, so the model had the brand name and the domain and guessed from them. Read every one before tracking it, and say what the company does on Setup to propose a better set.</div>'
-        : '';
-      // The same rule the answer pages use: what can be acted on stays, what
-      // only explains folds into one line above the list.
-      const said = [blind, grounding(set), review].filter(Boolean);
-      const doable = said.filter((note) => note.indexOf("<button") >= 0);
-      const toldOnly = said.filter((note) => doable.indexOf(note) < 0);
-      const folded = toldOnly.length
-        ? '<details class="caveats" data-fold="prompt-caveats"' + (state.panelOpen.indexOf("prompt-caveats") >= 0 ? " open" : "")
-          + '><summary>How this set was written (' + toldOnly.length + ')</summary>' + toldOnly.join("") + '</details>'
-        : '';
-      return head
-        + renderPromptStats(set, standings)
-        + doable.join("") + folded
-        + renderPromptCoverage(set)
-        + promptToolbar(set, rows.length)
-        + '<div class="prompt-bulk">' + promptBulkInner() + '</div>'
-        + '<div class="prompt-results">' + renderPromptGroups(set, rows, standings, (topicStandings() as any)) + '</div>'
-        + promptAddForms(set)
-        + '</section>';
-    }
-
-    // What a proposal was grounded in decides how much of it is observation
-    // and how much is supposition, which does not show on the questions.
-    function grounding(set: any) {
-      if (!set || !set.generatedAt) return '';
-      const held = set.groundedIn;
-      if (!held) {
-        return '<div class="warning-box"><strong>This set was proposed before observed demand could ground one.</strong> What anyone really asks was not read when these were written, so they are the model\'s supposition about what buyers type. Propose again to ground the next set in what has been observed.</div>';
-      }
-      if (!held.observed) {
-        return '<div class="warning-box"><strong>Nothing observed grounded these questions.</strong> No search queries and no conversations were available when they were proposed, so every one is the model\'s supposition about what buyers type. Connect Search Console on Setup and propose again.</div>';
-      }
-      const parts = [];
-      if (held.searchQueries) parts.push(held.searchQueries + ' search quer(ies)');
-      if (held.corpusQuestions) parts.push(held.corpusQuestions + ' past conversation(s)');
-      return '<div class="success-box"><strong>Grounded in ' + held.observed + ' question(s) people really asked</strong>, drawn from ' + parts.join(' and ')
-        + '. Those are search and conversation records, not a measure of how often anyone asks an assistant, and a subject missing from them is not a subject nobody asks about.</div>';
     }
 
     function renderSelectedModels(readOnly?: any) { return selectedModelTable({ readOnly, rows: selectedRows(state.catalog, state.selections, state.draftSelections, state.catalogState).map((row) => ({ modelId: row.modelId, displayName: String((row.model as any).displayName), providerLabel: providerShortLabel(state.providers, (row.model as any).providerId), webSearchMode: row.webSearchMode === "provider_native" ? "provider_native" as const : "off" as const, nativeWebSearchSupported: (row.model as any).nativeWebSearchSupported === true, runnable: row.inCatalog ? runsNowCell(row.model, row.modelId, state.providers) : "", unavailable: blockedSelection(row) })) }); }
@@ -2604,7 +2295,7 @@ export function boot(): void {
     function renderConfiguration() { const selected = project(); if (!selected) return '<section class="view"><div class="empty"><div class="empty-copy"><h2>Select a project first</h2><p class="subtle">A configuration belongs to a single project.</p></div></div></section>'; if (state.configurationState === "loading") return '<section class="view"><div class="heading"><div><h1>Configuration</h1><p class="subtle">Loading the current configuration…</p></div></div>' + machineTabs() + '<div class="section-card inline-empty" aria-live="polite">Loading the domain, models and web search modes.</div></section>'; const configuration = monitoringConfiguration(); const hasModels = selectedRows(state.catalog, state.selections, state.draftSelections, state.catalogState).length > 0; const notice = state.monitoringNotice.text; const noticeKind = state.monitoringNotice.kind; const stateMessage = !hasModels ? "Select at least one available model before saving the configuration." : configuration.status === "no_version" ? "No configuration saved yet. Saving fixes the current domain, language, models and web search modes." : configuration.status === "changed" ? "The models or web search modes have changed. Saving creates a new configuration version." : "The current models and web search modes are saved."; const stateClass = !hasModels || configuration.status === "changed" ? "warning-box" : configuration.status === "unchanged" ? "success-box" : "warning-box"; return '<section class="view"><div class="heading"><div><h1>Configuration</h1><p class="subtle">Save the domain, output language and each model\'s web search mode as reusable monitoring conditions.</p></div>' + saveConfigurationButton(configuration, hasModels) + '</div>' + machineTabs() + '<div id="monitoring-configuration-status" data-testid="monitoring-configuration-status" class="form-status ' + html(noticeKind) + '" aria-live="polite">' + html(notice) + '</div><div class="section-stack"><section class="section-card"><div class="section-head"><div><h2>Current version</h2><p class="subtle">Target domain: <span class="mono">' + html(selected.normalizedDomain) + '</span></p></div><span class="tag ' + (configuration.status === "unchanged" ? "ready" : "warning") + '">' + (configuration.currentVersion ? "v" + configuration.currentVersion : "Not saved yet") + '</span></div><div class="' + stateClass + '" data-testid="monitoring-configuration-summary">' + html(stateMessage) + '</div></section><section class="section-card"><div class="section-head"><div><h2>Current model configuration</h2><p class="subtle">Each model stores its own web search mode.</p></div>' + button({ label: "Adjust models", on: { "data-page": "models" } }) + '</div>' + renderSelectedModels(true) + '</section>' + renderConfigurationDiff(configuration) + '<section class="section-card"><div class="section-head"><div><h2>Past configurations</h2><p class="subtle">Read-only snapshot. Saving a new version does not overwrite past configurations.</p></div></div>' + renderConfigurationRows(configuration) + '</section>' + renderTechnicalDetails(configuration) + '</div></section>'; }
     const brandMark = CONFIG.brandMark;
     const brandLockup = CONFIG.brandLockup;
-    function phase2RenderImpl() { if (window.__citegeoPhase5Active) return; const selected = project(); const options = state.currentProjects.length ? state.currentProjects.map((item) => '<option value="' + html(item.id) + '">' + html(item.name) + ' · ' + html(item.normalizedDomain) + '</option>').join("") : '<option value="">No projects yet</option>'; let view = state.booting ? bootShape() : state.page === "marketer" ? renderMarketer() : state.page === "drafts" ? renderDrafts() : state.page === "claims" ? renderClaims() : state.page === "buying" ? renderBuying() : state.page === "conversations" ? renderConversations() : state.page === "entity" ? renderEntity() : state.page === "reports" ? renderReport() : state.page === "models" ? renderModels() : state.page === "configuration" ? renderConfiguration() : state.page === "setup" ? renderSetup() : state.page === "visibility" ? renderVisibility() : state.page === "brand-visibility" ? renderBrandVisibility(state, project(), currentTasks(), runActionButton, brandVisibilityActions) : state.page === "trust" ? renderTrustPage() : state.page === "prompts" ? renderPrompts() : state.page === "answer-engine" ? renderAnswerEngine() : state.page === "dashboard" ? renderHome(state, project(), currentTasks(), runActionButton, homeActions) : renderOverview(state, project(), monitoringConfiguration().currentVersion); app.innerHTML = renderEvidence() + '<div class="shell">' + navScrim() + '<aside class="sidebar"><button type="button" class="brand" data-page="dashboard" aria-label="Back to the dashboard">' + brandLockup + '</button><div class="project-label">Project</div><select id="project-select" class="project-select" aria-label="Switch project" data-testid="project-select">' + options + '</select>' + sidebar({ page: state.page, options }) + '<div class="sidebar-bottom">Domain recognition</div></aside><main class="workspace"><header class="topbar"><div class="topbar-lead">' + navToggle() + '<div class="crumb"><button type="button" class="crumb-home" data-page="dashboard">' + html(CONFIG.productName) + '</button> / ' + html(selected ? selected.name : "Project") + '</div></div><div class="topbar-actions"><button type="button" class="theme-toggle" data-theme-toggle aria-label="Switch between light and dark">&#9681;</button>' + button({ label: "New project", id: "new-project", testId: "new-project" }) + '</div></header><section class="content">' + view + '</section>' + renderFooter(state, footerActions) + '</main></div>'; const select = element("project-select"); select.value = state.selectedId; document.title = selected ? selected.name + " | " + CONFIG.productTitle + "" : "" + CONFIG.productTitle + ""; }
+    function phase2RenderImpl() { if (window.__citegeoPhase5Active) return; const selected = project(); const options = state.currentProjects.length ? state.currentProjects.map((item) => '<option value="' + html(item.id) + '">' + html(item.name) + ' · ' + html(item.normalizedDomain) + '</option>').join("") : '<option value="">No projects yet</option>'; let view = state.booting ? bootShape() : state.page === "marketer" ? renderMarketer() : state.page === "drafts" ? renderDrafts() : state.page === "claims" ? renderClaims() : state.page === "buying" ? renderBuying() : state.page === "conversations" ? renderConversations() : state.page === "entity" ? renderEntity() : state.page === "reports" ? renderReport() : state.page === "models" ? renderModels() : state.page === "configuration" ? renderConfiguration() : state.page === "setup" ? renderSetup() : state.page === "visibility" ? renderVisibility() : state.page === "brand-visibility" ? renderBrandVisibility(state, project(), currentTasks(), runActionButton, brandVisibilityActions) : state.page === "trust" ? renderTrustPage() : state.page === "prompts" ? renderPrompts(state, project(), runActionButton, promptPageActions) : state.page === "answer-engine" ? renderAnswerEngine() : state.page === "dashboard" ? renderHome(state, project(), currentTasks(), runActionButton, homeActions) : renderOverview(state, project(), monitoringConfiguration().currentVersion); app.innerHTML = renderEvidence() + '<div class="shell">' + navScrim() + '<aside class="sidebar"><button type="button" class="brand" data-page="dashboard" aria-label="Back to the dashboard">' + brandLockup + '</button><div class="project-label">Project</div><select id="project-select" class="project-select" aria-label="Switch project" data-testid="project-select">' + options + '</select>' + sidebar({ page: state.page, options }) + '<div class="sidebar-bottom">Domain recognition</div></aside><main class="workspace"><header class="topbar"><div class="topbar-lead">' + navToggle() + '<div class="crumb"><button type="button" class="crumb-home" data-page="dashboard">' + html(CONFIG.productName) + '</button> / ' + html(selected ? selected.name : "Project") + '</div></div><div class="topbar-actions"><button type="button" class="theme-toggle" data-theme-toggle aria-label="Switch between light and dark">&#9681;</button>' + button({ label: "New project", id: "new-project", testId: "new-project" }) + '</div></header><section class="content">' + view + '</section>' + renderFooter(state, footerActions) + '</main></div>'; const select = element("project-select"); select.value = state.selectedId; document.title = selected ? selected.name + " | " + CONFIG.productTitle + "" : "" + CONFIG.productTitle + ""; }
     async function setPage(page: any) { clearToasts(); state.page = page; savePreference("page", page); if (page === "configuration") { await refreshConfiguration(); return; } if (page === "reports" && window.__citegeoPhase4 && typeof window.__citegeoPhase4.open === "function") { await window.__citegeoPhase4.open(); return; } render(); if (page === "models") { await refreshConfiguration(); await loadCatalog(); } }
     async function createDraft(event: any) { event.preventDefault(); const control = element("save-draft"); const session = state.drawerSession; setFormStatus("Creating project draft", "loading"); try { const response = await runAction(control, { loading:"Saving…", success:"Saved", error:"Save failed" }, () => request("/api/projects", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ domain:element("project-domain").value, name:element("project-name").value }) })); state.mode = "current"; state.page = "overview"; setSelectedProject(response.project.id); await refreshProjects(); state.selections = []; state.baselines = []; resetDraftSelections(); setFormStatus("Draft saved", "success"); render(); window.setTimeout(() => { if (state.drawerSession === session) closeDrawer(); }, 850); } catch (error) { setFormStatus(error instanceof Error ? error.message : String(error), "error"); } }
     async function saveProject(event: any) { event.preventDefault(); const selected = project(); if (!selected) return; const control = event.currentTarget.querySelector('button[type="submit"]'); try { await runAction(control, { loading:"Saving…", success:"Saved", error:"Save failed" }, () => request("/api/projects/" + encodeURIComponent(selected.id), { method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ domain:element("edit-domain").value, name:element("edit-name").value }) })); await refreshProjects(); render(); } catch (error) { toast({ text: error instanceof Error ? error.message : String(error), kind: "error" }); } }
@@ -2645,7 +2336,7 @@ export function boot(): void {
         const set = state.topicSet || { topics: [], prompts: [] };
         // Only what the filters are showing: the count on the button is the
         // list under it, not everything the topic happens to hold.
-        const ids = filteredPrompts(set, promptStandings())
+        const ids = filteredPrompts(state, set, promptStandings(state.answerEngine))
           .filter((prompt) => prompt.topicId === topicId && prompt.status === "proposed")
           .map((prompt) => prompt.id);
         if (!ids.length) return;
@@ -2661,7 +2352,7 @@ export function boot(): void {
         if (at >= 0) state.promptSelection.splice(at, 1);
         else state.promptSelection.push(id);
         const bar = document.querySelector(".prompt-bulk");
-        if (bar) bar.innerHTML = promptBulkInner();
+        if (bar) bar.innerHTML = promptBulkInner(state);
         else render();
         return;
       }

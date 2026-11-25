@@ -4,6 +4,7 @@ import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "@playwright/test";
+import { expectNoOutbound, loopbackOnly } from "./loopback.js";
 
 let temporaryRoot = "";
 let server: ChildProcess | undefined;
@@ -52,6 +53,10 @@ async function startSeededServer(): Promise<void> {
 }
 
 test.beforeAll(startSeededServer);
+
+let outbound: () => string[] = () => [];
+test.beforeEach(async ({ page }) => { outbound = await loopbackOnly(page); });
+test.afterEach(() => { expectNoOutbound(outbound); });
 
 test.afterAll(async () => {
   server?.kill("SIGTERM");
@@ -143,4 +148,32 @@ test("Results does not ask the second project for the first project's run", asyn
   await expect(page.locator(".view")).toContainText("No recognition test records yet");
   await page.waitForTimeout(500);
   expect(asked).toEqual([]);
+});
+
+test("a slow question set for the first project does not land on the second's Questions page", async ({ page }) => {
+  const first = projectIds["Acme"] || "";
+  const second = projectIds["Blank"] || "";
+  const topics = `**/api/projects/${first}/topics`;
+  let release!: () => void;
+  const held = new Promise<void>((resolveHeld) => { release = resolveHeld; });
+  await page.route(topics, async (route) => {
+    await held;
+    await route.continue();
+  });
+
+  const requested = page.waitForRequest((request) => request.url().endsWith(`/api/projects/${first}/topics`));
+  await page.goto(`${baseUrl}/?projectId=${first}`);
+  await page.locator('.sidebar [data-page="prompts"]').first().click();
+  await requested;
+
+  await page.selectOption("[data-testid=project-select]", second);
+  await expect(page.getByTestId("project-select")).toHaveValue(second);
+  await expect(page.getByRole("heading", { name: "Nothing is being asked" })).toBeVisible();
+
+  const answered = page.waitForResponse((response) => response.url().endsWith(`/api/projects/${first}/topics`));
+  release();
+  await answered;
+  await page.evaluate(() => new Promise((resolveFrame) => requestAnimationFrame(() => setTimeout(resolveFrame, 300))));
+  await expect(page.getByRole("heading", { name: "Nothing is being asked" })).toBeVisible();
+  await expect(page.locator(".view")).not.toContainText("best invoicing tools for small teams");
 });
