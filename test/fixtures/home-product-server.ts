@@ -65,4 +65,4 @@ await runs.saveAnswer(answer("a4", "p2", true));
 const readAt = new Date().toISOString();
 await new SiteIconStore(store).save({ "acme.example": { url: null, readAt }, "rival.example": { url: null, readAt } });
 
-createProductServer().listen(Number(process.env.PORT || 8787));
+createProductServer().listen(Number(process.env.PORT || 8787), "127.0.0.1");
