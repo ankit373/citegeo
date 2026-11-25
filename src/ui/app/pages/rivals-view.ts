@@ -58,6 +58,7 @@ export interface RivalsActions {
 
 export type BrandVisibilityActions = Pick<HomeActions, "loadHome" | "loadAnswerEngine" | "loadOutreach"> & RivalsActions;
 
+// What the page answers stays open. The eight cards that explain it fold.
 const RIVAL_LEAD = ["rival-plan", "rival-leaderboard"];
 
 /** One board for everything about how the brand appears, rather than four
@@ -103,7 +104,7 @@ export function renderDemand(status: LoadState, report: DemandReport | null | un
       + '<p>Nothing has been counted, which is not the same as nobody asking. Index a corpus and the counts fill in; see '
       + '<span class="mono">docs/prompt-demand.md</span>.</p></div></section>';
   }
-  const rows = (report.prompts)
+  const rows = report.prompts
     .slice()
     .sort((left, right) => (right.match.relatedTerms || 0) - (left.match.relatedTerms || 0))
     .slice(0, 12)
@@ -122,6 +123,8 @@ export function renderDemand(status: LoadState, report: DemandReport | null | un
     + '</section>';
 }
 
+/** The detail behind the board: who was named, under which topic, and
+ * which questions never named you at all. */
 export function rivalDetail(state: RivalsState, tasks: MeasurementTask[], actions: RivalsActions): string {
   const data = state.answerEngine;
   if (state.answerEngineState !== "ready" || !data || !data.answers) return '';
@@ -223,8 +226,7 @@ function takenAction(taken: TakenActionView[], moveId: string, promptId: string 
   return taken.find((row) => row.id === id) || null;
 }
 
-function actionControls(move: RankingMove, actions: TakenActionView[]): string {
-  const taken = takenAction(actions, move.id, move.promptId);
+function actionControls(move: RankingMove, taken: TakenActionView | null): string {
   const current = taken ? taken.state : "open";
   const moveAction = (value: ActionState, label: string) => '<button type="button" class="card-action' + (current === value ? " is-on" : "") + '" data-action-move="' + html(move.id) + '" data-action-prompt="' + html(move.promptId || "") + '" data-action-state="' + value + '">' + label + '</button>';
   const effect = taken && taken.effect ? '<p class="evidence-note">Since you started: ' + html(effectText(taken.effect)) + '</p>' : '';
@@ -248,7 +250,7 @@ export function renderRankingPlan(state: RankingPlanState, actions: Pick<RivalsA
         + (move.answers === null ? '' : '<span class="subtle">' + move.answers + ' answer(s)</span>') + '</div>'
         + '<p class="why">' + html(move.why) + '</p>'
         + '<p class="evidence-note">' + html(move.evidence) + '</p>'
-        + actionControls(move, state.actions) + '</div>';
+        + actionControls(move, taken) + '</div>';
     }).join("") + '</div>'
     : '<p class="subtle">Nothing in the archived answers points at a specific move.</p>';
   return '<p class="subtle"><strong>' + html(plan.verdict) + '</strong></p>' + moves
@@ -277,7 +279,6 @@ export function renderPersonas(status: LoadState, personas: PersonaSet | null | 
 export function renderRivals(state: Pick<RivalsState, "rivals" | "rivalsState">, data: InsightsShape | null, actions: Pick<RivalsActions, "loadRivals">): string {
   if (state.rivalsState === "idle") { actions.loadRivals(); }
   const tracked = data && data.trackedRivals ? data.trackedRivals : [];
-  const declared = state.rivals ? state.rivals.competitors.filter((row) => row.tracked) : [];
   const body = tracked.length
     ? '<div class="mtable"><div class="mhead mcols-aemodel"><span>Who</span><span>Answers</span><span>Share</span><span></span></div>'
       + tracked.map((row) => '<div class="mrow mcols-aemodel">'
@@ -289,8 +290,7 @@ export function renderRivals(state: Pick<RivalsState, "rivals" | "rivalsState">,
   return body
     + '<div class="inline-actions" style="margin-top:14px">' + button({ label: "Adopt the ones already named", on: { "data-adopt-rivals": true } }) + '</div>'
     + '<form id="add-rival-form" class="inline-form"><input name="name" type="text" placeholder="Competitor name" aria-label="Competitor name"><input name="domain" type="text" placeholder="domain.com (optional)" aria-label="Competitor domain">' + button({ label: "Add", submit: true }) + '</form>'
-    + '<p class="subtle">A rival you track and never see reads as zero rather than disappearing, because that is the finding.</p>'
-    + (declared.length ? '' : '');
+    + '<p class="subtle">A rival you track and never see reads as zero rather than disappearing, because that is the finding.</p>';
 }
 
 function declaredIdFor(rivals: CompetitorSet | null, name: string): string {

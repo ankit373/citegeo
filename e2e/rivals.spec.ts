@@ -28,7 +28,7 @@ async function unusedPort(): Promise<number> {
 
 async function startSeededServer(): Promise<void> {
   const port = await unusedPort();
-  temporaryRoot = await mkdtemp(join(tmpdir(), "citegeo-home-browser-"));
+  temporaryRoot = await mkdtemp(join(tmpdir(), "citegeo-rivals-browser-"));
   server = spawn(process.execPath, [join(process.cwd(), "node_modules", "tsx", "dist", "cli.mjs"), "test/fixtures/home-product-server.ts"], {
     cwd: process.cwd(),
     env: { ...process.env, PORT: String(port), PRODUCT_DATA_DIR: temporaryRoot, RUNS_DIR: join(temporaryRoot, "runs"), MONITORING_DATA_DIR: join(temporaryRoot, "monitoring"), SKIP_DOTENV: "1" },

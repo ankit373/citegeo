@@ -1186,8 +1186,6 @@ export function boot(): void {
 
 
 
-    // The filters travel with the file, so an export is the slice on screen.
-
     // The mentions the model reported, marked in its own words. This is the
     // receipt the whole product claims to keep.
     function markMentions(text: string, mentions: any) {
@@ -1970,10 +1968,6 @@ export function boot(): void {
         + card("source-interference", "Someone else is working on this answer", "A document rewritten to match what an engine likes to cite stays factually consistent with the original, so nothing that checks facts will catch one. What is left is shape.", renderInterference(state.interferenceState, state.interference, sourceActions))
       );
     }
-
-    /** The detail behind the board: who was named, under which topic, and
-     * which questions never named you at all. */
-    // What the page answers stays open. The eight cards that explain it fold.
 
     // Cards nested inside a card, none of which could fold. Each is a card of
     // its own now, on the module that already knows how to fold one.
