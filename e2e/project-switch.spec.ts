@@ -93,3 +93,29 @@ test("an open answers panel closes when another project is opened", async ({ pag
   await expect(page.locator("aside.panel .panel-body")).toHaveCount(0);
   expect(await page.evaluate(() => document.body.classList.contains("panel-open"))).toBe(false);
 });
+
+test("a slow answer for the first project does not land on the second", async ({ page }) => {
+  const insights = `**/api/projects/${projectIds["Acme"]}/prompt-insights*`;
+  let release!: () => void;
+  const held = new Promise<void>((resolveHeld) => { release = resolveHeld; });
+  await page.route(insights, async (route) => {
+    await held;
+    await route.continue();
+  });
+
+  const requested = page.waitForRequest((request) => request.url().includes(`/api/projects/${projectIds["Acme"]}/prompt-insights`));
+  await page.goto(`${baseUrl}/?projectId=${projectIds["Acme"]}`);
+  await page.locator('.sidebar [data-page="brand-visibility"]').first().click();
+  await requested;
+
+  await page.selectOption("[data-testid=project-select]", projectIds["Blank"]);
+  await expect(page.getByTestId("project-select")).toHaveValue(projectIds["Blank"] || "");
+
+  const answered = page.waitForResponse((response) => response.url().includes(`/api/projects/${projectIds["Acme"]}/prompt-insights`));
+  release();
+  await answered;
+  // The late answer has been delivered to the page. It must not draw.
+  await page.evaluate(() => new Promise((resolveFrame) => requestAnimationFrame(() => setTimeout(resolveFrame, 300))));
+  await expect(page.locator("[data-panel=\"rival-leaderboard\"]")).toHaveCount(0);
+  await expect(page.locator(".view")).not.toContainText("Rival One");
+});

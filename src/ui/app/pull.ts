@@ -25,16 +25,16 @@ export async function loadForProject<T>(
   current: () => string,
   read: () => Promise<T>,
   apply: (value: T) => void,
-  fail: () => void,
+  fail: (error: unknown) => void,
 ): Promise<boolean> {
   try {
     const value = await read();
     if (!isOpen(startedFor, current())) return false;
     apply(value);
     return true;
-  } catch {
+  } catch (error) {
     if (!isOpen(startedFor, current())) return false;
-    fail();
+    fail(error);
     return false;
   }
 }

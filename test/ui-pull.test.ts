@@ -116,3 +116,9 @@ test("isOpen is true only for the project the request was started for", () => {
   assert.equal(isOpen("a", "b"), false);
   assert.equal(isOpen("a", ""), false);
 });
+
+test("the failure callback is given the error, so a read can show why it failed", async () => {
+  let seen: unknown = null;
+  await loadForProject("a", () => "a", () => Promise.reject(new Error("boom")), () => {}, (error) => { seen = error; });
+  assert.equal(seen instanceof Error && seen.message, "boom");
+});
