@@ -156,6 +156,8 @@ export function boot(): void {
     const element = (id: string) => document.getElementById(id) as any;
 
     const project = () => state.currentProjects.find((item) => item.id === state.selectedId) || null;
+    /** Which projects have a slow read in flight, so a switch neither shows one project's as busy on another nor lets the other start its own. */
+    const inFlight = { harvest: new Set<string>(), searchPull: new Set<string>(), referralsPull: new Set<string>() };
     const footerActions = { loadHome };
     const rivalsActions = { loadRankingPlan, loadActions, loadPersonas, loadRivals, loadDemand };
     const homeActions = { loadHome, loadAnswerEngine, loadOutreach, loadRankingPlan, loadDigest, loadSearchDemand, loadReferrals };
@@ -229,9 +231,16 @@ export function boot(): void {
       clearPanel();
     }
 
+    function syncBusy() {
+      state.harvesting = inFlight.harvest.has(state.selectedId);
+      state.pulling = inFlight.searchPull.has(state.selectedId);
+      state.pullingReferrals = inFlight.referralsPull.has(state.selectedId);
+    }
+
     function setSelectedProject(projectId: string) {
       if (projectId !== state.selectedId) resetProject();
       state.selectedId = projectId || "";
+      syncBusy();
       if (state.selectedId) localStorage.setItem("citegeo.product.projectId", state.selectedId); else localStorage.removeItem("citegeo.product.projectId");
       const next = new URL(window.location.href);
       if (state.selectedId) next.searchParams.set("projectId", state.selectedId); else next.searchParams.delete("projectId");
@@ -1574,9 +1583,10 @@ export function boot(): void {
     }
 
     async function harvestPages(refresh?: boolean) {
-      if (!state.selectedId || state.harvesting) return;
+      if (!state.selectedId || inFlight.harvest.has(state.selectedId)) return;
       const startedFor = state.selectedId;
-      state.harvesting = true;
+      inFlight.harvest.add(startedFor);
+      syncBusy();
       render();
       try {
         const where = "/api/projects/" + encodeURIComponent(startedFor) + "/source-pages" + (refresh ? "?refresh=true" : "");
@@ -1594,7 +1604,8 @@ export function boot(): void {
       } catch (error) {
         if (isOpen(startedFor, state.selectedId)) state.promptNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind:"error" };
       }
-      state.harvesting = false;
+      inFlight.harvest.delete(startedFor);
+      syncBusy();
       render();
     }
 
@@ -1608,9 +1619,10 @@ export function boot(): void {
     }
 
     async function pullSearchDemand() {
-      if (!state.selectedId || state.pulling) return;
+      if (!state.selectedId || inFlight.searchPull.has(state.selectedId)) return;
       const startedFor = state.selectedId;
-      state.pulling = true;
+      inFlight.searchPull.add(startedFor);
+      syncBusy();
       render();
       try {
         const result = await request("/api/projects/" + encodeURIComponent(startedFor) + "/search-demand", { method:"POST", headers:{"Content-Type":"application/json"}, body:"{}" });
@@ -1620,7 +1632,8 @@ export function boot(): void {
       } catch (error) {
         if (isOpen(startedFor, state.selectedId)) state.promptNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind:"error" };
       }
-      state.pulling = false;
+      inFlight.searchPull.delete(startedFor);
+      syncBusy();
       render();
     }
 
@@ -1651,9 +1664,10 @@ export function boot(): void {
     }
 
     async function pullReferrals() {
-      if (!state.selectedId || state.pullingReferrals) return;
+      if (!state.selectedId || inFlight.referralsPull.has(state.selectedId)) return;
       const startedFor = state.selectedId;
-      state.pullingReferrals = true;
+      inFlight.referralsPull.add(startedFor);
+      syncBusy();
       render();
       try {
         const result = await request("/api/projects/" + encodeURIComponent(startedFor) + "/assistant-referrals", { method:"POST", headers:{"Content-Type":"application/json"}, body:"{}" });
@@ -1663,7 +1677,8 @@ export function boot(): void {
       } catch (error) {
         if (isOpen(startedFor, state.selectedId)) state.promptNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind:"error" };
       }
-      state.pullingReferrals = false;
+      inFlight.referralsPull.delete(startedFor);
+      syncBusy();
       render();
     }
 
