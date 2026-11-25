@@ -63,7 +63,7 @@ test("an unknown model count is reported as unknown, never as a forecast of zero
 
 test("a question with no answer says so rather than scoring zero", () => {
   const html = productAppSource();
-  assert.equal(html.includes('(answers ? scoreText(standing.score.score) : "Not asked yet")'), true);
+  assert.equal(html.includes('(standing && answers ? scoreText(standing.score.score) : "Not asked yet")'), true);
 });
 
 test("a live run replaces the run button and opens a pane instead of offering a second run", () => {

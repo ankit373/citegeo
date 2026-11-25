@@ -26,6 +26,7 @@
     "test:browser:home": "playwright test --config playwright.home.config.ts",
     "test:browser:project-switch": "playwright test --config playwright.project-switch.config.ts",
     "test:browser:rivals": "playwright test --config playwright.rivals.config.ts",
+    "test:browser:prompts": "playwright test --config playwright.prompts.config.ts",
     "test:browser:measurements": "playwright test --config playwright.measurements.config.ts",
     "server": "tsx src/product/product-server.ts",
     "schedule": "tsx src/cli.ts schedule",
