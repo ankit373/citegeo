@@ -119,3 +119,28 @@ test("a slow answer for the first project does not land on the second", async ({
   await expect(page.locator("[data-panel=\"rival-leaderboard\"]")).toHaveCount(0);
   await expect(page.locator(".view")).not.toContainText("Rival One");
 });
+
+test("Results does not ask the second project for the first project's run", async ({ page }) => {
+  const first = projectIds["Acme"] || "";
+  const second = projectIds["Blank"] || "";
+  const run = { id: "run-a", status: "completed", plannedModelRunCount: 1, successfulModelRunCount: 1, failedModelRunCount: 0, baselineVersion: 1, createdAt: "2026-11-20T10:00:00.000Z" };
+  await page.route(`**/api/projects/${first}/recognition-runs`, (route) => route.fulfill({ json: { runs: [run] } }));
+  await page.route(`**/api/projects/${first}/recognition-runs/run-a`, (route) => route.fulfill({ json: { run, modelRuns: [] } }));
+  const asked: string[] = [];
+  page.on("request", (request) => { if (request.url().includes(`/api/projects/${second}/recognition-runs/`)) asked.push(request.url()); });
+
+  await page.goto(`${baseUrl}/?projectId=${first}`);
+  await page.locator('.sidebar [data-page="models"]').first().click();
+  await page.getByRole("button", { name: "Results", exact: true }).click();
+  await expect(page.locator(".view")).toContainText("Recognition test");
+
+  await page.locator('.sidebar [data-page="overview"]').first().click();
+  await page.locator(`button[data-project-action="select"][data-project-id="${second}"]`).click();
+  await page.locator('.sidebar [data-page="models"]').first().click();
+  const listed = page.waitForResponse((response) => response.url().endsWith(`/api/projects/${second}/recognition-runs`));
+  await page.getByRole("button", { name: "Results", exact: true }).click();
+  await listed;
+  await expect(page.locator(".view")).toContainText("No recognition test records yet");
+  await page.waitForTimeout(500);
+  expect(asked).toEqual([]);
+});
