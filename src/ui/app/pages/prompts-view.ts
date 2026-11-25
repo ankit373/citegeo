@@ -122,7 +122,7 @@ export function livePrompts(set: PromptSet): Prompt[] { return set.prompts.filte
  * every topic ever generated, so a project regenerated against the right
  * category read as having eight groups of questions and twenty five
  * questions in five of them. */
-function liveTopics(set: PromptSet) { return set.topics.filter((topic) => topic.status !== "retired"); }
+export function liveTopics(set: PromptSet) { return set.topics.filter((topic) => topic.status !== "retired"); }
 
 export function filteredPrompts(state: Pick<PromptsState, "promptFilters">, set: PromptSet, standings: Map<string, PromptStanding>): Prompt[] {
   const filters = state.promptFilters;
@@ -197,7 +197,7 @@ function renderPromptCoverage(state: Pick<PromptsState, "promptFilters" | "panel
     const active = state.promptFilters.intent === intent ? ' active' : '';
     return '<button type="button" class="tag' + (count ? '' : ' warning') + active + '" data-prompt-intent="' + intent + '">' + intentLabel(intent) + ' · ' + count + ' of ' + total + ' tracked</button>';
   }).join("");
-  const thin = set.topics.filter((topic) => !tracked.some((prompt) => prompt.topicId === topic.id));
+  const thin = liveTopics(set).filter((topic) => !tracked.some((prompt) => prompt.topicId === topic.id));
   const note = thin.length
     ? thin.length + ' topic(s) have nothing tracked: ' + thin.map((topic) => html(topic.name)).join(", ") + '.'
     : 'Every topic has at least one tracked question.';
@@ -211,7 +211,7 @@ function renderPromptCoverage(state: Pick<PromptsState, "promptFilters" | "panel
 
 function promptToolbar(state: Pick<PromptsState, "promptFilters" | "promptSort">, set: PromptSet, shown: number): string {
   const filters = state.promptFilters;
-  const topics = set.topics.map((topic) => '<option value="' + html(topic.id) + '"' + (filters.topicId === topic.id ? ' selected' : '') + '>' + html(topic.name) + '</option>').join("");
+  const topics = liveTopics(set).map((topic) => '<option value="' + html(topic.id) + '"' + (filters.topicId === topic.id ? ' selected' : '') + '>' + html(topic.name) + '</option>').join("");
   const intents = PROMPT_INTENTS.map((intent) => '<option value="' + intent + '"' + (filters.intent === intent ? ' selected' : '') + '>' + intentLabel(intent) + '</option>').join("");
   const states = PROMPT_STATES.map((row) => '<option value="' + row[0] + '"' + (filters.status === row[0] ? ' selected' : '') + '>' + row[1] + '</option>').join("");
   return '<div class="promptbar">'
@@ -282,8 +282,11 @@ export function renderPromptGroups(state: Pick<PromptsState, "promptSort" | "pri
 }
 
 function promptAddForms(state: Pick<PromptsState, "promptDraft" | "panelOpen">, set: PromptSet, folds = true): string {
-  if (!set.topics.length) return '';
-  const topics = set.topics.map((topic) => '<option value="' + html(topic.id) + '">' + html(topic.name) + '</option>').join("");
+  const live = liveTopics(set);
+  // Untracking every question retires every topic, and that must not take the add form with it.
+  const offered = live.length ? live : set.topics;
+  if (!offered.length) return '';
+  const topics = offered.map((topic) => '<option value="' + html(topic.id) + '">' + html(topic.name) + '</option>').join("");
   const intents = PROMPT_INTENTS.map((intent) => '<option value="' + intent + '">' + intentLabel(intent) + '</option>').join("");
   const body = ''
     + '<form id="add-prompt-form" class="inline-form"><select name="topicId" aria-label="Topic">' + topics + '</select><input name="text" type="text" value="' + html(state.promptDraft.text) + '" placeholder="best stock screener for indian markets" aria-label="Question"><select name="intent" aria-label="Intent">' + intents + '</select>' + button({ label: "Add", submit: true }) + '</form>'
@@ -336,7 +339,7 @@ export function renderPrompts(state: PromptsState, selected: ProjectRow | null, 
   const notice = state.promptNotice.text ? '<div class="' + (state.promptNotice.kind === "error" ? "warning-box" : "success-box") + '">' + html(state.promptNotice.text) + '</div>' : '';
   const live = livePrompts(set);
   const active = live.filter((prompt) => prompt.status === "active").length;
-  const head = '<section class="view"><div class="heading"><div><h1>Questions</h1><p class="subtle">The questions buyers type, grouped by topic. Every other number in this tool is these questions, asked and archived.</p></div><div class="inline-actions">' + button({ label: (state.promptRunState === "generating" ? "Proposing…" : "Propose a set"), on: { "data-generate-prompts": true } }) + '' + runAction("Run all " + active, active > 0) + '</div></div>' + notice + renderLiveRun(state.liveRun);
+  const head = '<section class="view"><div class="heading"><div><h1>Questions</h1><p class="subtle">The questions buyers type, grouped by topic. Every other number in this tool is these questions, asked and archived.</p></div><div class="inline-actions">' + button({ label: (state.promptRunState === "generating" ? "Proposing…" : "Propose a set"), disabled: state.promptRunState === "generating", on: { "data-generate-prompts": true } }) + '' + runAction("Run all " + active, active > 0) + '</div></div>' + notice + renderLiveRun(state.liveRun);
   if (!live.length) {
     // Retiring the last question must not remove the only way to add one.
     return head + '<div class="empty"><div class="empty-copy"><h2>Nothing is being asked</h2><p class="subtle">Propose a set and a model will suggest the questions buyers ask about what you do, grouped into topics. Nothing runs until you have read them and chosen which to track, because what buyers ask is not something this tool can observe.</p></div></div>' + promptAddForms(state, set, false) + '</section>';

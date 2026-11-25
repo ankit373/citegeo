@@ -230,3 +230,22 @@ test("what only explains folds into one line, and what can be acted on stays abo
   has(renderPrompts(state({ topicSet: told, panelOpen: ["prompt-caveats"] }), project, runAction, actions([])), 'data-fold="prompt-caveats" open');
   assert.equal(renderPrompts(state(), project, runAction, actions([])).includes('class="caveats"'), false);
 });
+
+test("a retired topic is not a gap in the coverage note, and is not offered in either topic menu", () => {
+  const out = renderPrompts(state(), project, runAction, actions([]));
+  has(out, "Every topic has at least one tracked question.", '<option value="t1"');
+  assert.equal(out.includes("Gone"), false);
+  assert.equal(out.includes('<option value="t2"'), false);
+  assert.equal(out.includes("nothing tracked: Gone"), false);
+});
+
+test("a set whose topics are all retired still offers the add form, since retiring the last question retires its topic", () => {
+  const retired = { ...set, topics: set.topics.map((topic) => ({ ...topic, status: "retired" as const })), prompts: [prompt("d", { topicId: "t2", status: "retired" })] };
+  const out = renderPrompts(state({ topicSet: retired }), project, runAction, actions([]));
+  has(out, "Nothing is being asked", "add-prompt-form", "Topic&lt;", "Gone");
+});
+
+test("a set with no topics at all offers no add form", () => {
+  const out = renderPrompts(state({ topicSet: { ...set, topics: [], prompts: [] } }), project, runAction, actions([]));
+  assert.equal(out.includes("add-prompt-form"), false);
+});

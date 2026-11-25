@@ -15,7 +15,7 @@ import { answerTasks } from "./pages/task-views.js";
 import { ProjectBusy } from "./busy.js";
 import { isOpen, loadForProject, settlePull } from "./pull.js";
 import { renderBrandVisibility } from "./pages/rivals-view.js";
-import { filteredPrompts, promptBulkInner, promptStandings, renderPromptGroups, renderPrompts, topicStandings, livePrompts, promptResultSummary, type PriorityQuestion } from "./pages/prompts-view.js";
+import { filteredPrompts, promptBulkInner, promptStandings, renderPromptGroups, renderPrompts, topicStandings, liveTopics, livePrompts, promptResultSummary, type PriorityQuestion } from "./pages/prompts-view.js";
 import type { TopicSet } from "../../product/topics/topic-schema.js";
 import type { DemandReport } from "../../product/demand/corpus-schema.js";
 import type { CompetitorSet } from "../../product/topics/competitor-set.js";
@@ -79,6 +79,8 @@ export function boot(): void {
     promptSelection: string[]; promptSort: string;
     answerEngine: InsightsShape | null; answerEngineState: LoadState;
     promptRunState: string; promptNotice: Notice;
+    /** A run is starting on the open project, whatever else it is doing. */
+    promptRunning: boolean;
     promptDraft: { topicId: string; text: string; intent: string };
     schedule: Unshaped; scheduleState: LoadState;
     regions: Array<{ id: string; label: string }>; languages: Array<{ id: string; label: string }>;
@@ -128,7 +130,7 @@ export function boot(): void {
     booting: boolean;
   }
 
-    const state: State = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", crawlerUploading:false, crawlerNotice:{ text:"", kind:"" }, plan:null, planState:"idle", marketer:null, drafts:null, claims:null, buying:null, conversations:null, entity:null, marketerState:"idle", marketerNotice:{ text:"", kind:"" }, signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, integrations:[], integrationsState:"idle", externalMetrics:null, externalMetricsState:"idle", externalMetricsPulling:"", externalMetricsNotice:{text:"",kind:""}, digest:null, digestState:"idle", demand:null, demandState:"idle", repetitions:Number(savedPreference("repetitions", "1")) || 1, runLanguageId:savedPreference("runLanguage", "en"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", promptFilters:{ query:"", topicId:"", intent:"", status:"" }, promptSelection:[], answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", history:null, historyState:"idle", rivals:null, rivalsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, lastRun:null, runPollTimer:0, runFeed:[], runFeedState:"idle", runFeedTimer:0, rankPlan:null, rankPlanState:"idle", brief:null, briefState:"idle", outreach:null, outreachState:"idle", harvesting:false, paste:null, pasteState:"idle", pasteCount:Number(savedPreference("pasteCount", "2")) || 2, uptake:null, uptakeState:"idle", interference:null, interferenceState:"idle", concentration:null, concentrationState:"idle", shape:null, shapeState:"idle", kinds:null, kindsState:"idle", experiments:null, experimentsState:"idle", check:null, checkState:"idle", credit:null, creditState:"idle", reach:null, reachState:"idle", searchDemand:null, searchDemandState:"idle", pulling:false, personas:null, personasState:"idle", priority:null, priorityState:"idle", promptSort:"topic", referrals:null, referralsState:"idle", pullingReferrals:false, engines:null, enginesState:"idle", actions:[], actionsState:"idle", matrixOpen:[], editingBoard:false, brandIcons:{}, panelViews:savedJson("panelViews"), matrixHidden:savedList("matrixHidden"), panelOpen:savedList("panelOpen"), booting:true };
+    const state: State = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", crawlerUploading:false, crawlerNotice:{ text:"", kind:"" }, plan:null, planState:"idle", marketer:null, drafts:null, claims:null, buying:null, conversations:null, entity:null, marketerState:"idle", marketerNotice:{ text:"", kind:"" }, signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, integrations:[], integrationsState:"idle", externalMetrics:null, externalMetricsState:"idle", externalMetricsPulling:"", externalMetricsNotice:{text:"",kind:""}, digest:null, digestState:"idle", demand:null, demandState:"idle", repetitions:Number(savedPreference("repetitions", "1")) || 1, runLanguageId:savedPreference("runLanguage", "en"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", promptFilters:{ query:"", topicId:"", intent:"", status:"" }, promptSelection:[], answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptRunning:false, promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", history:null, historyState:"idle", rivals:null, rivalsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, lastRun:null, runPollTimer:0, runFeed:[], runFeedState:"idle", runFeedTimer:0, rankPlan:null, rankPlanState:"idle", brief:null, briefState:"idle", outreach:null, outreachState:"idle", harvesting:false, paste:null, pasteState:"idle", pasteCount:Number(savedPreference("pasteCount", "2")) || 2, uptake:null, uptakeState:"idle", interference:null, interferenceState:"idle", concentration:null, concentrationState:"idle", shape:null, shapeState:"idle", kinds:null, kindsState:"idle", experiments:null, experimentsState:"idle", check:null, checkState:"idle", credit:null, creditState:"idle", reach:null, reachState:"idle", searchDemand:null, searchDemandState:"idle", pulling:false, personas:null, personasState:"idle", priority:null, priorityState:"idle", promptSort:"topic", referrals:null, referralsState:"idle", pullingReferrals:false, engines:null, enginesState:"idle", actions:[], actionsState:"idle", matrixOpen:[], editingBoard:false, brandIcons:{}, panelViews:savedJson("panelViews"), matrixHidden:savedList("matrixHidden"), panelOpen:savedList("panelOpen"), booting:true };
     const app = document.getElementById("app") as HTMLElement;
     let renderOverride: (() => void) | null = null;
     // render() was a hoisted declaration that a later line reassigned. A
@@ -158,6 +160,8 @@ export function boot(): void {
 
     const project = () => state.currentProjects.find((item) => item.id === state.selectedId) || null;
     const busy = new ProjectBusy();
+    /** What the page shows when several are in flight: a proposal or a run outranks a save. */
+    const PROMPT_KINDS = ["generating", "running", "stopping", "saving"];
     const footerActions = { loadHome };
     const rivalsActions = { loadRankingPlan, loadActions, loadPersonas, loadRivals, loadDemand };
     const homeActions = { loadHome, loadAnswerEngine, loadOutreach, loadRankingPlan, loadDigest, loadSearchDemand, loadReferrals };
@@ -237,6 +241,8 @@ export function boot(): void {
       state.pulling = busy.has(id, "search-pull");
       state.pullingReferrals = busy.has(id, "referrals-pull");
       state.crawlerUploading = busy.has(id, "crawler-upload");
+      state.promptRunning = busy.has(id, "prompt:running");
+      state.promptRunState = PROMPT_KINDS.find((kind) => busy.has(id, "prompt:" + kind)) || "idle";
       state.externalMetricsPulling = busy.has(id, "metrics:ahrefs") ? "ahrefs" : busy.has(id, "metrics:semrush") ? "semrush" : "";
     }
 
@@ -336,7 +342,11 @@ export function boot(): void {
       state.topicState = "loading";
       const startedFor = state.selectedId;
       await loadForProject(startedFor, () => state.selectedId, () => request("/api/projects/" + encodeURIComponent(startedFor) + "/topics"),
-        (value) => { state.topicSet = value; state.topicState = "ready"; }, () => { state.topicState = "error"; });
+        (value) => {
+          state.topicSet = value;
+          state.topicState = "ready";
+          if (!liveTopics(value).some((topic) => topic.id === state.promptFilters.topicId)) state.promptFilters.topicId = "";
+        }, () => { state.topicState = "error"; });
       render();
     }
 
@@ -482,7 +492,7 @@ export function boot(): void {
         if (live) state.runPollTimer = window.setTimeout(loadLiveRun, 4000);
         // A start takes a moment to appear, and one missed poll used to leave
         // the page claiming nothing was running for the length of the run.
-        else if (state.promptRunState === "running") state.runPollTimer = window.setTimeout(loadLiveRun, 1500);
+        else if (busy.has(startedFor, "prompt:running")) state.runPollTimer = window.setTimeout(loadLiveRun, 1500);
         else if (had) { state.answerEngineState = "idle"; state.rankPlanState = "idle"; state.actionsState = "idle"; state.outreachState = "idle"; state.uptakeState = "idle"; loadAnswerEngine(); if (state.panel && state.panel.kind === "run") loadRunFeed(); }
         render();
       } catch (error) {
@@ -588,21 +598,25 @@ export function boot(): void {
     async function postPrompts(path: string, body: Payload, working: string, done: string) {
       if (!state.selectedId) return;
       const startedFor = state.selectedId;
-      state.promptRunState = working;
-      state.promptNotice = { text:"", kind:"" };
-      render();
       try {
+        busy.start(startedFor, "prompt:" + working);
+        syncBusy();
+        state.promptNotice = { text:"", kind:"" };
+        render();
         const verb = path === "/prompt-schedule" ? "PUT" : "POST";
         await request("/api/projects/" + encodeURIComponent(startedFor) + path, { method:verb, headers:{"Content-Type":"application/json"}, body: JSON.stringify(body || {}) });
-        state.promptRunState = "idle";
         if (isOpen(startedFor, state.selectedId)) {
           state.promptNotice = { text: done, kind: "success" };
           state.topicState = "idle";
           state.answerEngineState = "idle";
         }
       } catch (error) {
-        state.promptRunState = "idle";
-        if (isOpen(startedFor, state.selectedId)) state.promptNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind: "error" };
+        if (isOpen(startedFor, state.selectedId)) {
+          state.promptNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind: "error" };
+        }
+      } finally {
+        busy.end(startedFor, "prompt:" + working);
+        syncBusy();
       }
       render();
     }
@@ -667,11 +681,11 @@ export function boot(): void {
     async function uploadCrawlerLog(file: File) {
       const selected = project();
       if (!selected || busy.has(selected.id, "crawler-upload")) return;
-      busy.start(selected.id, "crawler-upload");
-      syncBusy();
-      state.crawlerNotice = { text: "", kind: "" };
-      render();
       try {
+        busy.start(selected.id, "crawler-upload");
+        syncBusy();
+        state.crawlerNotice = { text: "", kind: "" };
+        render();
         const text = await file.text();
         const result = await request("/api/projects/" + selected.id + "/crawlers", {
           method: "POST",
@@ -1169,11 +1183,11 @@ export function boot(): void {
     async function pullExternalMetrics(source: "ahrefs" | "semrush", control: HTMLElement | null) {
       if (!state.selectedId || state.externalMetricsPulling) return;
       const startedFor = state.selectedId;
-      busy.start(startedFor, "metrics:" + source);
-      syncBusy();
-      state.externalMetricsNotice = { text:"", kind:"" };
-      render();
       try {
+        busy.start(startedFor, "metrics:" + source);
+        syncBusy();
+        state.externalMetricsNotice = { text:"", kind:"" };
+        render();
         const result = await runAction(control, { loading:"Pulling…", success:"Saved", error:"Pull failed" }, () => request<{ snapshot: { source: string } }>("/api/projects/" + encodeURIComponent(startedFor) + "/external-metrics", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ source }) }));
         if (isOpen(startedFor, state.selectedId)) {
           state.externalMetricsNotice = { text: (result.snapshot.source === "ahrefs" ? "Ahrefs" : "Semrush") + " estimate saved as a dated snapshot.", kind:"success" };
@@ -1304,9 +1318,9 @@ export function boot(): void {
     // A second run is refused by the server, so the page must not offer one.
     function runActionButton(label: string, enabled?: boolean) {
       if (state.liveRun) return button({ label: "Watch the run", kind: "primary", on: { "data-open-run": state.liveRun.id } });
-      const busy = state.promptRunState === "running";
+      const starting = busy.has(state.selectedId, "prompt:running");
       const last = state.lastRun ? button({ label: "Last run", on: { "data-open-run": state.lastRun.id } }) : '';
-      return last + languagePicker(state.languages, state.runLanguageId) + repetitionPicker(state.repetitions) + button({ label: (busy ? "Starting…" : html(label)), kind: "primary", disabled: busy || enabled === false, on: { "data-run-prompts": true } });
+      return last + languagePicker(state.languages, state.runLanguageId) + repetitionPicker(state.repetitions) + button({ label: (starting ? "Starting…" : html(label)), kind: "primary", disabled: starting || enabled === false, on: { "data-run-prompts": true } });
     }
 
     function openRunPane(runId: string) {
@@ -1594,10 +1608,10 @@ export function boot(): void {
     async function harvestPages(refresh?: boolean) {
       if (!state.selectedId || busy.has(state.selectedId, "harvest")) return;
       const startedFor = state.selectedId;
-      busy.start(startedFor, "harvest");
-      syncBusy();
-      render();
       try {
+        busy.start(startedFor, "harvest");
+        syncBusy();
+        render();
         const where = "/api/projects/" + encodeURIComponent(startedFor) + "/source-pages" + (refresh ? "?refresh=true" : "");
         const result = await request(where, { method:"POST" });
         if (isOpen(startedFor, state.selectedId)) {
@@ -1631,10 +1645,10 @@ export function boot(): void {
     async function pullSearchDemand() {
       if (!state.selectedId || busy.has(state.selectedId, "search-pull")) return;
       const startedFor = state.selectedId;
-      busy.start(startedFor, "search-pull");
-      syncBusy();
-      render();
       try {
+        busy.start(startedFor, "search-pull");
+        syncBusy();
+        render();
         const result = await request("/api/projects/" + encodeURIComponent(startedFor) + "/search-demand", { method:"POST", headers:{"Content-Type":"application/json"}, body:"{}" });
         const settled = settlePull(startedFor, state.selectedId, state.searchDemand, result.report);
         if (settled.next) { state.searchDemand = settled.next; state.searchDemandState = "ready"; }
@@ -1677,10 +1691,10 @@ export function boot(): void {
     async function pullReferrals() {
       if (!state.selectedId || busy.has(state.selectedId, "referrals-pull")) return;
       const startedFor = state.selectedId;
-      busy.start(startedFor, "referrals-pull");
-      syncBusy();
-      render();
       try {
+        busy.start(startedFor, "referrals-pull");
+        syncBusy();
+        render();
         const result = await request("/api/projects/" + encodeURIComponent(startedFor) + "/assistant-referrals", { method:"POST", headers:{"Content-Type":"application/json"}, body:"{}" });
         const settled = settlePull(startedFor, state.selectedId, state.referrals, result.report);
         if (settled.next) state.referrals = settled.next;
@@ -2134,7 +2148,7 @@ export function boot(): void {
     document.addEventListener("click", async (event) => {
       const clicked = el(event.target) as any;
       if (!clicked || !clicked.closest) return;
-      if (clicked.closest("[data-generate-prompts]")) { await postPrompts("/topics/generate", {}, "generating", "A set has been proposed. Read it, then track the questions worth tracking."); return; }
+      if (clicked.closest("[data-generate-prompts]")) { if (busy.has(state.selectedId, "prompt:generating")) return; await postPrompts("/topics/generate", {}, "generating", "A set has been proposed. Read it, then track the questions worth tracking."); return; }
       const retrying = clicked.closest("[data-retry-run]");
       if (retrying) { loadLiveRun(); await postPrompts("/prompt-runs", { retryOf: retrying.getAttribute("data-retry-run") }, "running", "Asking again. Watch it below, or leave the page and come back."); loadLiveRun(); return; }
       if (clicked.closest("[data-run-prompts]")) { loadLiveRun(); await postPrompts("/prompt-runs", { repetitions: state.repetitions, languageIds: [state.runLanguageId] }, "running", "The run has started. Watch it below, or leave the page and come back."); loadLiveRun(); return; }

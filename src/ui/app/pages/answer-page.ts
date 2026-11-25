@@ -21,7 +21,7 @@ export interface AnswerPageState {
   answerEngineState: LoadState;
   liveRun: RunRow | null;
   lastRun: RunRow | null;
-  promptRunState: string;
+  promptRunning: boolean;
   panelOpen: string[];
   cited: CitedPages | null;
   citedState: LoadState;
@@ -105,7 +105,7 @@ export function answerPage(state: AnswerPageState, selected: ProjectRow | null, 
   // Asking everything again is the wrong price for a retry, so the button
   // asks only the combinations that failed, where they failed.
   const retryButton = state.lastRun && state.lastRun.answersFailed && !state.liveRun
-    ? '<div class="inline-actions">' + button({ label: (state.promptRunState === "running" ? "Asking\u2026" : "Ask the " + state.lastRun.answersFailed + " that failed again"), kind: "quiet", disabled: state.promptRunState === "running", on: { "data-retry-run": state.lastRun.id } }) + '</div>'
+    ? '<div class="inline-actions">' + button({ label: (state.promptRunning ? "Asking\u2026" : "Ask the " + state.lastRun.answersFailed + " that failed again"), kind: "quiet", disabled: state.promptRunning, on: { "data-retry-run": state.lastRun.id } }) + '</div>'
     : '';
   // Two codes can share one wording, and printing both reads as a bug.
   const byWords = new Map<string, { count: number; models: string[] }>();

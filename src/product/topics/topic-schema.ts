@@ -91,6 +91,11 @@ export function visibilityPrompts(set: TopicSet): Prompt[] {
   return set.prompts.filter((prompt) => prompt.status === "active" && prompt.measuresVisibility);
 }
 
+/** Topics not marked retired. retire() marks a topic once none of its questions is live, so these are the ones worth offering or checking for a gap. */
+export function liveTopics(set: Pick<TopicSet, "topics">): Topic[] {
+  return set.topics.filter((topic) => topic.status !== "retired");
+}
+
 export function activePrompts(set: TopicSet): Prompt[] {
   return set.prompts.filter((prompt) => prompt.status === "active");
 }

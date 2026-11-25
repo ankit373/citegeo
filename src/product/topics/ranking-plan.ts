@@ -1,4 +1,4 @@
-import { PROMPT_INTENTS, type PromptIntent, type TopicSet } from "./topic-schema.js";
+import { PROMPT_INTENTS, liveTopics, type PromptIntent, type TopicSet } from "./topic-schema.js";
 import type { CitationAnalysis } from "./citation-analysis.js";
 import type { EntityStanding, TopicInsights } from "./topic-insights.js";
 
@@ -251,7 +251,7 @@ export function buildRankingPlan(input: {
     });
   }
 
-  const emptyTopics = set.topics.filter((topic) => !tracked.some((prompt) => prompt.topicId === topic.id));
+  const emptyTopics = liveTopics(set).filter((topic) => !tracked.some((prompt) => prompt.topicId === topic.id));
   if (emptyTopics.length) {
     moves.push({
       id: "empty-topics",
