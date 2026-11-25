@@ -215,6 +215,7 @@ export function boot(): void {
       state.marketer = null; state.drafts = null; state.claims = null; state.buying = null; state.conversations = null; state.entity = null; state.marketerState = "idle";
       state.topicSet = null; state.topicState = "idle";
       state.schedule = null; state.scheduleState = "idle";
+      state.selections = []; state.baselines = []; state.monitoringConfiguration = null; state.configurationState = "idle"; resetDraftSelections();
       state.regions = []; state.languages = [];
       state.filters = { modelId:"", regionId:"", languageId:"", topicId:"" };
       state.promptFilters.topicId = ""; state.promptDraft.topicId = ""; state.promptSelection = [];
