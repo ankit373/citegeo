@@ -12,6 +12,7 @@ import { crawlerUpload, languagePicker, pasteCountPicker, repetitionPicker } fro
 import { blockedSelection, catalogHead, catalogReleasedAt, catalogResultSummary, catalogVendor, modelIsBlocked, openRouterOutOfCredit, providerShortLabel, runsNowCell, selectedRows } from "./components/catalog-rows.js";
 import { mentionChips, paneRun, runIsLive, runPaneProgress } from "./pages/run-pane.js";
 import { answerTasks } from "./pages/task-views.js";
+import { ProjectBusy } from "./busy.js";
 import { isOpen, loadForProject, settlePull } from "./pull.js";
 import { renderBrandVisibility } from "./pages/rivals-view.js";
 import { filteredPrompts, promptBulkInner, promptStandings, renderPromptGroups, renderPrompts, topicStandings, livePrompts, promptResultSummary, type PriorityQuestion } from "./pages/prompts-view.js";
@@ -156,8 +157,7 @@ export function boot(): void {
     const element = (id: string) => document.getElementById(id) as any;
 
     const project = () => state.currentProjects.find((item) => item.id === state.selectedId) || null;
-    /** Which projects have a slow read in flight, so a switch neither shows one project's as busy on another nor lets the other start its own. */
-    const inFlight = { harvest: new Set<string>(), searchPull: new Set<string>(), referralsPull: new Set<string>() };
+    const busy = new ProjectBusy();
     const footerActions = { loadHome };
     const rivalsActions = { loadRankingPlan, loadActions, loadPersonas, loadRivals, loadDemand };
     const homeActions = { loadHome, loadAnswerEngine, loadOutreach, loadRankingPlan, loadDigest, loadSearchDemand, loadReferrals };
@@ -232,9 +232,12 @@ export function boot(): void {
     }
 
     function syncBusy() {
-      state.harvesting = inFlight.harvest.has(state.selectedId);
-      state.pulling = inFlight.searchPull.has(state.selectedId);
-      state.pullingReferrals = inFlight.referralsPull.has(state.selectedId);
+      const id = state.selectedId;
+      state.harvesting = busy.has(id, "harvest");
+      state.pulling = busy.has(id, "search-pull");
+      state.pullingReferrals = busy.has(id, "referrals-pull");
+      state.crawlerUploading = busy.has(id, "crawler-upload");
+      state.externalMetricsPulling = busy.has(id, "metrics:ahrefs") ? "ahrefs" : busy.has(id, "metrics:semrush") ? "semrush" : "";
     }
 
     function setSelectedProject(projectId: string) {
@@ -663,8 +666,9 @@ export function boot(): void {
 
     async function uploadCrawlerLog(file: File) {
       const selected = project();
-      if (!selected || state.crawlerUploading) return;
-      state.crawlerUploading = true;
+      if (!selected || busy.has(selected.id, "crawler-upload")) return;
+      busy.start(selected.id, "crawler-upload");
+      syncBusy();
       state.crawlerNotice = { text: "", kind: "" };
       render();
       try {
@@ -681,8 +685,10 @@ export function boot(): void {
         }
       } catch (error) {
         if (isOpen(selected.id, state.selectedId)) state.crawlerNotice = { text: error instanceof Error ? error.message : String(error), kind: "bad" };
+      } finally {
+        busy.end(selected.id, "crawler-upload");
+        syncBusy();
       }
-      state.crawlerUploading = false;
       render();
     }
     /** Every marketer surface is read-only and cheap, so one loader fills them
@@ -1163,7 +1169,8 @@ export function boot(): void {
     async function pullExternalMetrics(source: "ahrefs" | "semrush", control: HTMLElement | null) {
       if (!state.selectedId || state.externalMetricsPulling) return;
       const startedFor = state.selectedId;
-      state.externalMetricsPulling = source;
+      busy.start(startedFor, "metrics:" + source);
+      syncBusy();
       state.externalMetricsNotice = { text:"", kind:"" };
       render();
       try {
@@ -1174,8 +1181,10 @@ export function boot(): void {
         }
       } catch (error) {
         if (isOpen(startedFor, state.selectedId)) state.externalMetricsNotice = { text: error instanceof Error ? error.message : String(error), kind:"error" };
+      } finally {
+        busy.end(startedFor, "metrics:" + source);
+        syncBusy();
       }
-      state.externalMetricsPulling = "";
       if (!isOpen(startedFor, state.selectedId)) { render(); return; }
       await loadExternalMetrics();
     }
@@ -1583,9 +1592,9 @@ export function boot(): void {
     }
 
     async function harvestPages(refresh?: boolean) {
-      if (!state.selectedId || inFlight.harvest.has(state.selectedId)) return;
+      if (!state.selectedId || busy.has(state.selectedId, "harvest")) return;
       const startedFor = state.selectedId;
-      inFlight.harvest.add(startedFor);
+      busy.start(startedFor, "harvest");
       syncBusy();
       render();
       try {
@@ -1603,9 +1612,10 @@ export function boot(): void {
         }
       } catch (error) {
         if (isOpen(startedFor, state.selectedId)) state.promptNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind:"error" };
+      } finally {
+        busy.end(startedFor, "harvest");
+        syncBusy();
       }
-      inFlight.harvest.delete(startedFor);
-      syncBusy();
       render();
     }
 
@@ -1619,9 +1629,9 @@ export function boot(): void {
     }
 
     async function pullSearchDemand() {
-      if (!state.selectedId || inFlight.searchPull.has(state.selectedId)) return;
+      if (!state.selectedId || busy.has(state.selectedId, "search-pull")) return;
       const startedFor = state.selectedId;
-      inFlight.searchPull.add(startedFor);
+      busy.start(startedFor, "search-pull");
       syncBusy();
       render();
       try {
@@ -1631,9 +1641,10 @@ export function boot(): void {
         if (settled.sameProject) state.promptNotice = { text: result.report.queries + " query row(s) read from Search Console.", kind:"success" };
       } catch (error) {
         if (isOpen(startedFor, state.selectedId)) state.promptNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind:"error" };
+      } finally {
+        busy.end(startedFor, "search-pull");
+        syncBusy();
       }
-      inFlight.searchPull.delete(startedFor);
-      syncBusy();
       render();
     }
 
@@ -1664,9 +1675,9 @@ export function boot(): void {
     }
 
     async function pullReferrals() {
-      if (!state.selectedId || inFlight.referralsPull.has(state.selectedId)) return;
+      if (!state.selectedId || busy.has(state.selectedId, "referrals-pull")) return;
       const startedFor = state.selectedId;
-      inFlight.referralsPull.add(startedFor);
+      busy.start(startedFor, "referrals-pull");
       syncBusy();
       render();
       try {
@@ -1676,9 +1687,10 @@ export function boot(): void {
         if (settled.sameProject) state.promptNotice = { text:"Analytics read.", kind:"success" };
       } catch (error) {
         if (isOpen(startedFor, state.selectedId)) state.promptNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind:"error" };
+      } finally {
+        busy.end(startedFor, "referrals-pull");
+        syncBusy();
       }
-      inFlight.referralsPull.delete(startedFor);
-      syncBusy();
       render();
     }
 

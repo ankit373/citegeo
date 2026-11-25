@@ -269,3 +269,35 @@ test("pulling Search Console on one project does not show as busy on another, an
   await first.answered;
   await expect(card.getByRole("button", { name: "Pull the last 90 days" })).toBeVisible();
 });
+
+test("pulling Analytics referrals on one project does not show as busy on another, and is busy again on return", async ({ page }) => {
+  const status = { configured: true, propertyId: "123", detail: "Connected.", report: null };
+  for (const project of ["Acme", "Other"]) {
+    await page.route(`**/api/projects/${projectIds[project]}/assistant-referrals`, async (route) => {
+      if (route.request().method() === "GET") await route.fulfill({ json: status });
+      else await route.fallback();
+    });
+  }
+  const report = { empty: false, totalSessions: 0, assistants: [] };
+  const first = await holdPost(page, "Acme", "assistant-referrals", async () => ({ report }));
+  await open(page, "Acme", "answer-engine");
+  await openCard(page, "source-referrals");
+  const card = page.locator("[data-fold=\"source-referrals\"]");
+  await card.getByRole("button", { name: "Pull the last 90 days" }).click();
+  await first.asked;
+  await expect(card.getByRole("button", { name: "Reading…" })).toBeVisible();
+
+  await page.selectOption("[data-testid=project-select]", projectIds["Other"]);
+  await expect(page.getByTestId("project-select")).toHaveValue(projectIds["Other"] || "");
+  await openCard(page, "source-referrals");
+  await expect(card.getByRole("button", { name: "Pull the last 90 days" })).toBeEnabled();
+
+  await page.selectOption("[data-testid=project-select]", projectIds["Acme"]);
+  await expect(page.getByTestId("project-select")).toHaveValue(projectIds["Acme"] || "");
+  await openCard(page, "source-referrals");
+  await expect(card.getByRole("button", { name: "Reading…" })).toBeVisible();
+
+  first.release();
+  await first.answered;
+  await expect(card.getByRole("button", { name: "Pull the last 90 days" })).toBeVisible();
+});
