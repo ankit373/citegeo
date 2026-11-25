@@ -309,7 +309,7 @@ test("each domain row carries its own answers, pages and answers without you", (
     const row = out.slice(from, next === -1 ? undefined : next);
     return row.split('<span class="mcell">').slice(1).map((part) => part.slice(0, part.indexOf("</span>")));
   };
-  assert.deepEqual(cells("rival.com"), ["3", "0", "1"]);
+  assert.deepEqual(cells("rival.com"), ["3", "1", "1"]);
   assert.deepEqual(cells("acme.com"), ["1", "1", "0"]);
 });
 

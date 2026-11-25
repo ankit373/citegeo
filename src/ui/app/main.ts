@@ -12,6 +12,7 @@ import { crawlerUpload, languagePicker, pasteCountPicker, repetitionPicker } fro
 import { blockedSelection, catalogHead, catalogReleasedAt, catalogResultSummary, catalogVendor, modelIsBlocked, openRouterOutOfCredit, providerShortLabel, runsNowCell, selectedRows } from "./components/catalog-rows.js";
 import { mentionChips, paneRun, runIsLive, runPaneProgress } from "./pages/run-pane.js";
 import { answerTasks } from "./pages/task-views.js";
+import { ProjectBusy } from "./busy.js";
 import { isOpen, loadForProject, settlePull } from "./pull.js";
 import { renderBrandVisibility } from "./pages/rivals-view.js";
 import { filteredPrompts, promptBulkInner, promptStandings, renderPromptGroups, renderPrompts, topicStandings, livePrompts, promptResultSummary, type PriorityQuestion } from "./pages/prompts-view.js";
@@ -156,6 +157,7 @@ export function boot(): void {
     const element = (id: string) => document.getElementById(id) as any;
 
     const project = () => state.currentProjects.find((item) => item.id === state.selectedId) || null;
+    const busy = new ProjectBusy();
     const footerActions = { loadHome };
     const rivalsActions = { loadRankingPlan, loadActions, loadPersonas, loadRivals, loadDemand };
     const homeActions = { loadHome, loadAnswerEngine, loadOutreach, loadRankingPlan, loadDigest, loadSearchDemand, loadReferrals };
@@ -229,9 +231,19 @@ export function boot(): void {
       clearPanel();
     }
 
+    function syncBusy() {
+      const id = state.selectedId;
+      state.harvesting = busy.has(id, "harvest");
+      state.pulling = busy.has(id, "search-pull");
+      state.pullingReferrals = busy.has(id, "referrals-pull");
+      state.crawlerUploading = busy.has(id, "crawler-upload");
+      state.externalMetricsPulling = busy.has(id, "metrics:ahrefs") ? "ahrefs" : busy.has(id, "metrics:semrush") ? "semrush" : "";
+    }
+
     function setSelectedProject(projectId: string) {
       if (projectId !== state.selectedId) resetProject();
       state.selectedId = projectId || "";
+      syncBusy();
       if (state.selectedId) localStorage.setItem("citegeo.product.projectId", state.selectedId); else localStorage.removeItem("citegeo.product.projectId");
       const next = new URL(window.location.href);
       if (state.selectedId) next.searchParams.set("projectId", state.selectedId); else next.searchParams.delete("projectId");
@@ -654,8 +666,9 @@ export function boot(): void {
 
     async function uploadCrawlerLog(file: File) {
       const selected = project();
-      if (!selected || state.crawlerUploading) return;
-      state.crawlerUploading = true;
+      if (!selected || busy.has(selected.id, "crawler-upload")) return;
+      busy.start(selected.id, "crawler-upload");
+      syncBusy();
       state.crawlerNotice = { text: "", kind: "" };
       render();
       try {
@@ -672,8 +685,10 @@ export function boot(): void {
         }
       } catch (error) {
         if (isOpen(selected.id, state.selectedId)) state.crawlerNotice = { text: error instanceof Error ? error.message : String(error), kind: "bad" };
+      } finally {
+        busy.end(selected.id, "crawler-upload");
+        syncBusy();
       }
-      state.crawlerUploading = false;
       render();
     }
     /** Every marketer surface is read-only and cheap, so one loader fills them
@@ -1154,7 +1169,8 @@ export function boot(): void {
     async function pullExternalMetrics(source: "ahrefs" | "semrush", control: HTMLElement | null) {
       if (!state.selectedId || state.externalMetricsPulling) return;
       const startedFor = state.selectedId;
-      state.externalMetricsPulling = source;
+      busy.start(startedFor, "metrics:" + source);
+      syncBusy();
       state.externalMetricsNotice = { text:"", kind:"" };
       render();
       try {
@@ -1165,8 +1181,10 @@ export function boot(): void {
         }
       } catch (error) {
         if (isOpen(startedFor, state.selectedId)) state.externalMetricsNotice = { text: error instanceof Error ? error.message : String(error), kind:"error" };
+      } finally {
+        busy.end(startedFor, "metrics:" + source);
+        syncBusy();
       }
-      state.externalMetricsPulling = "";
       if (!isOpen(startedFor, state.selectedId)) { render(); return; }
       await loadExternalMetrics();
     }
@@ -1574,9 +1592,10 @@ export function boot(): void {
     }
 
     async function harvestPages(refresh?: boolean) {
-      if (!state.selectedId || state.harvesting) return;
+      if (!state.selectedId || busy.has(state.selectedId, "harvest")) return;
       const startedFor = state.selectedId;
-      state.harvesting = true;
+      busy.start(startedFor, "harvest");
+      syncBusy();
       render();
       try {
         const where = "/api/projects/" + encodeURIComponent(startedFor) + "/source-pages" + (refresh ? "?refresh=true" : "");
@@ -1593,8 +1612,10 @@ export function boot(): void {
         }
       } catch (error) {
         if (isOpen(startedFor, state.selectedId)) state.promptNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind:"error" };
+      } finally {
+        busy.end(startedFor, "harvest");
+        syncBusy();
       }
-      state.harvesting = false;
       render();
     }
 
@@ -1608,9 +1629,10 @@ export function boot(): void {
     }
 
     async function pullSearchDemand() {
-      if (!state.selectedId || state.pulling) return;
+      if (!state.selectedId || busy.has(state.selectedId, "search-pull")) return;
       const startedFor = state.selectedId;
-      state.pulling = true;
+      busy.start(startedFor, "search-pull");
+      syncBusy();
       render();
       try {
         const result = await request("/api/projects/" + encodeURIComponent(startedFor) + "/search-demand", { method:"POST", headers:{"Content-Type":"application/json"}, body:"{}" });
@@ -1619,8 +1641,10 @@ export function boot(): void {
         if (settled.sameProject) state.promptNotice = { text: result.report.queries + " query row(s) read from Search Console.", kind:"success" };
       } catch (error) {
         if (isOpen(startedFor, state.selectedId)) state.promptNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind:"error" };
+      } finally {
+        busy.end(startedFor, "search-pull");
+        syncBusy();
       }
-      state.pulling = false;
       render();
     }
 
@@ -1651,9 +1675,10 @@ export function boot(): void {
     }
 
     async function pullReferrals() {
-      if (!state.selectedId || state.pullingReferrals) return;
+      if (!state.selectedId || busy.has(state.selectedId, "referrals-pull")) return;
       const startedFor = state.selectedId;
-      state.pullingReferrals = true;
+      busy.start(startedFor, "referrals-pull");
+      syncBusy();
       render();
       try {
         const result = await request("/api/projects/" + encodeURIComponent(startedFor) + "/assistant-referrals", { method:"POST", headers:{"Content-Type":"application/json"}, body:"{}" });
@@ -1662,8 +1687,10 @@ export function boot(): void {
         if (settled.sameProject) state.promptNotice = { text:"Analytics read.", kind:"success" };
       } catch (error) {
         if (isOpen(startedFor, state.selectedId)) state.promptNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind:"error" };
+      } finally {
+        busy.end(startedFor, "referrals-pull");
+        syncBusy();
       }
-      state.pullingReferrals = false;
       render();
     }
 
