@@ -1,6 +1,7 @@
 import { html } from "../dom.js";
 import { button } from "../components/button.js";
 import { connectionCard, onboardingSteps, type ConnectionSettingView } from "../components/onboarding.js";
+import type { ProjectRow } from "../types.js";
 import { externalMetricHistory, type ExternalMetricSnapshotView } from "../components/external-metric-history.js";
 
 // Setup answers one question: what can this machine actually do right now.
@@ -284,4 +285,46 @@ export function setupView(data: SetupData) {
       pulling: data.externalMetricsPulling,
       notice: data.externalMetricsNotice,
     }) + '<section class="section-card"><div class="section-head"><div><h2>Where these come from</h2><p class="subtle">Set in .env at the repository root, then restart the server.</p></div></div><ul class="protocol-list">' + envRows + '</ul></section></section>';
+}
+
+/** What the Setup page reads of the app state: the whole of SetupData bar the project flag and the metric rows. */
+export interface SetupPageState extends Omit<SetupData, "externalMetrics" | "selectedProject"> {
+  externalMetrics: { snapshots: ExternalMetricSnapshotView[] } | null;
+  selectedId: string;
+}
+
+/** The loaders Setup fires while each read is idle. Each must be a hoisted function declaration that reads live state. */
+export interface SetupActions {
+  loadProviders(): void;
+  loadStorage(): void;
+  loadCredentials(): void;
+  loadIntegrations(): void;
+  loadExternalMetrics(): void;
+}
+
+/** The page only draws. Loading stays with the caller, because a view that fetches cannot be rendered twice. */
+export function renderSetup(state: SetupPageState, selected: ProjectRow | null, actions: SetupActions): string {
+  if (state.providersState === "idle") { actions.loadProviders(); }
+  if (state.storageState === "idle") { actions.loadStorage(); }
+  if (state.credentialsState === "idle") { actions.loadCredentials(); }
+  if (state.integrationsState === "idle") { actions.loadIntegrations(); }
+  if (state.externalMetricsState === "idle" && state.selectedId) { actions.loadExternalMetrics(); }
+  return setupView({
+    providers: state.providers,
+    providersState: state.providersState,
+    storage: state.storage,
+    storageState: state.storageState,
+    storageBackend: state.storageBackend,
+    storageCheck: state.storageCheck,
+    credentials: state.credentials,
+    credentialsState: state.credentialsState,
+    credentialNotice: state.credentialNotice,
+    integrations: state.integrations,
+    integrationsState: state.integrationsState,
+    externalMetrics: state.externalMetrics?.snapshots || [],
+    externalMetricsState: state.externalMetricsState,
+    externalMetricsPulling: state.externalMetricsPulling,
+    externalMetricsNotice: state.externalMetricsNotice,
+    selectedProject: Boolean(selected),
+  });
 }
