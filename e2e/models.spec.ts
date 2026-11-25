@@ -4,7 +4,7 @@ import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test, type Page } from "@playwright/test";
-import { expectNoOutbound, loopbackOnly } from "./loopback.js";
+import { expectNoOutbound, loopbackOnly, withoutProviderKeys } from "./loopback.js";
 
 let temporaryRoot = "";
 let server: ChildProcess | undefined;
@@ -32,7 +32,7 @@ async function startSeededServer(): Promise<void> {
   temporaryRoot = await mkdtemp(join(tmpdir(), "citegeo-models-browser-"));
   server = spawn(process.execPath, [join(process.cwd(), "node_modules", "tsx", "dist", "cli.mjs"), "test/fixtures/models-product-server.ts"], {
     cwd: process.cwd(),
-    env: { ...process.env, PORT: String(port), PRODUCT_DATA_DIR: temporaryRoot, RUNS_DIR: join(temporaryRoot, "runs"), MONITORING_DATA_DIR: join(temporaryRoot, "monitoring"), SKIP_DOTENV: "1" },
+    env: { ...withoutProviderKeys(process.env), PORT: String(port), PRODUCT_DATA_DIR: temporaryRoot, RUNS_DIR: join(temporaryRoot, "runs"), MONITORING_DATA_DIR: join(temporaryRoot, "monitoring"), SKIP_DOTENV: "1" },
     stdio: "ignore",
   });
   baseUrl = `http://127.0.0.1:${port}`;
@@ -161,12 +161,12 @@ test("a project with nothing saved says so on Configuration", async ({ page }) =
 test("saving a configuration on one project does not show as saving on another, and is saving again on return", async ({ page }) => {
   let release!: () => void;
   const held = new Promise<void>((resolveHeld) => { release = resolveHeld; });
-  await page.route(`**/api/projects/${projectIds["Acme"]}/baselines`, async (route) => {
+  await page.route(`**/api/projects/${projectIds["Saved switch"]}/baselines`, async (route) => {
     if (route.request().method() !== "POST") { await route.fallback(); return; }
     await held;
     await route.continue();
   });
-  await open(page, "Acme", "models");
+  await open(page, "Saved switch", "models");
   await page.locator("[data-page=\"configuration\"]").first().click();
   await page.getByTestId("save-monitoring-configuration").click();
   await expect(page.getByTestId("save-monitoring-configuration")).toHaveText("Saving…");
@@ -175,14 +175,55 @@ test("saving a configuration on one project does not show as saving on another, 
   await expect(page.getByTestId("project-select")).toHaveValue(projectIds["Blank"] || "");
   await expect(page.getByTestId("save-monitoring-configuration")).toHaveText("Save config v1");
 
-  await page.selectOption("[data-testid=project-select]", projectIds["Acme"]);
-  await expect(page.getByTestId("project-select")).toHaveValue(projectIds["Acme"] || "");
+  await page.selectOption("[data-testid=project-select]", projectIds["Saved switch"]);
+  await expect(page.getByTestId("project-select")).toHaveValue(projectIds["Saved switch"] || "");
   await expect(page.getByTestId("save-monitoring-configuration")).toHaveText("Saving…");
 
-  const saved = page.waitForResponse((response) => response.url().endsWith(`/api/projects/${projectIds["Acme"]}/baselines`) && response.request().method() === "POST");
+  const saved = page.waitForResponse((response) => response.url().endsWith(`/api/projects/${projectIds["Saved switch"]}/baselines`) && response.request().method() === "POST");
   release();
   await saved;
   await expect(page.getByTestId("save-monitoring-configuration")).toContainText("Saved as v2");
+});
+
+test("a second click while a configuration save is in flight sends no second request", async ({ page }) => {
+  let release!: () => void;
+  const held = new Promise<void>((resolveHeld) => { release = resolveHeld; });
+  let posts = 0;
+  await page.route(`**/api/projects/${projectIds["Saved twice"]}/baselines`, async (route) => {
+    if (route.request().method() !== "POST") { await route.fallback(); return; }
+    posts += 1;
+    await held;
+    await route.continue();
+  });
+  await open(page, "Saved twice", "models");
+  await page.locator("[data-page=\"configuration\"]").first().click();
+  const button = page.getByTestId("save-monitoring-configuration");
+  await button.click();
+  await expect(button).toHaveText("Saving…");
+  await button.evaluate((element) => element.removeAttribute("disabled"));
+  await button.click({ force: true });
+  await settle(page);
+  expect(posts).toBe(1);
+  release();
+  await expect(button).toContainText("Saved as v2");
+  expect(posts).toBe(1);
+});
+
+test("a slow configuration read after a save does not mark the project it was switched to as saved", async ({ page }) => {
+  await open(page, "Saved slow read", "models");
+  await page.locator("[data-page=\"configuration\"]").first().click();
+  await expect(page.getByTestId("save-monitoring-configuration")).toHaveText("Save as config v2");
+  const read = await holdRead(page, "Saved slow read", "monitoring-configuration");
+  await page.getByTestId("save-monitoring-configuration").click();
+  await read.asked;
+
+  await page.selectOption("[data-testid=project-select]", projectIds["Blank"]);
+  await expect(page.getByTestId("project-select")).toHaveValue(projectIds["Blank"] || "");
+  read.release();
+  await read.answered;
+  await settle(page);
+  await expect(page.getByTestId("save-monitoring-configuration")).toHaveText("Save config v1");
+  await expect(page.locator(".view")).not.toContainText("Saved as");
 });
 
 test("Setup lists every provider this server knows, and says nothing can run when none is configured", async ({ page }) => {
@@ -194,9 +235,9 @@ test("Setup lists every provider this server knows, and says nothing can run whe
 });
 
 test("a slow configuration read for the first project does not land on the second", async ({ page }) => {
-  await page.goto(`${baseUrl}/?projectId=${projectIds["Acme"]}`);
-  await expect(page.getByTestId("project-select")).toHaveValue(projectIds["Acme"] || "");
-  const read = await holdRead(page, "Acme", "monitoring-configuration");
+  await page.goto(`${baseUrl}/?projectId=${projectIds["Saved read"]}`);
+  await expect(page.getByTestId("project-select")).toHaveValue(projectIds["Saved read"] || "");
+  const read = await holdRead(page, "Saved read", "monitoring-configuration");
   await page.locator('.sidebar [data-page="models"]').first().click();
   await read.asked;
 

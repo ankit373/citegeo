@@ -5,6 +5,7 @@ import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test, type Page } from "@playwright/test";
+import { withoutProviderKeys } from "./loopback.js";
 
 const validationRoot = join(process.cwd(), "validation", "rebuild-phase-4-2026-09-07");
 // Written by a Phase 3 run into validation/, which is not in the repository.
@@ -40,7 +41,7 @@ async function startServer(): Promise<void> {
   temporaryRoot = await mkdtemp(join(tmpdir(), "citegeo-phase4-browser-"));
   server = spawn(process.execPath, [join(process.cwd(), "node_modules", "tsx", "dist", "cli.mjs"), "test/fixtures/phase4-product-server-v2.ts"], {
     cwd: process.cwd(),
-    env: { ...process.env, PORT: String(port), PRODUCT_DATA_DIR: temporaryRoot, RUNS_DIR: join(temporaryRoot, "runs"), MONITORING_DATA_DIR: join(temporaryRoot, "monitoring"), SKIP_DOTENV: "1" },
+    env: { ...withoutProviderKeys(process.env), PORT: String(port), PRODUCT_DATA_DIR: temporaryRoot, RUNS_DIR: join(temporaryRoot, "runs"), MONITORING_DATA_DIR: join(temporaryRoot, "monitoring"), SKIP_DOTENV: "1" },
     stdio: "ignore",
   });
   baseUrl = `http://127.0.0.1:${port}`;
@@ -71,7 +72,7 @@ async function startRealArchiveServer(): Promise<void> {
   const port = await freePort();
   realArchiveServer = spawn(process.execPath, [join(process.cwd(), "node_modules", "tsx", "dist", "cli.mjs"), "src/product/product-server.ts"], {
     cwd: process.cwd(),
-    env: { ...process.env, PORT: String(port), PRODUCT_DATA_DIR: join(realArchiveRoot, "product-data"), RUNS_DIR: join(realArchiveRoot, "runs"), MONITORING_DATA_DIR: join(realArchiveRoot, "monitoring"), SKIP_DOTENV: "1" },
+    env: { ...withoutProviderKeys(process.env), PORT: String(port), PRODUCT_DATA_DIR: join(realArchiveRoot, "product-data"), RUNS_DIR: join(realArchiveRoot, "runs"), MONITORING_DATA_DIR: join(realArchiveRoot, "monitoring"), SKIP_DOTENV: "1" },
     stdio: "ignore",
   });
   realArchiveBaseUrl = `http://127.0.0.1:${port}`;

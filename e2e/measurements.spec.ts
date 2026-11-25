@@ -4,6 +4,7 @@ import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test, type Page } from "@playwright/test";
+import { withoutProviderKeys } from "./loopback.js";
 
 const validationRoot = join(process.cwd(), "validation", "rebuild-phase-5-2026-09-07");
 const screenshots = join(validationRoot, "screenshots");
@@ -27,7 +28,7 @@ async function freePort(): Promise<number> {
 async function startServer(): Promise<void> {
   const port = await freePort();
   root = await (await import("node:fs/promises")).mkdtemp(join(tmpdir(), "citegeo-phase5-browser-"));
-  server = spawn(process.execPath, [join(process.cwd(), "node_modules", "tsx", "dist", "cli.mjs"), "test/fixtures/measurement-product-server.ts"], { cwd: process.cwd(), env: { ...process.env, AUTH_PASSWORD: "measurement-browser-test", PORT: String(port), PRODUCT_DATA_DIR: root }, stdio: "ignore" });
+  server = spawn(process.execPath, [join(process.cwd(), "node_modules", "tsx", "dist", "cli.mjs"), "test/fixtures/measurement-product-server.ts"], { cwd: process.cwd(), env: { ...withoutProviderKeys(process.env), AUTH_PASSWORD: "measurement-browser-test", PORT: String(port), PRODUCT_DATA_DIR: root }, stdio: "ignore" });
   baseUrl = `http://127.0.0.1:${port}`;
   for (let index = 0; index < 400; index += 1) { try { if ((await fetch(`${baseUrl}/health`)).status === 200) return; } catch (_) { } await wait(50); }
   throw new Error("Phase 5 test server did not start.");

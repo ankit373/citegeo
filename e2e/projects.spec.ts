@@ -4,6 +4,7 @@ import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test, type Page } from "@playwright/test";
+import { withoutProviderKeys } from "./loopback.js";
 
 const screenshotDirectory = join(process.cwd(), "validation", "rebuild-phase-1-2026-09-05", "screenshots");
 let temporaryRoot = "";
@@ -32,7 +33,7 @@ async function startProductServer(): Promise<void> {
   server = spawn(process.execPath, [join(process.cwd(), "node_modules", "tsx", "dist", "cli.mjs"), "src/product/product-server.ts"], {
     cwd: process.cwd(),
     env: {
-      ...process.env,
+      ...withoutProviderKeys(process.env),
       PORT: String(port),
       PRODUCT_DATA_DIR: temporaryRoot,
       RUNS_DIR: join(temporaryRoot, "runs"),

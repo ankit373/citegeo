@@ -302,7 +302,7 @@ export interface SetupActions {
   loadExternalMetrics(): void;
 }
 
-/** The page only draws. Loading stays with the caller, because a view that fetches cannot be rendered twice. */
+/** Fires the idle loaders it is handed; setupView only draws. */
 export function renderSetup(state: SetupPageState, selected: ProjectRow | null, actions: SetupActions): string {
   if (state.providersState === "idle") { actions.loadProviders(); }
   if (state.storageState === "idle") { actions.loadStorage(); }
