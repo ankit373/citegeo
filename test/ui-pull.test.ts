@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { loadForProject, settlePull } from "../src/ui/app/pull.js";
+import { isOpen, loadForProject, settlePull } from "../src/ui/app/pull.js";
 
 interface Status { configured: boolean; detail: string; report: { rows: number } | null }
 
@@ -89,4 +89,30 @@ test("the late response of the first project cannot overwrite the second project
   slowA.resolve("A rows");
   await first;
   assert.equal(slot.data, "B rows");
+});
+
+test("a read of several requests applies all of them together, and one failing fails the read", async () => {
+  const slot = { data: null as [string, string] | null, status: "loading" };
+  await loadForProject("a", () => "a", () => Promise.all([Promise.resolve("schedule"), Promise.resolve("regions")]), (pair) => { slot.data = [pair[0], pair[1]]; slot.status = "ready"; }, () => { slot.status = "error"; });
+  assert.deepEqual(slot, { data: ["schedule", "regions"], status: "ready" });
+  const broken = { status: "loading" };
+  await loadForProject("a", () => "a", () => Promise.all([Promise.resolve("schedule"), Promise.reject(new Error("regions down"))]), () => { broken.status = "ready"; }, () => { broken.status = "error"; });
+  assert.equal(broken.status, "error");
+});
+
+test("a read of several requests for another project is dropped whole", async () => {
+  let open = "a";
+  const slot = { status: "loading" };
+  const late = deferred<string>();
+  const read = loadForProject("a", () => open, () => Promise.all([late.promise, Promise.resolve("regions")]), () => { slot.status = "ready"; }, () => { slot.status = "error"; });
+  open = "b";
+  late.resolve("schedule");
+  assert.equal(await read, false);
+  assert.equal(slot.status, "loading");
+});
+
+test("isOpen is true only for the project the request was started for", () => {
+  assert.equal(isOpen("a", "a"), true);
+  assert.equal(isOpen("a", "b"), false);
+  assert.equal(isOpen("a", ""), false);
 });

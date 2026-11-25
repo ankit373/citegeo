@@ -78,3 +78,18 @@ test("Home drops the first project's board when another project is opened", asyn
   await expect(page.locator(".hero")).toHaveCount(0);
   await expect(page.locator(".mrow.mcols-step")).toHaveCount(3);
 });
+
+test("an open answers panel closes when another project is opened", async ({ page }) => {
+  await page.goto(`${baseUrl}/?projectId=${projectIds["Acme"]}`);
+  await page.locator('.sidebar [data-page="brand-visibility"]').first().click();
+  await page.locator("[data-panel=\"rival-topics\"] summary").click();
+  await page.locator("[data-panel=\"rival-topics\"] [data-evidence]").first().click();
+  await expect(page.locator("aside.panel .panel-body")).toBeVisible();
+  expect(await page.evaluate(() => document.body.classList.contains("panel-open"))).toBe(true);
+
+  await page.selectOption("[data-testid=project-select]", projectIds["Blank"]);
+  await expect(page.getByTestId("project-select")).toHaveValue(projectIds["Blank"] || "");
+  await expect(page.locator("aside.panel")).toHaveAttribute("aria-hidden", "true");
+  await expect(page.locator("aside.panel .panel-body")).toHaveCount(0);
+  expect(await page.evaluate(() => document.body.classList.contains("panel-open"))).toBe(false);
+});

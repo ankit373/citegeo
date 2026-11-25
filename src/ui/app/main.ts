@@ -165,7 +165,7 @@ export function boot(): void {
     const sourceActions = { loadInterference, loadConcentration, loadShape, loadCredit, loadKinds, loadOutreach, loadSearchDemand, loadReferrals, loadUptake };
     const currentPaneRun = () => paneRun(state.panel, state.liveRun, state.lastRun);
     const modeText = (mode: string) => mode === "provider_native" ? "Provider Native web search" : "Offline";
-    function setSelectedProject(projectId: string) { if (projectId !== state.selectedId) { state.liveRun = null; state.lastRun = null; state.insights = null; state.insightsState = "idle"; state.plan = null; state.planState = "idle"; state.rankPlan = null; state.rankPlanState = "idle"; state.engines = null; state.enginesState = "idle"; state.actions = []; state.actionsState = "idle"; state.outreach = null; state.outreachState = "idle"; state.paste = null; state.pasteState = "idle"; state.uptake = null; state.uptakeState = "idle"; state.interference = null; state.interferenceState = "idle"; state.concentration = null; state.concentrationState = "idle"; state.shape = null; state.shapeState = "idle"; state.kinds = null; state.kindsState = "idle"; state.experiments = null; state.experimentsState = "idle"; state.check = null; state.checkState = "idle"; state.credit = null; state.creditState = "idle"; state.reach = null; state.reachState = "idle"; state.searchDemand = null; state.searchDemandState = "idle"; state.personas = null; state.personasState = "idle"; state.priority = null; state.priorityState = "idle"; state.referrals = null; state.referralsState = "idle"; state.crawlers = null; state.crawlersState = "idle"; state.signals = null; state.signalsState = "idle"; state.externalMetrics = null; state.externalMetricsState = "idle"; state.externalMetricsPulling = ""; state.externalMetricsNotice = { text:"", kind:"" }; state.home = null; state.homeState = "idle"; state.answerEngine = null; state.answerEngineState = "idle"; state.rivals = null; state.rivalsState = "idle"; state.demand = null; state.demandState = "idle"; state.cited = null; state.citedState = "idle"; state.digest = null; state.digestState = "idle"; state.history = null; state.historyState = "idle"; state.marketer = null; state.drafts = null; state.claims = null; state.buying = null; state.conversations = null; state.entity = null; state.marketerState = "idle"; state.topicSet = null; state.topicState = "idle"; state.schedule = null; state.scheduleState = "idle"; state.brief = null; state.briefState = "idle"; } state.selectedId = projectId || ""; if (state.selectedId) localStorage.setItem("citegeo.product.projectId", state.selectedId); else localStorage.removeItem("citegeo.product.projectId"); const next = new URL(window.location.href); if (state.selectedId) next.searchParams.set("projectId", state.selectedId); else next.searchParams.delete("projectId"); window.history.replaceState({ projectId:state.selectedId }, "", next); }
+    function setSelectedProject(projectId: string) { if (projectId !== state.selectedId) { state.liveRun = null; state.lastRun = null; state.insights = null; state.insightsState = "idle"; state.plan = null; state.planState = "idle"; state.rankPlan = null; state.rankPlanState = "idle"; state.engines = null; state.enginesState = "idle"; state.actions = []; state.actionsState = "idle"; state.outreach = null; state.outreachState = "idle"; state.paste = null; state.pasteState = "idle"; state.uptake = null; state.uptakeState = "idle"; state.interference = null; state.interferenceState = "idle"; state.concentration = null; state.concentrationState = "idle"; state.shape = null; state.shapeState = "idle"; state.kinds = null; state.kindsState = "idle"; state.experiments = null; state.experimentsState = "idle"; state.check = null; state.checkState = "idle"; state.credit = null; state.creditState = "idle"; state.reach = null; state.reachState = "idle"; state.searchDemand = null; state.searchDemandState = "idle"; state.personas = null; state.personasState = "idle"; state.priority = null; state.priorityState = "idle"; state.referrals = null; state.referralsState = "idle"; state.crawlers = null; state.crawlersState = "idle"; state.signals = null; state.signalsState = "idle"; state.externalMetrics = null; state.externalMetricsState = "idle"; state.externalMetricsPulling = ""; state.externalMetricsNotice = { text:"", kind:"" }; state.home = null; state.homeState = "idle"; state.answerEngine = null; state.answerEngineState = "idle"; state.rivals = null; state.rivalsState = "idle"; state.demand = null; state.demandState = "idle"; state.cited = null; state.citedState = "idle"; state.digest = null; state.digestState = "idle"; state.history = null; state.historyState = "idle"; state.marketer = null; state.drafts = null; state.claims = null; state.buying = null; state.conversations = null; state.entity = null; state.marketerState = "idle"; state.topicSet = null; state.topicState = "idle"; state.schedule = null; state.scheduleState = "idle"; state.brief = null; state.briefState = "idle"; document.body.classList.remove("panel-open"); state.panel = null; state.panelState = "idle"; state.panelAnswers = []; state.runFeed = []; state.runFeedState = "idle"; window.clearTimeout(state.runFeedTimer); } state.selectedId = projectId || ""; if (state.selectedId) localStorage.setItem("citegeo.product.projectId", state.selectedId); else localStorage.removeItem("citegeo.product.projectId"); const next = new URL(window.location.href); if (state.selectedId) next.searchParams.set("projectId", state.selectedId); else next.searchParams.delete("projectId"); window.history.replaceState({ projectId:state.selectedId }, "", next); }
     // A shut drawer sits off screen but kept five tab stops, so a keyboard
     // reader fell into a form they could not see. Inert takes it out.
     function setDrawer(open: boolean) { document.body.classList.toggle("drawer-open", open); const drawer = element("project-drawer"); drawer.setAttribute("aria-hidden", String(!open)); drawer.toggleAttribute("inert", !open); }
@@ -225,12 +225,9 @@ export function boot(): void {
     async function loadTopics() {
       if (!state.selectedId || state.topicState === "loading") return;
       state.topicState = "loading";
-      try {
-        state.topicSet = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/topics");
-        state.topicState = "ready";
-      } catch (error) {
-        state.topicState = "error";
-      }
+      const startedFor = state.selectedId;
+      await loadForProject(startedFor, () => state.selectedId, () => request("/api/projects/" + encodeURIComponent(startedFor) + "/topics"),
+        (value) => { state.topicSet = value; state.topicState = "ready"; }, () => { state.topicState = "error"; });
       render();
     }
 
@@ -310,18 +307,16 @@ export function boot(): void {
     async function loadSchedule() {
       if (!state.selectedId || state.scheduleState === "loading") return;
       state.scheduleState = "loading";
-      try {
-        const results = await Promise.all([
-          request("/api/projects/" + encodeURIComponent(state.selectedId) + "/prompt-schedule"),
-          request("/api/projects/" + encodeURIComponent(state.selectedId) + "/regions"),
-        ]);
+      const startedFor = state.selectedId;
+      await loadForProject(startedFor, () => state.selectedId, () => Promise.all([
+        request("/api/projects/" + encodeURIComponent(startedFor) + "/prompt-schedule"),
+        request("/api/projects/" + encodeURIComponent(startedFor) + "/regions"),
+      ]), (results) => {
         state.schedule = results[0];
         state.regions = results[1].regions || [];
         state.languages = results[1].languages || [];
         state.scheduleState = "ready";
-      } catch (error) {
-        state.scheduleState = "error";
-      }
+      }, () => { state.scheduleState = "error"; });
       render();
     }
 
@@ -365,8 +360,10 @@ export function boot(): void {
 
     async function loadLiveRun() {
       if (!state.selectedId) return;
+      const startedFor = state.selectedId;
       try {
-        const result = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/prompt-runs");
+        const result = await request("/api/projects/" + encodeURIComponent(startedFor) + "/prompt-runs");
+        if (!isOpen(startedFor, state.selectedId)) return;
         const rows = result.runs || result || [];
         const live = rows.find ? rows.find((row: any) => row.status === "running" || row.status === "cancelling") : null;
         const had = Boolean(state.liveRun);
@@ -380,7 +377,7 @@ export function boot(): void {
         else if (had) { state.answerEngineState = "idle"; state.rankPlanState = "idle"; state.actionsState = "idle"; state.outreachState = "idle"; state.uptakeState = "idle"; loadAnswerEngine(); if (state.panel && state.panel.kind === "run") loadRunFeed(); }
         render();
       } catch (error) {
-        state.liveRun = null;
+        if (isOpen(startedFor, state.selectedId)) state.liveRun = null;
       }
     }
 
@@ -420,13 +417,16 @@ export function boot(): void {
       document.body.classList.add("panel-open");
       render();
       loadBrief(promptId);
+      const startedFor = state.selectedId;
       try {
         const query = filterQuery();
         const joiner = query ? "&" : "?";
-        const result = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/prompt-answers" + query + joiner + "promptId=" + encodeURIComponent(promptId));
+        const result = await request("/api/projects/" + encodeURIComponent(startedFor) + "/prompt-answers" + query + joiner + "promptId=" + encodeURIComponent(promptId));
+        if (!isOpen(startedFor, state.selectedId)) return;
         state.panelAnswers = result.answers || [];
         state.panelState = "ready";
       } catch (error) {
+        if (!isOpen(startedFor, state.selectedId)) return;
         state.panelState = "error";
       }
       render();
@@ -442,12 +442,15 @@ export function boot(): void {
       state.brief = null;
       document.body.classList.add("panel-open");
       render();
+      const startedFor = state.selectedId;
       try {
-        const result = await request<{ answers: Unshaped[] }>("/api/projects/" + encodeURIComponent(state.selectedId) + "/prompt-answers");
+        const result = await request<{ answers: Unshaped[] }>("/api/projects/" + encodeURIComponent(startedFor) + "/prompt-answers");
+        if (!isOpen(startedFor, state.selectedId)) return;
         state.panelAnswers = (result.answers || []).filter((answer: Unshaped) =>
           (answer.mentions || []).some((row: Unshaped) => row.name === name && (!tone || row.recommendation === tone)));
         state.panelState = "ready";
       } catch (error) {
+        if (!isOpen(startedFor, state.selectedId)) return;
         state.panelState = "error";
       }
       render();
@@ -508,12 +511,8 @@ export function boot(): void {
       const selected = project();
       if (!selected) return;
       state.insightsState = "loading";
-      try {
-        state.insights = await request("/api/projects/" + selected.id + "/insights");
-        state.insightsState = "ready";
-      } catch (error) {
-        state.insightsState = "error";
-      }
+      await loadForProject(selected.id, () => state.selectedId, () => request("/api/projects/" + selected.id + "/insights"),
+        (value) => { state.insights = value; state.insightsState = "ready"; }, () => { state.insightsState = "error"; });
       render();
     }
     async function loadCrawlers() {
@@ -521,12 +520,8 @@ export function boot(): void {
       const selected = project();
       if (!selected) return;
       state.crawlersState = "loading";
-      try {
-        state.crawlers = await request("/api/projects/" + selected.id + "/crawlers");
-        state.crawlersState = "ready";
-      } catch (error) {
-        state.crawlersState = "error";
-      }
+      await loadForProject(selected.id, () => state.selectedId, () => request("/api/projects/" + selected.id + "/crawlers"),
+        (value) => { state.crawlers = value; state.crawlersState = "ready"; }, () => { state.crawlersState = "error"; });
       render();
     }
     function renderCrawlerSection() {
@@ -736,11 +731,10 @@ export function boot(): void {
       state.marketerState = "loading";
       const at = "/api/projects/" + selected.id;
       const quietly = async (path: string) => request(at + path).catch(() => null);
-      try {
-        const [memo, agents, claims, buying, conversations, entity, llms] = await Promise.all([
-          quietly("/aim"), quietly("/agents"), quietly("/factcheck"), quietly("/shopping"),
-          quietly("/conversations"), quietly("/entity"), quietly("/llms-txt"),
-        ]);
+      await loadForProject(selected.id, () => state.selectedId, () => Promise.all([
+        quietly("/aim"), quietly("/agents"), quietly("/factcheck"), quietly("/shopping"),
+        quietly("/conversations"), quietly("/entity"), quietly("/llms-txt"),
+      ]), ([memo, agents, claims, buying, conversations, entity, llms]) => {
         state.marketer = memo?.memo || null;
         state.drafts = agents || null;
         // The report is absent until a check has run, which is not an empty one.
@@ -749,9 +743,7 @@ export function boot(): void {
         state.conversations = conversations?.explorations || [];
         state.entity = { alignment: entity?.alignment || null, llms: llms?.draft || null };
         state.marketerState = "ready";
-      } catch (error) {
-        state.marketerState = "error";
-      }
+      }, () => { state.marketerState = "error"; });
       render();
     }
 
@@ -760,12 +752,8 @@ export function boot(): void {
       const selected = project();
       if (!selected) return;
       state.planState = "loading";
-      try {
-        state.plan = await request("/api/projects/" + selected.id + "/action-plan");
-        state.planState = "ready";
-      } catch (error) {
-        state.planState = "error";
-      }
+      await loadForProject(selected.id, () => state.selectedId, () => request("/api/projects/" + selected.id + "/action-plan"),
+        (value) => { state.plan = value; state.planState = "ready"; }, () => { state.planState = "error"; });
       render();
     }
     // Asking for more a day does not invent more. The shortfall is named, which
@@ -773,12 +761,9 @@ export function boot(): void {
     async function loadPaste() {
       if (!state.selectedId || state.pasteState === "loading") return;
       state.pasteState = "loading";
-      try {
-        state.paste = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/paste-fixes?count=" + state.pasteCount);
-        state.pasteState = "ready";
-      } catch (error) {
-        state.pasteState = "error";
-      }
+      const startedFor = state.selectedId;
+      await loadForProject(startedFor, () => state.selectedId, () => request("/api/projects/" + encodeURIComponent(startedFor) + "/paste-fixes?count=" + state.pasteCount),
+        (value) => { state.paste = value; state.pasteState = "ready"; }, () => { state.pasteState = "error"; });
       render();
     }
 
@@ -824,13 +809,8 @@ export function boot(): void {
       const selected = project();
       if (!selected) return;
       state.signalsState = "loading";
-      try {
-        const result = await request("/api/projects/" + selected.id + "/signals");
-        state.signals = result.snapshots || [];
-        state.signalsState = "ready";
-      } catch (error) {
-        state.signalsState = "error";
-      }
+      await loadForProject(selected.id, () => state.selectedId, () => request("/api/projects/" + selected.id + "/signals"),
+        (result) => { state.signals = result.snapshots || []; state.signalsState = "ready"; }, () => { state.signalsState = "error"; });
       render();
     }
     function signalFacts(signals: any) {
@@ -1062,12 +1042,9 @@ export function boot(): void {
     async function loadExternalMetrics() {
       if (!state.selectedId || state.externalMetricsState === "loading") return;
       state.externalMetricsState = "loading";
-      try {
-        state.externalMetrics = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/external-metrics");
-        state.externalMetricsState = "ready";
-      } catch (error) {
-        state.externalMetricsState = "error";
-      }
+      const startedFor = state.selectedId;
+      await loadForProject(startedFor, () => state.selectedId, () => request("/api/projects/" + encodeURIComponent(startedFor) + "/external-metrics"),
+        (value) => { state.externalMetrics = value; state.externalMetricsState = "ready"; }, () => { state.externalMetricsState = "error"; });
       render();
     }
 
@@ -1221,11 +1198,14 @@ export function boot(): void {
     async function loadRunFeed() {
       const open = state.panel;
       if (!open || open.kind !== "run" || !state.selectedId) return;
+      const startedFor = state.selectedId;
       try {
-        const result = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/prompt-answers?runId=" + encodeURIComponent((open.runId as any)));
+        const result = await request("/api/projects/" + encodeURIComponent(startedFor) + "/prompt-answers?runId=" + encodeURIComponent((open.runId as any)));
+        if (!isOpen(startedFor, state.selectedId)) return;
         state.runFeed = result.answers || [];
         state.runFeedState = "ready";
       } catch (error) {
+        if (!isOpen(startedFor, state.selectedId)) return;
         state.runFeedState = "error";
       }
       window.clearTimeout(state.runFeedTimer);
@@ -1319,14 +1299,11 @@ export function boot(): void {
     async function loadBrief(promptId: string) {
       state.briefState = "loading";
       state.brief = null;
-      try {
-        const query = filterQuery();
-        const joiner = query ? "&" : "?";
-        state.brief = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/prompt-brief" + query + joiner + "promptId=" + encodeURIComponent(promptId));
-        state.briefState = "ready";
-      } catch (error) {
-        state.briefState = "error";
-      }
+      const startedFor = state.selectedId;
+      const query = filterQuery();
+      const joiner = query ? "&" : "?";
+      await loadForProject(startedFor, () => state.selectedId, () => request("/api/projects/" + encodeURIComponent(startedFor) + "/prompt-brief" + query + joiner + "promptId=" + encodeURIComponent(promptId)),
+        (value) => { state.brief = value; state.briefState = "ready"; }, () => { state.briefState = "error"; });
       render();
     }
 
@@ -1392,12 +1369,9 @@ export function boot(): void {
     async function loadUptake() {
       if (!state.selectedId || state.uptakeState === "loading") return;
       state.uptakeState = "loading";
-      try {
-        state.uptake = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/source-uptake");
-        state.uptakeState = "ready";
-      } catch (error) {
-        state.uptakeState = "error";
-      }
+      const startedFor = state.selectedId;
+      await loadForProject(startedFor, () => state.selectedId, () => request("/api/projects/" + encodeURIComponent(startedFor) + "/source-uptake"),
+        (value) => { state.uptake = value; state.uptakeState = "ready"; }, () => { state.uptakeState = "error"; });
       render();
     }
 
@@ -1407,12 +1381,9 @@ export function boot(): void {
     async function loadInterference() {
       if (!state.selectedId || state.interferenceState === "loading") return;
       state.interferenceState = "loading";
-      try {
-        state.interference = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/source-interference");
-        state.interferenceState = "ready";
-      } catch (error) {
-        state.interferenceState = "error";
-      }
+      const startedFor = state.selectedId;
+      await loadForProject(startedFor, () => state.selectedId, () => request("/api/projects/" + encodeURIComponent(startedFor) + "/source-interference"),
+        (value) => { state.interference = value; state.interferenceState = "ready"; }, () => { state.interferenceState = "error"; });
       render();
     }
 
@@ -1422,12 +1393,9 @@ export function boot(): void {
     async function loadConcentration() {
       if (!state.selectedId || state.concentrationState === "loading") return;
       state.concentrationState = "loading";
-      try {
-        state.concentration = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/source-concentration");
-        state.concentrationState = "ready";
-      } catch (error) {
-        state.concentrationState = "error";
-      }
+      const startedFor = state.selectedId;
+      await loadForProject(startedFor, () => state.selectedId, () => request("/api/projects/" + encodeURIComponent(startedFor) + "/source-concentration"),
+        (value) => { state.concentration = value; state.concentrationState = "ready"; }, () => { state.concentrationState = "error"; });
       render();
     }
 
@@ -1436,12 +1404,9 @@ export function boot(): void {
     async function loadShape() {
       if (!state.selectedId || state.shapeState === "loading") return;
       state.shapeState = "loading";
-      try {
-        state.shape = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/source-shape");
-        state.shapeState = "ready";
-      } catch (error) {
-        state.shapeState = "error";
-      }
+      const startedFor = state.selectedId;
+      await loadForProject(startedFor, () => state.selectedId, () => request("/api/projects/" + encodeURIComponent(startedFor) + "/source-shape"),
+        (value) => { state.shape = value; state.shapeState = "ready"; }, () => { state.shapeState = "error"; });
       render();
     }
 
@@ -1450,12 +1415,9 @@ export function boot(): void {
     async function loadCheck() {
       if (!state.selectedId || state.checkState === "loading") return;
       state.checkState = "loading";
-      try {
-        state.check = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/human-check");
-        state.checkState = "ready";
-      } catch (error) {
-        state.checkState = "error";
-      }
+      const startedFor = state.selectedId;
+      await loadForProject(startedFor, () => state.selectedId, () => request("/api/projects/" + encodeURIComponent(startedFor) + "/human-check"),
+        (value) => { state.check = value; state.checkState = "ready"; }, () => { state.checkState = "error"; });
       render();
     }
 
@@ -1464,14 +1426,18 @@ export function boot(): void {
       const field = control.getAttribute("data-verdict-field") || "";
       const agreed = control.getAttribute("data-verdict-agreed") === "true";
       const correction = control.getAttribute("data-verdict-correction") || "";
+      const startedFor = state.selectedId;
       try {
-        state.check = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/human-check", {
+        const checked = await request("/api/projects/" + encodeURIComponent(startedFor) + "/human-check", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id, field, agreed, correction }),
         });
+        if (!isOpen(startedFor, state.selectedId)) return;
+        state.check = checked;
         state.checkState = "ready";
       } catch (error) {
+        if (!isOpen(startedFor, state.selectedId)) return;
         state.promptNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind: "error" };
       }
       render();
@@ -1482,12 +1448,9 @@ export function boot(): void {
     async function loadCredit() {
       if (!state.selectedId || state.creditState === "loading") return;
       state.creditState = "loading";
-      try {
-        state.credit = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/source-credit");
-        state.creditState = "ready";
-      } catch (error) {
-        state.creditState = "error";
-      }
+      const startedFor = state.selectedId;
+      await loadForProject(startedFor, () => state.selectedId, () => request("/api/projects/" + encodeURIComponent(startedFor) + "/source-credit"),
+        (value) => { state.credit = value; state.creditState = "ready"; }, () => { state.creditState = "error"; });
       render();
     }
 
@@ -1497,32 +1460,32 @@ export function boot(): void {
     async function loadKinds() {
       if (!state.selectedId || state.kindsState === "loading") return;
       state.kindsState = "loading";
-      try {
-        state.kinds = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/source-kinds");
-        state.kindsState = "ready";
-      } catch (error) {
-        state.kindsState = "error";
-      }
+      const startedFor = state.selectedId;
+      await loadForProject(startedFor, () => state.selectedId, () => request("/api/projects/" + encodeURIComponent(startedFor) + "/source-kinds"),
+        (value) => { state.kinds = value; state.kindsState = "ready"; }, () => { state.kindsState = "error"; });
       render();
     }
 
     async function harvestPages(refresh?: boolean) {
       if (!state.selectedId || state.harvesting) return;
+      const startedFor = state.selectedId;
       state.harvesting = true;
       render();
       try {
-        const where = "/api/projects/" + encodeURIComponent(state.selectedId) + "/source-pages" + (refresh ? "?refresh=true" : "");
+        const where = "/api/projects/" + encodeURIComponent(startedFor) + "/source-pages" + (refresh ? "?refresh=true" : "");
         const result = await request(where, { method:"POST" });
-        state.outreach = result.plan;
-        state.outreachState = "ready";
-        state.promptNotice = { text: result.read + " page(s) read, " + result.skipped + " already read or over the cap, " + result.failed + " would not load.", kind:"success" };
-        state.uptakeState = "idle";
-        state.interferenceState = "idle";
-        state.creditState = "idle";
-        state.shapeState = "idle";
-        state.kindsState = "idle";
+        if (isOpen(startedFor, state.selectedId)) {
+          state.outreach = result.plan;
+          state.outreachState = "ready";
+          state.promptNotice = { text: result.read + " page(s) read, " + result.skipped + " already read or over the cap, " + result.failed + " would not load.", kind:"success" };
+          state.uptakeState = "idle";
+          state.interferenceState = "idle";
+          state.creditState = "idle";
+          state.shapeState = "idle";
+          state.kindsState = "idle";
+        }
       } catch (error) {
-        state.promptNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind:"error" };
+        if (isOpen(startedFor, state.selectedId)) state.promptNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind:"error" };
       }
       state.harvesting = false;
       render();
@@ -1531,12 +1494,9 @@ export function boot(): void {
     async function loadSearchDemand() {
       if (!state.selectedId || state.searchDemandState === "loading") return;
       state.searchDemandState = "loading";
-      try {
-        state.searchDemand = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/search-demand");
-        state.searchDemandState = "ready";
-      } catch (error) {
-        state.searchDemandState = "error";
-      }
+      const startedFor = state.selectedId;
+      await loadForProject(startedFor, () => state.selectedId, () => request("/api/projects/" + encodeURIComponent(startedFor) + "/search-demand"),
+        (value) => { state.searchDemand = value; state.searchDemandState = "ready"; }, () => { state.searchDemandState = "error"; });
       render();
     }
 
@@ -1577,12 +1537,9 @@ export function boot(): void {
     async function loadReferrals() {
       if (!state.selectedId || state.referralsState === "loading") return;
       state.referralsState = "loading";
-      try {
-        state.referrals = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/assistant-referrals");
-        state.referralsState = "ready";
-      } catch (error) {
-        state.referralsState = "error";
-      }
+      const startedFor = state.selectedId;
+      await loadForProject(startedFor, () => state.selectedId, () => request("/api/projects/" + encodeURIComponent(startedFor) + "/assistant-referrals"),
+        (value) => { state.referrals = value; state.referralsState = "ready"; }, () => { state.referralsState = "error"; });
       render();
     }
 
@@ -1778,12 +1735,9 @@ export function boot(): void {
     async function loadExperiments() {
       if (!state.selectedId || state.experimentsState === "loading") return;
       state.experimentsState = "loading";
-      try {
-        state.experiments = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/experiments");
-        state.experimentsState = "ready";
-      } catch (error) {
-        state.experimentsState = "error";
-      }
+      const startedFor = state.selectedId;
+      await loadForProject(startedFor, () => state.selectedId, () => request("/api/projects/" + encodeURIComponent(startedFor) + "/experiments"),
+        (value) => { state.experiments = value; state.experimentsState = "ready"; }, () => { state.experimentsState = "error"; });
       render();
     }
 
@@ -1797,8 +1751,9 @@ export function boot(): void {
       const name = window.prompt("Name this experiment.");
       if (!name || !name.trim()) return;
       const changed = window.prompt("What did you change? Write it down now, so it can be checked later.") || "";
+      const startedFor = state.selectedId;
       try {
-        state.experiments = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/experiments", {
+        const started = await request("/api/projects/" + encodeURIComponent(startedFor) + "/experiments", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -1810,19 +1765,26 @@ export function boot(): void {
             treatedPromptIds: selected,
           }),
         });
+        if (!isOpen(startedFor, state.selectedId)) return;
+        state.experiments = started;
         state.experimentsState = "ready";
         state.promptNotice = { text: "Experiment started. Run the questions again and the comparison fills.", kind: "success" };
       } catch (error) {
+        if (!isOpen(startedFor, state.selectedId)) return;
         state.promptNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind: "error" };
       }
       render();
     }
 
     async function stopExperiment(id: string) {
+      const startedFor = state.selectedId;
       try {
-        state.experiments = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/experiments/" + encodeURIComponent(id) + "/stop", { method: "POST" });
+        const stopped = await request("/api/projects/" + encodeURIComponent(startedFor) + "/experiments/" + encodeURIComponent(id) + "/stop", { method: "POST" });
+        if (!isOpen(startedFor, state.selectedId)) return;
+        state.experiments = stopped;
         state.experimentsState = "ready";
       } catch (error) {
+        if (!isOpen(startedFor, state.selectedId)) return;
         state.promptNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind: "error" };
       }
       render();
@@ -1980,18 +1942,21 @@ export function boot(): void {
     // with the measurement and without a door into it.
     async function suggestWordings(control: Element) {
       const promptId = control.getAttribute("data-reword-prompt") || "";
+      const startedFor = state.selectedId;
       await runAction(control, { loading: "Asking\u2026", success: "Added", error: "Failed" }, async () => {
-        const result = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/prompts/suggest-wordings", {
+        const result = await request("/api/projects/" + encodeURIComponent(startedFor) + "/prompts/suggest-wordings", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ promptId, count: 3 }),
         });
+        if (!isOpen(startedFor, state.selectedId)) return;
         state.topicSet = result.set || result;
         state.promptNotice = result.added === undefined
           ? { text: "Wordings added.", kind: "success" }
           : { text: result.added + " wording(s) added, " + result.skipped + " skipped as blank or already there.", kind: result.added ? "success" : "warning" };
         render();
       }).catch(() => {
+        if (!isOpen(startedFor, state.selectedId)) return;
         state.promptNotice = { text: "Could not get rewordings. The model that writes them needs to be reachable.", kind: "error" };
         render();
       });
@@ -1999,15 +1964,18 @@ export function boot(): void {
 
     async function addWordingByHand(promptId: string, text: string) {
       if (!text.trim()) return;
+      const startedFor = state.selectedId;
       try {
-        const result = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/prompts/wordings", {
+        const result = await request("/api/projects/" + encodeURIComponent(startedFor) + "/prompts/wordings", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ promptId, texts: [text] }),
         });
+        if (!isOpen(startedFor, state.selectedId)) return;
         state.topicSet = result.set || result;
         state.promptNotice = { text: result.added ? "Wording added." : "That wording is already there.", kind: result.added ? "success" : "warning" };
       } catch (error) {
+        if (!isOpen(startedFor, state.selectedId)) return;
         state.promptNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind: "error" };
       }
       render();
@@ -2016,17 +1984,20 @@ export function boot(): void {
     // Declared the same way a rival is, so it retires and resolves like one,
     // and every count that means rival leaves it out.
     async function addDecoy(name: string) {
+      const startedFor = state.selectedId;
       try {
-        await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/competitors/decoy", {
+        await request("/api/projects/" + encodeURIComponent(startedFor) + "/competitors/decoy", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name }),
         });
+        if (!isOpen(startedFor, state.selectedId)) return;
         state.answerEngineState = "idle";
         state.rivalsState = "idle";
         state.promptNotice = { text: "Decoy added. The next read of the answers reports how often it turns up.", kind: "success" };
         loadAnswerEngine();
       } catch (error) {
+        if (!isOpen(startedFor, state.selectedId)) return;
         state.promptNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind: "error" };
       }
       render();
@@ -2035,12 +2006,9 @@ export function boot(): void {
     async function loadPriority() {
       if (!state.selectedId || state.priorityState === "loading") return;
       state.priorityState = "loading";
-      try {
-        state.priority = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/question-priority");
-        state.priorityState = "ready";
-      } catch (error) {
-        state.priorityState = "error";
-      }
+      const startedFor = state.selectedId;
+      await loadForProject(startedFor, () => state.selectedId, () => request("/api/projects/" + encodeURIComponent(startedFor) + "/question-priority"),
+        (value) => { state.priority = value; state.priorityState = "ready"; }, () => { state.priorityState = "error"; });
       render();
     }
 
@@ -2389,12 +2357,9 @@ export function boot(): void {
     async function loadEngines() {
       if (!state.selectedId || state.enginesState === "loading") return;
       state.enginesState = "loading";
-      try {
-        state.engines = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/engines");
-        state.enginesState = "ready";
-      } catch (error) {
-        state.enginesState = "error";
-      }
+      const startedFor = state.selectedId;
+      await loadForProject(startedFor, () => state.selectedId, () => request("/api/projects/" + encodeURIComponent(startedFor) + "/engines"),
+        (value) => { state.engines = value; state.enginesState = "ready"; }, () => { state.enginesState = "error"; });
       render();
     }
 
@@ -2414,12 +2379,16 @@ export function boot(): void {
 
     async function saveEngines(engineIds: any) {
       if (!state.selectedId) return;
+      const startedFor = state.selectedId;
       try {
-        state.engines = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/engines", {
+        const saved = await request("/api/projects/" + encodeURIComponent(startedFor) + "/engines", {
           method:"PUT", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ engineIds: engineIds }),
         });
+        if (!isOpen(startedFor, state.selectedId)) return;
+        state.engines = saved;
         state.enginesState = "ready";
       } catch (error) {
+        if (!isOpen(startedFor, state.selectedId)) return;
         state.enginesState = "error";
       }
       render();
@@ -2429,14 +2398,17 @@ export function boot(): void {
     // discovered by spending one. It loads each once and asks none of them.
     async function probeReachNow(button: any) {
       if (!state.selectedId) return;
+      const startedFor = state.selectedId;
       state.reachState = "loading";
       render();
       try {
-        state.reach = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/engine-reach");
-        state.reachState = "ready";
+        const reached = await request("/api/projects/" + encodeURIComponent(startedFor) + "/engine-reach");
+        if (isOpen(startedFor, state.selectedId)) { state.reach = reached; state.reachState = "ready"; }
       } catch (error) {
-        state.reachState = "error";
-        state.modelNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind: "error" };
+        if (isOpen(startedFor, state.selectedId)) {
+          state.reachState = "error";
+          state.modelNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind: "error" };
+        }
       }
       restoreButton(button);
       render();
