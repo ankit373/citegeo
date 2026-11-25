@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { expectNoOutbound, loopbackOnly } from "./loopback.js";
 
 let temporaryRoot = "";
@@ -242,7 +242,9 @@ test("switching away from a project that is proposing and back still shows it pr
   // A second click here would start a second paid generation.
   await expect(page.getByRole("button", { name: "Proposing…" })).toBeDisabled();
   await expect(page.getByRole("button", { name: "Propose a set" })).toHaveCount(0);
-  await page.getByRole("button", { name: "Proposing…" }).click({ force: true });
+  // Even with the attribute taken off the page, the handler itself refuses.
+  await page.getByRole("button", { name: "Proposing…" }).evaluate((element) => element.removeAttribute("disabled"));
+  await page.getByRole("button", { name: "Proposing…" }).click();
   await page.evaluate(() => new Promise((resolveFrame) => requestAnimationFrame(() => setTimeout(resolveFrame, 300))));
   expect(generates).toBe(1);
 
@@ -278,4 +280,94 @@ test("a save on a project while it is proposing does not end the proposing", asy
   release();
   await done;
   await expect(page.getByRole("button", { name: "Propose a set" })).toBeVisible();
+});
+
+// Answers a POST for one project only after it is released, and passes every other method through.
+async function holdPost(page: Page, project: string, route: string, reply: unknown): Promise<{ asked: Promise<unknown>; release: () => void; answered: Promise<unknown> }> {
+  let release!: () => void;
+  const held = new Promise<void>((resolveHeld) => { release = resolveHeld; });
+  const matches = (candidate: string) => candidate.includes(`/api/projects/${projectIds[project]}/${route}`);
+  await page.route(`**/api/projects/${projectIds[project]}/${route}`, async (request) => {
+    if (request.request().method() !== "POST") { await request.fallback(); return; }
+    await held;
+    await request.fulfill({ json: reply });
+  });
+  return {
+    asked: page.waitForRequest((request) => request.method() === "POST" && matches(request.url())),
+    answered: page.waitForResponse((response) => response.request().method() === "POST" && matches(response.url())),
+    release,
+  };
+}
+
+test("uploading an access log on one project does not show as busy on another, and is busy again on return", async ({ page }) => {
+  const first = projectIds["Acme"] || "";
+  const second = projectIds["Blank"] || "";
+  for (const id of [first, second]) {
+    await page.route(`**/api/projects/${id}/crawlers`, async (route) => {
+      if (route.request().method() === "GET") await route.fulfill({ json: { detail: "No log yet.", activity: null } });
+      else await route.fallback();
+    });
+  }
+  const upload = await holdPost(page, "Acme", "crawlers", { detail: "Read.", linesParsed: 1, activity: null });
+  const other = await holdPost(page, "Blank", "crawlers", { detail: "Read.", linesParsed: 1, activity: null });
+  await page.addInitScript(() => window.localStorage.setItem("citegeo.page", "visibility"));
+  const log = { name: "access.log", mimeType: "text/plain", buffer: Buffer.from("x") };
+
+  await page.goto(`${baseUrl}/?projectId=${first}`);
+  await page.locator("#crawler-log-file").setInputFiles(log);
+  await upload.asked;
+  await expect(page.getByText("Reading the log…")).toBeVisible();
+
+  await page.selectOption("[data-testid=project-select]", second);
+  await expect(page.getByTestId("project-select")).toHaveValue(second);
+  await expect(page.getByText("Upload an access log")).toBeVisible();
+  await page.locator("#crawler-log-file").setInputFiles(log);
+  await other.asked;
+  await expect(page.getByText("Reading the log…")).toBeVisible();
+  other.release();
+  await other.answered;
+  await expect(page.getByText("Upload an access log")).toBeVisible();
+
+  await page.selectOption("[data-testid=project-select]", first);
+  await expect(page.getByTestId("project-select")).toHaveValue(first);
+  await expect(page.getByText("Reading the log…")).toBeVisible();
+
+  upload.release();
+  await upload.answered;
+  await expect(page.getByText("Upload an access log")).toBeVisible();
+});
+
+test("pulling an Ahrefs estimate on one project does not show as busy on another, and is busy again on return", async ({ page }) => {
+  const first = projectIds["Acme"] || "";
+  const second = projectIds["Blank"] || "";
+  await page.route("**/api/credentials", async (route) => {
+    if (route.request().method() !== "GET") { await route.fallback(); return; }
+    await route.fulfill({ json: { closed: false, storageEnabled: true, credentials: [{ providerId: "ahrefs", label: "Ahrefs", kind: "integration", purpose: "", help: "", envKeys: [], settings: [], source: "stored" }] } });
+  });
+  for (const id of [first, second]) {
+    await page.route(`**/api/projects/${id}/external-metrics`, async (route) => {
+      if (route.request().method() === "GET") await route.fulfill({ json: [] });
+      else await route.fallback();
+    });
+  }
+  const pull = await holdPost(page, "Acme", "external-metrics", { snapshot: { source: "ahrefs" } });
+  await page.addInitScript(() => window.localStorage.setItem("citegeo.page", "setup"));
+
+  await page.goto(`${baseUrl}/?projectId=${first}`);
+  const metrics = page.getByTestId("external-metric-history");
+  await metrics.getByRole("button", { name: "Pull estimate" }).first().click();
+  await pull.asked;
+  await expect(metrics.getByRole("button", { name: "Pulling…" })).toBeVisible();
+
+  await page.selectOption("[data-testid=project-select]", second);
+  await expect(page.getByTestId("project-select")).toHaveValue(second);
+  await expect(metrics.getByRole("button", { name: "Pull estimate" }).first()).toBeEnabled();
+
+  await page.selectOption("[data-testid=project-select]", first);
+  await expect(page.getByTestId("project-select")).toHaveValue(first);
+  await expect(metrics.getByRole("button", { name: "Pulling…" })).toBeVisible();
+
+  pull.release();
+  await pull.answered;
+  await expect(metrics.getByRole("button", { name: "Pulling…" })).toHaveCount(0);
 });

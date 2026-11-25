@@ -67,7 +67,7 @@ const failedRun = { id: "r2", status: "completed", answersRequested: 4, answersC
 
 function sourcesState(over: Partial<SourcesState> = {}): SourcesState {
   return {
-    answerEngine: insightsOf(cited), answerEngineState: "ready", liveRun: null, lastRun: null, promptRunState: "idle", panelOpen: [],
+    answerEngine: insightsOf(cited), answerEngineState: "ready", liveRun: null, lastRun: null, promptRunning: false, panelOpen: [],
     cited: analysisOf(cited), citedState: "ready", history: buildCitationHistory(cited), historyState: "ready",
     uptake: null, uptakeState: "ready", outreach: null, outreachState: "ready", harvesting: false, searchDemand: null, searchDemandState: "ready", pulling: false,
     referrals: null, referralsState: "ready", pullingReferrals: false, credit: null, creditState: "ready", kinds: null, kindsState: "ready", shape: null, shapeState: "ready",
@@ -75,9 +75,9 @@ function sourcesState(over: Partial<SourcesState> = {}): SourcesState {
   };
 }
 function trustState(over: Partial<TrustPageState> = {}): TrustPageState {
-  const { answerEngine, answerEngineState, liveRun, lastRun, promptRunState, panelOpen, cited: citedPages, citedState, history, historyState } = sourcesState();
+  const { answerEngine, answerEngineState, liveRun, lastRun, promptRunning, panelOpen, cited: citedPages, citedState, history, historyState } = sourcesState();
   return {
-    answerEngine, answerEngineState, liveRun, lastRun, promptRunState, panelOpen, cited: citedPages, citedState, history, historyState,
+    answerEngine, answerEngineState, liveRun, lastRun, promptRunning, panelOpen, cited: citedPages, citedState, history, historyState,
     check: null, checkState: "ready", experiments: null, experimentsState: "ready", schedule: null, scheduleState: "ready", regions: [], ...over,
   };
 }
@@ -135,7 +135,7 @@ test("the retry button asks only for the failures, and goes while a run is live 
   const failing = { ...insightsOf(cited), answersFailed: 2 } as InsightsShape;
   const withFailed = sourcesState({ answerEngine: failing, lastRun: failedRun });
   has(shell(withFailed), "Ask the 2 that failed again", "data-retry-run");
-  has(shell(sourcesState({ answerEngine: failing, lastRun: failedRun, promptRunState: "running" })), "Asking");
+  has(shell(sourcesState({ answerEngine: failing, lastRun: failedRun, promptRunning: true })), "Asking");
   lacks(shell(sourcesState({ answerEngine: failing, lastRun: { ...failedRun, answersFailed: 0 } })), "that failed again");
   lacks(shell(sourcesState({ answerEngine: failing, lastRun: failedRun, liveRun: { ...failedRun, status: "running" } })), "that failed again");
 });
@@ -292,13 +292,13 @@ test("how many answers carried a source is read against all the answers that com
 
 test("the retry button is disabled while a run is starting, and not otherwise", () => {
   const failing = { ...insightsOf(cited), answersFailed: 2 } as InsightsShape;
-  const retry = (promptRunState: string) => {
-    const out = shell(sourcesState({ answerEngine: failing, lastRun: failedRun, promptRunState }));
+  const retry = (promptRunning: boolean) => {
+    const out = shell(sourcesState({ answerEngine: failing, lastRun: failedRun, promptRunning }));
     const at = out.indexOf("data-retry-run");
     return out.slice(out.lastIndexOf("<button", at), out.indexOf("</button>", at));
   };
-  has(retry("running"), " disabled");
-  lacks(retry("idle"), " disabled");
+  has(retry(true), " disabled");
+  lacks(retry(false), " disabled");
 });
 
 test("each domain row carries its own answers, pages and answers without you", () => {
