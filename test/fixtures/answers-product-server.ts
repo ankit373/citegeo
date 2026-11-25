@@ -68,4 +68,4 @@ const readAt = new Date().toISOString();
 const none = { url: null, readAt };
 await new SiteIconStore(store).save({ "acme.com": none, "other.com": none, "rival.com": none, "news.org": none });
 
-createProductServer().listen(Number(process.env.PORT || 8787));
+createProductServer().listen(Number(process.env.PORT || 8787), "127.0.0.1");

@@ -83,7 +83,7 @@ export interface CitedActions {
 export type SourcesActions = SourceActions & AnswerActions & CitedActions;
 export type TrustPageActions = TrustActions & AnswerActions;
 
-// One shell for the three pages built on the same archive: the loading,
+// One shell for the two pages built on the same archive: the loading,
 // the empty state and every notice live here once rather than three times.
 export function answerPage(state: AnswerPageState, selected: ProjectRow | null, tasks: MeasurementTask[], runAction: RunAction, actions: AnswerActions,
   title: string, subtitle: string, body: (data: InsightsShape, page: AnswerPageWeights) => string): string {

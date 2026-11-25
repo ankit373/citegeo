@@ -283,3 +283,45 @@ test("a history where every page still holds says so", () => {
   const held = { ...base, measurableRuns: 2, pages: base.pages.map((row) => ({ ...row, verdict: "cited" as const })) };
   has(renderCitationHistory(sourcesState({ history: held }), citedActions()), "Every page cited before is still being cited.");
 });
+
+test("how many answers carried a source is read against all the answers that completed", () => {
+  const silent = answer("r2", "b", "09", { citationUrls: [] });
+  const out = renderCitedPages(sourcesState({ cited: analysisOf([...cited, silent]) }), [], fold, citedActions());
+  has(out, "3 of 4 answers carried a source.");
+});
+
+test("the retry button is disabled while a run is starting, and not otherwise", () => {
+  const failing = { ...insightsOf(cited), answersFailed: 2 } as InsightsShape;
+  const retry = (promptRunState: string) => {
+    const out = shell(sourcesState({ answerEngine: failing, lastRun: failedRun, promptRunState }));
+    const at = out.indexOf("data-retry-run");
+    return out.slice(out.lastIndexOf("<button", at), out.indexOf("</button>", at));
+  };
+  has(retry("running"), " disabled");
+  lacks(retry("idle"), " disabled");
+});
+
+test("each domain row carries its own answers, pages and answers without you", () => {
+  const out = renderCitedPages(sourcesState(), [], fold, citedActions());
+  const cells = (domain: string) => {
+    const from = out.indexOf(`<strong>${domain}`);
+    const next = out.indexOf('<div class="mrow', from);
+    const row = out.slice(from, next === -1 ? undefined : next);
+    return row.split('<span class="mcell">').slice(1).map((part) => part.slice(0, part.indexOf("</span>")));
+  };
+  assert.deepEqual(cells("rival.com"), ["3", "0", "1"]);
+  assert.deepEqual(cells("acme.com"), ["1", "1", "0"]);
+});
+
+test("a page that was cited once and not again is worded for the reader, not by its code", () => {
+  const rich = buildCitationHistory([...cited, answer("r3", "a", "15", { citationUrls: ["https://rival.com/best"] })]);
+  const out = renderCitationHistory(sourcesState({ history: rich }), citedActions());
+  has(out, "cited once, never again");
+  lacks(out, ">cited_once<");
+});
+
+test("the formula names each floor where it belongs", () => {
+  const data = { ...insightsOf(cited), weights: { ...insightsOf(cited).weights, prominenceFloor: 0.2, sentimentFloor: 0.7 } } as InsightsShape;
+  const out = renderTrustPage(trustState({ answerEngine: data }), project, [], runAction, fold, () => "", trustActions());
+  has(out, "score = presence \u00d7 (0.2 + 0.8 \u00d7 prominence) \u00d7 (0.7 + 0.3 \u00d7 sentiment) \u00d7 100.");
+});
