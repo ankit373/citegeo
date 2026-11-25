@@ -16,7 +16,7 @@ import { mentionChips, paneRun, renderLiveRun, runIsLive, runPaneProgress } from
 import { renderDecoys, renderFraming, renderHumanCheck, renderExperiments, renderPhrasing, renderSchedule, renderStability, renderTier, renderVariance, renderVersions } from "./pages/trust-sections.js";
 import { answerTasks, taskCta } from "./pages/task-views.js";
 import { renderConcentration, renderCredit, renderDecomposition, renderUptake, renderInterference, renderKinds, renderOutreach, renderReferrals, renderSearchDemand, renderShape } from "./pages/source-sections.js";
-import { settlePull } from "./pull.js";
+import { isOpen, loadForProject, settlePull } from "./pull.js";
 import { dashboardView, renderHome, type AnswerDigest, type CitedPages, type ReferralsPayload } from "./pages/home-view.js";
 import { renderFooter, renderOverview } from "./pages/overview-view.js";
 import { recognitionCountStrip, recognitionRunSummary, renderRecognitionModel, type RecognitionRunDetail } from "./pages/recognition-view.js";
@@ -159,7 +159,7 @@ export function boot(): void {
     const sourceActions = { loadInterference, loadConcentration, loadShape, loadCredit, loadKinds, loadOutreach, loadSearchDemand, loadReferrals, loadUptake };
     const currentPaneRun = () => paneRun(state.panel, state.liveRun, state.lastRun);
     const modeText = (mode: string) => mode === "provider_native" ? "Provider Native web search" : "Offline";
-    function setSelectedProject(projectId: string) { if (projectId !== state.selectedId) { state.liveRun = null; state.lastRun = null; state.insights = null; state.insightsState = "idle"; state.plan = null; state.planState = "idle"; state.rankPlan = null; state.rankPlanState = "idle"; state.engines = null; state.enginesState = "idle"; state.actions = []; state.actionsState = "idle"; state.outreach = null; state.outreachState = "idle"; state.paste = null; state.pasteState = "idle"; state.uptake = null; state.uptakeState = "idle"; state.interference = null; state.interferenceState = "idle"; state.concentration = null; state.concentrationState = "idle"; state.shape = null; state.shapeState = "idle"; state.kinds = null; state.kindsState = "idle"; state.experiments = null; state.experimentsState = "idle"; state.check = null; state.checkState = "idle"; state.credit = null; state.creditState = "idle"; state.reach = null; state.reachState = "idle"; state.searchDemand = null; state.searchDemandState = "idle"; state.personas = null; state.personasState = "idle"; state.priority = null; state.priorityState = "idle"; state.referrals = null; state.referralsState = "idle"; state.crawlers = null; state.crawlersState = "idle"; state.signals = null; state.signalsState = "idle"; state.externalMetrics = null; state.externalMetricsState = "idle"; state.externalMetricsPulling = ""; state.externalMetricsNotice = { text:"", kind:"" }; } state.selectedId = projectId || ""; if (state.selectedId) localStorage.setItem("citegeo.product.projectId", state.selectedId); else localStorage.removeItem("citegeo.product.projectId"); const next = new URL(window.location.href); if (state.selectedId) next.searchParams.set("projectId", state.selectedId); else next.searchParams.delete("projectId"); window.history.replaceState({ projectId:state.selectedId }, "", next); }
+    function setSelectedProject(projectId: string) { if (projectId !== state.selectedId) { state.liveRun = null; state.lastRun = null; state.insights = null; state.insightsState = "idle"; state.plan = null; state.planState = "idle"; state.rankPlan = null; state.rankPlanState = "idle"; state.engines = null; state.enginesState = "idle"; state.actions = []; state.actionsState = "idle"; state.outreach = null; state.outreachState = "idle"; state.paste = null; state.pasteState = "idle"; state.uptake = null; state.uptakeState = "idle"; state.interference = null; state.interferenceState = "idle"; state.concentration = null; state.concentrationState = "idle"; state.shape = null; state.shapeState = "idle"; state.kinds = null; state.kindsState = "idle"; state.experiments = null; state.experimentsState = "idle"; state.check = null; state.checkState = "idle"; state.credit = null; state.creditState = "idle"; state.reach = null; state.reachState = "idle"; state.searchDemand = null; state.searchDemandState = "idle"; state.personas = null; state.personasState = "idle"; state.priority = null; state.priorityState = "idle"; state.referrals = null; state.referralsState = "idle"; state.crawlers = null; state.crawlersState = "idle"; state.signals = null; state.signalsState = "idle"; state.externalMetrics = null; state.externalMetricsState = "idle"; state.externalMetricsPulling = ""; state.externalMetricsNotice = { text:"", kind:"" }; state.home = null; state.homeState = "idle"; state.answerEngine = null; state.answerEngineState = "idle"; state.rivals = null; state.rivalsState = "idle"; state.demand = null; state.demandState = "idle"; state.cited = null; state.citedState = "idle"; state.digest = null; state.digestState = "idle"; state.history = null; state.historyState = "idle"; state.marketer = null; state.drafts = null; state.claims = null; state.buying = null; state.conversations = null; state.entity = null; state.marketerState = "idle"; state.topicSet = null; state.topicState = "idle"; state.schedule = null; state.scheduleState = "idle"; state.brief = null; state.briefState = "idle"; } state.selectedId = projectId || ""; if (state.selectedId) localStorage.setItem("citegeo.product.projectId", state.selectedId); else localStorage.removeItem("citegeo.product.projectId"); const next = new URL(window.location.href); if (state.selectedId) next.searchParams.set("projectId", state.selectedId); else next.searchParams.delete("projectId"); window.history.replaceState({ projectId:state.selectedId }, "", next); }
     // A shut drawer sits off screen but kept five tab stops, so a keyboard
     // reader fell into a form they could not see. Inert takes it out.
     function setDrawer(open: boolean) { document.body.classList.toggle("drawer-open", open); const drawer = element("project-drawer"); drawer.setAttribute("aria-hidden", String(!open)); drawer.toggleAttribute("inert", !open); }
@@ -231,17 +231,16 @@ export function boot(): void {
     async function loadRivals() {
       if (!state.selectedId || state.rivalsState === "loading") return;
       state.rivalsState = "loading";
-      try {
-        state.rivals = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/competitors");
-        state.rivalsState = "ready";
-      } catch (error) {
-        state.rivalsState = "error";
-      }
+      const startedFor = state.selectedId;
+      await loadForProject(startedFor, () => state.selectedId, () => request("/api/projects/" + encodeURIComponent(startedFor) + "/competitors"),
+        (value) => { state.rivals = value; state.rivalsState = "ready"; }, () => { state.rivalsState = "error"; });
       render();
     }
 
     async function rivalAction(path: string, body: Payload, notice: string) {
+      const startedFor = state.selectedId;
       await postPrompts(path, body, "saving", notice);
+      if (!isOpen(startedFor, state.selectedId)) return;
       state.rivalsState = "idle";
       state.answerEngineState = "idle";
       loadRivals();
@@ -250,24 +249,18 @@ export function boot(): void {
     async function loadCited() {
       if (!state.selectedId || state.citedState === "loading") return;
       state.citedState = "loading";
-      try {
-        state.cited = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/cited-pages" + filterQuery());
-        state.citedState = "ready";
-      } catch (error) {
-        state.citedState = "error";
-      }
+      const startedFor = state.selectedId;
+      await loadForProject(startedFor, () => state.selectedId, () => request("/api/projects/" + encodeURIComponent(startedFor) + "/cited-pages" + filterQuery()),
+        (value) => { state.cited = value; state.citedState = "ready"; }, () => { state.citedState = "error"; });
       render();
     }
 
     async function loadHome() {
       if (!state.selectedId || state.homeState === "loading") return;
       state.homeState = "loading";
-      try {
-        state.home = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/home");
-        state.homeState = "ready";
-      } catch (error) {
-        state.homeState = "error";
-      }
+      const startedFor = state.selectedId;
+      await loadForProject(startedFor, () => state.selectedId, () => request("/api/projects/" + encodeURIComponent(startedFor) + "/home"),
+        (value) => { state.home = value; state.homeState = "ready"; }, () => { state.homeState = "error"; });
       render();
     }
 
@@ -354,14 +347,13 @@ export function boot(): void {
     async function loadAnswerEngine() {
       if (!state.selectedId || state.answerEngineState === "loading") return;
       state.answerEngineState = "loading";
-      try {
-        state.answerEngine = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/prompt-insights" + filterQuery());
+      const startedFor = state.selectedId;
+      await loadForProject(startedFor, () => state.selectedId, () => request("/api/projects/" + encodeURIComponent(startedFor) + "/prompt-insights" + filterQuery()), (value) => {
+        state.answerEngine = value;
         state.answerEngineState = "ready";
         const board = ((state.answerEngine as Unshaped).leaderboard as Unshaped[]) || [];
         loadBrandIcons(board.map((row) => String(row.domain || "")).filter(Boolean).slice(0, 24));
-      } catch (error) {
-        state.answerEngineState = "error";
-      }
+      }, () => { state.answerEngineState = "error"; });
       render();
     }
 
@@ -485,19 +477,22 @@ export function boot(): void {
 
     async function postPrompts(path: string, body: Payload, working: string, done: string) {
       if (!state.selectedId) return;
+      const startedFor = state.selectedId;
       state.promptRunState = working;
       state.promptNotice = { text:"", kind:"" };
       render();
       try {
         const verb = path === "/prompt-schedule" ? "PUT" : "POST";
-        await request("/api/projects/" + encodeURIComponent(state.selectedId) + path, { method:verb, headers:{"Content-Type":"application/json"}, body: JSON.stringify(body || {}) });
+        await request("/api/projects/" + encodeURIComponent(startedFor) + path, { method:verb, headers:{"Content-Type":"application/json"}, body: JSON.stringify(body || {}) });
         state.promptRunState = "idle";
-        state.promptNotice = { text: done, kind: "success" };
-        state.topicState = "idle";
-        state.answerEngineState = "idle";
+        if (isOpen(startedFor, state.selectedId)) {
+          state.promptNotice = { text: done, kind: "success" };
+          state.topicState = "idle";
+          state.answerEngineState = "idle";
+        }
       } catch (error) {
         state.promptRunState = "idle";
-        state.promptNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind: "error" };
+        if (isOpen(startedFor, state.selectedId)) state.promptNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind: "error" };
       }
       render();
     }
@@ -1038,14 +1033,10 @@ export function boot(): void {
       const selected = project();
       if (!selected || state.digestState === "loading") return;
       state.digestState = "loading";
-      try {
-        state.digest = await request<AnswerDigest>("/api/projects/" + encodeURIComponent(selected.id) + "/digest");
-        state.digestState = "ready";
-      } catch (error) {
+      await loadForProject(selected.id, () => state.selectedId, () => request<AnswerDigest>("/api/projects/" + encodeURIComponent(selected.id) + "/digest"),
+        (value) => { state.digest = value; state.digestState = "ready"; },
         // Nothing to summarise is a state, not a failure.
-        state.digest = null;
-        state.digestState = "error";
-      }
+        () => { state.digest = null; state.digestState = "error"; });
       render();
     }
 
@@ -1364,38 +1355,34 @@ export function boot(): void {
     async function loadRankingPlan() {
       if (!state.selectedId || state.rankPlanState === "loading") return;
       state.rankPlanState = "loading";
-      try {
-        state.rankPlan = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/ranking-plan" + filterQuery());
-        state.rankPlanState = "ready";
-      } catch (error) {
-        state.rankPlanState = "error";
-      }
+      const startedFor = state.selectedId;
+      await loadForProject(startedFor, () => state.selectedId, () => request("/api/projects/" + encodeURIComponent(startedFor) + "/ranking-plan" + filterQuery()),
+        (value) => { state.rankPlan = value; state.rankPlanState = "ready"; }, () => { state.rankPlanState = "error"; });
       render();
     }
 
     async function loadActions() {
       if (!state.selectedId || state.actionsState === "loading") return;
       state.actionsState = "loading";
-      try {
-        const result = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/actions");
-        state.actions = result.actions || [];
-        state.actionsState = "ready";
-      } catch (error) {
-        state.actionsState = "error";
-      }
+      const startedFor = state.selectedId;
+      await loadForProject(startedFor, () => state.selectedId, () => request("/api/projects/" + encodeURIComponent(startedFor) + "/actions"),
+        (result) => { state.actions = result.actions || []; state.actionsState = "ready"; }, () => { state.actionsState = "error"; });
       render();
     }
 
     async function setActionState(moveId: string, promptId: string, next: string) {
       if (!state.selectedId) return;
+      const startedFor = state.selectedId;
       try {
-        await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/actions", {
+        await request("/api/projects/" + encodeURIComponent(startedFor) + "/actions", {
           method:"PUT", headers:{"Content-Type":"application/json"},
           body: JSON.stringify({ moveId: moveId, promptId: promptId || null, state: next }),
         });
+        if (!isOpen(startedFor, state.selectedId)) return;
         state.actionsState = "idle";
         loadActions();
       } catch (error) {
+        if (!isOpen(startedFor, state.selectedId)) return;
         state.promptNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind:"error" };
         render();
       }
@@ -1513,12 +1500,9 @@ export function boot(): void {
     async function loadOutreach() {
       if (!state.selectedId || state.outreachState === "loading") return;
       state.outreachState = "loading";
-      try {
-        state.outreach = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/source-pages");
-        state.outreachState = "ready";
-      } catch (error) {
-        state.outreachState = "error";
-      }
+      const startedFor = state.selectedId;
+      await loadForProject(startedFor, () => state.selectedId, () => request("/api/projects/" + encodeURIComponent(startedFor) + "/source-pages"),
+        (value) => { state.outreach = value; state.outreachState = "ready"; }, () => { state.outreachState = "error"; });
       render();
     }
 
@@ -1695,17 +1679,16 @@ export function boot(): void {
     async function loadPersonas() {
       if (!state.selectedId || state.personasState === "loading") return;
       state.personasState = "loading";
-      try {
-        state.personas = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/personas");
-        state.personasState = "ready";
-      } catch (error) {
-        state.personasState = "error";
-      }
+      const startedFor = state.selectedId;
+      await loadForProject(startedFor, () => state.selectedId, () => request("/api/projects/" + encodeURIComponent(startedFor) + "/personas"),
+        (value) => { state.personas = value; state.personasState = "ready"; }, () => { state.personasState = "error"; });
       render();
     }
 
     async function personaAction(path: string, body: Payload, done: string) {
+      const startedFor = state.selectedId;
       await postPrompts(path, body, "saving", done);
+      if (!isOpen(startedFor, state.selectedId)) return;
       state.personasState = "idle";
       loadPersonas();
     }
@@ -1827,13 +1810,8 @@ export function boot(): void {
       const selected = project();
       if (!selected || state.demandState === "loading") return;
       state.demandState = "loading";
-      try {
-        state.demand = await request("/api/projects/" + encodeURIComponent(selected.id) + "/prompt-demand");
-        state.demandState = "ready";
-      } catch (error) {
-        state.demand = null;
-        state.demandState = "error";
-      }
+      await loadForProject(selected.id, () => state.selectedId, () => request("/api/projects/" + encodeURIComponent(selected.id) + "/prompt-demand"),
+        (value) => { state.demand = value; state.demandState = "ready"; }, () => { state.demand = null; state.demandState = "error"; });
       render();
     }
 
@@ -1929,12 +1907,9 @@ export function boot(): void {
     async function loadHistory() {
       if (!state.selectedId || state.historyState === "loading") return;
       state.historyState = "loading";
-      try {
-        state.history = await request("/api/projects/" + encodeURIComponent(state.selectedId) + "/source-history");
-        state.historyState = "ready";
-      } catch (error) {
-        state.historyState = "error";
-      }
+      const startedFor = state.selectedId;
+      await loadForProject(startedFor, () => state.selectedId, () => request("/api/projects/" + encodeURIComponent(startedFor) + "/source-history"),
+        (value) => { state.history = value; state.historyState = "ready"; }, () => { state.historyState = "error"; });
       render();
     }
 
