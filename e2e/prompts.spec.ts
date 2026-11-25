@@ -4,6 +4,7 @@ import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test, type Page } from "@playwright/test";
+import { expectNoOutbound, loopbackOnly } from "./loopback.js";
 
 let temporaryRoot = "";
 let server: ChildProcess | undefined;
@@ -52,6 +53,10 @@ async function startSeededServer(): Promise<void> {
 }
 
 test.beforeAll(startSeededServer);
+
+let outbound: () => string[] = () => [];
+test.beforeEach(async ({ page }) => { outbound = await loopbackOnly(page); });
+test.afterEach(() => { expectNoOutbound(outbound); });
 
 test.afterAll(async () => {
   server?.kill("SIGTERM");

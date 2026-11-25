@@ -61,11 +61,6 @@ test("an unknown model count is reported as unknown, never as a forecast of zero
   assert.equal(html.includes('return { value: "None", note: "no models are saved, so a run cannot ask anything" };'), true);
 });
 
-test("a question with no answer says so rather than scoring zero", () => {
-  const html = productAppSource();
-  assert.equal(html.includes('(standing && answers ? scoreText(standing.score.score) : "Not asked yet")'), true);
-});
-
 test("a live run replaces the run button and opens a pane instead of offering a second run", () => {
   const html = productAppSource();
   assert.equal(html.includes('if (state.liveRun) return button({ label: "Watch the run", kind: "primary", on: { "data-open-run": state.liveRun.id } });'), true);

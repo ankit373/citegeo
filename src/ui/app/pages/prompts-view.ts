@@ -98,6 +98,8 @@ function sortedPrompts(state: Pick<PromptsState, "promptSort" | "priority">, row
   return copy;
 }
 
+// Score and rank come from the answer engine, so a question shows whether
+// it is working rather than only that it is tracked.
 export function promptStandings(data: InsightsShape | null): Map<string, PromptStanding> {
   const rows = new Map<string, PromptStanding>();
   if (!data || !data.topics) return rows;
@@ -116,8 +118,10 @@ export function topicStandings(data: InsightsShape | null): Map<string, TopicSta
 
 export function livePrompts(set: PromptSet): Prompt[] { return set.prompts.filter((prompt) => prompt.status !== "retired"); }
 
-/** Every tile on this row counts live prompts, so a topic tile that counted every
- * topic ever generated read as more groups of questions than there are. */
+/** Every tile on this row counts live prompts, and the topic tile counted
+ * every topic ever generated, so a project regenerated against the right
+ * category read as having eight groups of questions and twenty five
+ * questions in five of them. */
 function liveTopics(set: PromptSet) { return set.topics.filter((topic) => topic.status !== "retired"); }
 
 export function filteredPrompts(state: Pick<PromptsState, "promptFilters">, set: PromptSet, standings: Map<string, PromptStanding>): Prompt[] {

@@ -2040,10 +2040,6 @@ export function boot(): void {
       );
     }
 
-
-
-    // Score and rank come from the answer engine, so a question shows whether
-    // it is working rather than only that it is tracked.
     // The comparison had no way to be fed from the product at all: it shipped
     // with the measurement and without a door into it.
     async function suggestWordings(control: Element) {
