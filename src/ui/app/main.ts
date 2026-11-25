@@ -225,6 +225,7 @@ export function boot(): void {
       state.promptFilters.topicId = ""; state.promptDraft.topicId = ""; state.promptSelection = [];
       state.promptNotice = { text:"", kind:"" }; state.crawlerNotice = { text:"", kind:"" }; state.marketerNotice = { text:"", kind:"" };
       state.modelNotice = { text:"", kind:"" }; state.externalMetricsNotice = { text:"", kind:"" }; state.monitoringNotice = { text:"", kind:"" };
+      state.promptRunState = "idle";
       clearPanel();
     }
 
@@ -581,15 +582,17 @@ export function boot(): void {
       try {
         const verb = path === "/prompt-schedule" ? "PUT" : "POST";
         await request("/api/projects/" + encodeURIComponent(startedFor) + path, { method:verb, headers:{"Content-Type":"application/json"}, body: JSON.stringify(body || {}) });
-        state.promptRunState = "idle";
         if (isOpen(startedFor, state.selectedId)) {
+          state.promptRunState = "idle";
           state.promptNotice = { text: done, kind: "success" };
           state.topicState = "idle";
           state.answerEngineState = "idle";
         }
       } catch (error) {
-        state.promptRunState = "idle";
-        if (isOpen(startedFor, state.selectedId)) state.promptNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind: "error" };
+        if (isOpen(startedFor, state.selectedId)) {
+          state.promptRunState = "idle";
+          state.promptNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind: "error" };
+        }
       }
       render();
     }

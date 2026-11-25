@@ -177,3 +177,42 @@ test("a slow question set for the first project does not land on the second's Qu
   await expect(page.getByRole("heading", { name: "Nothing is being asked" })).toBeVisible();
   await expect(page.locator(".view")).not.toContainText("best invoicing tools for small teams");
 });
+
+test("proposing a set on one project does not show as busy on another, or clear the other's own", async ({ page }) => {
+  const first = projectIds["Acme"] || "";
+  const second = projectIds["Blank"] || "";
+  const holds = new Map<string, () => void>();
+  for (const id of [first, second]) {
+    let release!: () => void;
+    const held = new Promise<void>((resolveHeld) => { release = resolveHeld; });
+    holds.set(id, release);
+    await page.route(`**/api/projects/${id}/topics/generate`, async (route) => {
+      await held;
+      await route.fulfill({ json: {} });
+    });
+  }
+  const finish = async (id: string) => {
+    const done = page.waitForResponse((response) => response.url().endsWith(`/api/projects/${id}/topics/generate`));
+    holds.get(id)?.();
+    await done;
+  };
+
+  await page.goto(`${baseUrl}/?projectId=${first}`);
+  await page.locator('.sidebar [data-page="prompts"]').first().click();
+  await page.getByRole("button", { name: "Propose a set" }).click();
+  await expect(page.getByRole("button", { name: "Proposing…" })).toBeVisible();
+
+  await page.selectOption("[data-testid=project-select]", second);
+  await expect(page.getByRole("heading", { name: "Nothing is being asked" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Propose a set" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Propose a set" }).click();
+  await expect(page.getByRole("button", { name: "Proposing…" })).toBeVisible();
+
+  await finish(first);
+  await page.evaluate(() => new Promise((resolveFrame) => requestAnimationFrame(() => setTimeout(resolveFrame, 300))));
+  await expect(page.getByRole("button", { name: "Proposing…" })).toBeVisible();
+
+  await finish(second);
+  await expect(page.getByRole("button", { name: "Propose a set" })).toBeVisible();
+});

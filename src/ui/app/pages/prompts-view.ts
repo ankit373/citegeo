@@ -197,7 +197,7 @@ function renderPromptCoverage(state: Pick<PromptsState, "promptFilters" | "panel
     const active = state.promptFilters.intent === intent ? ' active' : '';
     return '<button type="button" class="tag' + (count ? '' : ' warning') + active + '" data-prompt-intent="' + intent + '">' + intentLabel(intent) + ' · ' + count + ' of ' + total + ' tracked</button>';
   }).join("");
-  const thin = set.topics.filter((topic) => !tracked.some((prompt) => prompt.topicId === topic.id));
+  const thin = liveTopics(set).filter((topic) => !tracked.some((prompt) => prompt.topicId === topic.id));
   const note = thin.length
     ? thin.length + ' topic(s) have nothing tracked: ' + thin.map((topic) => html(topic.name)).join(", ") + '.'
     : 'Every topic has at least one tracked question.';
@@ -211,7 +211,7 @@ function renderPromptCoverage(state: Pick<PromptsState, "promptFilters" | "panel
 
 function promptToolbar(state: Pick<PromptsState, "promptFilters" | "promptSort">, set: PromptSet, shown: number): string {
   const filters = state.promptFilters;
-  const topics = set.topics.map((topic) => '<option value="' + html(topic.id) + '"' + (filters.topicId === topic.id ? ' selected' : '') + '>' + html(topic.name) + '</option>').join("");
+  const topics = liveTopics(set).map((topic) => '<option value="' + html(topic.id) + '"' + (filters.topicId === topic.id ? ' selected' : '') + '>' + html(topic.name) + '</option>').join("");
   const intents = PROMPT_INTENTS.map((intent) => '<option value="' + intent + '"' + (filters.intent === intent ? ' selected' : '') + '>' + intentLabel(intent) + '</option>').join("");
   const states = PROMPT_STATES.map((row) => '<option value="' + row[0] + '"' + (filters.status === row[0] ? ' selected' : '') + '>' + row[1] + '</option>').join("");
   return '<div class="promptbar">'
@@ -282,8 +282,9 @@ export function renderPromptGroups(state: Pick<PromptsState, "promptSort" | "pri
 }
 
 function promptAddForms(state: Pick<PromptsState, "promptDraft" | "panelOpen">, set: PromptSet, folds = true): string {
-  if (!set.topics.length) return '';
-  const topics = set.topics.map((topic) => '<option value="' + html(topic.id) + '">' + html(topic.name) + '</option>').join("");
+  const live = liveTopics(set);
+  if (!live.length) return '';
+  const topics = live.map((topic) => '<option value="' + html(topic.id) + '">' + html(topic.name) + '</option>').join("");
   const intents = PROMPT_INTENTS.map((intent) => '<option value="' + intent + '">' + intentLabel(intent) + '</option>').join("");
   const body = ''
     + '<form id="add-prompt-form" class="inline-form"><select name="topicId" aria-label="Topic">' + topics + '</select><input name="text" type="text" value="' + html(state.promptDraft.text) + '" placeholder="best stock screener for indian markets" aria-label="Question"><select name="intent" aria-label="Intent">' + intents + '</select>' + button({ label: "Add", submit: true }) + '</form>'

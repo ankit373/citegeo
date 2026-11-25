@@ -6,6 +6,7 @@ import { SCORE_WEIGHTS } from "../src/product/topics/visibility-score.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { buildRankingPlan } from "../src/product/topics/ranking-plan.js";
+import { liveTopics } from "../src/product/topics/topic-schema.js";
 import type { EntityStanding, ModelStanding, PromptStanding, TopicInsights } from "../src/product/topics/topic-insights.js";
 import type { Prompt, PromptIntent, TopicSet } from "../src/product/topics/topic-schema.js";
 import type { VisibilityScore } from "../src/product/topics/visibility-score.js";
@@ -134,4 +135,32 @@ test("no citation anywhere is reported as a property of the models, not as nobod
   const move = plan.moves.find((row) => row.id === "no-sources");
   assert.equal(move?.effect, "unblocks_measurement");
   assert.ok(move?.evidence.includes("not evidence that nobody cites you"));
+});
+
+function withTopics(topics: TopicSet["topics"], prompts: Prompt[]): TopicSet {
+  return { ...set(prompts), topics };
+}
+const topicRow = (id: string, name: string, status: "active" | "retired"): TopicSet["topics"][number] =>
+  ({ id, projectId: "p", name, description: "", source: "authored", status, createdAt: "" });
+
+test("a retired topic is not a topic with nothing tracked", () => {
+  const retired = withTopics([topicRow("t", "Choosing a tool", "active"), topicRow("old", "Old ideas", "retired")], [prompt("a")]);
+  assert.equal(ids(buildRankingPlan({ insights: insights(), set: retired })).includes("empty-topics"), false);
+});
+
+test("a live topic with nothing tracked is still named, and a retired one beside it is not", () => {
+  const mixed = withTopics(
+    [topicRow("t", "Choosing a tool", "active"), topicRow("empty", "Pricing", "active"), topicRow("old", "Old ideas", "retired")],
+    [prompt("a")],
+  );
+  const move = buildRankingPlan({ insights: insights(), set: mixed }).moves.find((row) => row.id === "empty-topics");
+  assert.ok(move);
+  assert.equal(move.title, "1 topic(s) have nothing tracked");
+  assert.ok(move.evidence.includes("Pricing"));
+  assert.equal(move.evidence.includes("Old ideas"), false);
+});
+
+test("liveTopics keeps every topic that is not retired", () => {
+  const rows = [topicRow("a", "A", "active"), topicRow("b", "B", "retired")];
+  assert.deepEqual(liveTopics({ topics: rows }).map((row) => row.id), ["a"]);
 });
