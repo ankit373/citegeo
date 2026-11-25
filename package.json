@@ -24,6 +24,7 @@
     "test:browser:recognition": "playwright test --config playwright.recognition.config.ts",
     "test:browser:reports": "playwright test --config playwright.reports.config.ts",
     "test:browser:home": "playwright test --config playwright.home.config.ts",
+    "test:browser:project-switch": "playwright test --config playwright.project-switch.config.ts",
     "test:browser:rivals": "playwright test --config playwright.rivals.config.ts",
     "test:browser:measurements": "playwright test --config playwright.measurements.config.ts",
     "server": "tsx src/product/product-server.ts",
