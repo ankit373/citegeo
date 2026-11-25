@@ -217,12 +217,14 @@ test("proposing a set on one project does not show as busy on another, or clear 
   await expect(page.getByRole("button", { name: "Propose a set" })).toBeVisible();
 });
 
-test("switching away from a project that is proposing and back still shows it proposing", async ({ page }) => {
+test("switching away from a project that is proposing and back still shows it proposing, and cannot start a second", async ({ page }) => {
   const first = projectIds["Acme"] || "";
   const second = projectIds["Blank"] || "";
   let release!: () => void;
   const held = new Promise<void>((resolveHeld) => { release = resolveHeld; });
+  let generates = 0;
   await page.route(`**/api/projects/${first}/topics/generate`, async (route) => {
+    generates += 1;
     await held;
     await route.fulfill({ json: {} });
   });
@@ -238,8 +240,39 @@ test("switching away from a project that is proposing and back still shows it pr
   await expect(page.getByTestId("project-select")).toHaveValue(first);
 
   // A second click here would start a second paid generation.
-  await expect(page.getByRole("button", { name: "Proposing…" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Proposing…" })).toBeDisabled();
   await expect(page.getByRole("button", { name: "Propose a set" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Proposing…" }).click({ force: true });
+  await page.evaluate(() => new Promise((resolveFrame) => requestAnimationFrame(() => setTimeout(resolveFrame, 300))));
+  expect(generates).toBe(1);
+
+  const done = page.waitForResponse((response) => response.url().endsWith(`/api/projects/${first}/topics/generate`));
+  release();
+  await done;
+  await expect(page.getByRole("button", { name: "Propose a set" })).toBeVisible();
+  expect(generates).toBe(1);
+});
+
+test("a save on a project while it is proposing does not end the proposing", async ({ page }) => {
+  const first = projectIds["Acme"] || "";
+  let release!: () => void;
+  const held = new Promise<void>((resolveHeld) => { release = resolveHeld; });
+  await page.route(`**/api/projects/${first}/topics/generate`, async (route) => {
+    await held;
+    await route.fulfill({ json: {} });
+  });
+  await page.route(`**/api/projects/${first}/prompts/retire`, (route) => route.fulfill({ json: {} }));
+
+  await page.goto(`${baseUrl}/?projectId=${first}`);
+  await page.locator('.sidebar [data-page="prompts"]').first().click();
+  await page.getByRole("button", { name: "Propose a set" }).click();
+  await expect(page.getByRole("button", { name: "Proposing…" })).toBeDisabled();
+
+  const saved = page.waitForResponse((response) => response.url().endsWith(`/api/projects/${first}/prompts/retire`));
+  await page.getByRole("button", { name: "Stop tracking" }).first().click();
+  await saved;
+  await page.evaluate(() => new Promise((resolveFrame) => requestAnimationFrame(() => setTimeout(resolveFrame, 300))));
+  await expect(page.getByRole("button", { name: "Proposing…" })).toBeDisabled();
 
   const done = page.waitForResponse((response) => response.url().endsWith(`/api/projects/${first}/topics/generate`));
   release();

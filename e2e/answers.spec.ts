@@ -106,6 +106,7 @@ test("Sources counts the cited pages and domains from the archived answers", asy
   const domains = page.locator("[data-fold=\"sources-domains\"]");
   const rival = domains.locator(".mrow", { hasText: "rival.com" }).locator(".mcell");
   await expect(rival.nth(0)).toHaveText("3");
+  await expect(rival.nth(1)).toHaveText("1");
   await expect(rival.nth(2)).toHaveText("2");
   const own = domains.locator(".mrow", { hasText: "acme.com" }).locator(".mcell");
   await expect(own.nth(0)).toHaveText("3");
@@ -114,6 +115,7 @@ test("Sources counts the cited pages and domains from the archived answers", asy
   await expect(domains.locator(".mrow", { hasText: "acme.com" })).toContainText("You");
   await expect(domains.locator(".mrow", { hasText: "rival.com" })).not.toContainText("You");
   await expect(domains.locator(".mrow", { hasText: "news.org" }).locator(".mcell").nth(0)).toHaveText("1");
+  await expect(domains.locator(".mrow", { hasText: "news.org" }).locator(".mcell").nth(1)).toHaveText("1");
 
   // Three citations sat on answers that did not name Acme, on a domain that is not Acme's.
   await page.locator("[data-fold=\"sources-openings\"] summary").click();
@@ -181,4 +183,121 @@ test("a slow citation history for the first project does not land on the second"
   await settle(page);
   await expect(page.locator("[data-fold=\"sources-history\"]")).toContainText("1 run(s) carried a citation. Two are needed");
   await expect(page.locator("[data-fold=\"sources-history\"]")).not.toContainText("Across 2 run(s)");
+});
+
+// Holds a POST for one project until released, then answers it with what the page needs to carry on.
+async function holdPost(page: Page, project: string, route: string, reply: () => Promise<unknown>): Promise<{ asked: Promise<unknown>; release: () => void; answered: Promise<unknown> }> {
+  let release!: () => void;
+  const held = new Promise<void>((resolveHeld) => { release = resolveHeld; });
+  const matches = (candidate: string) => candidate.includes(`/api/projects/${projectIds[project]}/${route}`);
+  await page.route(`**/api/projects/${projectIds[project]}/${route}`, async (request) => {
+    if (request.request().method() !== "POST") { await request.fallback(); return; }
+    await held;
+    await request.fulfill({ json: await reply() });
+  });
+  return {
+    asked: page.waitForRequest((request) => request.method() === "POST" && matches(request.url())),
+    answered: page.waitForResponse((response) => response.request().method() === "POST" && matches(response.url())),
+    release,
+  };
+}
+
+async function openCard(page: Page, id: string): Promise<void> {
+  const fold = page.locator(`[data-fold="${id}"]`);
+  if (await fold.getAttribute("open") === null) await fold.locator("summary").first().click();
+}
+
+test("reading the cited pages on one project does not show as busy on another, or stop the other's own", async ({ page }) => {
+  const plan = async (project: string) => (await page.request.get(`${baseUrl}/api/projects/${projectIds[project]}/source-pages`)).json();
+  const first = await holdPost(page, "Acme", "source-pages", async () => ({ plan: await plan("Acme"), read: 0, skipped: 0, failed: 0 }));
+  const second = await holdPost(page, "Other", "source-pages", async () => ({ plan: await plan("Other"), read: 0, skipped: 0, failed: 0 }));
+  await open(page, "Acme", "answer-engine");
+  await openCard(page, "source-outreach");
+  const card = page.locator("[data-panel=\"source-outreach\"], [data-fold=\"source-outreach\"]");
+  await card.getByRole("button", { name: "Read the cited pages" }).click();
+  await first.asked;
+  await expect(card.getByRole("button", { name: "Reading…" })).toBeVisible();
+
+  await page.selectOption("[data-testid=project-select]", projectIds["Other"]);
+  await expect(page.getByTestId("project-select")).toHaveValue(projectIds["Other"] || "");
+  await openCard(page, "source-outreach");
+  await expect(card.getByRole("button", { name: "Read the cited pages" })).toBeEnabled();
+
+  // The other project reads on its own account, not blocked by the first one's.
+  await card.getByRole("button", { name: "Read the cited pages" }).click();
+  await second.asked;
+  await expect(card.getByRole("button", { name: "Reading…" })).toBeVisible();
+
+  first.release();
+  await first.answered;
+  await settle(page);
+  await expect(card.getByRole("button", { name: "Reading…" })).toBeVisible();
+
+  second.release();
+  await second.answered;
+  await expect(card.getByRole("button", { name: "Read the cited pages" })).toBeVisible();
+});
+
+test("pulling Search Console on one project does not show as busy on another, and is busy again on return", async ({ page }) => {
+  const status = { configured: true, siteUrl: "https://acme.com/", detail: "Connected.", report: null };
+  for (const project of ["Acme", "Other"]) {
+    await page.route(`**/api/projects/${projectIds[project]}/search-demand`, async (route) => {
+      if (route.request().method() === "GET") await route.fulfill({ json: status });
+      else await route.fallback();
+    });
+  }
+  const report = { queries: 0, totalImpressions: 0, window: { from: "2026-08-01", to: "2026-10-30" }, prompts: [] };
+  const first = await holdPost(page, "Acme", "search-demand", async () => ({ report }));
+  await open(page, "Acme", "answer-engine");
+  await openCard(page, "source-demand");
+  const card = page.locator("[data-fold=\"source-demand\"]");
+  await card.getByRole("button", { name: "Pull the last 90 days" }).click();
+  await first.asked;
+  await expect(card.getByRole("button", { name: "Reading…" })).toBeVisible();
+
+  await page.selectOption("[data-testid=project-select]", projectIds["Other"]);
+  await expect(page.getByTestId("project-select")).toHaveValue(projectIds["Other"] || "");
+  await openCard(page, "source-demand");
+  await expect(card.getByRole("button", { name: "Pull the last 90 days" })).toBeEnabled();
+
+  await page.selectOption("[data-testid=project-select]", projectIds["Acme"]);
+  await expect(page.getByTestId("project-select")).toHaveValue(projectIds["Acme"] || "");
+  await openCard(page, "source-demand");
+  await expect(card.getByRole("button", { name: "Reading…" })).toBeVisible();
+
+  first.release();
+  await first.answered;
+  await expect(card.getByRole("button", { name: "Pull the last 90 days" })).toBeVisible();
+});
+
+test("pulling Analytics referrals on one project does not show as busy on another, and is busy again on return", async ({ page }) => {
+  const status = { configured: true, propertyId: "123", detail: "Connected.", report: null };
+  for (const project of ["Acme", "Other"]) {
+    await page.route(`**/api/projects/${projectIds[project]}/assistant-referrals`, async (route) => {
+      if (route.request().method() === "GET") await route.fulfill({ json: status });
+      else await route.fallback();
+    });
+  }
+  const report = { empty: false, totalSessions: 0, assistants: [] };
+  const first = await holdPost(page, "Acme", "assistant-referrals", async () => ({ report }));
+  await open(page, "Acme", "answer-engine");
+  await openCard(page, "source-referrals");
+  const card = page.locator("[data-fold=\"source-referrals\"]");
+  await card.getByRole("button", { name: "Pull the last 90 days" }).click();
+  await first.asked;
+  await expect(card.getByRole("button", { name: "Reading…" })).toBeVisible();
+
+  await page.selectOption("[data-testid=project-select]", projectIds["Other"]);
+  await expect(page.getByTestId("project-select")).toHaveValue(projectIds["Other"] || "");
+  await openCard(page, "source-referrals");
+  await expect(card.getByRole("button", { name: "Pull the last 90 days" })).toBeEnabled();
+
+  await page.selectOption("[data-testid=project-select]", projectIds["Acme"]);
+  await expect(page.getByTestId("project-select")).toHaveValue(projectIds["Acme"] || "");
+  await openCard(page, "source-referrals");
+  await expect(card.getByRole("button", { name: "Reading…" })).toBeVisible();
+
+  first.release();
+  await first.answered;
+  await expect(card.getByRole("button", { name: "Pull the last 90 days" })).toBeVisible();
 });

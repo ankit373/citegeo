@@ -45,6 +45,21 @@ test("one answer citing a domain three times is one answer", () => {
   assert.equal(result.domains.find((row) => row.domain === "rival.com")?.answers, 1);
 });
 
+test("a domain's pages are the distinct pages cited on it, yours or a rival's", () => {
+  const result = buildCitationAnalysis({
+    identity: IDENTITY,
+    answers: [
+      answer({ citationUrls: ["https://rival.com/a", "https://rival.com/b?x=1", "https://ninethirty.ai/screener"] }),
+      answer({ citationUrls: ["https://www.rival.com/a?ref=y", "http://rival.com/c", "https://rival.com:8080/d", "https://other.org/"] }),
+    ],
+  });
+  const pages = (domain: string) => result.domains.find((row) => row.domain === domain)?.pages;
+  // /a is one page however it was tagged, and the port is a different server.
+  assert.equal(pages("rival.com"), 4);
+  assert.equal(pages("ninethirty.ai"), 1);
+  assert.equal(pages("other.org"), 1);
+});
+
 test("a page a rival won on a question that never named you is an opening", () => {
   const result = buildCitationAnalysis({
     identity: IDENTITY,

@@ -12,6 +12,7 @@ import { crawlerUpload, languagePicker, pasteCountPicker, repetitionPicker } fro
 import { blockedSelection, catalogHead, catalogReleasedAt, catalogResultSummary, catalogVendor, modelIsBlocked, openRouterOutOfCredit, providerShortLabel, runsNowCell, selectedRows } from "./components/catalog-rows.js";
 import { mentionChips, paneRun, runIsLive, runPaneProgress } from "./pages/run-pane.js";
 import { answerTasks } from "./pages/task-views.js";
+import { ProjectBusy } from "./busy.js";
 import { isOpen, loadForProject, settlePull } from "./pull.js";
 import { renderBrandVisibility } from "./pages/rivals-view.js";
 import { filteredPrompts, promptBulkInner, promptStandings, renderPromptGroups, renderPrompts, topicStandings, liveTopics, livePrompts, promptResultSummary, type PriorityQuestion } from "./pages/prompts-view.js";
@@ -78,8 +79,6 @@ export function boot(): void {
     promptSelection: string[]; promptSort: string;
     answerEngine: InsightsShape | null; answerEngineState: LoadState;
     promptRunState: string; promptNotice: Notice;
-    /** What each project has in flight, so a switch away and back still shows it busy. */
-    promptRunning: Map<string, string>;
     promptDraft: { topicId: string; text: string; intent: string };
     schedule: Unshaped; scheduleState: LoadState;
     regions: Array<{ id: string; label: string }>; languages: Array<{ id: string; label: string }>;
@@ -129,7 +128,7 @@ export function boot(): void {
     booting: boolean;
   }
 
-    const state: State = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", crawlerUploading:false, crawlerNotice:{ text:"", kind:"" }, plan:null, planState:"idle", marketer:null, drafts:null, claims:null, buying:null, conversations:null, entity:null, marketerState:"idle", marketerNotice:{ text:"", kind:"" }, signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, integrations:[], integrationsState:"idle", externalMetrics:null, externalMetricsState:"idle", externalMetricsPulling:"", externalMetricsNotice:{text:"",kind:""}, digest:null, digestState:"idle", demand:null, demandState:"idle", repetitions:Number(savedPreference("repetitions", "1")) || 1, runLanguageId:savedPreference("runLanguage", "en"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", promptFilters:{ query:"", topicId:"", intent:"", status:"" }, promptSelection:[], answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptRunning:new Map<string, string>(), promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", history:null, historyState:"idle", rivals:null, rivalsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, lastRun:null, runPollTimer:0, runFeed:[], runFeedState:"idle", runFeedTimer:0, rankPlan:null, rankPlanState:"idle", brief:null, briefState:"idle", outreach:null, outreachState:"idle", harvesting:false, paste:null, pasteState:"idle", pasteCount:Number(savedPreference("pasteCount", "2")) || 2, uptake:null, uptakeState:"idle", interference:null, interferenceState:"idle", concentration:null, concentrationState:"idle", shape:null, shapeState:"idle", kinds:null, kindsState:"idle", experiments:null, experimentsState:"idle", check:null, checkState:"idle", credit:null, creditState:"idle", reach:null, reachState:"idle", searchDemand:null, searchDemandState:"idle", pulling:false, personas:null, personasState:"idle", priority:null, priorityState:"idle", promptSort:"topic", referrals:null, referralsState:"idle", pullingReferrals:false, engines:null, enginesState:"idle", actions:[], actionsState:"idle", matrixOpen:[], editingBoard:false, brandIcons:{}, panelViews:savedJson("panelViews"), matrixHidden:savedList("matrixHidden"), panelOpen:savedList("panelOpen"), booting:true };
+    const state: State = { page:savedPreference("page", "dashboard"), mode:"current", projects:[], currentProjects:[], selectedId:new URL(window.location.href).searchParams.get("projectId") || localStorage.getItem("citegeo.product.projectId") || "", providers:[], providersState:"idle", insights:null, insightsState:"idle", crawlers:null, crawlersState:"idle", crawlerUploading:false, crawlerNotice:{ text:"", kind:"" }, plan:null, planState:"idle", marketer:null, drafts:null, claims:null, buying:null, conversations:null, entity:null, marketerState:"idle", marketerNotice:{ text:"", kind:"" }, signals:null, signalsState:"idle", credentials:null, credentialsState:"idle", credentialNotice:{text:"",kind:""}, integrations:[], integrationsState:"idle", externalMetrics:null, externalMetricsState:"idle", externalMetricsPulling:"", externalMetricsNotice:{text:"",kind:""}, digest:null, digestState:"idle", demand:null, demandState:"idle", repetitions:Number(savedPreference("repetitions", "1")) || 1, runLanguageId:savedPreference("runLanguage", "en"), catalog:[], catalogState:"idle", catalogError:"", query:"", catalogProvider:"", catalogNativeSearch:"all", catalogSort:"name", selections:[], draftSelections:new Map(), selectionsDirty:false, baselines:[], monitoringConfiguration:null, configurationState:"idle", drawerSession:0, modelNotice:{ text:"", kind:"" }, monitoringNotice:{ text:"", kind:"" }, modelActionState:"idle", monitoringSaveState:"idle", recognitionRuns:[], recognitionDetail:null, recognitionModelDetails:{}, recognitionSelectedRunId:"", recognitionNotice:{ text:"", kind:"" }, recognitionActionState:"idle", recognitionRefreshTimer:0, topicSet:null, topicState:"idle", promptFilters:{ query:"", topicId:"", intent:"", status:"" }, promptSelection:[], answerEngine:null, answerEngineState:"idle", promptRunState:"idle", promptNotice:{ text:"", kind:"" }, promptDraft:{ topicId:"", text:"", intent:"discovery" }, schedule:null, scheduleState:"idle", regions:[], languages:[], home:null, homeState:"idle", cited:null, citedState:"idle", history:null, historyState:"idle", rivals:null, rivalsState:"idle", storage:null, storageState:"idle", storageDraft:{}, storageBackend:"", storageCheck:null, filters:{ modelId:"", regionId:"", languageId:"", topicId:"" }, panel:null, panelState:"idle", panelAnswers:[], liveRun:null, lastRun:null, runPollTimer:0, runFeed:[], runFeedState:"idle", runFeedTimer:0, rankPlan:null, rankPlanState:"idle", brief:null, briefState:"idle", outreach:null, outreachState:"idle", harvesting:false, paste:null, pasteState:"idle", pasteCount:Number(savedPreference("pasteCount", "2")) || 2, uptake:null, uptakeState:"idle", interference:null, interferenceState:"idle", concentration:null, concentrationState:"idle", shape:null, shapeState:"idle", kinds:null, kindsState:"idle", experiments:null, experimentsState:"idle", check:null, checkState:"idle", credit:null, creditState:"idle", reach:null, reachState:"idle", searchDemand:null, searchDemandState:"idle", pulling:false, personas:null, personasState:"idle", priority:null, priorityState:"idle", promptSort:"topic", referrals:null, referralsState:"idle", pullingReferrals:false, engines:null, enginesState:"idle", actions:[], actionsState:"idle", matrixOpen:[], editingBoard:false, brandIcons:{}, panelViews:savedJson("panelViews"), matrixHidden:savedList("matrixHidden"), panelOpen:savedList("panelOpen"), booting:true };
     const app = document.getElementById("app") as HTMLElement;
     let renderOverride: (() => void) | null = null;
     // render() was a hoisted declaration that a later line reassigned. A
@@ -158,6 +157,9 @@ export function boot(): void {
     const element = (id: string) => document.getElementById(id) as any;
 
     const project = () => state.currentProjects.find((item) => item.id === state.selectedId) || null;
+    const busy = new ProjectBusy();
+    /** What the page shows when several are in flight: a proposal or a run outranks a save. */
+    const PROMPT_KINDS = ["generating", "running", "stopping", "saving"];
     const footerActions = { loadHome };
     const rivalsActions = { loadRankingPlan, loadActions, loadPersonas, loadRivals, loadDemand };
     const homeActions = { loadHome, loadAnswerEngine, loadOutreach, loadRankingPlan, loadDigest, loadSearchDemand, loadReferrals };
@@ -232,10 +234,20 @@ export function boot(): void {
       clearPanel();
     }
 
+    function syncBusy() {
+      const id = state.selectedId;
+      state.harvesting = busy.has(id, "harvest");
+      state.pulling = busy.has(id, "search-pull");
+      state.pullingReferrals = busy.has(id, "referrals-pull");
+      state.crawlerUploading = busy.has(id, "crawler-upload");
+      state.promptRunState = PROMPT_KINDS.find((kind) => busy.has(id, "prompt:" + kind)) || "idle";
+      state.externalMetricsPulling = busy.has(id, "metrics:ahrefs") ? "ahrefs" : busy.has(id, "metrics:semrush") ? "semrush" : "";
+    }
+
     function setSelectedProject(projectId: string) {
       if (projectId !== state.selectedId) resetProject();
       state.selectedId = projectId || "";
-      state.promptRunState = state.promptRunning.get(state.selectedId) || "idle";
+      syncBusy();
       if (state.selectedId) localStorage.setItem("citegeo.product.projectId", state.selectedId); else localStorage.removeItem("citegeo.product.projectId");
       const next = new URL(window.location.href);
       if (state.selectedId) next.searchParams.set("projectId", state.selectedId); else next.searchParams.delete("projectId");
@@ -584,26 +596,26 @@ export function boot(): void {
     async function postPrompts(path: string, body: Payload, working: string, done: string) {
       if (!state.selectedId) return;
       const startedFor = state.selectedId;
-      state.promptRunning.set(startedFor, working);
-      state.promptRunState = working;
+      busy.start(startedFor, "prompt:" + working);
+      syncBusy();
       state.promptNotice = { text:"", kind:"" };
       render();
       try {
         const verb = path === "/prompt-schedule" ? "PUT" : "POST";
         await request("/api/projects/" + encodeURIComponent(startedFor) + path, { method:verb, headers:{"Content-Type":"application/json"}, body: JSON.stringify(body || {}) });
         if (isOpen(startedFor, state.selectedId)) {
-          state.promptRunState = "idle";
           state.promptNotice = { text: done, kind: "success" };
           state.topicState = "idle";
           state.answerEngineState = "idle";
         }
       } catch (error) {
         if (isOpen(startedFor, state.selectedId)) {
-          state.promptRunState = "idle";
           state.promptNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind: "error" };
         }
+      } finally {
+        busy.end(startedFor, "prompt:" + working);
+        syncBusy();
       }
-      state.promptRunning.delete(startedFor);
       render();
     }
 
@@ -666,8 +678,9 @@ export function boot(): void {
 
     async function uploadCrawlerLog(file: File) {
       const selected = project();
-      if (!selected || state.crawlerUploading) return;
-      state.crawlerUploading = true;
+      if (!selected || busy.has(selected.id, "crawler-upload")) return;
+      busy.start(selected.id, "crawler-upload");
+      syncBusy();
       state.crawlerNotice = { text: "", kind: "" };
       render();
       try {
@@ -684,8 +697,10 @@ export function boot(): void {
         }
       } catch (error) {
         if (isOpen(selected.id, state.selectedId)) state.crawlerNotice = { text: error instanceof Error ? error.message : String(error), kind: "bad" };
+      } finally {
+        busy.end(selected.id, "crawler-upload");
+        syncBusy();
       }
-      state.crawlerUploading = false;
       render();
     }
     /** Every marketer surface is read-only and cheap, so one loader fills them
@@ -1166,7 +1181,8 @@ export function boot(): void {
     async function pullExternalMetrics(source: "ahrefs" | "semrush", control: HTMLElement | null) {
       if (!state.selectedId || state.externalMetricsPulling) return;
       const startedFor = state.selectedId;
-      state.externalMetricsPulling = source;
+      busy.start(startedFor, "metrics:" + source);
+      syncBusy();
       state.externalMetricsNotice = { text:"", kind:"" };
       render();
       try {
@@ -1177,8 +1193,10 @@ export function boot(): void {
         }
       } catch (error) {
         if (isOpen(startedFor, state.selectedId)) state.externalMetricsNotice = { text: error instanceof Error ? error.message : String(error), kind:"error" };
+      } finally {
+        busy.end(startedFor, "metrics:" + source);
+        syncBusy();
       }
-      state.externalMetricsPulling = "";
       if (!isOpen(startedFor, state.selectedId)) { render(); return; }
       await loadExternalMetrics();
     }
@@ -1586,9 +1604,10 @@ export function boot(): void {
     }
 
     async function harvestPages(refresh?: boolean) {
-      if (!state.selectedId || state.harvesting) return;
+      if (!state.selectedId || busy.has(state.selectedId, "harvest")) return;
       const startedFor = state.selectedId;
-      state.harvesting = true;
+      busy.start(startedFor, "harvest");
+      syncBusy();
       render();
       try {
         const where = "/api/projects/" + encodeURIComponent(startedFor) + "/source-pages" + (refresh ? "?refresh=true" : "");
@@ -1605,8 +1624,10 @@ export function boot(): void {
         }
       } catch (error) {
         if (isOpen(startedFor, state.selectedId)) state.promptNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind:"error" };
+      } finally {
+        busy.end(startedFor, "harvest");
+        syncBusy();
       }
-      state.harvesting = false;
       render();
     }
 
@@ -1620,9 +1641,10 @@ export function boot(): void {
     }
 
     async function pullSearchDemand() {
-      if (!state.selectedId || state.pulling) return;
+      if (!state.selectedId || busy.has(state.selectedId, "search-pull")) return;
       const startedFor = state.selectedId;
-      state.pulling = true;
+      busy.start(startedFor, "search-pull");
+      syncBusy();
       render();
       try {
         const result = await request("/api/projects/" + encodeURIComponent(startedFor) + "/search-demand", { method:"POST", headers:{"Content-Type":"application/json"}, body:"{}" });
@@ -1631,8 +1653,10 @@ export function boot(): void {
         if (settled.sameProject) state.promptNotice = { text: result.report.queries + " query row(s) read from Search Console.", kind:"success" };
       } catch (error) {
         if (isOpen(startedFor, state.selectedId)) state.promptNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind:"error" };
+      } finally {
+        busy.end(startedFor, "search-pull");
+        syncBusy();
       }
-      state.pulling = false;
       render();
     }
 
@@ -1663,9 +1687,10 @@ export function boot(): void {
     }
 
     async function pullReferrals() {
-      if (!state.selectedId || state.pullingReferrals) return;
+      if (!state.selectedId || busy.has(state.selectedId, "referrals-pull")) return;
       const startedFor = state.selectedId;
-      state.pullingReferrals = true;
+      busy.start(startedFor, "referrals-pull");
+      syncBusy();
       render();
       try {
         const result = await request("/api/projects/" + encodeURIComponent(startedFor) + "/assistant-referrals", { method:"POST", headers:{"Content-Type":"application/json"}, body:"{}" });
@@ -1674,8 +1699,10 @@ export function boot(): void {
         if (settled.sameProject) state.promptNotice = { text:"Analytics read.", kind:"success" };
       } catch (error) {
         if (isOpen(startedFor, state.selectedId)) state.promptNotice = { text: error && (error as any).message ? (error as any).message : String(error), kind:"error" };
+      } finally {
+        busy.end(startedFor, "referrals-pull");
+        syncBusy();
       }
-      state.pullingReferrals = false;
       render();
     }
 
@@ -2119,7 +2146,7 @@ export function boot(): void {
     document.addEventListener("click", async (event) => {
       const clicked = el(event.target) as any;
       if (!clicked || !clicked.closest) return;
-      if (clicked.closest("[data-generate-prompts]")) { await postPrompts("/topics/generate", {}, "generating", "A set has been proposed. Read it, then track the questions worth tracking."); return; }
+      if (clicked.closest("[data-generate-prompts]")) { if (busy.has(state.selectedId, "prompt:generating")) return; await postPrompts("/topics/generate", {}, "generating", "A set has been proposed. Read it, then track the questions worth tracking."); return; }
       const retrying = clicked.closest("[data-retry-run]");
       if (retrying) { loadLiveRun(); await postPrompts("/prompt-runs", { retryOf: retrying.getAttribute("data-retry-run") }, "running", "Asking again. Watch it below, or leave the page and come back."); loadLiveRun(); return; }
       if (clicked.closest("[data-run-prompts]")) { loadLiveRun(); await postPrompts("/prompt-runs", { repetitions: state.repetitions, languageIds: [state.runLanguageId] }, "running", "The run has started. Watch it below, or leave the page and come back."); loadLiveRun(); return; }

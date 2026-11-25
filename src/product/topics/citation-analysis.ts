@@ -48,6 +48,7 @@ export function buildCitationAnalysis(input: { answers: PromptAnswer[]; identity
   const pages = new Map<string, CitedPage>();
   const domains = new Map<string, CitedDomain>();
   const openings: Array<{ url: string; domain: string; prompt: string }> = [];
+  const pagesByDomain = new Map<string, Set<string>>();
   let withCitations = 0;
 
   for (const answer of completed) {
@@ -62,6 +63,9 @@ export function buildCitationAnalysis(input: { answers: PromptAnswer[]; identity
       const url = canonicalUrl(raw);
       if (!url) continue;
       const domain = url.host;
+      const onDomain = pagesByDomain.get(domain) || new Set<string>();
+      onDomain.add(url.key);
+      pagesByDomain.set(domain, onDomain);
       const isTarget = domain === input.identity.host || domainLabel(domain) === targetLabel;
 
       if (!seenDomains.has(domain)) {
@@ -85,9 +89,7 @@ export function buildCitationAnalysis(input: { answers: PromptAnswer[]; identity
     }
   }
 
-  for (const [domain, row] of domains) {
-    row.pages = [...pages.keys()].filter((key) => key.startsWith(`https://${domain}/`) || key === `https://${domain}`).length;
-  }
+  for (const [domain, row] of domains) row.pages = pagesByDomain.get(domain)?.size || 0;
 
   return {
     answersWithCitations: withCitations,
