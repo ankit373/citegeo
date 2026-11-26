@@ -1,4 +1,5 @@
 import { button } from "./button.js";
+import { html } from "../dom.js";
 
 // The rail is a column on a desktop and a drawer on a phone. One toggle drives
 // both, because two closed states is how a phone ends up with no way back.
@@ -131,4 +132,38 @@ export function sidebar(input: { page: string; options: string }): string {
     + MACHINE.map((destination) => item(destination, input.page)).join("")
     + '<a class="nav-item" href="?view=measurements"><span>Continuous measurement</span></a>'
     + "</nav>";
+}
+
+// These five lost their rail entries when it collapsed to six destinations,
+// and a page nothing links to is a page nobody can open.
+const ACT_PAGES: Array<[string, string]> = [
+  ["marketer", "What to do"],
+  ["drafts", "Drafts"],
+  ["claims", "Claims"],
+  ["buying", "Buying"],
+  ["conversations", "Conversations"],
+  ["entity", "Entity"],
+];
+
+const MACHINE_PAGES: Array<[string, string]> = [
+  ["models", "Models and surfaces"],
+  ["recognition", "Results"],
+  ["reports", "Current report"],
+  ["configuration", "Configuration"],
+];
+
+// Results and Configuration had no way in: the only tab that reached them
+// rendered on Results itself. Each of the three reaches the other two now.
+export function machineTabs(current: string): string {
+  return '<div class="toolbar">' + MACHINE_PAGES.map(([page, label]) =>
+    '<button type="button" class="filter ' + (current === page ? "active" : "")
+    + '" data-page="' + html(page) + '"' + (current === page ? ' aria-current="page"' : '')
+    + '>' + html(label) + '</button>').join("") + '</div>';
+}
+
+export function actTabs(current: string): string {
+  return '<div class="toolbar">' + ACT_PAGES.map(([page, label]) =>
+    '<button type="button" class="filter ' + (current === page ? "active" : "")
+    + '" data-page="' + html(page) + '"' + (current === page ? ' aria-current="page"' : '')
+    + '>' + html(label) + '</button>').join("") + '</div>';
 }
