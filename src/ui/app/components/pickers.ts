@@ -32,8 +32,18 @@ export function pasteCountPicker(pasteCount: number): string {
 export function crawlerUpload(uploading: boolean, notice: Notice): string {
   return '<div class="inline-actions" style="margin-top:14px">'
     + '<label class="button quiet" for="crawler-log-file">' + (uploading ? "Reading the log…" : "Upload an access log") + '</label>'
-    + '<input type="file" id="crawler-log-file" accept=".log,.txt,text/plain" hidden data-crawler-log>'
     + '</div>'
     + (notice.text ? '<p class="' + (notice.kind === "bad" ? "warning-box" : "subtle") + '">' + html(notice.text) + '</p>' : '')
     + '<p class="mlegend">A combined-format access log, or a CloudFront one with its #Fields header. It is read for crawler user agents and paths and nothing else, and the same file counted twice is counted once.</p>';
+}
+
+/** Mounted once outside the re-rendered tree, so a render cannot detach it between the pick and its change event. */
+export function mountCrawlerLogInput(): void {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.id = "crawler-log-file";
+  input.accept = ".log,.txt,text/plain";
+  input.hidden = true;
+  input.setAttribute("data-crawler-log", "");
+  document.body.appendChild(input);
 }
