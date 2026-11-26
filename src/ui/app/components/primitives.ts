@@ -158,3 +158,9 @@ export function emptyState(title: string, blurb?: string, action?: string): stri
     "</div></div>",
   ]);
 }
+
+// Cards nested inside a card, none of which could fold. Each is a card of
+// its own now, on the module that already knows how to fold one.
+export function foldCard(panelOpen: string[], id: string, title: string, blurb: string, body: string, aside = ""): string {
+  return section({ id, title, blurb, body, aside, wide: true, folded: panelOpen.indexOf(id) < 0 });
+}

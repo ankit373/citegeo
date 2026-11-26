@@ -1,6 +1,8 @@
 import { html, join } from "../dom.js";
 import { button, buttons } from "../components/button.js";
 import { cell, nameCell, row, section, table, tiles } from "../components/primitives.js";
+import { loading, skeletonCard, skeletonTiles } from "../components/skeleton.js";
+import type { LoadState, Notice, Unshaped } from "../types.js";
 
 /** Mirrors the server shapes. The types stay local so every import stays inside
  * the tree the app route serves. */
@@ -394,4 +396,58 @@ export function entityView(alignment: EntityView | null, llms: { text: string; l
       wide: true,
     }),
   ]);
+}
+
+/** What every Act page reads besides its own payload. */
+export interface MarketerState {
+  marketerState: LoadState; marketerNotice: Notice;
+  marketer: Unshaped; drafts: Unshaped; claims: Unshaped; buying: Unshaped; conversations: Unshaped; entity: Unshaped;
+}
+
+// The one action this page is for, beside its name. It used to sit grey
+// inside the body, under whatever the page happened to be showing.
+export function marketerPage(state: MarketerState, actions: { loadMarketer(): void }, tabs: string, title: string, blurb: string, body: () => string, action?: string): string {
+  if (state.marketerState === "idle") { actions.loadMarketer(); }
+  const inner = state.marketerState === "error"
+    ? '<p class="subtle">Could not read this project.</p>'
+    : state.marketerState !== "ready" ? loading("this page", skeletonTiles(3) + skeletonCard({ rows: 4 })) : body();
+  const notice = state.marketerNotice.text
+    ? '<div class="' + (state.marketerNotice.kind === "success" ? "success-box" : "warning-box") + '">' + html(state.marketerNotice.text) + '</div>'
+    : '';
+  const head = action ? '<div class="inline-actions">' + action + '</div>' : '';
+  return '<section class="view"><div class="heading"><div><h1>' + html(title) + '</h1><p class="subtle">' + html(blurb) + '</p></div>' + head + '</div>' + tabs + notice + inner + '</section>';
+}
+
+export function renderMarketer(state: MarketerState, actions: { loadMarketer(): void }, tabs: string): string {
+  return marketerPage(state, actions, tabs, "Act", "What moved, what moved it, and what would act on it. Nothing here calls a model.", () => marketerView(state.marketer));
+}
+
+export function renderDrafts(state: MarketerState, actions: { loadMarketer(): void }, tabs: string): string {
+  return marketerPage(state, actions, tabs, "Drafts", "Pages drafted from a measured gap. Every one waits for your decision.", () => draftsView(state.drafts));
+}
+
+export function renderClaims(state: MarketerState, actions: { loadMarketer(): void }, tabs: string): string {
+  return marketerPage(state, actions, tabs, "Claims", "What the answers assert about you, settled against your own pages.", () => claimsView(state.claims),
+    button({ label: "Check claims now", kind: "primary", on: { "data-run-factcheck": true } }));
+}
+
+export function renderBuying(state: MarketerState, actions: { loadMarketer(): void }, tabs: string): string {
+  return marketerPage(state, actions, tabs, "Buying", "Which products and retailers a buying answer actually named.", () => buyingView(state.buying),
+    button({ label: "Read buying answers", kind: "primary", on: { "data-run-shopping": true } }));
+}
+
+export function renderConversations(state: MarketerState, actions: { loadMarketer(): void }, tabs: string): string {
+  return marketerPage(state, actions, tabs, "Conversations", "Real demand, and which of it nothing here measures.", () => conversationsView(state.conversations || []),
+    button({ label: "Open questions", on: { "data-page": "prompts" } }));
+}
+
+export function renderEntity(state: MarketerState, actions: { loadMarketer(): void }, tabs: string): string {
+  return marketerPage(state, actions, tabs, "Entity", "What corroborates this brand from outside its own control.", () => entityView(state.entity?.alignment || null, state.entity?.llms || null),
+    button({ label: "Probe the site now", kind: "primary", on: { "data-probe-signals": true } }));
+}
+
+export function draftBody(drafts: Unshaped, draftId: string): string {
+  const rows = (drafts?.drafts || []) as any[];
+  const found = rows.find((row) => row.id === draftId);
+  return found ? `# ${found.title}\n\n${found.body}` : "";
 }

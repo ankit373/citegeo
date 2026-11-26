@@ -1,4 +1,6 @@
 import { html, join } from "../dom.js";
+import { loading, skeletonCard, skeletonTiles } from "./skeleton.js";
+import { DESTINATIONS } from "./nav.js";
 
 // The frame every page sits in. One header, one left pane, one right pane and
 // one footer, so a page writes its own content and nothing else.
@@ -100,4 +102,19 @@ export function shell(input: { panel: string; sidebar: string; header: string; c
     input.footer,
     "</main></div>",
   ]);
+}
+
+// The report has its own module, but it is a page in this shell like any
+// other, so the rail it used to draw for itself cannot come back.
+export function renderReport(tabs: string): string {
+  const module = (window as any).__citegeoPhase4;
+  if (module && typeof module.body === "function") return String(module.body());
+  return '<section class="view"><div class="heading"><div><h1>Current report</h1><p class="subtle">Built from the stored evidence of a finished run.</p></div></div>' + tabs + '<div class="empty"><div class="empty-copy"><h2>The report is still loading</h2><p class="subtle">Nothing has been asked of any model.</p></div></div></section>';
+}
+
+/** The first paint, before any read has landed. The page's own name is
+ * known without asking, so only the figures and the table are shadows. */
+export function bootShape(page: string, productName: string): string {
+  return '<section class="view"><div class="heading"><div><h1>' + html(DESTINATIONS.find((row) => row.page === page || (row.also || []).includes(page))?.label || productName) + '</h1></div></div>'
+    + loading("this page", skeletonTiles(4) + skeletonCard({ rows: 5 })) + '</section>';
 }
