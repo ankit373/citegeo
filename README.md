@@ -131,6 +131,21 @@ npm run server
 
 Open <http://localhost:8787> and create a project.
 
+To look around first, without a key, load the demo project:
+
+```bash
+npx tsx src/product/demo/serve-demo.ts
+```
+
+It writes a made-up tea brand, "Demo: Velloran Tea (made up)", to `data/demo`
+and serves it on <http://localhost:8787>. Every brand, site and answer in it is
+invented, the sites use the reserved `.example` name, and all provider keys are
+removed before the server starts, so nothing on screen came from a model. It
+has five weekly runs: three that went well, one where a model kept failing, and
+one where every answer failed, plus four rivals and the pages the answers
+cited. Each start replaces `data/demo` with a fresh copy, and your own data in
+`data/product-v2` is not touched.
+
 Containers are covered in the [Docker guide](docs/deployment/docker.md). With
 existing data, read [Backups and upgrades](docs/upgrade.md) first.
 
