@@ -299,6 +299,29 @@ async function holdPost(page: Page, project: string, route: string, reply: unkno
   };
 }
 
+test("a log chosen while the page re-renders is still uploaded", async ({ page }) => {
+  const id = projectIds["Acme"] || "";
+  await page.route(`**/api/projects/${id}/crawlers`, async (route) => {
+    if (route.request().method() === "GET") await route.fulfill({ json: { detail: "No log yet.", activity: null } });
+    else await route.fulfill({ json: { detail: "Read.", linesParsed: 1, activity: null } });
+  });
+  await page.addInitScript(() => window.localStorage.setItem("citegeo.page", "visibility"));
+  await page.goto(`${baseUrl}/?projectId=${id}`);
+  await expect(page.getByText("Upload an access log")).toBeVisible();
+  const asked = page.waitForRequest((request) => request.method() === "POST" && request.url().includes(`/api/projects/${id}/crawlers`), { timeout: 5_000 });
+
+  // What a real pick does: the file is set, a render lands, then the change event fires on the node that was picked from.
+  await page.evaluate(() => {
+    const input = document.getElementById("crawler-log-file") as HTMLInputElement;
+    const transfer = new DataTransfer();
+    transfer.items.add(new File(["x"], "access.log", { type: "text/plain" }));
+    input.files = transfer.files;
+    document.getElementById("project-select")?.dispatchEvent(new Event("change", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await asked;
+});
+
 test("uploading an access log on one project does not show as busy on another, and is busy again on return", async ({ page }) => {
   const first = projectIds["Acme"] || "";
   const second = projectIds["Blank"] || "";
@@ -314,6 +337,7 @@ test("uploading an access log on one project does not show as busy on another, a
   const log = { name: "access.log", mimeType: "text/plain", buffer: Buffer.from("x") };
 
   await page.goto(`${baseUrl}/?projectId=${first}`);
+  await page.waitForLoadState("networkidle");
   await page.locator("#crawler-log-file").setInputFiles(log);
   await upload.asked;
   await expect(page.getByText("Reading the log…")).toBeVisible();
@@ -321,6 +345,7 @@ test("uploading an access log on one project does not show as busy on another, a
   await page.selectOption("[data-testid=project-select]", second);
   await expect(page.getByTestId("project-select")).toHaveValue(second);
   await expect(page.getByText("Upload an access log")).toBeVisible();
+  await page.waitForLoadState("networkidle");
   await page.locator("#crawler-log-file").setInputFiles(log);
   await other.asked;
   await expect(page.getByText("Reading the log…")).toBeVisible();
