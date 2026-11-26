@@ -226,10 +226,11 @@ The generated stylesheet is written to `dist/src/ui/app/app.css`, beside the
 compiled modules, because the container image copies `dist/src` and nothing
 else. Anywhere else is a 404 in production and nowhere else.
 
-Warm paper, a single terracotta accent, a text serif for headings against a
-neutral sans, hairline rules instead of boxes. Light is the default and dark
-follows the system, overridden by `data-theme` on the root and applied by an
-inline script before first paint.
+The look is specified once, in `DESIGN.md`, with its values in
+`design/tokens.css`, shared with the site. `theme.css` still ships the older
+values until the screens move over. Light is the default and dark follows the
+system, overridden by `data-theme` on the root and applied by an inline script
+before first paint.
 
 **A hardcoded hex survives a theme change and then looks broken.** The alert
 boxes stayed black on paper for exactly this reason. State colours have `--x`,
