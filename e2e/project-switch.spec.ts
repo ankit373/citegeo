@@ -243,8 +243,8 @@ test("switching away from a project that is proposing and back still shows it pr
   await expect(page.getByRole("button", { name: "Proposing…" })).toBeDisabled();
   await expect(page.getByRole("button", { name: "Propose a set" })).toHaveCount(0);
   // Even with the attribute taken off the page, the handler itself refuses.
-  await page.getByRole("button", { name: "Proposing…" }).evaluate((element) => element.removeAttribute("disabled"));
-  await page.getByRole("button", { name: "Proposing…" }).click();
+  // One step, so a render cannot draw the button disabled again between the two.
+  await page.getByRole("button", { name: "Proposing…" }).evaluate((element: HTMLElement) => { element.removeAttribute("disabled"); element.click(); });
   await page.evaluate(() => new Promise((resolveFrame) => requestAnimationFrame(() => setTimeout(resolveFrame, 300))));
   expect(generates).toBe(1);
 
@@ -319,6 +319,26 @@ test("a log chosen while the page re-renders is still uploaded", async ({ page }
     document.getElementById("project-select")?.dispatchEvent(new Event("change", { bubbles: true }));
     input.dispatchEvent(new Event("change", { bubbles: true }));
   });
+  await asked;
+});
+
+test("the access log picker opens from the keyboard alone", async ({ page }) => {
+  const id = projectIds["Acme"] || "";
+  await page.route(`**/api/projects/${id}/crawlers`, async (route) => {
+    if (route.request().method() === "GET") await route.fulfill({ json: { detail: "No log yet.", activity: null } });
+    else await route.fulfill({ json: { detail: "Read.", linesParsed: 1, activity: null } });
+  });
+  await page.addInitScript(() => window.localStorage.setItem("citegeo.page", "visibility"));
+  await page.goto(`${baseUrl}/?projectId=${id}`);
+  const open = page.getByRole("button", { name: "Upload an access log" });
+  await expect(open).toBeVisible();
+  await open.focus();
+  await expect(open).toBeFocused();
+  const chooser = page.waitForEvent("filechooser");
+  await page.keyboard.press("Enter");
+  const picked = await chooser;
+  const asked = page.waitForRequest((request) => request.method() === "POST" && request.url().includes(`/api/projects/${id}/crawlers`));
+  await picked.setFiles({ name: "access.log", mimeType: "text/plain", buffer: Buffer.from("x") });
   await asked;
 });
 
