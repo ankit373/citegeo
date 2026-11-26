@@ -48,7 +48,8 @@ test("pickers mark what is chosen, and a single language needs no picker", () =>
   assert.equal(languagePicker(null, "en"), "");
   has(languagePicker([{ id: "en", label: "English" }, { id: "fr", label: "Fran<" }], "fr"), "Answer in English", '<option value="fr" selected>Answer in Fran&lt;');
   has(pasteCountPicker(5), '<option value="5" selected>5 a day</option>');
-  has(crawlerUpload(true, { text: "", kind: "" }), "Reading the log");
+  has(crawlerUpload(true, { text: "", kind: "" }), "Reading the log", "aria-busy=\"true\"", "data-crawler-log-open");
+  assert.ok(!crawlerUpload(false, { text: "", kind: "" }).includes("aria-busy"), "an idle button is not busy");
   assert.ok(!crawlerUpload(false, { text: "", kind: "" }).includes("<input"), "the file input is mounted once outside the re-rendered tree");
   has(crawlerUpload(false, { text: "bad<", kind: "bad" }), "Upload an access log", "warning-box", "bad&lt;");
 });

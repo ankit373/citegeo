@@ -32,7 +32,7 @@ export function pasteCountPicker(pasteCount: number): string {
  * anyone without a shell there could not use this feature at all. */
 export function crawlerUpload(uploading: boolean, notice: Notice): string {
   return '<div class="inline-actions" style="margin-top:14px">'
-    + button({ label: uploading ? "Reading the log…" : "Upload an access log", kind: "quiet", on: { "data-crawler-log-open": true } })
+    + button({ label: uploading ? "Reading the log…" : "Upload an access log", kind: "quiet", on: uploading ? { "data-crawler-log-open": true, "aria-busy": "true" } : { "data-crawler-log-open": true } })
     + '</div>'
     + (notice.text ? '<p class="' + (notice.kind === "bad" ? "warning-box" : "subtle") + '">' + html(notice.text) + '</p>' : '')
     + '<p class="mlegend">A combined-format access log, or a CloudFront one with its #Fields header. It is read for crawler user agents and paths and nothing else, and the same file counted twice is counted once.</p>';

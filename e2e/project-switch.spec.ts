@@ -243,8 +243,15 @@ test("switching away from a project that is proposing and back still shows it pr
   await expect(page.getByRole("button", { name: "Proposing…" })).toBeDisabled();
   await expect(page.getByRole("button", { name: "Propose a set" })).toHaveCount(0);
   // Even with the attribute taken off the page, the handler itself refuses.
-  // One step, so a render cannot draw the button disabled again between the two.
-  await page.getByRole("button", { name: "Proposing…" }).evaluate((element: HTMLElement) => { element.removeAttribute("disabled"); element.click(); });
+  // Found and clicked in one step: a render between finding it and clicking hands over a detached node, and that click reaches nothing.
+  const found = await page.evaluate(() => {
+    const control = document.querySelector("[data-generate-prompts]") as HTMLElement | null;
+    if (!control) return false;
+    control.removeAttribute("disabled");
+    control.click();
+    return true;
+  });
+  expect(found).toBe(true);
   await page.evaluate(() => new Promise((resolveFrame) => requestAnimationFrame(() => setTimeout(resolveFrame, 300))));
   expect(generates).toBe(1);
 
@@ -340,6 +347,36 @@ test("the access log picker opens from the keyboard alone", async ({ page }) => 
   const asked = page.waitForRequest((request) => request.method() === "POST" && request.url().includes(`/api/projects/${id}/crawlers`));
   await picked.setFiles({ name: "access.log", mimeType: "text/plain", buffer: Buffer.from("x") });
   await asked;
+  // The render after the upload replaces the button, and the focus has to land on the new one.
+  await expect(page.getByRole("button", { name: "Upload an access log" })).toBeFocused();
+});
+
+test("the access log button says it is busy while a log is read, and does not open the picker again", async ({ page }) => {
+  const id = projectIds["Acme"] || "";
+  let release!: () => void;
+  const held = new Promise<void>((resolveHeld) => { release = resolveHeld; });
+  await page.route(`**/api/projects/${id}/crawlers`, async (route) => {
+    if (route.request().method() === "GET") { await route.fulfill({ json: { detail: "No log yet.", activity: null } }); return; }
+    await held;
+    await route.fulfill({ json: { detail: "Read.", linesParsed: 1, activity: null } });
+  });
+  await page.addInitScript(() => window.localStorage.setItem("citegeo.page", "visibility"));
+  await page.goto(`${baseUrl}/?projectId=${id}`);
+  const asked = page.waitForRequest((request) => request.method() === "POST" && request.url().includes(`/api/projects/${id}/crawlers`));
+  const chooser = page.waitForEvent("filechooser");
+  await page.getByRole("button", { name: "Upload an access log" }).click();
+  await (await chooser).setFiles({ name: "access.log", mimeType: "text/plain", buffer: Buffer.from("x") });
+  await asked;
+  const busy = page.getByRole("button", { name: "Reading the log…" });
+  await expect(busy).toHaveAttribute("aria-busy", "true");
+  let opened = false;
+  page.on("filechooser", () => { opened = true; });
+  await busy.focus();
+  await page.keyboard.press("Enter");
+  await page.evaluate(() => new Promise((resolveFrame) => requestAnimationFrame(() => setTimeout(resolveFrame, 300))));
+  expect(opened).toBe(false);
+  release();
+  await expect(page.getByRole("button", { name: "Upload an access log" })).not.toHaveAttribute("aria-busy", "true");
 });
 
 test("uploading an access log on one project does not show as busy on another, and is busy again on return", async ({ page }) => {
