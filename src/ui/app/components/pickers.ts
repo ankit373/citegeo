@@ -1,3 +1,4 @@
+import { button } from "./button.js";
 import { html } from "../dom.js";
 import type { Notice } from "../types.js";
 
@@ -31,13 +32,14 @@ export function pasteCountPicker(pasteCount: number): string {
  * anyone without a shell there could not use this feature at all. */
 export function crawlerUpload(uploading: boolean, notice: Notice): string {
   return '<div class="inline-actions" style="margin-top:14px">'
-    + '<label class="button quiet" for="crawler-log-file">' + (uploading ? "Reading the log…" : "Upload an access log") + '</label>'
+    + button({ label: uploading ? "Reading the log…" : "Upload an access log", kind: "quiet", on: { "data-crawler-log-open": true } })
     + '</div>'
     + (notice.text ? '<p class="' + (notice.kind === "bad" ? "warning-box" : "subtle") + '">' + html(notice.text) + '</p>' : '')
     + '<p class="mlegend">A combined-format access log, or a CloudFront one with its #Fields header. It is read for crawler user agents and paths and nothing else, and the same file counted twice is counted once.</p>';
 }
 
-/** Mounted once outside the re-rendered tree, so a render cannot detach it between the pick and its change event. */
+/** Mounted once outside the re-rendered tree, so a render cannot detach it between the pick and its change event.
+ * A real button opens it, because a hidden input and its label cannot take focus. */
 export function mountCrawlerLogInput(): void {
   const input = document.createElement("input");
   input.type = "file";
