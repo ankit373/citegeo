@@ -12,7 +12,7 @@ const projects = new ProductProjectService(new ProductProjectFileStore(dir, new 
 await projects.createDraft({ primaryDomain: "acme.com", name: "Acme", brandName: "Acme" });
 await projects.createDraft({ primaryDomain: "blank.com", name: "Blank" });
 // Each browser case that saves gets its own project, so none depends on another having run.
-const savedNames = ["Saved switch", "Saved twice", "Saved slow read", "Saved read"];
+const savedNames = ["Saved switch", "Saved twice", "Saved slow read", "Saved read", "Saved failing", "Saved quick"];
 const saved = [];
 for (const name of savedNames) saved.push(await projects.createDraft({ primaryDomain: name.toLowerCase().split(" ").join("-") + ".com", name, brandName: name }));
 

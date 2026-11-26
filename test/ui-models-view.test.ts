@@ -197,6 +197,9 @@ test("the configuration page shows the version, why it can or cannot be saved, a
   has(page({ baselines: [] }), "No past configurations yet.");
   has(page({ configurationState: "loading" }), "Loading the current configuration…");
   has(page({ monitoringNotice: { text: "note<", kind: "bad" } }), "note&lt;", "form-status bad");
+  const failed = page({ configurationState: "error", monitoringNotice: { text: "read<", kind: "error" } }, configuration({ status: "no_version", currentVersion: null }));
+  has(failed, "could not be read", "read&lt;", "configuration-read-error", "TABS");
+  lacks(failed, "No configuration saved yet", "Save config", "save-monitoring-configuration");
   has(renderConfiguration(state(), null, configuration(), tabs), "Select a project first");
 });
 
@@ -214,7 +217,7 @@ test("the diff lists each change in words and is empty when nothing changed", ()
 
 test("past versions mark the current one, and technical details name the protocol", () => {
   const rows = renderConfigurationRows([baseline("b2", 2), baseline("b1", 1)], configuration());
-  has(rows, "config v2 · Current version", "config v1", "acme.example · 1  models", "M&lt;（Provider Native web search）");
+  has(rows, "config v2 · Current version", "config v1", "acme.example · 1  models", "M&lt; (Provider Native web search)");
   assert.equal(rows.split("Current version").length - 1, 1);
   const tech = renderTechnicalDetails(configuration());
   has(tech, "domain-recognition/v1", "abc&lt;", "Domain only");

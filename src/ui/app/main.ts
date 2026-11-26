@@ -231,7 +231,7 @@ export function boot(): void {
       state.marketer = null; state.drafts = null; state.claims = null; state.buying = null; state.conversations = null; state.entity = null; state.marketerState = "idle";
       state.topicSet = null; state.topicState = "idle";
       state.schedule = null; state.scheduleState = "idle";
-      state.selections = []; state.baselines = []; state.monitoringConfiguration = null; state.configurationState = "idle"; resetDraftSelections();
+      state.selections = []; state.baselines = []; state.monitoringConfiguration = null; state.configurationState = "idle"; state.monitoringSaveState = "idle"; resetDraftSelections();
       state.recognitionRuns = []; state.recognitionDetail = null; state.recognitionModelDetails = {}; state.recognitionSelectedRunId = "";
       state.recognitionNotice = { text:"", kind:"" }; window.clearTimeout(state.recognitionRefreshTimer);
       state.regions = []; state.languages = [];
@@ -334,7 +334,7 @@ export function boot(): void {
     const NO_CONFIGURATION: MonitoringConfigurationView = {
       status: "no_version", currentVersion: null, nextVersion: 1, currentBaseline: null,
       currentProtocol: { protocolId: "domain-recognition", protocolVersion: "v1", promptTemplateHash: "" },
-      currentDomain: "", currentLanguage: "zh", currentModelSnapshots: [],
+      currentDomain: "", currentLanguage: "en", currentModelSnapshots: [],
       diff: { addedModels: [], removedModels: [], webSearchModeChanges: [], protocolVersionChange: null, domainChange: null, languageChange: null },
     };
     function monitoringConfiguration(): MonitoringConfigurationView { return state.monitoringConfiguration || NO_CONFIGURATION; }
