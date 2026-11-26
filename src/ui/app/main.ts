@@ -162,7 +162,13 @@ export function boot(): void {
       }
     }
 
-    function render(): void { announce(); if (renderOverride) renderOverride(); else phase2RenderImpl(); }
+    function render(): void {
+      // A render replaces the button, which would drop the focus a keyboard user had on it.
+      const refocus = document.activeElement?.hasAttribute("data-crawler-log-open") === true;
+      announce();
+      if (renderOverride) renderOverride(); else phase2RenderImpl();
+      if (refocus) (document.querySelector("[data-crawler-log-open]") as HTMLElement | null)?.focus();
+    }
     const element = (id: string) => document.getElementById(id) as any;
 
     const project = () => state.currentProjects.find((item) => item.id === state.selectedId) || null;
@@ -2376,7 +2382,9 @@ export function boot(): void {
     document.addEventListener("change", async (event) => { const target = el(event.target) as any; if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) return; if (target.id === "project-select") { setSelectedProject(target.value); state.selectionsDirty = false; await refreshConfiguration(); loadLiveRun(); render(); return; } if (target instanceof HTMLInputElement && target.hasAttribute("data-model-checkbox")) { changeModel(target.getAttribute("data-model-checkbox") || "", target.checked); return; } if (target instanceof HTMLSelectElement && target.hasAttribute("data-model-mode")) { changeModelMode(target.getAttribute("data-model-mode") || "", target.value); return; } if (target instanceof HTMLSelectElement && target.hasAttribute("data-selected-model-mode")) { changeModelMode(target.getAttribute("data-selected-model-mode") || "", target.value); return; } });
     document.addEventListener("click", (event) => {
       const target = el(event.target);
-      if (target instanceof Element && target.closest("[data-crawler-log-open]")) element("crawler-log-file").click();
+      if (!(target instanceof Element) || !target.closest("[data-crawler-log-open]")) return;
+      if (state.crawlerUploading) return;
+      element("crawler-log-file").click();
     });
     document.addEventListener("change", (event) => {
       const target = el(event.target);
